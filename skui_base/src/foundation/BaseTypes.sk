@@ -119,3 +119,35 @@ fun dummy(): _ {
 fun useless(): _ {
   invariant_violation("Shall not be used here.");
 }
+
+trait Equivalent {
+  overridable macro readonly fun like(
+    other: inst,
+    precision: Float = precisionErrorTolerance,
+  ): Bool {
+    other match {
+    | otherTyped @ #ThisClass _ ->
+      _ = otherTyped; // silence unused variable warning in classes with no fields.
+      #forEachField (#field) {
+        // Use isEqual to ensure that fields implement Equality
+        if (!isLike(this.#field, otherTyped.#field, precision)) {
+          return false;
+        }
+      };
+      true
+
+    | _ -> false
+    }
+  }
+
+  overridable readonly fun notlike(
+    other: inst,
+    precision: Float = precisionErrorTolerance,
+  ): Bool {
+    !(this.like(other, precision))
+  }
+}
+
+fun isLike<T: Equivalent>(a: T, b: T, precision: Float): Bool {
+  a.like(b, precision)
+}

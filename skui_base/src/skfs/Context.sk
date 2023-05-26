@@ -280,7 +280,10 @@ extension class Context {
   }
 
   readonly fun getBoolGlobal(name: String): Bool {
-    this.getGlobal(name).map(BoolFile::fromFile).map(f -> f.value).default(false)
+    this.getGlobal(name)
+      .map(BoolFile::fromFile)
+      .map(f -> f.value)
+      .default(false)
   }
 }
 

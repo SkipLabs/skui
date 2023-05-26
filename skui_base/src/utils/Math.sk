@@ -487,7 +487,7 @@ extension class Bool {
   }
 }
 
-extension class Float {
+extension class Float uses Equivalent {
   fun !(): Double {
     Double(this)
   }
@@ -500,8 +500,8 @@ extension class Float {
     Math.min(this, other)
   }
 
-  fun like(other: Float): Bool {
-    Math.like(this, other)
+  fun like(other: Float, precision: Float = precisionErrorTolerance): Bool {
+    Math.like(this, other, precision)
   }
 
   fun abs(): Float {
