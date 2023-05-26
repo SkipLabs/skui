@@ -1,5 +1,7 @@
 module Ui;
 
+class Shift(x: Int, y: Int) uses Hashable, Equality
+
 base class Paint private (alpha: Float = 1.0) uses Hashable, Orderable {
   fun withAlpha(alpha: Float): this;
   fun scaleAlpha(factor: Float): this;
@@ -46,6 +48,215 @@ base class Paint private (alpha: Float = 1.0) uses Hashable, Orderable {
 
   overridable fun sameCompare(y: Paint): Order {
     this.hash().compare(y.hash())
+  }
+}
+
+const full: UInt8 = UInt8::truncate(255);
+
+value class Pix(
+  red: UInt8,
+  green: UInt8,
+  blue: UInt8,
+  alpha: UInt8,
+) uses Equality {
+  //
+  const transparent: Pix = Pix(
+    UInt8::truncate(0),
+    UInt8::truncate(0),
+    UInt8::truncate(0),
+    UInt8::truncate(0),
+  );
+
+  static fun fromArray(elems: Array<UInt8>): Pix {
+    zero = UInt8::zero;
+    max = UInt8::truncate(255);
+    Pix(
+      elems.maybeGet(0).default(zero),
+      elems.maybeGet(1).default(zero),
+      elems.maybeGet(2).default(zero),
+      elems.maybeGet(3).default(max),
+    )
+  }
+
+  fun +(other: Pix): Pix {
+    this.add(other)
+  }
+
+  fun under(foreground: Pix): Pix {
+    this.modify(
+      foreground,
+      (bA, fA) ~> (fA + (bA * (1.0 - fA))),
+      (back, bA, fore, fA, alpha) ~> {
+        UInt8::truncate(
+          (((fore.toFloat() * fA) + back.toFloat() * bA * (1.0 - fA)) /
+            alpha).toInt(),
+        )
+      },
+    );
+  }
+
+  fun add(other: Pix): Pix {
+    this.modify(
+      other,
+      (bA, fA) ~> bA + fA,
+      (back, bA, fore, fA, alpha) ~> {
+        UInt8::truncate(
+          (((fore.toFloat() * fA) + (back.toFloat() * bA)) / alpha).toInt(),
+        )
+      },
+    );
+  }
+
+  private fun modify(
+    foreground: Pix,
+    compAlpha: (Float, Float) ~> Float,
+    compEntity: (UInt8, Float, UInt8, Float, Float) ~> UInt8,
+  ): Pix {
+    if (foreground.alpha == full || this.alpha == UInt8::zero) {
+      foreground
+    } else if (foreground.alpha == UInt8::zero) {
+      this
+    } else {
+      alpha1 = this.alpha.toFloat() / 255.0;
+      alpha2 = foreground.alpha.toFloat() / 255.0;
+      alpha = compAlpha(alpha1, alpha2);
+      if (Math.like(alpha, 0.0)) {
+        Pix::transparent
+      } else {
+        Pix(
+          compEntity(this.red, alpha1, foreground.red, alpha2, alpha),
+          compEntity(this.green, alpha1, foreground.green, alpha2, alpha),
+          compEntity(this.blue, alpha1, foreground.blue, alpha2, alpha),
+          UInt8::truncate(
+            Math.clamp(Math.round(alpha * 255.0).toInt(), 0, 255),
+          ),
+        );
+      }
+    }
+  }
+
+  fun like(other: Pix, tolerance: Int = 1): Bool {
+    Math.abs(this.red - other.red) <= tolerance &&
+      Math.abs(this.green - other.green) <= tolerance &&
+      Math.abs(this.blue - other.blue) <= tolerance &&
+      Math.abs(this.alpha - other.alpha) <= tolerance
+  }
+}
+
+class Image(
+  data: Array<Pix>,
+  width: Int,
+  height: Int,
+  optShift: ?Shift = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Image _ -> x
+    | _ -> invariant_violation("Must be Ui.Image")
+    }
+  }
+
+  static fun empty(width: Int, height: Int, optShift: ?Shift = None()): Image {
+    Image(
+      Array::fill(width * height, Pix::transparent),
+      width,
+      height,
+      optShift,
+    )
+  }
+
+  static fun build(painter: Ui.Painter, width: Int, height: Int): Image {
+    Image(
+      Array::fillBy(width * height, index ~> {
+        x = index % width;
+        y = index / width;
+        px = painter.getColorAt(x, y);
+        Pix(px.getRed(), px.getGreen(), px.getBlue(), px.getAlpha())
+      }),
+      width,
+      height,
+    )
+  }
+
+  static fun make(width: Int, height: Int, supplier: (Int, Int) -> Pix): Image {
+    Image(
+      Array::fillBy(width * height, index -> {
+        supplier(index % width, index / width)
+      }),
+      width,
+      height,
+    )
+  }
+
+  fun size(): Geometry.Size {
+    Geometry.Size(this.width.toFloat(), this.height.toFloat())
+  }
+
+  fun get(x: Int, y: Int): Pix {
+    this.data.unsafeGet(index(x, y, this.width));
+  }
+
+  @always_inline
+  private fun index(x: Int, y: Int): Int {
+    index(x, y, this.width)
+  }
+
+  private fun getPixX(x: Int, y: Int, fy: Float, xScale: Float): Pix {
+    pix = if (y > 0) {
+      cur = this.data.unsafeGet(this.index(x, y - 1));
+      !cur.alpha = UInt8::truncate(
+        Math.round(cur.alpha.toFloat() * fy * xScale).toInt(),
+      );
+      cur;
+    } else {
+      Pix(UInt8::zero, UInt8::zero, UInt8::zero, UInt8::zero);
+    };
+    pix +
+      if (y < this.height) {
+        cur = this.data.unsafeGet(this.index(x, y));
+        !cur.alpha = UInt8::truncate(
+          Math.round(cur.alpha.toFloat() * (1.0 - fy) * xScale).toInt(),
+        );
+        cur
+      } else {
+        Pix(UInt8::zero, UInt8::zero, UInt8::zero, UInt8::zero);
+      };
+  }
+
+  fun shiftImage(relative: Geometry.Offset): Image {
+    if (relative.like(Geometry.Offset::zero)) {
+      this;
+    } else {
+      bounds = Geometry.Rect::fromOffsetSize(
+        relative,
+        Geometry.Size(this.width.toFloat(), this.height.toFloat()),
+      ).toRectangle();
+      nWidth = bounds.width();
+      nHeight = bounds.height();
+      fx = relative.dx;
+      fy = relative.dy;
+      Image(
+        Array::fillBy(nWidth * nHeight, index ~> {
+          x = index % nWidth;
+          y = index / nWidth;
+          pix = if (x > 0) {
+            this.getPixX(x - 1, y, fy, fx);
+          } else {
+            Pix(UInt8::zero, UInt8::zero, UInt8::zero, UInt8::zero);
+          };
+          pix +
+            if (x < this.width) {
+              this.getPixX(x, y, fy, 1.0 - fx);
+            } else {
+              Pix(UInt8::zero, UInt8::zero, UInt8::zero, UInt8::zero);
+            };
+        }),
+        nWidth,
+        nHeight,
+        this.optShift,
+      );
+    }
   }
 }
 

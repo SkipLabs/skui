@@ -62,13 +62,6 @@
         { "path": ".", "name": "cli"}
       ]
     },
-    "skui_test": {
-      "kind": "Library",
-      "sources": [
-        "../skui_test/src/**"
-      ],
-      "references": []
-    },
     "termcolor": {
       "kind": "Library",
       "sources": [

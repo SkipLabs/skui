@@ -1,0 +1,99 @@
+module SKUICommonTest;
+
+@test
+fun imageShifting(): void {
+  Shifting().run();
+}
+
+const pix1: Ui.Pix = Ui.Pix(
+  UInt8::truncate(250),
+  UInt8::truncate(128),
+  UInt8::truncate(114),
+  UInt8::truncate(255),
+);
+
+const source1x1: Ui.Image = Ui.Image(Array[pix1], 1, 1);
+
+class ImageCase(
+  shift: Geometry.Offset,
+  expected: Ui.Image,
+  source: Ui.Image = source1x1,
+) {
+  fun run(): void {
+    expectEq(this.source.shiftImage(this.shift), this.expected)
+  }
+}
+
+class Shifting() {
+  //
+  fun run(): void {
+    this.cases().each(c -> c.run())
+  }
+
+  protected fun cases(): Array<ImageCase> {
+    Array[
+      ImageCase(Geometry.Offset::zero, source1x1),
+      ImageCase(
+        Geometry.Offset(0.5, 0.0),
+        Ui.Image(
+          Array::fill(2, pix1 with {alpha => UInt8::truncate(128)}),
+          2,
+          1,
+        ),
+      ),
+      ImageCase(
+        Geometry.Offset(0.0, 0.5),
+        Ui.Image(
+          Array::fill(2, pix1 with {alpha => UInt8::truncate(128)}),
+          1,
+          2,
+        ),
+      ),
+      ImageCase(
+        Geometry.Offset(0.5, 0.5),
+        Ui.Image(
+          Array::fill(4, pix1 with {alpha => UInt8::truncate(64)}),
+          2,
+          2,
+        ),
+      ),
+      ImageCase(
+        Geometry.Offset(0.5, 0.0),
+        Ui.Image(
+          Array[
+            pix1 with {alpha => UInt8::truncate(128)},
+            pix1,
+            pix1 with {alpha => UInt8::truncate(128)},
+          ],
+          3,
+          1,
+        ),
+        Ui.Image(Array::fill(2, pix1), 2, 1),
+      ),
+      ImageCase(
+        Geometry.Offset(0.1, 0.0),
+        Ui.Image(
+          Array[
+            pix1 with {alpha => UInt8::truncate(230)},
+            pix1 with {alpha => UInt8::truncate(26)},
+          ],
+          2,
+          1,
+        ),
+      ),
+      ImageCase(
+        Geometry.Offset(0.9, 0.0),
+        Ui.Image(
+          Array[
+            pix1 with {alpha => UInt8::truncate(25)},
+            pix1 with {alpha => UInt8::truncate(230)},
+          ],
+          2,
+          1,
+        ),
+      ),
+    ]
+  }
+}
+
+module end;

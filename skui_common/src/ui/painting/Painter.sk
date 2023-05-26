@@ -110,8 +110,6 @@ base class Painter extends SKFS.File uses Hashable, Equality {
   fun getBounds(): ?Geometry.Rect;
 }
 
-class Shift(x: Int, y: Int) uses Hashable, Equality {}
-
 class ArrayDraw(
   width: Int,
   height: Int,
