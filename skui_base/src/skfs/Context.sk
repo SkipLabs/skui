@@ -1,0 +1,368 @@
+module SKFS;
+
+class Random(value: .Random) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Random _ -> x
+    | _ -> invariant_violation("Must be SKFS.Random")
+    }
+  }
+}
+
+@cpp_extern("SKIP_check_memory")
+native fun .checkMemory(): void;
+
+extension class Context {
+  //
+  static fun withoutGc<T>(
+    fn: mutable Context ~> T,
+    optName: ?String = None(),
+  ): T {
+    getWorkingContext() match {
+    | Some(context) ->
+      optName match {
+      | Some(name) -> profileCall(context, name, () -> fn(context))
+      | _ -> fn(context)
+      }
+    | _ ->
+      fromContext = getMainContext();
+      fromTick = fromContext.tick;
+      context = SKFS.Context::fromSaved(fromContext);
+      doDo = () -> context.perform(fn, fromContext, fromTick);
+      optName match {
+      | Some(name) -> profileCall(context, name, doDo)
+      | _ -> doDo()
+      }
+    }
+  }
+
+  mutable fun updateIfRoot(): void {
+    if (this.currentArrow().isNone()) {
+      this.update()
+    }
+  }
+
+  @debug
+  private mutable fun perform<T>(
+    fn: mutable Context ~> T,
+    fromContext: Context,
+    fromTick: Tick,
+  ): T {
+    setWorkingContext(Some(this));
+    res = fn(this);
+    setWorkingContext(None());
+    invariant(
+      this.currentArrow().isNone(),
+      "gContextSync cannot be done durring update",
+    );
+    sContext = gContextSync(
+      fromTick,
+      fromContext,
+      this.clone(),
+      None(),
+      UInt32::truncate(0),
+      None(),
+    );
+    setMainContext(sContext);
+    res;
+  }
+
+  static fun withGc<T>(fn: mutable Context ~> T): T {
+    pos = newObstack();
+    res = static::withoutGc(fn);
+    destroyObstack(pos);
+    res;
+  }
+
+  mutable fun makeDir<T: File>(
+    conv: File ~> T,
+    dirName: DirName,
+    content: Array<(BaseName, T)> = Array[],
+    reallyRemove: Bool = false,
+  ): EHandle<T> {
+    this.mkdir(conv, dirName, reallyRemove, content);
+  }
+
+  mutable fun makePreDir<T: File>(
+    conv: File ~> T,
+    dirName: DirName,
+    content: Array<(BaseName, T)> = Array[],
+    reallyRemove: Bool = false,
+  ): EHandle<T> {
+    value = this.makeDir(conv, dirName.pre(), content, reallyRemove);
+    if (!this.hasPre.contains(dirName)) {
+      this.!hasPre = this.hasPre.add(dirName);
+    };
+    value;
+  }
+
+  mutable fun setProfiling(optPerformProfile: ?Bool): void {
+    optPerformProfile match {
+    | Some(profiling) -> this.setGlobal("SKFS.Profiling", BoolFile(profiling))
+    | _ -> this.removeGlobal("SKFS.Profiling")
+    }
+  }
+
+  readonly fun getProfiling(): ?Bool {
+    this.getGlobal("SKFS.Profiling").map(f -> BoolFile::fromFile(f).value)
+  }
+
+  mutable fun registerMessageSupport(
+    name: String,
+    scope: String,
+    support: FWKMessage.Support,
+    replace: Bool = true,
+  ): void {
+    id = `FWKMessage.Support.${name}.${scope}`;
+    if (replace || this.getGlobal(id).isNone()) {
+      support.init(this);
+      this.setGlobal(`FWKMessage.Support.${name}.${scope}`, support);
+    }
+  }
+
+  readonly fun getMessageSupport(
+    name: String,
+    scope: String,
+  ): ?FWKMessage.Support {
+    supportId = `FWKMessage.Support.${name}.${scope}`;
+    this.getGlobal(supportId).map(FWKMessage.Support::forFile)
+  }
+
+  mutable fun removeMessageSupport(name: String, scope: String): void {
+    this.removeGlobal(`FWKMessage.Support.${name}.${scope}`);
+  }
+
+  mutable fun registerSequence(sequence: FWKMessage.Sequence): RunSequence {
+    time = this.timeStamp();
+    name = `FWKMessage.Sequence[${time}]`;
+    this.setGlobal(name, sequence);
+    RunSequence(time.value)
+  }
+
+  mutable fun checkSequence(seqId: Int, optCommand: ?FWKMessage.Command): void {
+    name = `FWKMessage.Sequence[${seqId}]`;
+    this.getGlobal(name).map(FWKMessage.Sequence::fromFile) match {
+    | Some(sequence) ->
+      nSequence = sequence.decr();
+      if (nSequence.count == 0) {
+        this.removeGlobal(name);
+        nSequence.toPerform(this, optCommand);
+      } else {
+        this.setGlobal(name, nSequence);
+      }
+    | _ -> void
+    }
+  }
+
+  mutable fun clearSequence(id: Int): void {
+    name = `FWKMessage.Sequence[${id}]`;
+    optSequence = this.getGlobal(name).map(FWKMessage.Sequence::fromFile);
+    this.removeGlobal(name);
+    optSequence.each(sequence -> sequence.onCancel(this))
+  }
+
+  mutable fun addPendingMessage(message: FWKMessage.Message): void {
+    this.getGlobal("FWKMessage.Pedding").map(
+      FWKMessage.Messages::fromFile,
+    ) match {
+    | Some(messages) ->
+      this.setGlobal("FWKMessage.Pedding", messages.add(message))
+    | _ ->
+      this.setGlobal("FWKMessage.Pedding", FWKMessage.Messages(Array[message]))
+    }
+  }
+
+  mutable fun checkPendingMessages(): void {
+    this.getGlobal("FWKMessage.Pedding")
+      .map(FWKMessage.Messages::fromFile)
+      .each(messages -> messages.send(this));
+    this.removeGlobal("FWKMessage.Pedding");
+  }
+
+  mutable fun registerInternalMessage(message: FWKMessage.Message): UInt32 {
+    messageId = UInt32::truncate(this.timeStamp().value);
+    gID = `FWKMessage.Message.${messageId}`;
+    this.setGlobal(gID, message);
+    messageId;
+  }
+
+  mutable fun getInternalMessage(messageId: UInt32): ?FWKMessage.Message {
+    gID = `FWKMessage.Message.${messageId}`;
+    optMessage = this.getGlobal(gID).map(FWKMessage.Message::fromFile);
+    if (optMessage.isSome()) {
+      this.removeGlobal(gID)
+    };
+    optMessage;
+  }
+
+  @debug
+  mutable fun systemTimeStamp(): System.TimeStamp {
+    System.timeStamp();
+  }
+
+  @debug
+  mutable fun doProfile(
+    name: String,
+    fn: mutable SKFS.Context -> void,
+    forceCall: Bool = false,
+  ): void {
+    this.getProfiling() match {
+    | Some(print) ->
+      start = this.systemTimeStamp();
+      fn(this);
+      end = this.systemTimeStamp();
+      diff = end - start;
+      if (print || forceCall) {
+        print_string(
+          `${name}[${this.tick}]: Time elpased is ${diff.seconds} seconds and ${
+            diff.microseconds
+          } micros`,
+        )
+      } else {
+        this.logProfile(name, diff);
+      }
+    | _ -> fn(this)
+    }
+  }
+
+  mutable fun logProfile(
+    name: String,
+    time: System.TimeStamp,
+    forceDisplay: Bool = false,
+  ): void {
+    entity = ProfileEntity(time, forceDisplay);
+    this.getGlobal("SKFS.Profiles") match {
+    | Some(file) ->
+      this.setGlobal(
+        "SKFS.Profiles",
+        Profiles::fromFile(file).update(name, this.tick, entity),
+      )
+    | _ ->
+      this.setGlobal(
+        "SKFS.Profiles",
+        Profiles().update(name, this.tick, entity),
+      )
+    }
+  }
+
+  @debug
+  mutable fun clearProfile(): void {
+    this.removeGlobal("SKFS.Profiles");
+  }
+
+  @debug
+  readonly fun printProfile(): void {
+    this.getGlobal("SKFS.Profiles").map(Profiles::fromFile).each(profiles ->
+      profiles.print(this.tick)
+    )
+  }
+
+  mutable fun random(start: Int, end: Int): Int {
+    random = this.getRandom();
+    res = random.random(start, end);
+    this.setGlobal("SKFS.Random", Random(random.chill()));
+    res;
+  }
+
+  private mutable fun getRandom(): mutable .Random {
+    this.getGlobal("SKFS.Random") match {
+    | Some(file) -> Random::fromFile(file).value.clone()
+    | _ -> .Random::mcreate(this.timeStamp().value)
+    }
+  }
+
+  mutable fun randomBytes(size: Int): Array<UInt8> {
+    random = this.getRandom();
+    bytes = Array::fillBy(size, _idx -> UInt8::truncate(random.random(0, 256)));
+    this.setGlobal("SKFS.Random", Random(random.chill()));
+    bytes
+  }
+
+  readonly fun getBoolGlobal(name: String): Bool {
+    this.getGlobal(name).map(BoolFile::fromFile).map(f -> f.value).default(false)
+  }
+}
+
+@debug
+fun profileCall<T>(
+  context: mutable SKFS.Context,
+  name: String,
+  fn: () -> T,
+  limit: Int = 500,
+): T {
+  start = context.systemTimeStamp();
+  res = fn();
+  end = context.systemTimeStamp();
+  uDiff = end - start;
+  if (uDiff.toMicroseconds() > limit) {
+    print_string(
+      `${name}[${context.tick}]: Manage ${uDiff.seconds} seconds and ${
+        uDiff.microseconds
+      } micros`,
+    );
+  };
+  res
+}
+
+@debug
+@cpp_extern("SKIP_SKFS_setMainContext")
+native fun setMainContext(context: Context): void;
+
+@debug
+@cpp_extern("SKIP_SKFS_getMainContext")
+native fun getMainContext(): Context;
+
+@debug
+@cpp_extern("SKIP_SKFS_setWorkingContext")
+native fun setWorkingContext(optContext: ?mutable Context): void;
+
+@debug
+@cpp_extern("SKIP_SKFS_getWorkingContext")
+native fun getWorkingContext(): ?mutable Context;
+
+fun initMainContext(context: Context): void {
+  gContextInit(context);
+  setMainContext(context);
+}
+
+class RunSequence(id: Int) extends JSONValue, File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ RunSequence _ -> x
+    | _ -> invariant_violation("Must be SKFS.RunSequence")
+    }
+  }
+
+  fun execute(
+    context: mutable SKFS.Context,
+    optCommand: ?FWKMessage.Command,
+  ): void {
+    context.checkSequence(this.id, optCommand)
+  }
+
+  fun cancel(context: mutable SKFS.Context): void {
+    context.clearSequence(this.id)
+  }
+
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "id" => JSON.IntNumber(this.id),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): RunSequence {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "SKFS.RunSequence" -> RunSequence(jso.getInt("id"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for SKFS.RunSequence`)
+    }
+  }
+}
+
+module end;

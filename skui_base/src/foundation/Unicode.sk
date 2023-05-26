@@ -1,0 +1,363 @@
+module Unicode;
+
+const maxChar: Char = '\U0010FFFF'; // Maximum valid Unicode code point.
+const replacementChar: Char = '\uFFFD'; // Represents invalid code points.
+const maxASCII: Char = '\u007F'; // maximum ASCII value.
+const maxLatin1: Char = '\u00FF'; // maximum Latin-1 value.
+
+// Range represents of a range Unicode code points. The range runs from Lo to Hi
+// inclusive and has the specified stride.
+class Range(lo: Int, hi: Int, stride: Int)
+
+class Delta(upper: Int, lower: Int, title: Int) {
+  fun get(case: Case): Int {
+    case match {
+    | UpperCase() -> this.upper
+    | LowerCase() -> this.lower
+    | TitleCase() -> this.title
+    }
+  }
+}
+
+// CaseRange represents a range of Unicode code points for simple (one
+// code point to one code point) case conversion.
+// The range runs from Lo to Hi inclusive, with a fixed stride of 1. Deltas
+// are the number to add to the code point to reach the code point for a
+// different case for that character. They may be negative. If zero, it
+// means the character is in the corresponding case. There is a special
+// case representing sequences of alternating corresponding Upper and Lower
+// pairs. It appears with a fixed Delta of
+//	{UpperLower, UpperLower, UpperLower}
+// The constant UpperLower has an otherwise impossible delta value.
+// If the Delta field of a CaseRange is UpperLower, it means
+// this CaseRange represents a sequence of the form (say)
+// Upper Lower Upper Lower.
+class CaseRange(lo: Int, hi: Int, delta: Delta)
+
+// BUG(r): There is no mechanism for full case folding, that is, for
+// characters that involve multiple runes in the input or output.
+
+// Indices into the Delta arrays inside CaseRanges for case mapping.
+base class Case {
+  children =
+  | UpperCase()
+  | LowerCase()
+  | TitleCase()
+
+  fun code(): Int {
+    this match {
+    | UpperCase() -> 0
+    | LowerCase() -> 1
+    | TitleCase() -> 2
+    }
+  }
+}
+
+const upperLower: Int = 4;
+
+//type d [MaxCase]rune // to make the CaseRanges text shorter
+//const (
+//	UpperLower = MaxRune + 1 // (Cannot be a valid delta.)
+//)
+
+// linearMax is the maximum size table for linear search for non-Latin1 rune.
+const linearMax: Int = 18;
+
+fun is(ranges: Array<Range>, r: Int, check: Bool): Bool {
+  if (check) {
+    for (range in ranges) {
+      if (r < range.lo) {
+        return false
+      };
+      if (r <= range.hi) {
+        return range.stride == 1 || (r - range.lo) % range.stride == 0
+      }
+    };
+    return false
+  };
+
+  // binary search over ranges
+  lo = 0;
+  hi = ranges.size();
+  while (lo < hi) {
+    m = lo + (hi - lo) / 2;
+    range = ranges[m];
+    if (range.lo <= r && r <= range.hi) {
+      return range.stride == 1 || (r - range.lo) % range.stride == 0
+    };
+    if (r < range.lo) {
+      !hi = m
+    } else {
+      !lo = m + 1
+    }
+  };
+  false
+}
+
+// is16 reports whether r is in the sorted slice of 16-bit ranges.
+fun is16(ranges: Array<Range>, r: Int): Bool {
+  is(ranges, r, ranges.size() <= linearMax || r <= maxLatin1.code())
+}
+
+// is32 reports whether r is in the sorted slice of 16-bit ranges.
+fun is32(ranges: Array<Range>, r: Int): Bool {
+  is(ranges, r, ranges.size() <= linearMax)
+}
+
+// RangeTable defines a set of Unicode code points by listing the ranges of
+// code points within the set. The ranges are listed in two slices
+// to save space: a slice of 16-bit ranges and a slice of 32-bit ranges.
+// The two slices must be in sorted order and non-overlapping.
+// Also, ranges32 should contain only values >= 0x10000 (1<<16).
+class RangeTable{
+  ranges16: Array<Range> = Array[],
+  ranges32: Array<Range> = Array[],
+  latinOffset: Int = 0,
+} {
+  // isIn reports whether the char is in the specified table of ranges.
+  fun isIn(char: Char): Bool {
+    code = char.code();
+    if (!this.ranges16.isEmpty() && code <= this.ranges16.last().hi) {
+      return is16(this.ranges16, code)
+    };
+    if (!this.ranges32.isEmpty() && code >= this.ranges32.first().lo) {
+      return is32(this.ranges32, code)
+    };
+    false
+  }
+
+  fun isExcludingLatin(char: Char): Bool {
+    code = char.code();
+    if (
+      this.ranges16.size() > this.latinOffset &&
+      code <= this.ranges16.last().hi
+    ) {
+      return is16(this.ranges16.drop(this.latinOffset), code)
+    };
+    if (!this.ranges32.isEmpty() && code >= this.ranges32.first().lo) {
+      return is32(this.ranges32, code)
+    };
+    false
+  }
+}
+
+// IsUpper reports whether the rune is an upper case letter.
+fun isUpper(char: Char): Bool {
+  code = char.code();
+  // See comment in IsGraphic.
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pLmask) == pLu
+  };
+  upper.isExcludingLatin(char)
+}
+
+// isLower reports whether the rune is a lower case letter.
+fun isLower(char: Char): Bool {
+  code = char.code();
+  // See comment in IsGraphic.
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pLmask) == pLl
+  };
+  lower.isExcludingLatin(char)
+}
+
+// IsTitle reports whether the rune is a title case letter.
+fun isTitle(char: Char): Bool {
+  code = char.code();
+  // See comment in IsGraphic.
+  if (code <= maxLatin1.code()) {
+    return false
+  };
+  title.isExcludingLatin(char)
+}
+
+// to maps the char using the specified case mapping.
+// It additionally reports whether caseRange contained a mapping for char.
+fun to(
+  case: Case,
+  char: Char,
+  optRanges: ?Array<CaseRange> = None(),
+): (Char, Bool) {
+  ranges = optRanges.default(caseRanges);
+  code = char.code();
+  lo = 0;
+  hi = ranges.size();
+  while (lo < hi) {
+    m = lo + (hi - lo) / 2;
+    cr = ranges[m];
+    if (cr.lo <= code && code <= cr.hi) {
+      delta = cr.delta.get(case);
+      if (delta > maxChar.code()) {
+        // In an Upper-Lower sequence, which always starts with
+        // an UpperCase letter, the real deltas always look like:
+        //	{0, 1, 0}    UpperCase (Lower is next)
+        //	{-1, 0, -1}  LowerCase (Upper, Title are previous)
+        // The characters at even offsets from the beginning of the
+        // sequence are upper case; the ones at odd offsets are lower.
+        // The correct mapping can be done by clearing or setting the low
+        // bit in the sequence offset.
+        // The constants UpperCase and TitleCase are even while LowerCase
+        // is odd so we take the low bit from _case.
+        nCode = cr.lo + (code - cr.lo).and(1.not()).or(case.code().and(1));
+        return (Char::fromCode(nCode), true)
+      };
+      return (Char::fromCode(code + delta), true);
+    };
+    if (code < cr.lo) {
+      !hi = m
+    } else {
+      !lo = m + 1
+    }
+  };
+  (char, false)
+}
+
+// toUpper maps the char to upper case.
+fun toUpper(char: Char): Char {
+  code = char.code();
+  if (code <= maxASCII.code()) {
+    if ('a'.code() <= code && code <= 'z'.code()) {
+      Char::fromCode(code - 'a'.code() + 'A'.code())
+    } else {
+      char
+    }
+  } else {
+    (res, _) = to(UpperCase(), char);
+    res;
+  }
+}
+
+// toLower maps the char to lower case.
+fun toLower(char: Char): Char {
+  code = char.code();
+  if (code <= maxASCII.code()) {
+    if ('A'.code() <= code && code <= 'Z'.code()) {
+      Char::fromCode(code - 'A'.code() + 'a'.code())
+    } else {
+      char
+    }
+  } else {
+    (res, _) = to(LowerCase(), char);
+    res;
+  }
+}
+
+// toTitle maps the rune to title case.
+fun toTitle(char: Char): Char {
+  code = char.code();
+  if (code <= maxASCII.code()) {
+    // title case is upper case for ASCII
+    if ('a'.code() <= code && code <= 'z'.code()) {
+      Char::fromCode(code - 'a'.code() + 'A'.code())
+    } else {
+      char
+    }
+  } else {
+    (res, _) = to(TitleCase(), char);
+    res;
+  }
+}
+
+// isGraphic reports whether the char is defined as a Graphic by Unicode.
+// Such characters include letters, marks, numbers, punctuation, symbols, and
+// spaces, from categories L, M, N, P, S, Zs.
+fun isGraphic(char: Char): Bool {
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pg) != 0
+  };
+  Array[tL, tM, tN, tP, tS, tZs].any(range -> range.isIn(char));
+}
+
+// isPrint reports whether the char is defined as printable. Such
+// characters include letters, marks, numbers, punctuation, symbols, and the
+// ASCII space character, from categories L, M, N, P, S and the ASCII space
+// character. This categorization is the same as IsGraphic except that the
+// only spacing character is ASCII space, U+0020.
+fun isPrint(char: Char): Bool {
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pp) != 0
+  };
+  Array[tL, tM, tN, tP, tS].any(range -> range.isIn(char));
+}
+
+// isControl reports whether the char is a control character.
+// The C (Other) Unicode category includes more code points
+// such as surrogates; use Is(C, r) to test for them.
+fun isControl(char: Char): Bool {
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pC) != 0
+  };
+  // All control characters are < MaxLatin1.
+  false
+}
+
+// isLetter reports whether the char is a letter (category L).
+fun isLetter(char: Char): Bool {
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pLmask) != 0
+  };
+  letter.isExcludingLatin(char)
+}
+
+// isMark reports whether the char is a mark character (category M).
+fun isMark(char: Char): Bool {
+  // There are no mark characters in Latin-1.
+  mark.isExcludingLatin(char)
+}
+
+// isNumber reports whether the char is a number (category N).
+fun isNumber(char: Char): Bool {
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pN) != 0
+  };
+  number.isExcludingLatin(char)
+}
+
+// isPunctuation reports whether the char is a Unicode punctuation character
+// (category P).
+fun isPunctuation(char: Char): Bool {
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pP) != 0
+  };
+  punctuation.isIn(char)
+}
+
+// isSpace reports whether the rune is a space character as defined
+// by Unicode's White Space property; in the Latin-1 space
+// this is
+//	'\t', '\n', '\v', '\f', '\r', ' ', U+0085 (NEL), U+00A0 (NBSP).
+// Other definitions of spacing characters are set by category
+// Z and property Pattern_White_Space.
+fun isSpace(char: Char): Bool {
+  // This property isn't the same as Z; special-case it.
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return char match {
+    | '\t' | '\n' | '\v' | '\f' | '\r' | ' ' -> true
+    | _ if (code == 0x85 || code == 0xA0) -> true
+    | _ -> false
+    }
+  };
+  tWhite_Space.isExcludingLatin(char)
+}
+
+// isSymbol reports whether the char is a symbolic character.
+fun isSymbol(char: Char): Bool {
+  code = char.code();
+  if (code <= maxLatin1.code()) {
+    return properties[code].and(pS) != 0
+  };
+  symbol.isExcludingLatin(char)
+}
+
+fun isDiacritic(char: Char): Bool {
+  tDiacritic.isIn(char)
+}
+
+module end;

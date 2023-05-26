@@ -1,0 +1,121 @@
+class Duration(microseconds: Int) uses Hashable, Equality {
+  static fun make{
+    days: Int = 0,
+    hours: Int = 0,
+    minutes: Int = 0,
+    seconds: Int = 0,
+    milliseconds: Int = 0,
+    microseconds: Int = 0,
+  }: Duration {
+    !hours = hours + days * 24;
+    !minutes = minutes + hours * 60;
+    !seconds = seconds + minutes * 60;
+    !milliseconds = milliseconds + seconds * 1000;
+    !microseconds = microseconds + milliseconds * 1000;
+    Duration(microseconds)
+  }
+  /**
+   * Returns whether this Duration is negative.
+   */
+  fun isNegative(): Bool {
+    this.microseconds < 0
+  }
+
+  /**
+   * Returns number of whole microseconds spanned by this Duration.
+   */
+  fun inMicroseconds(): Int {
+    this.microseconds
+  }
+
+  /**
+   * Returns number of whole milliseconds spanned by this Duration.
+   */
+  fun inMilliseconds(): Int {
+    this.inMicroseconds() / 1000
+  }
+
+  /**
+   * Returns the number of whole seconds spanned by this Duration.
+   */
+  fun inSeconds(): Int {
+    this.inMilliseconds() / 1000
+  }
+
+  /**
+   * Returns the number of whole minutes spanned by this Duration.
+   */
+  fun inMinutes(): Int {
+    this.inSeconds() / 1000
+  }
+
+  /**
+   * Returns the number of whole hours spanned by this Duration.
+   */
+  fun inHours(): Int {
+    this.inMinutes() / 60
+  }
+
+  /**
+   * Returns the number of whole days spanned by this Duration.
+   */
+  fun inDays(): Int {
+    this.inHours() / 24
+  }
+}
+
+base class Level uses Orderable, Hashable {
+  children =
+  | Information()
+  | Warning()
+  | Error()
+}
+
+base class Status extends SKFS.File uses Orderable, Hashable {
+  children =
+  | Running(optProgress: ?Int = None())
+
+  fun isGood(): Bool
+  | OK()
+  | Valid() ->
+    true
+  | _ -> false
+
+  fun isRunning(): Bool
+  | Running(_) -> true
+  | _ -> false
+
+  static fun forFile(obj: SKFS.File): Status {
+    obj match {
+    | x @ Status _ -> x
+    | _ -> invariant_violation("Must be Status")
+    }
+  }
+}
+
+fun information(text: Text): Status {
+  KO(Some(text), Information())
+}
+
+base class Validity extends Status {
+  children =
+  | KO(optError: ?Text, level: Level = Error())
+  | OK()
+  | Valid()
+}
+
+base class JSONValue uses HasClassName {
+  fun toJSON(): JSON.Value;
+}
+
+fun todo(detail: String = ""): _ {
+  invariant_violation(`TODO: ${detail}`);
+}
+
+fun dummy(): _ {
+  invariant_violation("Dummy class shall never be called");
+}
+
+fun useless(): _ {
+  invariant_violation("Shall not be used here.");
+}

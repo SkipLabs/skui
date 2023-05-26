@@ -1,0 +1,15 @@
+module Sets;
+
+fun insert<V: Hashable & Equality>(set: Set<V>, value: V): Set<V> {
+  tmp = Set::mcreateFromItems(set);
+  tmp.insert(value);
+  Set::createFromItems(tmp);
+}
+
+fun remove<V: Hashable & Equality>(set: Set<V>, value: V): Set<V> {
+  tmp = Set::mcreateFromItems(set);
+  _ = tmp.maybeRemove(value);
+  Set::createFromItems(tmp);
+}
+
+module end;

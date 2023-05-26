@@ -1,0 +1,129 @@
+module Arrays;
+
+fun merge<T: frozen>(a1: Array<T>, a2: Array<T>): Array<T> {
+  Array::fillBy(a1.size() + a2.size(), index -> {
+    if (index < a1.size()) {
+      a1.unsafeGet(index)
+    } else {
+      a2.unsafeGet(index - a1.size())
+    }
+  })
+}
+
+fun mergeAll<T: frozen>(arrays: Array<Array<T>>): Array<T> {
+  size = arrays.reduce((acc, a) -> acc + a.size(), 0);
+  index = 0;
+  offset = 0;
+  Array::fillBy(size, idx -> {
+    a = arrays[index];
+    while (idx - offset >= a.size()) {
+      !index = index + 1;
+      !offset = offset + a.size();
+      !a = arrays[index];
+    };
+    a.unsafeGet(idx - offset);
+  })
+}
+
+fun replace<T: frozen>(array: Array<T>, index: Int, value: T): Array<T> {
+  if (index < 0 || index >= array.size()) {
+    array
+  } else {
+    arr = Array::mcreateFromItems(array);
+    arr.set(index, value);
+    Array::createFromItems(arr);
+  }
+}
+
+fun add<T: frozen>(array: Array<T>, value: T): Array<T> {
+  vec = Vector::mcreateFromItems(array);
+  vec.push(value);
+  vec.toArray();
+}
+
+fun set<T: frozen>(array: Array<T>, index: Int, value: T): Array<T> {
+  array.mapWithIndex((i, v) -> if (i == index) value else v)
+}
+
+fun insert<T: frozen>(array: Array<T>, index: Int, value: T): Array<T> {
+  vec = Vector::mcreateFromItems(array);
+  vec.insert(index, value);
+  vec.toArray();
+}
+
+fun remove<T: frozen>(array: Array<T>, value: T): Array<T> {
+  array.filter(v -> native_eq(v, value) != 0)
+}
+
+fun removeAt<T: frozen>(array: Array<T>, index: Int): Array<T> {
+  if (index >= 0 && index < array.size()) {
+    Array::fillBy(array.size() - 1, i -> {
+      if (i < index) {
+        array[i]
+      } else {
+        array[i + 1]
+      }
+    })
+  } else {
+    array
+  }
+}
+
+fun removeRange<T: frozen>(array: Array<T>, start: Int, end: Int): Array<T> {
+  size = end - start;
+  Array::fillBy(array.size() - size, i -> {
+    if (i < start) {
+      array[i]
+    } else {
+      array[i + size]
+    }
+  })
+}
+
+fun replaceAll<T: frozen>(array: Array<T>, values: Array<(Int, T)>): Array<T> {
+  if (values.isEmpty()) {
+    array
+  } else {
+    arr = Array::mcreateFromItems(array);
+    values.each(t -> {
+      (index, value) = t;
+      if (index >= 0 && index < array.size()) {
+        arr.set(index, value);
+      };
+    });
+    Array::createFromItems(arr);
+  }
+}
+
+fun join<T: frozen>(arrays: Array<Array<T>>, sep: Array<T>): Array<T> {
+  size = arrays.size() + Math.max(arrays.size() - 1, 0);
+  arr = Array::fillBy(size, idx -> {
+    if (idx % 2 == 0) {
+      arrays[idx / 2]
+    } else {
+      sep
+    }
+  });
+  mergeAll(arr)
+}
+
+fun startsWith<T: frozen & Equality>(
+  container: Array<T>,
+  with: Array<T>,
+): Bool {
+  if (with.size() > container.size()) {
+    false
+  } else {
+    index = 0;
+    for (c in with) {
+      if (c != container[index]) {
+        break false
+      };
+      !index = index + 1;
+    } else {
+      true
+    }
+  }
+}
+
+module end;

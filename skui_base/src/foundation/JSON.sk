@@ -1,0 +1,111 @@
+module JSON;
+
+class File(value: Value) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ File _ -> x
+    | _ -> invariant_violation("Must be JSON.File")
+    }
+  }
+}
+
+extension base class Value uses Equality {
+  fun isNull(): .Bool
+  | Null() -> true
+  | _ -> false
+}
+
+fun optInt(value: Value): ?Int {
+  value match {
+  | FloatNumber(x) -> Some(x.toInt())
+  | IntNumber(x) -> Some(x)
+  | String(x) -> Some(x.toInt())
+  | Bool(x) -> Some(if (x) 1 else 0)
+  | _ -> None()
+  }
+}
+
+fun optFloat(value: Value): ?Float {
+  value match {
+  | FloatNumber(x) -> Some(x)
+  | IntNumber(x) -> Some(x.toFloat())
+  | String(x) -> Some(x.toFloat())
+  | Bool(x) -> Some(if (x) 1.0 else 0.0)
+  | _ -> None()
+  }
+}
+
+fun optBool(value: Value): ?.Bool {
+  value match {
+  | IntNumber(v) -> Some(v != 0)
+  | FloatNumber(v) -> Some(!Math.like(v, 0.0))
+  | String(v) -> Some(v == "true")
+  | Bool(v) -> Some(v)
+  | _ -> None()
+  }
+}
+
+fun optString(value: Value): ?.String {
+  value match {
+  | FloatNumber(x) -> Some(x.toString())
+  | IntNumber(x) -> Some(x.toString())
+  | Bool(x) -> Some(x.toString())
+  | String(x) -> Some(x)
+  | _ -> None()
+  }
+}
+
+fun getInt(key: .String, obj: Object): .Int {
+  optInt(obj.get(key)) match {
+  | Some(x) -> x
+  | _ -> throw JSONValueExpectedError("Int")
+  }
+}
+
+fun getFloat(key: .String, obj: Object): .Float {
+  optFloat(obj.get(key)) match {
+  | Some(x) -> x
+  | _ -> throw JSONValueExpectedError("Float")
+  }
+}
+
+fun getBool(key: .String, obj: Object): .Bool {
+  optBool(obj.get(key)) match {
+  | Some(x) -> x
+  | _ -> throw JSONValueExpectedError("Bool")
+  }
+}
+
+fun getString(key: .String, obj: Object): .String {
+  optString(obj.get(key)) match {
+  | Some(x) -> x
+  | _ -> throw JSONValueExpectedError("String")
+  }
+}
+
+fun maybeGetInt(key: .String, obj: Object): ?.Int {
+  obj.maybeGet(key).flatMap(optInt)
+}
+
+fun maybeGetFloat(key: .String, obj: Object): ?.Float {
+  obj.maybeGet(key).flatMap(optFloat)
+}
+
+fun stringsToJSON(array: .Array<.String>): Value {
+  Array(Vector::createFromItems(array.map(fi -> String(fi))))
+}
+
+fun stringsFromJSON(jsv: Value): .Array<.String> {
+  jsv.expectArray().value.map(v -> v.expectString()).toArray()
+}
+
+fun arrayToJSON<T>(array: .Array<T>, conv: T ~> Value): Value {
+  Array(Vector::createFromItems(array.map(conv)))
+}
+
+fun arrayFromJSON<T>(jsv: Value, conv: Value ~> T): .Array<T> {
+  jsv.expectArray().value.map(conv).toArray()
+}
+
+module end;

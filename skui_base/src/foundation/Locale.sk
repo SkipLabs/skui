@@ -1,0 +1,37 @@
+class Language{main: String, sub: ?String} uses Hashable, Equality {
+  fun full(): ?String {
+    this.sub.map(s -> `${this.main}_${s}`);
+  }
+
+  fun getCode(): String {
+    this.full().default(this.main);
+  }
+
+  static fun make(language: String): Language {
+    !language = language.replace("-", "_");
+    !language = language.replace(".", "_");
+    elements = Vector::mcreateFromItems(language.split("_").reversed());
+    main = elements.pop();
+    sub = if (!elements.isEmpty()) {
+      elements.reverse();
+      Some(elements.join(" "))
+    } else {
+      None()
+    };
+    Language{main, sub}
+  }
+}
+
+class Locale{
+  language: Language,
+  country: ?String = None(),
+  variant: ?String = None(),
+  script: ?String = None(),
+} uses Hashable, Equality {
+  fun getLanguageCount(): Int {
+    this.language.sub match {
+    | Some _ -> 2
+    | _ -> 1
+    }
+  }
+}

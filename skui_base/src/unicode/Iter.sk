@@ -1,0 +1,96 @@
+module Unicode;
+
+fun nextASCIIBytes(i: mutable Iter): ?Array<UInt8> {
+  p = i.p + 1;
+  if (p >= i.reorderBuffer.src.size()) {
+    p0 = i.p;
+    i.setDone();
+    return Some(i.reorderBuffer.src.slice(p0, p))
+  };
+  if (i.reorderBuffer.src[p] < Utf8.self) {
+    p0 = i.p;
+    i.!p = p;
+    return Some(i.reorderBuffer.src.slice(p0, p))
+  };
+  i.!info = i.reorderBuffer.norm.lookup(i.reorderBuffer.src, i.p);
+  i.!nextFn = i.reorderBuffer.norm.nextMain();
+  i.nextFn(i)
+}
+
+mutable class Iter{
+  mutable info: Properties,
+  reorderBuffer: mutable ReorderBuffer,
+  buffer: mutable Vector<UInt8>,
+  mutable nextFn: mutable Iter ~> ?Array<UInt8>,
+  mutable asciiFn: mutable Iter ~> ?Array<UInt8>,
+  mutable p: Int,
+  mutable optMultiSegment: ?Array<UInt8>,
+} {
+  mutable fun init(norm: Norm, src: Array<UInt8>): void {
+    this.!p = 0;
+    if (src.isEmpty()) {
+      this.setDone();
+      this.reorderBuffer.!src = src;
+      return void;
+    };
+    this.!optMultiSegment = None();
+    this.reorderBuffer.init(norm, src);
+    this.!nextFn = this.reorderBuffer.norm.nextMain();
+    this.!asciiFn = nextASCIIBytes;
+    this.!info = this.reorderBuffer.norm.lookup(this.reorderBuffer.src, this.p);
+    this.reorderBuffer.!streamSafe = this.info.nTrailingNonStarters()
+  }
+
+  mutable fun setDone(): void {
+    this.!nextFn = _it ~> None();
+    this.!p = this.reorderBuffer.src.size()
+  }
+
+  mutable fun seek(offset: Int, whence: Int): Int {
+    abs = whence match {
+    | 0 -> offset
+    | 1 -> offset + this.p
+    | 2 -> offset + this.reorderBuffer.src.size()
+    | _ -> invariant_violation("Unicode.Iter.seek: Invalid whence")
+    };
+    invariant(abs >= 0, "Unicode.Iter.seek: Negative position");
+    if (abs >= this.reorderBuffer.src.size()) {
+      this.setDone();
+      return this.p
+    };
+    this.!p = abs;
+    this.!optMultiSegment = None();
+    this.!nextFn = this.reorderBuffer.norm.nextMain();
+    this.!info = this.reorderBuffer.norm.lookup(this.reorderBuffer.src, this.p);
+    this.reorderBuffer.!streamSafe = this.info.nTrailingNonStarters();
+    abs
+  }
+
+  // returnSlice returns a slice of the underlying input type as a byte slice.
+  // If the underlying is of type Array<UInt8>, it will simply return a slice.
+  // If the underlying is of type string, it will copy the slice to the buffer
+  // and return that.
+  readonly fun slice(a: Int, b: Int): Array<UInt8> {
+    this.reorderBuffer.src.slice(a, b);
+  }
+
+  readonly fun position(): Int {
+    this.p
+  }
+
+  // done returns true if there is no more input to process.
+  readonly fun done(): Bool {
+    this.p >= this.reorderBuffer.src.size()
+  }
+
+  // next returns f(i.input[i.Pos():n]), where n is a boundary of i.input.
+  // For any input a and b for which f(a) == f(b), subsequent calls
+  // to Next will return the same segments.
+  // Modifying runes are grouped together with the preceding starter, if such a starter exists.
+  // Although not guaranteed, n will typically be the smallest possible n.
+  mutable fun next(): ?Array<UInt8> {
+    this.nextFn(this);
+  }
+}
+
+module end;

@@ -1,0 +1,80 @@
+module Maps;
+
+fun add<K: Hashable & Equality & frozen, V: frozen>(
+  map: Map<K, V>,
+  key: K,
+  value: V,
+): Map<K, V> {
+  tmp = map.clone();
+  tmp.add(key, value);
+  unsafe_chill_trust_me(tmp);
+}
+
+fun set<K: Hashable & Equality & frozen, V: frozen>(
+  map: Map<K, V>,
+  key: K,
+  value: V,
+): Map<K, V> {
+  tmp = map.clone();
+  tmp.set(key, value);
+  unsafe_chill_trust_me(tmp)
+}
+
+fun setIfAbsent<
+  K: Hashable & Equality & frozen,
+  V: Hashable & Equality & frozen,
+>(
+  map: Map<K, Array<V>>,
+  key: K,
+  value: V,
+): Map<K, Array<V>> {
+  tmp = map.clone();
+  optArray = tmp.maybeGet(key);
+  seq = optArray match {
+  | Some(array) -> Set::mcreateFromItems(array)
+  | _ -> mutable Set<V>[]
+  };
+  seq.insert(value);
+  tmp.set(key, seq.toArray());
+  unsafe_chill_trust_me(tmp);
+}
+
+fun merge<K: Hashable & Equality & frozen, V: frozen>(
+  map1: Map<K, V>,
+  map2: Map<K, V>,
+): Map<K, V> {
+  tmp = map1.clone();
+  map2.each((k, v) -> tmp.set(k, v));
+  unsafe_chill_trust_me(tmp)
+}
+
+fun remove<K: Hashable & Equality & frozen, V: frozen>(
+  map: Map<K, V>,
+  key: K,
+): Map<K, V> {
+  tmp = map.clone();
+  tmp.remove(key);
+  unsafe_chill_trust_me(tmp)
+}
+
+fun rename<K: Hashable & Equality & frozen, V: frozen>(
+  map: Map<K, V>,
+  fromKey: K,
+  toKey: K,
+): Map<K, V> {
+  tmp = map.clone();
+  tmp.maybeGet(fromKey).each(value -> tmp.add(toKey, value));
+  tmp.remove(fromKey);
+  unsafe_chill_trust_me(tmp)
+}
+
+fun setAll<K: Hashable & Equality & frozen, V: frozen>(
+  map: Map<K, V>,
+  values: Array<(K, V)>,
+): Map<K, V> {
+  tmp = map.clone();
+  values.each(v -> tmp.set(v.i0, v.i1));
+  unsafe_chill_trust_me(tmp)
+}
+
+module end;

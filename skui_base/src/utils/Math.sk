@@ -1,0 +1,540 @@
+/**
+ * The epsilon of tolerable double precision error.
+ * This is used in various places in the framework to allow for floating point precision loss in calculations. Differences below this threshold are safe to disregard.
+ */
+const precisionErrorTolerance: Float = 1e-10;
+
+fun int16(value: Int): Int16 {
+  Int16::truncate(value);
+}
+
+fun uint16(value: Int): UInt16 {
+  UInt16::truncate(value);
+}
+
+fun int32(value: Int): Int32 {
+  Int32::truncate(value);
+}
+
+fun uint32(value: Int): UInt32 {
+  UInt32::truncate(value);
+}
+
+fun uint8(value: Int): UInt8 {
+  UInt8::truncate(value);
+}
+
+fun toInt16(toConverte: UInt16): Int {
+  source = toConverte.toInt();
+  if (source > 32767) {
+    source - 65536
+  } else {
+    source
+  }
+}
+
+fun toInt8(toConverte: UInt8): Int {
+  source = toConverte.toInt();
+  if (source > 127) {
+    source - 256
+  } else {
+    source
+  }
+}
+
+fun toUInt32(toConverte: Int32): Int {
+  source = toConverte.toInt();
+  if (source < 0) {
+    source + 4294967296
+  } else {
+    source
+  }
+}
+
+fun toInt32(toConverte: UInt32): Int {
+  source = toConverte.toInt();
+  if (source > 2147483647) {
+    source - 4294967296
+  } else {
+    source
+  }
+}
+
+module Math;
+
+base class Sign() uses Hashable, Equality {
+  children =
+  | PlusSign()
+  | MinusSign()
+
+  fun toInt(): Int
+  | PlusSign() -> 1
+  | MinusSign() -> -1
+
+  fun toFloat(): Float
+  | PlusSign() -> 1.0
+  | MinusSign() -> -1.0
+}
+
+fun sign<T: Number>(value: T): Sign {
+  zero = value - value;
+  if (value >= zero) {
+    PlusSign()
+  } else {
+    MinusSign()
+  }
+}
+
+const e: Float = 2.718281828459045;
+const log10e: Float = 0.4342944819032518;
+const maxFinite: Float = 1.7976931348623157e+308;
+const epsilon: Float = 1.1920929E-7;
+
+fun max<T: Orderable>(v1: T, v2: T): T {
+  chose(Some(v1), v2, false).fromSome();
+}
+
+fun min<T: Orderable>(v1: T, v2: T): T {
+  chose(Some(v1), v2, true).fromSome();
+}
+
+fun floorNumber<T: Number>(v: T): T {
+  v.fromFloat(Math.floor(v.toFloat()))
+}
+
+fun ceilNumber<T: Number>(v: T): T {
+  v.fromFloat(Math.ceil(v.toFloat()))
+}
+
+fun clamp<T: Number>(value: T, min: T, max: T): T {
+  if (value > min) {
+    if (value < max) {
+      value
+    } else {
+      max
+    }
+  } else {
+    min
+  }
+}
+
+fun lerp<T: Number>(a: T, b: T, t: Float): Float {
+  a.toFloat() + (b.toFloat() - a.toFloat()) * t;
+}
+
+fun modulo(a: Float, factor: Int): Float {
+  intPart = a.toInt();
+  floatPart = a - intPart.toFloat();
+  (intPart % factor).toFloat() + floatPart;
+}
+
+fun like(a: Float, b: Float, precision: Float = precisionErrorTolerance): Bool {
+  Math.abs(a - b) < precision;
+}
+
+fun likeComparedTo(
+  a: Float,
+  b: Float,
+  v: Float,
+  precision: Float = precisionErrorTolerance,
+): Bool {
+  a == b || Math.abs(a - b) < Math.abs((v - b) * precision)
+}
+
+fun between(v: Float, a: Float, b: Float): Bool {
+  (a - v) * (b - v) <= 0.0
+}
+
+fun lower(
+  a: Float,
+  b: Float,
+  precision: Float = precisionErrorTolerance,
+): Bool {
+  !like(a, b, precision) && a < b
+}
+
+fun lowerOrEquals(
+  a: Float,
+  b: Float,
+  precision: Float = precisionErrorTolerance,
+): Bool {
+  like(a, b, precision) || a < b
+}
+
+fun greater(
+  a: Float,
+  b: Float,
+  precision: Float = precisionErrorTolerance,
+): Bool {
+  !like(a, b, precision) && a > b
+}
+
+fun greaterOrEquals(
+  a: Float,
+  b: Float,
+  precision: Float = precisionErrorTolerance,
+): Bool {
+  like(a, b, precision) || a > b
+}
+
+fun intpow(number: Int, power: Int): Int {
+  invariant(power >= 0, "Power must cannot be negative");
+  num = 1;
+  pow = power;
+  while (pow > 0) {
+    !num = num * number;
+    !pow = pow - 1;
+  };
+  num;
+}
+
+fun validUnitDivide(numer: Float, denom: Float): ?Float {
+  if (numer < 0.0) {
+    !numer = -numer;
+    !denom = -denom;
+  };
+  if (denom == 0.0 || numer == 0.0 || numer >= denom) {
+    None();
+  } else {
+    Some(numer / denom);
+  }
+}
+
+private fun chose<T: Orderable>(current: ?T, value: T, min: Bool): ?T {
+  current match {
+  | None() -> Some(value)
+  | Some(v) ->
+    if (value > v) {
+      Some(
+        if (min) {
+          v
+        } else {
+          value
+        },
+      )
+    } else {
+      Some(
+        if (min) {
+          value
+        } else {
+          v
+        },
+      )
+    }
+  };
+}
+
+@cpp_extern("SKIP_Math_atan2")
+native fun atan2(y: Float, x: Float): Float;
+
+@cpp_extern("SKIP_Math_log")
+native fun log(value: Float): Float;
+
+@cpp_extern("SKIP_Math_log10")
+native fun log10(value: Float): Float;
+
+@cpp_extern("SKIP_Math_exp")
+native fun exp(value: Float): Float;
+
+@cpp_extern("SKIP_Math_arcCos")
+native fun arcCos(value: Float): Float;
+
+fun log2(value: Int): Int {
+  (log(value.toFloat()) / log(2.0)).toInt();
+}
+
+@cpp_extern("SKIP_Math_tan")
+native fun tan(value: Float): Float;
+
+@cpp_extern("SKIP_Math_cbrt")
+native fun cbrt(value: Float): Float;
+
+fun toRad(deg: Float): Float {
+  deg * Math.PI / 180.0;
+}
+
+fun multiplyMatrix(
+  m1: Array<Array<Float>>,
+  m2: Array<Array<Float>>,
+): Array<Array<Float>> {
+  result = mutable Vector<Array<Float>>[];
+  lenght1 = m1.first().size();
+  lenght2 = m2.first().size();
+  m1.each(vec -> {
+    current = mutable Vector<Float>[];
+    for (j in Range(0, lenght2)) {
+      sum = 0.0;
+      for (k in Range(0, lenght1)) {
+        !sum = sum + vec.get(k) * m2.get(k).get(j);
+      };
+      current.push(sum);
+    };
+    result.push(current.toArray());
+  });
+  result.toArray();
+}
+
+module end;
+
+base class Numeric() uses Hashable, Orderable, Show {
+  fun toInteger(): Integer;
+  fun toDouble(): Double;
+
+  fun toInt(): Int {
+    this.toInteger().value;
+  }
+  fun toFloat(): Float {
+    this.toDouble().value;
+  }
+
+  fun asNumeric(): Numeric {
+    this;
+  }
+
+  fun ==(other: Numeric): Bool {
+    this match {
+    | Double(v) -> Math.like(v, other.toFloat())
+    | Integer(v) -> v == other.toInt()
+    }
+  }
+
+  fun +(other: Numeric): Numeric {
+    this match {
+    | Double(v) -> Double(v + other.toFloat())
+    | Integer(v) -> Integer(v + other.toInt())
+    }
+  }
+
+  fun -(other: Numeric): Numeric {
+    this match {
+    | Double(v) -> Double(v - other.toFloat())
+    | Integer(v) -> Integer(v - other.toInt())
+    }
+  }
+
+  fun *(other: Numeric): Numeric {
+    this match {
+    | Double(v) -> Double(v * other.toFloat())
+    | Integer(v) -> Integer(v * other.toInt())
+    }
+  }
+
+  fun /(other: Numeric): Numeric {
+    this match {
+    | Double(v) -> Double(v / other.toFloat())
+    | Integer(v) -> Integer(v / other.toInt())
+    }
+  }
+
+  fun %(other: Int): Numeric {
+    this match {
+    | Double(v) -> Double(Math.modulo(v, other))
+    | Integer(v) -> Integer(v % other)
+    }
+  }
+
+  fun <(other: Numeric): Bool {
+    this match {
+    | Double(v) -> Math.lower(v, other.toFloat())
+    | Integer(v) -> v < other.toInt()
+    }
+  }
+
+  fun >(other: Numeric): Bool {
+    this match {
+    | Double(v) -> Math.greater(v, other.toFloat())
+    | Integer(v) -> v > other.toInt()
+    }
+  }
+
+  fun max(other: Numeric): Numeric {
+    this match {
+    | Double(v) -> Double(Math.max(v, other.toFloat()))
+    | Integer(v) -> Integer(Math.max(v, other.toInt()))
+    }
+  }
+
+  fun min(other: Numeric): Numeric {
+    this match {
+    | Double(v) -> Double(Math.min(v, other.toFloat()))
+    | Integer(v) -> Integer(Math.min(v, other.toInt()))
+    }
+  }
+
+  fun abs(): Numeric {
+    this match {
+    | Double(v) -> Double(Math.abs(v))
+    | Integer(v) -> Integer(Math.abs(v))
+    }
+  }
+
+  fun ceil(): Numeric {
+    this match {
+    | Double(v) -> Double(Math.ceil(v))
+    | Integer(_v) -> this
+    }
+  }
+
+  fun round(): Numeric {
+    this match {
+    | Double(v) -> Double(Math.round(v))
+    | Integer(_v) -> this
+    }
+  }
+
+  fun floor(): Numeric {
+    this match {
+    | Double(v) -> Double(Math.floor(v))
+    | Integer(_v) -> this
+    }
+  }
+
+  fun <=(other: Numeric): Bool {
+    this < other || this == other
+  }
+
+  fun >=(other: Numeric): Bool {
+    this > other || this == other
+  }
+
+  fun compare(other: Numeric): Order {
+    if (this < other) {
+      LT()
+    } else if (this == other) {
+      EQ()
+    } else {
+      GT()
+    }
+  }
+
+  fun negate(): Numeric;
+
+  /**
+   * Attempts to slice off very small floating point rounding effects for the
+   * given number.
+   *
+   * @param number the number to round.
+   * @return the rounded number.
+   */
+  fun removeRoundingErrors(): Numeric {
+    this match {
+    | Double(fNumber) ->
+      // sufficiently large multiplier to handle generating ticks on the order
+      // of 10^-9.
+      multiplier = 1.0e9;
+      fRes = if (fNumber > 100.0) {
+        Math.round(fNumber)
+      } else {
+        Math.round(fNumber * multiplier) / multiplier;
+      };
+      Double(fRes)
+    | Integer(_v) -> this
+    }
+  }
+}
+
+class Integer(value: Int) extends Numeric {
+  fun toInteger(): Integer {
+    this;
+  }
+
+  fun toDouble(): Double {
+    Double(this.value.toFloat())
+  }
+
+  fun negate(): Numeric {
+    Integer(-this.value)
+  }
+
+  fun toString(): String {
+    this.value.toString();
+  }
+}
+
+class Double(value: Float) extends Numeric {
+  fun toInteger(): Integer {
+    Integer(this.value.toInt())
+  }
+
+  fun toDouble(): Double {
+    this
+  }
+
+  fun negate(): Numeric {
+    Double(-this.value)
+  }
+
+  fun toString(): String {
+    this.value.toString();
+  }
+}
+
+extension class Int {
+  fun !(): Integer {
+    Integer(this)
+  }
+
+  fun toHex(size: Int): String {
+    String::tabulate(size, i ~> {
+      Chars.intToHexDigit(this.ushr((size - i - 1) * 4).and(0xF))
+    })
+  }
+}
+
+extension class Bool {
+  fun xor(other: Bool): Bool {
+    !((this && other) || (!this && !other))
+  }
+}
+
+extension class Float {
+  fun !(): Double {
+    Double(this)
+  }
+
+  fun max(other: Float): Float {
+    Math.max(this, other)
+  }
+
+  fun min(other: Float): Float {
+    Math.min(this, other)
+  }
+
+  fun like(other: Float): Bool {
+    Math.like(this, other)
+  }
+
+  fun abs(): Float {
+    Math.abs(this)
+  }
+
+  fun ceil(): Float {
+    Math.ceil(this)
+  }
+
+  fun round(): Float {
+    Math.round(this)
+  }
+
+  fun floor(): Float {
+    Math.floor(this)
+  }
+
+  /**
+   * Attempts to slice off very small floating point rounding effects for the
+   * given number.
+   *
+   * @param number the number to round.
+   * @return the rounded number.
+   */
+  fun removeRoundingErrors(): Float {
+    // sufficiently large multiplier to handle generating ticks on the order
+    // of 10^-9.
+    multiplier = 1.0e9;
+    if (this > 100.0) {
+      Math.round(this)
+    } else {
+      Math.round(this * multiplier) / multiplier;
+    };
+  }
+}

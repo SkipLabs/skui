@@ -1,0 +1,560 @@
+module SKFS;
+
+class HValue<T: frozen>(hdl: Handle<T>, key: SKFS.BaseName) {
+  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+    this.hdl.getValue(context, this.key, isUntracked)
+  }
+
+  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
+    this.hdl.maybeGetValue(context, this.key, isUntracked)
+  }
+}
+
+class EHValue<T: frozen>(hdl: EHandle<T>, key: SKFS.BaseName) {
+  //
+  fun getDirName(): SKFS.DirName {
+    this.hdl.getDirName()
+  }
+
+  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+    this.hdl.getValue(context, this.key, isUntracked)
+  }
+
+  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
+    this.hdl.maybeGetValue(context, this.key, isUntracked)
+  }
+
+  fun convert<U: frozen>(conv: T ~> U): EHValue<U> {
+    EHValue(this.hdl.convert(conv), this.key)
+  }
+
+  fun getChildDirName(subPath: String): SKFS.DirName {
+    SKFS.DirName::make(
+      this.getDirName(),
+      `${SKFS.normalize(this.key.toString())}/${subPath}`,
+    )
+  }
+
+  fun map<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    dirName: DirName,
+    fn: T ~> U,
+  ): EHValue<U> {
+    EHValue(
+      this.hdl.contextWriterKeyMap(
+        conv,
+        context,
+        dirName,
+        (_, writer, key, value) ~> {
+          if (key == this.key) {
+            writer.write(key, fn(value))
+          };
+        },
+      ),
+      this.key,
+    )
+  }
+
+  fun mapChild<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    subPath: String,
+    fn: T ~> U,
+  ): EHValue<U> {
+    this.map(conv, context, this.getChildDirName(subPath), fn)
+  }
+
+  fun mapContext<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    dirName: DirName,
+    fn: (mutable SKFS.Context, T) ~> U,
+  ): EHValue<U> {
+    EHValue(
+      this.hdl.contextWriterKeyMap(
+        conv,
+        context,
+        dirName,
+        (ctx, writer, key, value) ~> {
+          if (key == this.key) {
+            writer.write(key, fn(ctx, value))
+          };
+        },
+      ),
+      this.key,
+    )
+  }
+
+  fun mapContextChild<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    subPath: String,
+    fn: (mutable SKFS.Context, T) ~> U,
+  ): EHValue<U> {
+    this.mapContext(conv, context, this.getChildDirName(subPath), fn)
+  }
+
+  fun mapWriter<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    dirName: DirName,
+    fn: (mutable SKFS.Writer, T) ~> void,
+  ): EHandle<U> {
+    this.hdl.contextWriterKeyMap(
+      conv,
+      context,
+      dirName,
+      (_ctx, writer, key, value) ~> {
+        if (key == this.key) {
+          fn(writer, value)
+        };
+      },
+    )
+  }
+
+  fun mapWriterChild<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    subPath: String,
+    fn: (mutable SKFS.Writer, T) ~> void,
+  ): EHandle<U> {
+    this.mapWriter(conv, context, this.getChildDirName(subPath), fn)
+  }
+
+  fun mapContextWriter<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    dirName: DirName,
+    fn: (mutable SKFS.Context, mutable SKFS.Writer, SKFS.BaseName, T) ~> void,
+  ): EHandle<U> {
+    this.hdl.contextWriterKeyMap(
+      conv,
+      context,
+      dirName,
+      (ctx, writer, key, value) ~> {
+        if (key == this.key) {
+          fn(ctx, writer, key, value)
+        };
+      },
+    )
+  }
+
+  fun mapContextWriterChild<U: File>(
+    conv: File ~> U,
+    context: mutable SKFS.Context,
+    subPath: String,
+    fn: (mutable SKFS.Context, mutable SKFS.Writer, SKFS.BaseName, T) ~> void,
+  ): EHandle<U> {
+    this.mapContextWriter(conv, context, this.getChildDirName(subPath), fn)
+  }
+}
+
+extension base class Handle {
+  //
+  fun exists(context: readonly SKFS.Context): Bool {
+    context.unsafeMaybeGetDir(this.getDirName()).isSome()
+  }
+
+  fun getValue(
+    context: mutable SKFS.Context,
+    key: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): T {
+    if (isUntracked) {
+      this.uGet(context, key)
+    } else {
+      this.get(context, key)
+    }
+  }
+
+  fun maybeGetValue(
+    context: mutable SKFS.Context,
+    key: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?T {
+    if (isUntracked) {
+      this.uMaybeGet(context, key)
+    } else {
+      this.maybeGetArray(context, key).flatMap(values -> {
+        if (values.size() == 0) return None();
+        Some(values[0])
+      });
+    }
+  }
+
+  fun maybeGetArray(context: mutable Context, key: BaseName): ?Array<T> {
+    context.maybeGetDir(this.getDirName()).map(dir ->
+      dir.getArray(context, key).map(this.getConv())
+    )
+  }
+
+  fun getArrayValue(
+    context: mutable SKFS.Context,
+    key: BaseName,
+    isUntracked: Bool = false,
+  ): Array<T> {
+    dirName = this.getDirName();
+    if (!isUntracked) {
+      path = Path::create(dirName, key);
+      context.addDep(path);
+    };
+    this.uGetArray(context, key).default(Array[]);
+  }
+
+  fun uGetArray(context: readonly Context, key: BaseName): ?Array<T> {
+    context.unsafeMaybeGetDir(this.getDirName()).map(dir ->
+      dir.getArrayRaw(key).map(this.getConv())
+    );
+  }
+
+  fun uMaybeGet(context: readonly Context, key: BaseName): ?T {
+    this.uGetArray(context, key).flatMap(values ->
+      if (values.isEmpty()) {
+        None()
+      } else {
+        Some(values.first())
+      }
+    )
+  }
+
+  fun uGet(context: readonly Context, key: BaseName): T {
+    this.uMaybeGet(context, key).fromSome()
+  }
+
+  fun maybeGetProp<U>(
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    conv: T ~> U,
+    isUntracked: Bool = false,
+  ): ?U {
+    (if (isUntracked) {
+      this.uMaybeGet(context, property)
+    } else {
+      this.maybeGet(context, property)
+    }).map(conv);
+  }
+
+  fun getProp<U>(
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    conv: T ~> U,
+    default: U,
+    isUntracked: Bool = false,
+  ): U {
+    this.maybeGetProp(context, property, conv, isUntracked).default(default)
+  }
+
+  fun getOptProp<U>[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    conv: SKFS.File ~> U,
+    isUntracked: Bool = false,
+  ): ?U {
+    this.maybeGetProp(
+      context,
+      property,
+      SKFS.OptFile::fromFile,
+      isUntracked,
+    ).flatMap(optFile -> optFile.map(conv))
+  }
+
+  fun is[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.getProp(
+      context,
+      property,
+      f ~> SKFS.BoolFile::fromFile(f).value,
+      false,
+      isUntracked,
+    )
+  }
+
+  fun getOptString[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?String {
+    this.getOptProp(
+      context,
+      property,
+      f ~> SKFS.StringFile::fromFile(f).value,
+      isUntracked,
+    )
+  }
+
+  fun getString[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): String {
+    this.maybeGetString(context, property, isUntracked).default("")
+  }
+
+  fun maybeGetString[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?String {
+    this.maybeGetProp(
+      context,
+      property,
+      f ~> SKFS.StringFile::fromFile(f).value,
+      isUntracked,
+    )
+  }
+
+  fun getInt[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): Int {
+    this.getProp(
+      context,
+      property,
+      f ~> SKFS.IntFile::fromFile(f).value,
+      0,
+      isUntracked,
+    )
+  }
+
+  fun maybeGetInt[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?Int {
+    this.maybeGetProp(
+      context,
+      property,
+      f ~> SKFS.IntFile::fromFile(f).value,
+      isUntracked,
+    )
+  }
+
+  fun getChar[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): Char {
+    this.getProp(
+      context,
+      property,
+      f ~> SKFS.CharFile::fromFile(f).value,
+      '\0',
+      isUntracked,
+    )
+  }
+
+  fun maybeGetChar[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?Char {
+    this.maybeGetProp(
+      context,
+      property,
+      f ~> SKFS.CharFile::fromFile(f).value,
+      isUntracked,
+    )
+  }
+
+  fun getBool[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.getProp(
+      context,
+      property,
+      f ~> SKFS.BoolFile::fromFile(f).value,
+      false,
+      isUntracked,
+    )
+  }
+
+  fun maybeGetBool[T: File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?Bool {
+    this.maybeGetProp(
+      context,
+      property,
+      f ~> SKFS.BoolFile::fromFile(f).value,
+      isUntracked,
+    )
+  }
+}
+
+extension class LHandle {
+  static fun lazy<T: File>(
+    conv: File ~> T,
+    context: mutable Context,
+    dirName: DirName,
+    f: (mutable Context, LHandle<T>, BaseName) ~> T,
+    collect: Bool = true,
+  ): LHandle<T> {
+    static::create(
+      conv,
+      context,
+      dirName,
+      (conv, self, key) ~> Array[f(conv, self, key)],
+      collect,
+    )
+  }
+
+  static fun optLazy<T: File>(
+    conv: File ~> T,
+    context: mutable Context,
+    dirName: DirName,
+    f: (mutable Context, LHandle<T>, BaseName) ~> ?T,
+    collect: Bool = true,
+  ): LHandle<T> {
+    static::create(
+      conv,
+      context,
+      dirName,
+      (conv, self, key) ~>
+        f(conv, self, key).map(v -> Array[v]).default(Array[]),
+      collect,
+    )
+  }
+
+  fun getAsync(context: mutable Context, key: BaseName): T {
+    this.getArrayAsync(context, key).first();
+  }
+
+  fun maybeGetAsync(context: mutable Context, key: BaseName): ?T {
+    this.getArrayAsync(context, key).maybeGet(0);
+  }
+}
+
+extension class EHandle {
+  //
+  fun contextKeyMap<T2: File>(
+    conv: File ~> T2,
+    context: mutable Context,
+    dirName: DirName,
+    f: (mutable Context, BaseName, T) ~> T2,
+  ): EHandle<T2> {
+    this.genericMap(conv, context, dirName, (context, writer, key, files) ~> {
+      if (files.size() >= 2) {
+        msg = "Duplicate keys: " + key;
+        print_error(msg);
+        invariant_violation(msg);
+      };
+      result = f(context, key, files[0]);
+      writer.write(key, result);
+    })
+  }
+
+  fun convert<U: frozen>(conv: T ~> U): EHandle<U> {
+    EHandle(f ~> conv((this.getConv())(f)), this.getDirName())
+  }
+
+  fun contextMapValues<T2: File>(
+    conv: File ~> T2,
+    context: mutable Context,
+    dirName: DirName,
+    f: (mutable Context, Array<T>) ~> T2,
+  ): EHandle<T2> {
+    this.genericMap(conv, context, dirName, (context, writer, key, files) ~> {
+      result = f(context, files);
+      writer.write(key, result);
+    })
+  }
+
+  fun isWritable(context: mutable Context): Bool {
+    context
+      .maybeGetEagerDir(this.getDirName())
+      .map(d -> d.isInput())
+      .default(false)
+  }
+
+  fun register(
+    context: mutable Context,
+    onChanged: readonly SKFS.Context ~> void,
+  ): void {
+    context.maybeGetEagerDir(this.getDirName()) match {
+    | Some(dir) -> dir.register(context, onChanged)
+    | _ ->
+      invariant_violation(`Could not find eager directory: ${this.dirName}`)
+    }
+  }
+}
+
+fun toIHandle<T: File>(hdl: Handle<T>): IHandle<T> {
+  IHandle(FileConverter(hdl.getConv()), hdl.getDirName())
+}
+
+base class Converter<T: frozen> {
+  fun fromFile(file: SKFS.File): T;
+  fun toFile(value: T): SKFS.File;
+}
+
+class IHandle<T: frozen>(
+  converter: Converter<T>,
+  dirName: DirName,
+) extends Handle<T> {
+  //
+  fun destroy(context: mutable SKFS.Context): void {
+    context.removeDir(this.dirName, true)
+  }
+
+  fun toEHandle(): EHandle<T> {
+    EHandle(this.converter.fromFile, this.dirName)
+  }
+
+  fun getConv(): SKFS.File ~> T {
+    this.converter.fromFile
+  }
+
+  fun remove(context: mutable Context, baseName: BaseName): void {
+    this.writeArray(context, baseName, Array[]);
+  }
+
+  fun write(context: mutable Context, baseName: BaseName, value: T): void {
+    this.writeArray(context, baseName, Array[value]);
+  }
+
+  fun writeOrRemove(
+    context: mutable Context,
+    baseName: BaseName,
+    optValue: ?T,
+  ): void {
+    this.writeArray(
+      context,
+      baseName,
+      optValue.map(value -> Array[value]).default(Array[]),
+    );
+  }
+
+  fun writeArray(
+    context: mutable Context,
+    baseName: BaseName,
+    value: Array<T>,
+  ): void {
+    if (context.currentArrow().isSome()) {
+      context.postpone(ctx ~> this.writeArray(ctx, baseName, value))
+    } else {
+      invariant(context.currentArrow().isNone(), "Must be call on root.");
+      context.maybeGetEagerDir(this.dirName) match {
+      | None() ->
+        invariant_violation(`Could not find input directory: ${this.dirName}`)
+      | Some(dir) if (!dir.isInput()) ->
+        invariant_violation(`Not an input Dir: ${this.dirName}`)
+      | Some(dir) ->
+        dir.writeArray(
+          context,
+          baseName,
+          value.map(v -> this.converter.toFile(v)),
+        )
+      }
+    }
+  }
+}
+
+module end;

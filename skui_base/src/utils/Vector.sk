@@ -1,0 +1,21 @@
+module Vector;
+
+extension class .Vector {
+  mutable fun sortFor<K: readonly Orderable>(selector: T ~> K): void {
+    this.sortBy(selector);
+  }
+
+  mutable fun sortWith(compare: (T, T) ~> Order): void {
+    this.sortFor(v ~> Orderable.create(v, compare));
+  }
+
+  readonly fun sortedFor<K: readonly Orderable>(selector: T ~> K): Vector<T> {
+    this.sortedBy(selector);
+  }
+
+  readonly fun sortedWith(compare: (T, T) ~> Order): Vector<T> {
+    this.sortedFor(v ~> Orderable.create(v, compare));
+  }
+}
+
+module end;

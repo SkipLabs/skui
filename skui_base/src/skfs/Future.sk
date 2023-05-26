@@ -1,0 +1,193 @@
+module SKFS;
+
+base class Future<T: frozen> {
+  fun isLoading(): Bool;
+  fun get(): T;
+  fun maybeGet(): ?T;
+  fun progression(): ?Int;
+  fun error(): ?LoadFailed;
+  fun load<F: File>(
+    context: mutable SKFS.Context,
+    conv: (mutable SKFS.Context, T) ~> F,
+  ): Loadable;
+  fun asLoadable(): Loadable;
+
+  fun then<T2: frozen>(conv: T ~> T2): Future<T2> {
+    if (this.isLoading()) {
+      FutureLoading<T2>(this.progression())
+    } else {
+      this.error() match {
+      | Some(failure) -> FutureFailure<T2>(failure.optError)
+      | _ -> FutureSuccess(conv(this.get()))
+      }
+    }
+  }
+}
+
+class FutureSuccess<T: frozen>(
+  value: T,
+  optToFile: ?T ~> File = None(),
+) extends Future<T> {
+  fun isLoading(): Bool {
+    false
+  }
+  fun get(): T {
+    this.value
+  }
+  fun maybeGet(): ?T {
+    Some(this.value)
+  }
+  fun progression(): ?Int {
+    None()
+  }
+  fun error(): ?LoadFailed {
+    None()
+  }
+
+  fun load<F: File>(
+    context: mutable SKFS.Context,
+    conv: (mutable SKFS.Context, T) ~> F,
+  ): Loadable {
+    res = conv(context, this.value);
+    res match {
+    | loadable @ Loadable _ -> loadable
+    | _ -> SKFS.Loaded(res)
+    }
+  }
+
+  fun asLoadable(): Loadable {
+    toFile = this.optToFile.fromSome();
+    SKFS.Loaded(toFile(this.value))
+  }
+}
+
+class FutureLoading<T: frozen>(optProgress: ?Int) extends Future<T> {
+  fun isLoading(): Bool {
+    true
+  }
+  fun get(): T {
+    this.maybeGet().fromSome();
+  }
+  fun maybeGet(): ?T {
+    None()
+  }
+  fun progression(): ?Int {
+    this.optProgress
+  }
+  fun error(): ?LoadFailed {
+    None()
+  }
+
+  fun load<F: File>(
+    _context: mutable SKFS.Context,
+    _conv: (mutable SKFS.Context, T) ~> F,
+  ): Loadable {
+    this.asLoadable();
+  }
+
+  fun asLoadable(): Loadable {
+    Loading(this.optProgress)
+  }
+}
+
+class FutureFailure<T: frozen>(optError: ?Text) extends Future<T> {
+  fun isLoading(): Bool {
+    false
+  }
+  fun get(): T {
+    this.maybeGet().fromSome();
+  }
+  fun maybeGet(): ?T {
+    None()
+  }
+  fun progression(): ?Int {
+    None()
+  }
+  fun error(): ?LoadFailed {
+    Some(LoadFailed(this.optError))
+  }
+
+  fun load<F: File>(
+    _context: mutable SKFS.Context,
+    _conv: (mutable SKFS.Context, T) ~> F,
+  ): Loadable {
+    this.asLoadable();
+  }
+
+  fun asLoadable(): Loadable {
+    LoadFailed(this.optError)
+  }
+}
+
+class LoadableFuture<T: frozen>(
+  conv: File ~> T,
+  loadable: Loadable,
+) extends Future<T> {
+  static fun bool(loadable: Loadable): Future<Bool> {
+    LoadableFuture(f ~> BoolFile::fromFile(f).value, loadable)
+  }
+
+  static fun string(loadable: Loadable): Future<String> {
+    LoadableFuture(f ~> StringFile::fromFile(f).value, loadable)
+  }
+
+  static fun bytes(loadable: Loadable): Future<Array<UInt8>> {
+    LoadableFuture(f ~> Bytes::fromFile(f).bytes, loadable)
+  }
+
+  fun isLoading(): Bool {
+    this.loadable.isLoading();
+  }
+
+  fun get(): T {
+    this.loadable match {
+    | loaded @ Loaded _ -> this.conv(loaded.file)
+    | _ -> invariant_violation("Not already loaded")
+    }
+  }
+
+  fun maybeGet(): ?T {
+    this.loadable match {
+    | loaded @ Loaded _ -> Some(this.conv(loaded.file))
+    | _ -> None()
+    }
+  }
+
+  fun error(): ?LoadFailed {
+    this.loadable match {
+    | failure @ LoadFailed _ -> Some(failure)
+    | _ -> None()
+    }
+  }
+
+  fun progression(): ?Int {
+    this.loadable match {
+    | Loading(optProgression) -> optProgression
+    | _ -> None()
+    }
+  }
+
+  fun load<F: File>(
+    context: mutable SKFS.Context,
+    conv: (mutable SKFS.Context, T) ~> F,
+  ): Loadable {
+    this.loadable match {
+    | SKFS.ToLoad _
+    | SKFS.Loading _
+    | SKFS.LoadFailed _ ->
+      this.loadable
+    | SKFS.Loaded(file) ->
+      res = conv(context, this.conv(file));
+      res match {
+      | loadable @ Loadable _ -> loadable
+      | _ -> SKFS.Loaded(res)
+      }
+    }
+  }
+
+  fun asLoadable(): Loadable {
+    this.loadable
+  }
+}
+
+module end;

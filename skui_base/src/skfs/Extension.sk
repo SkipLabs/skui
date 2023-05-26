@@ -1,0 +1,134 @@
+module SKFS;
+
+class FloatFile(value: Float) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ FloatFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.FloatFile")
+    }
+  }
+}
+
+class CharFile(value: Char) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ CharFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.CharFile")
+    }
+  }
+}
+
+class Bytes(bytes: Array<UInt8>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Bytes _ -> x
+    | _ -> invariant_violation("Must be SKFS.Bytes")
+    }
+  }
+}
+
+class TextFile(text: Text) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ TextFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.TextFile")
+    }
+  }
+}
+
+class StringMapFile(value: Map<String, File>) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ StringMapFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.StringMapFile")
+    }
+  }
+}
+
+class RangeFile(value: Range) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ RangeFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.RangeFile")
+    }
+  }
+}
+
+class ArrayFile(value: Array<File>) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ ArrayFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.ArrayFile")
+    }
+  }
+
+  static fun fromInts(value: Array<Int>): ArrayFile {
+    ArrayFile(value.map(v -> IntFile(v)))
+  }
+
+  static fun converter<T>(conv: File ~> T): File ~> Array<T> {
+    f ~> ArrayFile::map(f, conv)
+  }
+
+  static fun map<T>(f: File, conv: File -> T): Array<T> {
+    ArrayFile::fromFile(f).value.map(conv)
+  }
+
+  static fun conv<T>(f: File, conv: File -> File): ArrayFile {
+    ArrayFile(ArrayFile::map(f, conv))
+  }
+}
+
+extension base class FileName uses Hashable {}
+
+class OptFile(value: ?File) extends File {
+  fun each(f: File -> void): void {
+    this.value.each(f);
+  }
+
+  fun map<T2>(f: File -> T2): ?T2 {
+    this.value.map(f);
+  }
+
+  fun flatMap<T2>(f: File -> ?T2): ?T2 {
+    this.value.flatMap(f);
+  }
+
+  static fun converter<T>(conv: File ~> T): File ~> ?T {
+    f ~> OptFile::fromFile(f).map(conv)
+  }
+
+  static fun fromFile(obj: File): this {
+    obj match {
+    | x @ OptFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.OptFile")
+    }
+  }
+}
+
+extension class DirName {
+  static fun make(parent: DirName, child: String): DirName {
+    static::create(parent.toString() + child);
+  }
+
+  static fun check(
+    child: String,
+    optBasename: ?SKFS.DirName = None(),
+  ): DirName {
+    optBasename match {
+    | Some(basename) -> SKFS.DirName::make(basename, child)
+    | _ -> SKFS.DirName::create(`/${child}`)
+    };
+  }
+}
+
+class UInt32File(value: UInt32) extends SKFS.File
+
+module end;

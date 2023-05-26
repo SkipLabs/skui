@@ -1,0 +1,71 @@
+module System;
+
+@debug
+@cpp_extern
+native fun timeStamp(): TimeStamp;
+
+@cpp_export("SKIP_System_createTimeStamp")
+fun createTimeStamp(seconds: UInt32, microseconds: UInt32): TimeStamp {
+  TimeStamp(seconds.toInt(), microseconds.toInt());
+}
+
+@cpp_export("SKIP_System_convertFTime")
+fun convertFTime(fTimeStamp: Float): TimeStamp {
+  seconds = (fTimeStamp / 1000.0).toInt();
+  microseconds = (((fTimeStamp - (seconds * 1000).toFloat()).toInt()) *
+    1000).toInt();
+  TimeStamp(seconds, microseconds)
+}
+
+value class TimeStamp(seconds: Int, microseconds: Int) uses Orderable, Show {
+  static fun fromMicroseconds(microseconds: Int): TimeStamp {
+    TimeStamp(microseconds / 1000000, microseconds % 1000000);
+  }
+
+  static fun fromSeconds(seconds: Float): TimeStamp {
+    static::fromMicroseconds((seconds * 1000000.0).toInt())
+  }
+
+  fun add(duration: Duration): TimeStamp {
+    static::fromMicroseconds(this.toMicroseconds() + duration.inMicroseconds())
+  }
+
+  fun -(other: TimeStamp): TimeStamp {
+    static::fromMicroseconds(this.toMicroseconds() - other.toMicroseconds());
+  }
+
+  fun +(other: TimeStamp): TimeStamp {
+    static::fromMicroseconds(this.toMicroseconds() + other.toMicroseconds());
+  }
+
+  fun div(value: Int): TimeStamp {
+    static::fromMicroseconds(this.toMicroseconds() / value);
+  }
+
+  fun toMilliseconds(): Int {
+    this.toMicroseconds() / 1000;
+  }
+
+  fun toMicroseconds(): Int {
+    this.microseconds + (this.seconds * 1000000);
+  }
+
+  fun toSeconds(): Float {
+    this.seconds.toFloat() + (this.microseconds.toFloat() / 1000000.0)
+  }
+
+  fun compare(other: TimeStamp): Order {
+    sec = this.seconds.compare(other.seconds);
+    if (sec == EQ()) {
+      this.microseconds.compare(other.microseconds);
+    } else {
+      sec
+    }
+  }
+
+  fun toString(): String {
+    `${this.seconds} s and ${this.microseconds} µs`
+  }
+}
+
+module end;

@@ -1,0 +1,352 @@
+export type float = number;
+export type int = number;
+export type ptr = number;
+
+export type Opt<T> = T | null;
+
+
+export class State {
+  exceptionId = 0;
+  exceptions = new Map<int, Exception>();
+}
+
+export class Exception {
+  id: int;
+  err: Error;
+  
+  constructor(err: Error, state) {
+    this.id = ++state.exceptionId;
+    this.err = err;
+    state.exceptions.set(this.id, this);
+  }
+}
+
+export interface Env {
+  modules: Array<string>;
+  path: string;
+  run: (utils: Utils, exports: object, state: object) => void
+}
+
+export interface Exported {
+  SKIP_String_byteSize: (strPtr: ptr) => int;
+  SKIP_Obstack_alloc: (size: int) => ptr;
+  sk_string_create: (addr: ptr, size: int) => ptr;
+  SKIP_call0: (fnc: ptr) => ptr;
+  SKIP_checkObstack: () => ptr;
+  SKIP_cleanObstack: (ptr: ptr) => void;
+  SKIP_getFloatAt: (addr: ptr, index: int) => float;
+  SKIP_skfs_init: () => void;
+  SKIP_initializeSkip: () => void;
+  SKIP_skfs_end_of_init: () => void;
+  SKIP_printCall: (txtPtr: ptr) => void;
+  SKIP_callWithException: (fnc: ptr, exc: int) => ptr;
+  I18N_text: (txtPtr: ptr, optCat: Opt<ptr>) => ptr;
+  I18N_raw: (txtPtr: ptr) => ptr;
+  I18N_format: (formatPtr: ptr, parameters: ptr) => ptr;
+  I18N_textVector: () => ptr;
+  I18N_pushText: (vector: ptr, txtPtr: ptr) => void;
+  SKIP_FWKMessage_manageInternalMessage: (msgId: int) => void;
+  SKIP_FWKMessage_manageMessage: (strMsgPointer: ptr) => void;
+  SKIP_FWKMessage_messageFailure: (strMsgPointer: ptr) => void;
+}
+
+export function toBeDefined(fn: String) {
+  console.log("To be defined: " + fn);
+}
+
+export interface WasmSupplier {
+  completeWasm: (wasm: object, utils: Utils) => void;
+}
+
+export class Utils {
+  exports: Exported;
+  memory: WebAssembly.Memory;
+  decodeUTF8: (utf8: Uint8Array) => string;
+  lastCall: ptr;
+  onException: () => void;
+  now: () => float;
+  state: State;
+
+  constructor(
+    exports: WebAssembly.Exports,
+    memory: WebAssembly.Memory,
+    decodeUTF8: (utf8: Uint8Array) => string,
+    onException: () => void, now: () => float,
+    state: object,
+  ) {
+    this.exports = exports as any as Exported;
+    this.memory = memory;
+    this.decodeUTF8 = decodeUTF8;
+    this.lastCall = 0;
+    this.onException = onException;
+    this.now = now;
+    this.state = state as State;
+  }
+  log = (strPtr: ptr) => {
+    let toDisplay = this.importString(strPtr).trim();
+    if (toDisplay != "") {
+      console.log(toDisplay);
+    }
+  };
+  importOptString = (strPtr: ptr) => {
+    if (strPtr > 0)  {
+      return this.importString(strPtr)
+    }
+    return null;
+  };
+  importString = (strPtr: ptr) => {
+    let size = this.exports.SKIP_String_byteSize(strPtr);
+    let utf8 = new Uint8Array(this.memory.buffer, strPtr, size);
+    return this.decodeUTF8(utf8);
+  };
+  exportString: (s: string) => ptr = (s: string) => {
+    var data = new Uint8Array(this.memory.buffer);
+    // @ts-ignore
+    var i = 0, addr = this.exports.SKIP_Obstack_alloc(s.length * 4);
+    for (var ci = 0; ci != s.length; ci++) {
+      var c = s.charCodeAt(ci);
+      if (c < 128) {
+        data[addr + i++] = c;
+        continue;
+      }
+      if (c < 2048) {
+        data[addr + i++] = c >> 6 | 192;
+      } else {
+        if (c > 0xd7ff && c < 0xdc00) {
+          if (++ci >= s.length)
+            throw new Error('UTF-8 encode: incomplete surrogate pair');
+          var c2 = s.charCodeAt(ci);
+          if (c2 < 0xdc00 || c2 > 0xdfff)
+            throw new Error('UTF-8 encode: second surrogate character 0x' + c2.toString(16) + ' at index ' + ci + ' out of range');
+          c = 0x10000 + ((c & 0x03ff) << 10) + (c2 & 0x03ff);
+          data[addr + i++] = c >> 18 | 240;
+          data[addr + i++] = c >> 12 & 63 | 128;
+        } else data[addr + i++] = c >> 12 | 224;
+        data[addr + i++] = c >> 6 & 63 | 128;
+      }
+      data[addr + i++] = c & 63 | 128;
+    }
+    return this.exports.sk_string_create(addr, i);
+  };
+  call = (fnId: ptr) => {
+    return this.exports.SKIP_call0(fnId);
+  };
+  callWithException = (fnId: ptr, exception: Exception) => {
+    return this.exports.SKIP_callWithException(fnId, exception.id);
+  };
+  runWithGc = <T>(fn: () => T) => {
+    let obsPos = this.exports.SKIP_checkObstack();
+    let res = fn();
+    this.exports.SKIP_cleanObstack(obsPos);
+    return res;
+  };
+  getBytesFromBuffer = (dataPtr: ptr, length: int) => {
+    return new Uint8ClampedArray(this.memory.buffer, dataPtr, length);
+  };
+  getFloats32 = (dataPtr: ptr, length: int) => {
+    let values = new Float32Array(length);
+    for (let i = 0; i < length; i++) {
+      values[i] = this.exports.SKIP_getFloatAt(dataPtr, i);
+    };
+    return values;
+  };
+  init = () => {
+    this.exports.SKIP_skfs_init();
+    this.exports.SKIP_initializeSkip();
+    this.exports.SKIP_skfs_end_of_init();
+  }
+  text = (strTxt: string, strCat: Opt<string>) => {
+    const skText = this.exportString(strTxt);
+    const skCategory = strCat ? this.exportString(strCat) : null;
+    return this.exports.I18N_text(skText, skCategory);
+  }
+  raw = (strTxt: string) => {
+    const skText = this.exportString(strTxt);
+    return this.exports.I18N_raw(skText);
+  }
+  format = (format: ptr, params: Array<ptr>) => {
+    const vector = this.exports.I18N_textVector();
+    params.forEach(ptr => this.exports.I18N_pushText(vector, ptr));
+    return this.exports.I18N_format(format, vector);
+  }
+  exportLocale = (text: string | Text) => {
+    const verified = check(text);
+    if (verified instanceof Raw) {
+      return this.raw(verified.text);
+    } else if (verified instanceof Locale) {
+      return this.text(verified.text, verified.category);
+    } else {
+      const f = verified as Format;
+      return this.format(
+        this.exportLocale(f.format),
+        f.parameters.map(this.exportLocale)
+      );
+    }
+  }
+  manageInternalMessage = (msgId: int) => {
+    this.runWithGc(() => {
+      this.exports.SKIP_FWKMessage_manageInternalMessage(msgId);
+    });
+  }
+  manageMessage = (msg: string) => {
+    this.runWithGc(() => {
+      let skMessage = this.exportString(msg);
+      this.exports.SKIP_FWKMessage_manageInternalMessage(skMessage);
+    });
+  }
+  messageFailure = (msg: string) => {
+    this.runWithGc(() => {
+      let skMessage = this.exportString(msg);
+      this.exports.SKIP_FWKMessage_messageFailure(skMessage);
+    });
+  }
+  etry = (f: ptr, exn_handler: ptr) => {
+    this.lastCall = f;
+    try {
+      return this.call(f);
+    } catch (exn) {
+      let exception = new Exception(exn, this.state);
+      return this.callWithException(exn_handler, exception);
+    }
+  }
+  ethrow = (strPtr: ptr) => {
+    this.onException();
+    let message = strPtr != null && strPtr != 0 ? this.importString(strPtr) : "SKFS Internal error";
+    throw new Error(message);
+  }
+}
+
+export interface Links {
+  complete: (utils: Utils, exports: object) => void;
+}
+
+export interface ToWasmManager {
+  prepare: (wasm: object) => Links;
+}
+
+enum I18N {
+  RAW,
+  LOCALE,
+  FORMAT
+}
+
+export interface Text {
+  toJSON: () => object;
+}
+
+export class Raw implements Text {
+  text: string;
+
+  constructor(text: string, category?: string) {
+    this.text = text;
+  }
+
+  toJSON: () => object = () => {
+    return {
+      type: "text",
+      fields: {
+        type: I18N.RAW,
+        value: this.text,
+      }
+    }
+  };
+}
+
+export class Locale implements Text {
+  text: string;
+  category: Opt<string>;
+
+  constructor(text: string, category?: string) {
+    this.text = text;
+    this.category = category ? category : null;
+  }
+
+  toJSON: () => object = () => {
+    return {
+      type: "text",
+      fields: {
+        type: I18N.LOCALE,
+        value: this.text,
+        category: this.category,
+      }
+    }
+  };
+}
+
+export const l = (text: string, category?: string) => {
+  return new Locale(text, category)
+}
+
+export const f = (format: Text | string, parameters: Array<Text | string>) => {
+  return new Format(format, parameters)
+}
+
+export const check : (value: Text | string) => Text = (value: Text | string) => {
+  if (value instanceof Text) {
+    return value as Text
+  } else {
+    return new Raw(value as string)
+  }
+}
+
+export class Format implements Text {
+  format: Text | string;
+  parameters: Array<Text | string>;
+
+  constructor(format: Text | string, parameters: Array<Text | string>) {
+    this.format = format;
+    this.parameters = parameters;
+  }
+
+  toJSON: () => object = () => {
+    return {
+      type: "text",
+      fields: {
+        type: I18N.FORMAT,
+        pattern: check(this.format),
+        parameters: this.parameters.map(check)
+      }
+    }
+  };
+}
+
+export function humanSize(bytes: int) {
+  const thresh = 1024;
+  if (Math.abs(bytes) < thresh) {
+    return bytes + ' B';
+  }
+
+  const units = ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  let u = -1;
+  const r = 10 ** 1;
+  do {
+    bytes /= thresh;
+    ++u;
+  } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
+
+  return bytes.toFixed(1) + ' ' + units[u];
+}
+
+export var loadWasm = (
+  buffer: ArrayBuffer, 
+  managers: Array<ToWasmManager>, 
+  decodeUTF8: (utf8: Uint8Array) => string,
+  onException: () => void,  
+  now: () => float, 
+  state: object,
+  run: (utils: Utils, exports: object, state: object) => void
+) => {
+  let wasm = {};
+  let links = managers.map(manager => manager.prepare(wasm));
+  WebAssembly.instantiate(buffer, { env: wasm }).then(
+    result => {
+      let instance = result.instance;
+      let exports = instance.exports as any;
+      let utils = new Utils(instance.exports, exports.memory, decodeUTF8, onException, now, state);
+      links.forEach(link => link.complete(utils, exports));
+      utils.init();
+      run(utils, exports, state);
+    }
+  );
+}
+

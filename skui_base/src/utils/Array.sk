@@ -1,0 +1,201 @@
+module Array;
+
+extension class .Array {
+  @always_inline
+  mutable fun unsafeSet(i: Int, value: T): void {
+    this.unsafe_set(i, value)
+  }
+
+  @always_inline
+  readonly fun unsafeGet(i: Int): T {
+    this.unsafe_get(i)
+  }
+
+  static fun unsafeMake(size: Int): mutable Array<T> {
+    Unsafe.array_make(size)
+  }
+
+  readonly fun indexOfAfter<S: Equality>[T: S](
+    fn: S ~> Bool,
+    index: Int,
+  ): ?Int {
+    this.indexOfLoopPredicate(fn, index, this.size())
+  }
+
+  readonly fun indexOfBefore<S: Equality>[T: S](
+    fn: S ~> Bool,
+    index: Int,
+  ): ?Int {
+    this.reversedIndexOfLoopPredicate(fn, index, 0)
+  }
+
+  mutable fun sortFor<K: readonly Orderable>(selector: T ~> K): void {
+    this.sortBy(selector);
+  }
+
+  mutable fun sortWith(compare: (T, T) ~> Order): void {
+    this.sortFor(v ~> Orderable.create(v, compare));
+  }
+
+  readonly fun sortedFor<K: readonly Orderable>(selector: T ~> K): Array<T> {
+    this.sortedBy(selector);
+  }
+
+  readonly fun sortedWith(compare: (T, T) ~> Order): Array<T> {
+    this.sortedFor(v ~> Orderable.create(v, compare));
+  }
+
+  // Internal helper for indexOf().
+  private readonly fun indexOfLoopPredicate<S: Equality>[T: S](
+    fn: S ~> Bool,
+    i: Int,
+    sz: Int,
+  ): ?Int {
+    if (i >= sz) {
+      None()
+    } else if (fn(this.unsafe_get(i))) {
+      Some(i)
+    } else {
+      this.indexOfLoopPredicate(fn, i + 1, sz)
+    }
+  }
+
+  // Internal helper for indexOf().
+  private readonly fun reversedIndexOfLoopPredicate<S: Equality>[T: S](
+    fn: S ~> Bool,
+    i: Int,
+    sz: Int,
+  ): ?Int {
+    if (i <= sz) {
+      None()
+    } else if (fn(this.unsafe_get(i))) {
+      Some(i)
+    } else {
+      this.reversedIndexOfLoopPredicate(fn, i - 1, sz)
+    }
+  }
+}
+
+module end;
+
+@wasm_export
+@cpp_export("SKIP_getFloatAt")
+fun getFloatAt(array: readonly Array<Float>, index: Int32): Float {
+  array.get(index.toInt());
+}
+
+@cpp_export("SKIP_createByteArray")
+fun createByteArray(size: Int32): mutable Array<UInt8> {
+  Array<UInt8>::mfill(size.toInt(), UInt8::truncate(0));
+}
+
+@cpp_export("SKIP_getBytesSize")
+fun getBytesSize(array: Array<UInt8>): Int32 {
+  Int32::truncate(array.size())
+}
+
+@cpp_export("SKIP_setByte")
+fun setByte(bytes: mutable Array<UInt8>, index: Int32, byte: UInt8): void {
+  bytes.set(index.toInt(), byte);
+}
+
+@cpp_export("SKIP_chillByteArray")
+fun chillByteArray(array: mutable Array<UInt8>): Array<UInt8> {
+  array.chill();
+}
+
+@cpp_export("SKIP_getStringsSize")
+fun getStringsSize(array: Array<String>): Int32 {
+  Int32::truncate(array.size())
+}
+
+@cpp_export("SKIP_createStringArray")
+fun createStringArray(size: Int32): mutable Array<String> {
+  Array<String>::mfill(size.toInt(), "");
+}
+
+@cpp_export("SKIP_setString")
+fun setString(array: mutable Array<String>, index: Int32, value: String): void {
+  array.set(index.toInt(), value);
+}
+
+@cpp_export("SKIP_chillStringArray")
+fun chillStringArray(array: mutable Array<String>): Array<String> {
+  array.chill();
+}
+
+@cpp_export("SKIP_getUInt32sSize")
+fun getUInt32sSize(array: Array<UInt32>): Int32 {
+  Int32::truncate(array.size())
+}
+
+@cpp_export("SKIP_createUInt32Array")
+fun createUInt32Array(size: Int32): mutable Array<UInt32> {
+  Array::mfill(size.toInt(), UInt32::truncate(0));
+}
+
+@cpp_export("SKIP_setUInt32")
+fun setUInt32(array: mutable Array<UInt32>, index: Int32, value: UInt32): void {
+  array.set(index.toInt(), value);
+}
+
+@cpp_export("SKIP_chillUInt32Array")
+fun chillUInt32Array(array: mutable Array<UInt32>): Array<UInt32> {
+  array.chill();
+}
+
+@cpp_export("SKIP_getFloatsSize")
+fun getFloatsSize(array: Array<Float>): Int32 {
+  Int32::truncate(array.size())
+}
+
+@cpp_export("SKIP_createFloatArray")
+fun createFloatArray(size: Int32): mutable Array<Float> {
+  Array::mfill(size.toInt(), 0.0);
+}
+
+@cpp_export("SKIP_setFloat")
+fun setFloat(array: mutable Array<Float>, index: Int32, value: Float): void {
+  array.set(index.toInt(), value);
+}
+
+@cpp_export("SKIP_chillFloatArray")
+fun chillFloatArray(array: mutable Array<Float>): Array<Float> {
+  array.chill();
+}
+
+@cpp_export("SKIP_createCharArray")
+fun createCharArray(size: Int32): mutable Array<Char> {
+  Array<Char>::mfill(size.toInt(), '\0');
+}
+
+@cpp_export("SKIP_getCharsSize")
+fun getCharsSize(array: Array<Char>): Int32 {
+  Int32::truncate(array.size())
+}
+
+@cpp_export("SKIP_setChar")
+fun setChar(chars: mutable Array<Char>, index: Int32, code: UInt32): void {
+  c = Char::fromCode(code.toInt());
+  chars.set(index.toInt(), c);
+}
+
+@cpp_export("SKIP_chillCharArray")
+fun chillCharArray(array: mutable Array<Char>): Array<Char> {
+  array.chill();
+}
+
+@cpp_export("SKIP_createStringVector")
+fun createStringVector(): mutable Vector<String> {
+  mutable Vector<String>[];
+}
+
+@cpp_export("SKIP_pushString")
+fun pushString(vector: mutable Vector<String>, value: String): void {
+  vector.push(value);
+}
+
+@cpp_export("SKIP_toStringArray")
+fun toStringArray(vector: mutable Vector<String>): Array<String> {
+  vector.toArray();
+}

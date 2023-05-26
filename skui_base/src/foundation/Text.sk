@@ -1,0 +1,100 @@
+module Char;
+// A character set containing characters in Unicode General Category Z*,
+// U+0009, U+000A ~ U+000D, and U+0085.
+fun isWhitespace(c: Char): Bool {
+  c match {
+  // CHARACTER TABULATION
+  | '\u0009' | '\u000A' | '\u000B' | '\u000C' | '\u000D' | '\u0085' // LINE FEED // LINE TABULATION // FORM FEED // CARRIAGE RETURN // NEXT LINE // http://www.fileformat.info/info/unicode/category/Zl/list.htm
+  // LINE SEPARATOR
+  | '\u2028'  // http://www.fileformat.info/info/unicode/category/Zp/list.htm
+  // PARAGRAPH SEPARATOR
+  | '\u2029'  // http://www.fileformat.info/info/unicode/category/Zs/list.htm
+  // SPACE
+  | '\u0020' | '\u00A0' | '\u1680' | '\u2000' | '\u2001' | '\u2002' | '\u2003' // NO-BREAK SPACE // OGHAM SPACE MARK // EN QUAD // EM QUAD // EN SPACE // EM SPACE // THREE-PER-EM SPACE
+  | '\u2004' | '\u2005' | '\u2006' | '\u2007' | '\u2008' | '\u2009' | '\u200A' // FOUR-PER-EM SPACE // SIX-PER-EM SPACE // FIGURE SPACE // PUNCTUATION SPACE // THIN SPACE // HAIR SPACE // NARROW NO-BREAK SPACE
+  | '\u202F' | '\u205F' | '\u3000' -> // MEDIUM MATHEMATICAL SPACE // IDEOGRAPHIC SPACE
+    true
+  | _ -> false
+  }
+}
+
+fun uppercase(c: Char): Char {
+  Unicode.toUpper(c)
+}
+
+fun lowercase(c: Char): Char {
+  Unicode.toLower(c)
+}
+
+fun isLetter(c: Char): Bool {
+  Unicode.isLetter(c)
+}
+
+fun isNumeric(c: Char): Bool {
+  Unicode.isNumber(c)
+}
+
+fun isAlphaNumeric(c: Char): Bool {
+  isLetter(c) || isNumeric(c);
+}
+
+module end;
+
+module Text;
+
+fun uppercase(text: String): String {
+  String::fromChars(
+    text.getIter().map(char -> Char.uppercase(char)).collect(Array),
+  );
+}
+
+fun lowercase(text: String): String {
+  String::fromChars(
+    text.getIter().map(char -> Char.lowercase(char)).collect(Array),
+  );
+}
+
+fun uppercaseFirst(text: String): String {
+  capitalize = true;
+  String::fromChars(
+    text
+      .getIter()
+      .map(char -> {
+        if (Char.isLetter(char)) {
+          if (capitalize) {
+            !capitalize = false;
+            Char.uppercase(char);
+          } else {
+            Char.lowercase(char);
+          }
+        } else {
+          char;
+        }
+      })
+      .collect(Array),
+  );
+}
+
+fun capitalize(text: String): String {
+  capitalize = true;
+  String::fromChars(
+    text
+      .getIter()
+      .map(char -> {
+        if (Char.isLetter(char)) {
+          if (capitalize) {
+            !capitalize = false;
+            Char.uppercase(char);
+          } else {
+            Char.lowercase(char);
+          }
+        } else {
+          !capitalize = true;
+          char;
+        }
+      })
+      .collect(Array),
+  );
+}
+
+module end;

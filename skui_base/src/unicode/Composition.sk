@@ -1,0 +1,438 @@
+module Unicode;
+
+mutable class ReorderBuffer{
+  properties: mutable Vector<Properties> = mutable Vector[], // Per character info.
+  tmpProps: mutable Vector<Properties> = mutable Vector[], // Per character info.
+  bytes: mutable Array<UInt8> = Array::mfill(maxByteBufferSize, UInt8::zero), // UTF-8 buffer.
+  mutable nBytes: Int = 0,
+  mutable streamSafe: UInt8 = UInt8::zero, // For limiting length of non-starter sequence.
+  mutable norm: Norm = NFC(),
+  mutable src: Array<UInt8> = Array[],
+  //mutable tmpBytes: Array<UInt8>,
+  out: mutable Vector<UInt8> = mutable Vector[],
+  mutable flush: mutable ReorderBuffer ~> Bool = _rb ~> false,
+} {
+  mutable fun init(norm: Norm, src: Array<UInt8>): void {
+    this.!norm = norm;
+    this.!src = src;
+    this.!streamSafe = UInt8::zero;
+  }
+
+  // reset discards all characters from the buffer.
+  mutable fun reset(): void {
+    this.properties.clear();
+    this.!nBytes = 0;
+  }
+
+  mutable fun doFlush(): Bool {
+    this.checkProperties();
+    if (this.norm.isComposing()) {
+      this.compose()
+    };
+    res = this.flush(this);
+    this.reset();
+    res
+  }
+
+  // flushBytes appends the normalized segment to out and resets rb.
+  mutable fun flushBytes(out: mutable Vector<UInt8>): void {
+    this.checkProperties();
+    for (rune in this.properties) {
+      start = rune.pos.toInt();
+      end = start + rune.size.toInt();
+      this.bytes.slice(start, end).each(b -> out.push(b))
+    };
+    this.reset();
+  }
+
+  mutable fun setFlusher(
+    optOut: ?Array<UInt8>,
+    flush: mutable ReorderBuffer ~> Bool,
+  ): void {
+    this.out.clear();
+    optOut.each(out -> out.each(v -> this.out.push(v)));
+    this.!flush = flush;
+  }
+
+  // insertProperties inserts a rune in the buffer.
+  // It returns false if the buffer is not large enough to hold the rune.
+  // It is used internally by insert and insertString only.
+  mutable fun insertProperties(info: Properties): void {
+    pos = this.nBytes;
+    this.!nBytes = pos + Utf8.maxSize;
+    !info.pos = UInt8::truncate(pos);
+    if (info.ccc == 0) {
+      this.checkProperties();
+      this.properties.push(info);
+    } else {
+      this.tmpProps.push(info);
+    }
+  }
+
+  // insertSingle inserts an entry in the reorderBuffer for the rune at
+  // position i. info is the runeInfo for the rune at position i.
+  mutable fun insertSingle(src: Array<UInt8>, i: Int, info: Properties): void {
+    src.slice(i, i + info.size.toInt()).eachWithIndex((idx, value) ->
+      this.bytes.set(this.nBytes + idx, value)
+    );
+    this.insertProperties(info);
+  }
+
+  // insertCGJ inserts a Combining Grapheme Joiner (0x034f) into rb.
+  mutable fun insertCGJ(): void {
+    bytes = Char::fromCode(0x034f).utf8Encode().map(i -> UInt8::truncate(i));
+    this.insertSingle(
+      bytes,
+      0,
+      Properties{size => UInt8::truncate(bytes.size())},
+    );
+  }
+
+  // insertFlush inserts the given rune in the buffer ordered by CCC.
+  // If a decomposition with multiple segments are encountered, they leading
+  // ones are flushed.
+  // It returns a non-zero error code if the rune was not inserted.
+  mutable fun insertFlush(src: Array<UInt8>, i: Int, info: Properties): ?Int {
+    hangul(src, i) match {
+    | Some(char) ->
+      this.decomposeHangul(char);
+      None()
+    | _ if (info.hasDecomposition()) ->
+      this.insertDecomposed(info.decomposition())
+    | _ ->
+      this.insertSingle(src, i, info);
+      None()
+    }
+  }
+
+  // insertDecomposed inserts an entry in to the reorderBuffer for each rune
+  // in dcomp. dcomp must be a sequence of decomposed UTF-8-encoded properties.
+  // It flushes the buffer on each new segment start.
+  mutable fun insertDecomposed(optDComp: ?Array<UInt8>): ?Int {
+    optDComp match {
+    | Some(dcomp) ->
+      // As the streamSafe accounting already handles the counting for modifiers,
+      // we don't have to call next. However, we do need to keep the accounting
+      // intact when flushing the buffer.
+      i = 0;
+      while (i < dcomp.size()) {
+        info = this.norm.lookup(dcomp, i);
+        if (
+          info.isBoundaryBefore() &&
+          this.hasProperties() &&
+          !this.doFlush()
+        ) {
+          return Some(-1)
+        };
+        dcomp.slice(i, i + info.size.toInt()).eachWithIndex((idx, value) ->
+          this.bytes.set(this.nBytes + idx, value)
+        );
+        !i = i + info.size.toInt();
+        this.insertProperties(info);
+      };
+      None()
+    | _ -> None()
+    }
+  }
+
+  // insertUnsafe inserts the given char in the buffer ordered by CCC.
+  // It is assumed there is sufficient space to hold the chars. It is the
+  // responsibility of the caller to ensure this. This can be done by checking
+  // the state returned by the streamSafe type.
+  mutable fun insertUnsafe(src: Array<UInt8>, i: Int, info: Properties): void {
+    hangul(src, i) match {
+    | Some(char) -> _ = this.decomposeHangul(char)
+    | _ if (info.hasDecomposition()) ->
+      optDecomposed = info.decomposition();
+      _ = this.insertDecomposed(optDecomposed)
+    | _ -> _ = this.insertSingle(src, i, info)
+    }
+  }
+
+  // decomposeHangul algorithmically decomposes a Hangul rune into
+  // its Jamo components.
+  // See https://unicode.org/reports/tr15/#Hangul for details on decomposing Hangul.
+  mutable fun decomposeHangul(char: Char): void {
+    code = char.code() - hangulBase;
+    x = code % jamoTCount;
+    !code = code / jamoTCount;
+    this.appendChar(Char::fromCode(jamoLBase + code / jamoVCount));
+    this.appendChar(Char::fromCode(jamoVBase + code % jamoVCount));
+    if (x != 0) {
+      this.appendChar(Char::fromCode(jamoTBase + x))
+    }
+  }
+
+  // appendChar inserts a char at the end of the buffer. It is used for Hangul.
+  mutable fun appendChar(char: Char): void {
+    this.checkProperties();
+    bn = this.nBytes;
+    utf8 = Utf8.encodeChar(char);
+    utf8.eachWithIndex((idx, value) -> this.bytes.set(bn + idx, value));
+    this.!nBytes = this.nBytes + Utf8.maxSize;
+    this.properties.push(
+      Properties{
+        pos => UInt8::truncate(bn),
+        size => UInt8::truncate(utf8.size()),
+      },
+    );
+  }
+
+  // assignChar sets a rune at position pos. It is used for Hangul and recomposition.
+  mutable fun assignChar(pos: Int, char: Char): void {
+    bn = this.properties[pos].pos;
+    utf8 = Utf8.encodeChar(char);
+    utf8.eachWithIndex((idx, value) -> this.bytes.set(bn + idx, value));
+    this.properties.set(
+      pos,
+      Properties{pos => bn, size => UInt8::truncate(utf8.size())},
+    );
+  }
+
+  // insert returns a ssState value to indicate whether a rune represented by p
+  // can be inserted.
+  mutable fun nextStreamSafe(p: Properties): ScState {
+    (res, this.!streamSafe) = nextStreamSafe(p, this.streamSafe);
+    res;
+  }
+
+  // compose recombines the properties in the buffer.
+  // It should only be used to recompose a single segment, as it will not
+  // handle alternations between Hangul and non-Hangul characters correctly.
+  mutable fun compose(): void {
+    // UAX #15, section X5 , including Corrigendum #5
+    // "In any character sequence beginning with starter S, a character C is
+    //  blocked from S if and only if there is some character B between S
+    //  and C, and either B is a starter or it has the same or higher
+    //  combining class as C."
+    if (this.properties.isEmpty()) {
+      return void;
+    };
+    bn = this.properties.size();
+    k = 1;
+    s = 0;
+    i = 1;
+    while (i < bn) {
+      if (isJamoVT(this.bytesAt(i))) {
+        // Redo from start in Hangul mode. Necessary to support
+        // U+320E..U+321E in NFKC mode.
+        this.combineHangul(s, i, k);
+        return void;
+      };
+      ii = this.properties[i];
+      if (ii.isCombinesBackward()) {
+        cccB = this.properties[k - 1].ccc;
+        cccC = ii.ccc;
+        // b[i] blocked by starter or greater or equal CCC?
+        blocked = if (cccB == 0) {
+          !s = k - 1;
+          false;
+        } else {
+          s != k - 1 && cccB >= cccC
+        };
+        if (!blocked) {
+          combine(this.charAt(s), this.charAt(i)) match {
+          | Some(combined) ->
+            this.assignChar(s, combined);
+            !i = i + 1;
+            continue
+          | _ -> void
+          }
+        }
+      };
+      if (k != i) {
+        this.properties.insert(k, this.properties[i])
+      };
+      !k = k + 1;
+      !i = i + 1;
+    };
+    this.properties.resize(k, Properties{});
+  }
+
+  // combineHangul algorithmically combines Jamo character components into Hangul.
+  // See https://unicode.org/reports/tr15/#Hangul for details on combining Hangul.
+  mutable fun combineHangul(s: Int, i: Int, k: Int): void {
+    bn = this.properties.size();
+    while (i < bn) {
+      cccB = this.properties[k - 1].ccc;
+      cccC = this.properties[i].ccc;
+      if (cccB == UInt8::zero) {
+        !s = k - 1
+      };
+      if (s != k - 1 && cccB >= cccC) {
+        // b[i] is blocked by greater-equal cccX below it
+        this.properties.set(k, this.properties[i]);
+        !k = k + 1;
+      } else {
+        l = this.charAt(s).code(); // also used to compare to hangulBase
+        v = this.charAt(i).code(); // also used to compare to jamoT
+        if (jamoLBase <= l && l < jamoLEnd && jamoVBase <= v && v < jamoVEnd) {
+          // 11xx plus 116x to LV
+          char = Char::fromCode(
+            hangulBase +
+              (l - jamoLBase) * jamoVTCount +
+              (v - jamoVBase) * jamoTCount,
+          );
+          this.assignChar(s, char);
+        } else if (
+          hangulBase <= l &&
+          l < hangulEnd &&
+          jamoTBase < v &&
+          v < jamoTEnd &&
+          ((l - hangulBase) % jamoTCount) == 0
+        ) {
+          // ACxx plus 11Ax to LVT
+          char = Char::fromCode(l + v - jamoTBase);
+          this.assignChar(s, char);
+        } else {
+          this.properties.set(k, this.properties[i]);
+          !k = k + 1;
+        }
+      };
+      !i = i + 1;
+    };
+    this.properties.resize(k, Properties{});
+  }
+
+  mutable fun checkProperties(): void {
+    if (!this.tmpProps.isEmpty()) {
+      // ordered by Canonical Combining Class
+      this.tmpProps.sortFor(p ~> p.ccc);
+      this.tmpProps.each(p -> this.properties.push(p));
+      this.tmpProps.clear();
+    };
+  }
+
+  readonly fun bytesAt(n: Int): Array<UInt8> {
+    props = this.properties[n];
+    this.bytes.slice(props.pos.toInt(), props.pos + props.size);
+  }
+
+  readonly fun charAt(n: Int): Char {
+    bytes = this.bytesAt(n);
+    (char, _) = Utf8.decodeChar(bytes);
+    char;
+  }
+
+  readonly fun lookup(p: Int): Properties {
+    this.norm.lookup(this.src, p)
+  }
+
+  readonly fun hasProperties(): Bool {
+    !(this.properties.isEmpty() && this.tmpProps.isEmpty())
+  }
+}
+
+fun cmpNormalBytes(reorderBuffer: mutable Unicode.ReorderBuffer): Bool {
+  b = reorderBuffer.out;
+  outi = 0;
+  for (rune in reorderBuffer.properties) {
+    if (rune.size.toInt() > (b.size() - outi)) {
+      return false
+    };
+    p = rune.pos.toInt();
+    pe = p + rune.size.toInt();
+    while (p < pe) {
+      if (b[outi] != reorderBuffer.bytes[p]) {
+        return false
+      };
+      !outi = outi + 1;
+      !p = p + 1;
+    }
+  };
+  true
+}
+
+// appendFlush appends the normalized segment to rb.out.
+fun appendFlush(reorderBuffer: mutable Unicode.ReorderBuffer): Bool {
+  reorderBuffer.checkProperties();
+  for (rune in reorderBuffer.properties) {
+    start = rune.pos.toInt();
+    end = start + rune.size.toInt();
+    reorderBuffer.bytes.slice(start, end).each(b -> reorderBuffer.out.push(b))
+  };
+  true
+}
+
+fun hangul(src: Array<UInt8>, p: Int): ?Char {
+  bytes = src.drop(p);
+  if (!isHangul(bytes)) {
+    return None()
+  };
+  (char, size) = Utf8.decodeChar(bytes);
+  if (size != hangulUTF8Size) {
+    return None()
+  };
+  Some(char)
+}
+
+fun isHangul(b: Array<UInt8>): Bool {
+  if (b.size() < hangulUTF8Size) {
+    return false
+  };
+  b0 = b[0].toInt();
+  if (b0 < hangulBase0) {
+    return false
+  };
+  b1 = b[1].toInt();
+  if (b0 == hangulBase0) {
+    return b1 >= hangulBase1
+  } else if (b0 < hangulEnd0) {
+    return true
+  } else if (b0 > hangulEnd0) {
+    return false
+  } else if (b1 < hangulEnd1) {
+    return true
+  };
+  b1 == hangulEnd1 && b[2] < hangulEnd2;
+}
+
+// Caller must ensure len(b) >= 2.
+fun isJamoVT(b: Array<UInt8>): Bool {
+  // True if (rune & 0xff00) == jamoLBase
+  b[0] == jamoLBase0 && (b[1].and(0xFC)) == jamoLBase1.toInt()
+}
+
+// insert returns a ssState value to indicate whether a rune represented by p
+// can be inserted.
+fun nextStreamSafe(p: Properties, streamSafe: UInt8): (ScState, UInt8) {
+  ss = streamSafe.toInt();
+  invariant(ss <= maxNonStarters, "streamSafe was not reset");
+  n = p.nLeadingNonStarters().toInt();
+  !ss = ss + n;
+  if (ss > maxNonStarters) {
+    return (Overflow(), UInt8::zero);
+  };
+  // The Stream-Safe Text Processing prescribes that the counting can stop
+  // as soon as a starter is encountered. However, there are some starters,
+  // like Jamo V and T, that can combine with other properties, leaving their
+  // successive non-starters appended to the previous, possibly causing an
+  // overflow. We will therefore consider any rune with a non-zero nLead to
+  // be a non-starter. Note that it always hold that if nLead > 0 then
+  // nLead == nTrail.
+  if (n == 0) {
+    (Starter(), p.nTrailingNonStarters())
+  } else {
+    (Success(), UInt8::truncate(ss))
+  }
+}
+
+// backwards is used for checking for overflow and segment starts
+// when traversing a string backwards. Users do not need to call first
+// for the first rune. The state of the streamSafe retains the count of
+// the non-starters loaded.
+fun backwardsStreamSafe(p: Properties, streamSafe: UInt8): (ScState, UInt8) {
+  ss = streamSafe.toInt();
+  invariant(ss <= maxNonStarters, "streamSafe was not reset");
+  c = ss + p.nTrailingNonStarters();
+  if (c > maxNonStarters) {
+    return (Overflow(), streamSafe)
+  };
+  if (p.nLeadingNonStarters() == 0) {
+    (Starter(), UInt8::truncate(c))
+  } else {
+    (Success(), UInt8::truncate(c))
+  }
+}
+
+module end;

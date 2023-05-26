@@ -1,0 +1,484 @@
+module Unicode;
+
+// to clear all but the relevant bits in a qcInfo
+const qcInfoMask: UInt8 = UInt8::truncate(0x3F);
+// extract the length value from the header byte
+const headerLenMask: UInt8 = UInt8::truncate(0x3F);
+// extract the qcInfo bits from the header byte
+const headerFlagsMask: UInt8 = UInt8::truncate(0xC0);
+
+class Properties{
+  pos: UInt8 = UInt8::zero, // start position in reorderBuffer for composition
+  size: UInt8 = UInt8::zero, // length of UTF-8 encoding of this char
+  ccc: UInt8 = UInt8::zero, // leading canonical combining class
+  tccc: UInt8 = UInt8::zero, // trailing canonical combining class (ccc if not decomposition)
+  nLead: UInt8 = UInt8::zero, // number of leading non-starters.
+  flags: UInt8 = UInt8::zero, // quick check flags
+  index: UInt16 = UInt16::zero,
+} {
+  fun isYesC(): Bool {
+    this.flags.and(0x10) == 0
+  }
+
+  fun isYesD(): Bool {
+    this.flags.and(0x4) == 0
+  }
+
+  fun isCombinesForward(): Bool {
+    this.flags.and(0x20) != 0
+  }
+
+  fun isCombinesBackward(): Bool {
+    this.flags.and(0x8) != 0
+  }
+
+  fun hasDecomposition(): Bool {
+    this.flags.and(0x4) != 0
+  }
+
+  fun isInert(): Bool {
+    this.flags.and(qcInfoMask) == 0 && this.ccc == UInt8::zero
+  }
+
+  // boundaryBefore returns true if this Char starts a new segment and
+  // cannot combine with any rune on the left.
+  fun isBoundaryBefore(): Bool {
+    // We assume that the CCC of the first character in a decomposition
+    // is always non-zero if different from info.ccc and that we can return
+    // false at this point. This is verified by maketables.
+    this.ccc == UInt8::zero && !this.isCombinesBackward()
+  }
+
+  // boundaryAfter returns true if Chars cannot combine with or otherwise
+  // interact with this or previous Chars.
+  fun isBoundaryAfter(): Bool {
+    // TODO: loosen these conditions.
+    this.isInert()
+  }
+
+  fun isMultiSegment(): Bool {
+    iIndex = this.index.toInt();
+    iIndex >= firstMulti && iIndex < endMulti
+  }
+
+  fun nLeadingNonStarters(): UInt8 {
+    this.nLead
+  }
+
+  fun nTrailingNonStarters(): UInt8 {
+    UInt8::truncate(this.flags.and(0x03))
+  }
+
+  // Decomposition returns the decomposition for the underlying rune
+  // or nil if there is none.
+  fun decomposition(): ?Array<UInt8> {
+    // TODO: create the decomposition for Hangul?
+    if (this.index == UInt16::zero) {
+      None()
+    } else {
+      i = this.index.toInt();
+      n = decomps[i].and(headerLenMask);
+      Some(decomps.slice((i + 1), (i + 1) + n))
+    }
+  }
+
+  fun getCcc(): UInt8 {
+    if (this.index >= firstCCCZeroExcept) {
+      UInt8::zero
+    } else {
+      Unicode.ccc[this.ccc.toInt()]
+    }
+  }
+
+  fun getLeadCcc(): UInt8 {
+    Unicode.ccc[this.ccc.toInt()]
+  }
+
+  fun getTrailCcc(): UInt8 {
+    Unicode.ccc[this.tccc.toInt()]
+  }
+}
+
+// Recomposition
+// We use 32-bit keys instead of 64-bit for the two codepoint keys.
+// This clips off the bits of three entries, but we know this will not
+// result in a collision. In the unlikely event that changes to
+// UnicodeData.txt introduce collisions, the compiler will catch it.
+// Note that the recomposition map for NFC and NFKC are identical.
+
+// combine returns the combined rune or 0 if it doesn't exist.
+//
+// The caller is responsible for calling
+// recompMapOnce.Do(buildRecompMap) sometime before this is called.
+fun combine(a: Char, b: Char): ?Char {
+  key = UInt32::truncate(
+    UInt16::truncate(a.code()).shl(16) + UInt16::truncate(b.code()),
+  );
+  recompMap.maybeGet(key).map(c -> {
+    Char::fromCode(c.toInt());
+  });
+}
+
+// Denotes a canonical representation of Unicode code points.
+base class Norm {
+  children =
+  | NFC() //   NFC   Unicode Normalization Form C
+  | NFD() //   NFD   Unicode Normalization Form D
+  | NFKC() //  NFKC   Unicode Normalization Form KC
+  | NFKD() //  NFKC   Unicode Normalization Form KD
+
+  fun isComposing(): Bool {
+    this match {
+    | NFC()
+    | NFKC() ->
+      true
+    | NFD()
+    | NFKD() ->
+      false
+    }
+  }
+
+  fun isCompatibility(): Bool {
+    this match {
+    | NFKC()
+    | NFKD() ->
+      true
+    | NFC()
+    | NFD() ->
+      false
+    }
+  }
+
+  fun lookup(bytes: Array<UInt8>, i: Int): Properties {
+    trie = this match {
+    | NFKC()
+    | NFKD() ->
+      NfkcTrie()
+    | NFC()
+    | NFD() ->
+      NfcTrie()
+    };
+    (v, sz) = trie.lookup(
+      if (i > 0) {
+        bytes.drop(i)
+      } else {
+        bytes
+      },
+    );
+    compInfo(v, sz);
+  }
+
+  // IsNormal returns true if b == f(b).
+  fun isNormal(bytes: Array<UInt8>): Bool {
+    (bp, ok) = this.quickSpan(bytes, 0, bytes.size(), true);
+    if (ok) {
+      return true
+    };
+    rb = mutable ReorderBuffer{norm => this, src => bytes};
+    rb.setFlusher(None(), cmpNormalBytes);
+    while (bp < bytes.size()) {
+      rb.out.clear();
+      for (i in .Range(bp, bytes.size())) {
+        rb.out.push(bytes[i]);
+      };
+      !bp = decomposeSegment(rb, bp, true);
+      if (bp < 0) {
+        return false
+      };
+      (!bp, _) = this.quickSpan(bytes, bp, bytes.size(), true);
+    };
+    true
+  }
+
+  fun firstBoundary(src: Array<UInt8>): Int {
+    i = skipContinuationBytes(src, 0);
+    if (i >= src.size()) {
+      return -1
+    };
+    ss = UInt8::zero;
+    // We should call ss.first here, but we can't as the first rune is
+    // skipped already. This means FirstBoundary can't really determine
+    // CGJ insertion points correctly. Luckily it doesn't have to.
+    loop {
+      info = this.lookup(src, i);
+      if (info.size == UInt8::zero) {
+        return -1
+      };
+      (state, !ss) = nextStreamSafe(info, ss);
+      state match {
+      | Success() ->
+        !i = i + info.size.toInt();
+        if (i >= src.size()) {
+          if (!info.isBoundaryAfter() && ss != maxNonStarters) {
+            return -1
+          };
+          return src.size()
+        }
+      | _ -> return i
+      }
+    }
+  }
+
+  // quickSpan returns a boundary n such that src[0:n] == f(src[0:n]) and
+  // whether any non-normalized parts were found. If atEOF is false, n will
+  // not point past the last segment if this segment might be become
+  // non-normalized by appending other runes.
+  fun quickSpan(
+    bytes: Array<UInt8>,
+    i: Int,
+    end: Int,
+    atEOF: Bool,
+  ): (Int, Bool) {
+    lastCC = UInt8::zero;
+    ss = UInt8::zero;
+    lastSegStart = i;
+    n = end;
+    while (i < n) {
+      j = skipASCII(bytes, i, n);
+      if (i != j) {
+        !i = j;
+        !lastSegStart = i - 1;
+        !lastCC = UInt8::zero;
+        !ss = UInt8::zero;
+      } else {
+        info = this.lookup(bytes, i);
+        if (info.size == UInt8::zero) {
+          return if (atEOF) {
+            // include incomplete runes
+            (n, true)
+          } else {
+            (lastSegStart, true)
+          }
+        };
+        // This block needs to be before the next, because it is possible to
+        // have an overflow for runes that are starters (e.g. with U+FF9E).
+        (state, !ss) = nextStreamSafe(info, ss);
+        state match {
+        | Starter() -> !lastSegStart = i
+        | Overflow() -> return (lastSegStart, false)
+        | Success() ->
+          if (lastCC > info.ccc) {
+            return (lastSegStart, false)
+          }
+        };
+        if (this.isComposing()) {
+          if (!info.isYesC()) {
+            break void;
+          }
+        } else {
+          if (!info.isYesD()) {
+            break void;
+          }
+        };
+        !lastCC = info.ccc;
+        !i = i + info.size.toInt();
+      }
+    };
+    if (i == n) {
+      if (!atEOF) {
+        !n = lastSegStart
+      };
+      (n, true)
+    } else {
+      (lastSegStart, false)
+    }
+  }
+
+  fun nextMain(): mutable Iter ~> ?Array<UInt8> {
+    todo()
+  }
+}
+
+// compInfo converts the information contained in v and sz
+// to a Properties.  See the comment at the top of the file
+// for more information on the format.
+fun compInfo(v: UInt16, sz: Int): Properties {
+  if (v == UInt16::zero) {
+    return Properties{size => UInt8::truncate(sz)}
+  } else if (v >= 0x8000) {
+    p = Properties{
+      size => UInt8::truncate(sz),
+      ccc => UInt8::truncate(v.toInt()),
+      tccc => UInt8::truncate(v.toInt()),
+      flags => UInt8::truncate(v.shr(8)),
+    };
+    if (p.ccc > UInt8::zero || p.isCombinesBackward()) {
+      !p.nLead = UInt8::truncate(p.flags.and(0x3))
+    };
+    return p
+  };
+  // has decomposition
+  h = decomps[v.toInt()];
+  f = UInt8::truncate(h.and(headerFlagsMask).shr(2).or(0x4));
+  p = Properties{size => UInt8::truncate(sz), flags => f, index => v};
+  if (v.toInt() >= firstCCC) {
+    !v = UInt16::truncate(v + UInt16::truncate(h.and(headerLenMask)) + 1);
+    c = decomps[v.toInt()];
+    !p.tccc = UInt8::truncate(c.shr(2));
+    !p.flags = UInt8::truncate(p.flags.or(c.and(0x3)));
+    if (v.toInt() >= firstLeadingCCC) {
+      !p.nLead = UInt8::truncate(c.and(0x3));
+      if (v.toInt() >= firstStarterWithNLead) {
+        // We were tricked. Remove the decomposition.
+        !p.flags = UInt8::truncate(p.flags.and(0x03));
+        !p.index = UInt16::zero;
+        return p
+      };
+      !p.ccc = decomps[v.toInt() + 1];
+    }
+  };
+  p
+}
+
+// decomposeSegment scans the first segment in src into rb. It inserts 0x034f
+// (Grapheme Joiner) when it encounters a sequence of more than 30 non-starters
+// and returns the number of bytes consumed from src or iShortDst or iShortSrc.
+fun decomposeSegment(
+  reorderBuffer: mutable Unicode.ReorderBuffer,
+  sp: Int,
+  atEOF: Bool,
+): Int {
+  // Force one character to be consumed.
+  info = reorderBuffer.lookup(sp);
+  if (info.size == UInt8::zero) {
+    return 0
+  };
+  reorderBuffer.nextStreamSafe(info) match {
+  | Starter() if (!reorderBuffer.properties.isEmpty()) ->
+    if (!reorderBuffer.doFlush()) {
+      return -1;
+    };
+    return sp
+  | Overflow() ->
+    reorderBuffer.insertCGJ();
+    if (!reorderBuffer.doFlush()) {
+      return -1;
+    };
+    return sp
+  | _ -> void
+  };
+  reorderBuffer.insertFlush(reorderBuffer.src, sp, info) match {
+  | Some(err) -> return err
+  | _ -> void
+  };
+  loop {
+    !sp = sp + info.size.toInt();
+    if (sp >= reorderBuffer.src.size()) {
+      if (!atEOF && !info.isBoundaryAfter()) {
+        return -2
+      };
+      break void;
+    };
+    !info = reorderBuffer.lookup(sp);
+    if (info.size == UInt8::zero) {
+      if (!atEOF) {
+        return -2
+      };
+      break void;
+    };
+    state = reorderBuffer.nextStreamSafe(info);
+    state match {
+    | Starter() -> break void
+    | Overflow() ->
+      reorderBuffer.insertCGJ();
+      break void
+    | _ -> void
+    };
+    reorderBuffer.insertFlush(reorderBuffer.src, sp, info) match {
+    | Some(err) -> return err
+    | _ -> void
+    };
+  };
+  if (!reorderBuffer.doFlush()) {
+    return -1;
+  };
+  sp
+}
+
+// decomposeToLastBoundary finds an open segment at the end of the buffer
+// and scans it into rb. Returns the buffer minus the last segment.
+fun decomposeToLastBoundary(
+  reorderBuffer: mutable Unicode.ReorderBuffer,
+): void {
+  (info, i) = lastCharStart(reorderBuffer.norm, reorderBuffer.out.toArray());
+  if (info.size.toInt() != reorderBuffer.out.size() - i) {
+    // illegal trailing continuation bytes
+    return void;
+  };
+  if (info.isBoundaryAfter()) {
+    return void;
+  };
+  add = mutable Vector<Properties>[]; // stores runeInfo in reverse order
+  add.ensureCapacity(maxNonStarters + 1);
+  padd = 0;
+  p = reorderBuffer.out.size();
+  ss = UInt8::zero;
+  count = 0;
+  loop {
+    add.insert(padd, info);
+    (state, !ss) = backwardsStreamSafe(info, ss);
+    state match {
+    | Overflow() ->
+      // Note that if we have an overflow, it the string we are appending to
+      // is not correctly normalized. In this case the behavior is undefined.
+      break void
+    | _ -> void
+    };
+    !padd = padd + 1;
+    !p = p - info.size.toInt();
+    state match {
+    | Starter() -> break void
+    | _ if (p < 0) -> break void
+    | _ -> void
+    };
+    (!info, !i) = lastCharStart(
+      reorderBuffer.norm,
+      reorderBuffer.out.slice(0, p).toArray(),
+    );
+    if (info.size.toInt() != p - i) {
+      // illegal trailing continuation bytes
+      break void;
+    };
+    !count = count + 1;
+  };
+  reorderBuffer.!streamSafe = ss;
+  cp = reorderBuffer.out.drop(p).toArray();
+  reorderBuffer.out.resize(p, UInt8::zero);
+  !padd = padd - 1;
+  while (padd >= 0) {
+    props = add[padd];
+    reorderBuffer.insertUnsafe(cp, 0, props);
+    !cp = cp.drop(props.size.toInt());
+    !padd = padd - 1;
+  }
+}
+
+fun skipContinuationBytes(src: Array<UInt8>, p: Int): Int {
+  while (p < src.size() && !Utf8.charStart(src[p])) {
+    !p = p + 1;
+  };
+  p
+}
+
+fun skipASCII(src: Array<UInt8>, p: Int, max: Int): Int {
+  while (p < Math.min(max, src.size()) && src[p] < Utf8.self) {
+    !p = p + 1;
+  };
+  p
+}
+
+// lastCharStart returns the properties and position of the last
+// char in buf or the zero properties and -1 if no rune was found.
+fun lastCharStart(norm: Norm, buf: Array<UInt8>): (Properties, Int) {
+  p = buf.size() - 1;
+  while (p >= 0 && !Utf8.charStart(buf[p])) {
+    !p = p - 1;
+  };
+  if (p < 0) {
+    (Properties{}, -1)
+  } else {
+    (norm.lookup(buf, p), p)
+  }
+}
+
+module end;

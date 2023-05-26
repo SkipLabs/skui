@@ -1,0 +1,16 @@
+/cli
+/compiler
+/prelude
+/skargo
+/skfs
+/sktest
+/termcolor
+/toml
+*/target/
+*/.build/
+*/ts/js/
+.vscode
+*.bc
+*.a
+
+/.skargoreps
