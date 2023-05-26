@@ -1,0 +1,300 @@
+fun fixed26_6(fixed: Int): Fixed.Int26_6 {
+  Fixed.Int26_6(Int32::truncate(fixed));
+}
+
+module Fixed;
+
+/**
+ * Int26_6 is a signed 26.6 fixed-point number.
+ *
+ * The integer part ranges from -33554432 to 33554431, inclusive. The
+ * fractional part has 6 bits of precision.
+ *
+ * For example, the number one-and-a-quarter is Int26_6(1<<6 + 1<<4).
+ */
+value class Int26_6(value: Int32) uses Show, Orderable {
+  const zero: Int26_6 = Int26_6(Int32::truncate(0));
+  const one: Int26_6 = Int26_6::fromInt(1);
+  const two: Int26_6 = Int26_6::fromInt(2);
+
+  /**
+   * fromInt returns the integer value value as an Int26_6.
+   *
+   * For example, passing the integer value 2 yields Int26_6(128).
+   */
+  static fun fromInt(value: Int): Int26_6 {
+    fixed26_6(value.shl(6))
+  }
+
+  static fun fromFloat(value: Float): Int26_6 {
+    fixed26_6((value * 1.shl(6).toFloat()).toInt());
+  }
+
+  /**
+   * String returns a human-readable representation of a 26.6 fixed-point number.
+   *
+   * For example, the number one-and-a-quarter becomes "1:16".
+   */
+  fun toString(): String {
+    mask = 1.shl(6) - 1;
+    (value, sign) = if (this.value >= 0) {
+      (this.value.toInt(), "")
+    } else {
+      (-this.value.toInt(), "-")
+    };
+    integer = value.shr(6);
+    strFractional = value.and(mask).toString();
+    if (strFractional.chars().size() == 1) {
+      !strFractional = `0${strFractional}`;
+    };
+    `${sign}${integer}:${strFractional}`;
+  }
+
+  fun neg(): Int26_6 {
+    fixed26_6(-this.value.toInt());
+  }
+
+  fun fractional(): Int26_6 {
+    fixed26_6(this.value.toInt().and(1.shl(6) - 1));
+  }
+
+  fun abs(): Int26_6 {
+    if (this.asInt() < 0) {
+      Int26_6::zero - this
+    } else {
+      this
+    }
+  }
+
+  /**
+   * Returns the greatest integer value less than or equal to x.
+   */
+  fun floor(): Int {
+    this.value.toInt().shr(6)
+  }
+
+  /**
+   * Returns the nearest integer value to x. Ties are rounded up.
+   */
+  fun round(): Int {
+    (this.value.toInt() + 0x20).shr(6)
+  }
+
+  /**
+   * Returns the least integer value greater than or equal to x.
+   */
+  fun ceil(): Int {
+    (this.value.toInt() + 0x3f).shr(6)
+  }
+
+  /**
+   * Returns this * other in 26.6 fixed-point arithmetic.
+   */
+  fun *(other: Int26_6): Int26_6 {
+    fixed26_6(((this.value.toInt() * other.value.toInt()) + 1.shl(5)).shr(6))
+  }
+
+  /**
+   * Returns this / other in 26.6 fixed-point arithmetic.
+   */
+  fun /(other: Int26_6): Int26_6 {
+    fixed26_6((this.value.toInt() * 64) / other.value.toInt())
+  }
+
+  fun idiv(other: Int): Int26_6 {
+    fixed26_6(this.value.toInt() / other)
+  }
+
+  /**
+   * Returns this + other in 26.6 fixed-point arithmetic.
+   */
+  fun +(other: Int26_6): Int26_6 {
+    fixed26_6(this.value.toInt() + other.value.toInt())
+  }
+
+  /**
+   * Returns this - other in 26.6 fixed-point arithmetic.
+   */
+  fun -(other: Int26_6): Int26_6 {
+    fixed26_6(this.value.toInt() - other.value.toInt())
+  }
+
+  fun and(other: Int26_6): Int26_6 {
+    fixed26_6(this.value.toInt().and(other.value.toInt()))
+  }
+
+  fun or(other: Int26_6): Int26_6 {
+    fixed26_6(this.value.toInt().or(other.value.toInt()))
+  }
+
+  fun xor(other: Int26_6): Int26_6 {
+    fixed26_6(this.value.toInt().xor(other.value.toInt()))
+  }
+
+  fun compare(other: Int26_6): Order {
+    this.value.compare(other.value)
+  }
+
+  fun toFloat(): Float {
+    this.value.toFloat() / 1.shl(6).toFloat();
+  }
+
+  fun asInt(): Int {
+    this.value.toInt()
+  }
+}
+
+/**
+ * Point26_6 is a 26.6 fixed-point coordinate pair.
+ */
+value class Point26_6(x: Int26_6, y: Int26_6) uses Orderable {
+  const zero: Point26_6 = Point26_6(Int26_6::zero, Int26_6::zero);
+  /**
+   * Returns the vector this + other.
+   */
+  fun +(other: Point26_6): Point26_6 {
+    Point26_6(this.x + other.x, this.y + other.y)
+  }
+
+  /**
+   * Returns the vector this - other.
+   */
+  fun -(other: Point26_6): Point26_6 {
+    Point26_6(this.x - other.x, this.y - other.y)
+  }
+
+  /**
+   * Returns the vector this * scale.
+   */
+  fun *(scale: Int26_6): Point26_6 {
+    Point26_6(this.x * scale, this.y * scale)
+  }
+
+  /**
+   * Returns the vector this / scale.
+   */
+  fun /(scale: Int26_6): Point26_6 {
+    Point26_6(this.x / scale, this.y / scale)
+  }
+
+  fun toOffset(): Geometry.Offset {
+    Geometry.Offset(this.x.toFloat(), this.y.toFloat())
+  }
+}
+
+/**
+ * Rectangle26_6 is a 26.6 fixed-point coordinate rectangle.
+ */
+value class Rectangle26_6(min: Point26_6, max: Point26_6) uses Orderable {
+  const zero: Rectangle26_6 = Rectangle26_6(Point26_6::zero, Point26_6::zero);
+
+  static fun make(
+    minX: Fixed.Int26_6,
+    minY: Fixed.Int26_6,
+    maxX: Fixed.Int26_6,
+    maxY: Fixed.Int26_6,
+  ): Fixed.Rectangle26_6 {
+    Fixed.Rectangle26_6(
+      Fixed.Point26_6(minX, minY),
+      Fixed.Point26_6(maxX, maxY),
+    )
+  }
+
+  /**
+   * In returns whether point is in this.
+   */
+  fun containsPoint(point: Point26_6): Bool {
+    this.min.x <= point.x &&
+      point.x < this.max.x &&
+      this.min.y <= point.y &&
+      point.y < this.max.y
+  }
+
+  /**
+   * Returns this translated by point.
+   */
+  fun translate(point: Point26_6): Rectangle26_6 {
+    Rectangle26_6(
+      Point26_6(this.min.x + point.x, this.min.y + point.y),
+      Point26_6(this.max.x + point.x, this.max.y + point.y),
+    )
+  }
+
+  /**
+   * Returns whether the rectangle contains no points.
+   */
+  fun isEmpty(): Bool {
+    this.min.x >= this.max.x || this.min.y >= this.max.y
+  }
+
+  /**
+   * Returns the largest rectangle contained by both this and other. If the
+   * two rectangles do not overlap then the zero rectangle will be returned.
+   */
+  fun intersect(other: Rectangle26_6): Rectangle26_6 {
+    if (this.min.x < other.min.x) {
+      !this.min.x = other.min.x
+    };
+    if (this.min.y < other.min.y) {
+      !this.min.y = other.min.y
+    };
+    if (this.max.x > other.max.x) {
+      !this.max.x = other.max.x
+    };
+    if (this.max.y > other.max.y) {
+      !this.max.y = other.max.y
+    };
+    if (this.isEmpty()) {
+      Rectangle26_6::zero
+    } else {
+      this
+    }
+  }
+
+  /**
+   * Returns the smallest rectangle that contains both r and s.
+   */
+  fun union(other: Rectangle26_6): Rectangle26_6 {
+    if (this.isEmpty()) {
+      other
+    } else if (other.isEmpty()) {
+      this
+    } else {
+      if (this.min.x > other.min.x) {
+        !this.min.x = other.min.x
+      };
+      if (this.min.y > other.min.y) {
+        !this.min.y = other.min.y
+      };
+      if (this.max.x < other.max.x) {
+        !this.max.x = other.max.x
+      };
+      if (this.max.y < other.max.y) {
+        !this.max.y = other.max.y
+      };
+      this;
+    }
+  }
+
+  /**
+   * In returns whether other is in this.
+   */
+  fun contains(other: Rectangle26_6): Bool {
+    if (other.isEmpty()) {
+      true
+    } else {
+      this.containsPoint(other.min) && this.containsPoint(other.max)
+    }
+  }
+
+  fun toTuple(): (Int, Int, Int, Int) {
+    (
+      this.min.x.asInt(),
+      this.min.y.asInt(),
+      this.max.x.asInt(),
+      this.max.y.asInt(),
+    )
+  }
+}
+
+module end;

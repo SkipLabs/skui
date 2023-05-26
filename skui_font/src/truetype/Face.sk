@@ -1,0 +1,257 @@
+module TrueType;
+
+class Face{
+  font: Font,
+  scale: Fixed.Int26_6,
+  hinting: Font.Hinting,
+  subPixelBiasX: Fixed.Int26_6,
+  subPixelMaskX: Fixed.Int26_6,
+  subPixelBiasY: Fixed.Int26_6,
+  subPixelMaskY: Fixed.Int26_6,
+} extends Font.Face {
+  static fun make(font: Font, options: Font.Options): Face {
+    scale = fixed26_6(
+      (0.5 + (options.size * options.dpi * 64.0 / 72.0)).toInt(),
+    );
+    (subPixelBiasX, subPixelMaskX) = options.computeSubPixelsX();
+    (subPixelBiasY, subPixelMaskY) = options.computeSubPixelsY();
+    fscale = scale.asInt().toFloat();
+    fupe = font.fUnitsPerEm.toFloat();
+    fascent = font.ascent.toFloat();
+    fdescent = font.descent.toFloat();
+    metrics = Font.Metrics{
+      ascent => fixed26_6(Math.ceil(fscale * fascent / fupe).toInt()),
+      descent => fixed26_6(Math.ceil(fscale * -fdescent / fupe).toInt()),
+    };
+    Face{
+      font,
+      scale,
+      hinting => options.hinting,
+      subPixelBiasX,
+      subPixelMaskX,
+      subPixelBiasY,
+      subPixelMaskY,
+      metrics,
+    }
+  }
+
+  fun getGlyphBounds(c: Char): ?Font.Bounds {
+    this.font.getIndex(c).flatMap(index -> {
+      vtry<?Font.Bounds>(
+        () -> {
+          glyphBuf = mutable GlyphBuf{};
+          !glyphBuf = glyphBuf.load(
+            this.font,
+            this.scale,
+            index.toInt(),
+            this.hinting,
+          );
+          xmin = glyphBuf.bounds.min.x;
+          ymin = glyphBuf.bounds.max.y.neg();
+          xmax = glyphBuf.bounds.max.x;
+          ymax = glyphBuf.bounds.min.y.neg();
+          invariant(xmin <= xmax && ymin <= ymax, "Invalid glyph bounds");
+          Some(
+            Font.Bounds{
+              bounds => Fixed.Rectangle26_6(
+                Fixed.Point26_6(xmin, ymin),
+                Fixed.Point26_6(xmax, ymax),
+              ),
+              advance => glyphBuf.advanceWidth,
+            },
+          );
+        },
+        _e -> None(),
+      )
+    });
+  }
+
+  fun getKern(c0: Char, i1: Int): Fixed.Int26_6 {
+    this.font.getIndex(c0)
+      .map(i0 -> {
+        kern = this.font.getKern(this.scale, i0, UInt16::truncate(i1));
+        if (this.hinting != Font.HintingNone()) {
+          !kern = fixed26_6((kern.asInt() + 32).and(63.not()));
+        };
+        kern
+      })
+      .default(fixed26_6(0));
+  }
+
+  fun getGlyphAdvance(c: Char): ?Fixed.Int26_6 {
+    this.font.getIndex(c).flatMap(index -> {
+      vtry<?Fixed.Int26_6>(
+        () -> {
+          glyphBuf = mutable GlyphBuf{};
+          !glyphBuf = glyphBuf.load(
+            this.font,
+            this.scale,
+            index.toInt(),
+            this.hinting,
+          );
+          Some(glyphBuf.advanceWidth)
+        },
+        _e -> None(),
+      )
+    });
+  }
+
+  /**
+   * Returns the glyph at the sub-pixel destination location dotLocation.
+   */
+  fun getGlyph(
+    c: Char,
+    dotLocation: Fixed.Point26_6 = Fixed.Point26_6::zero,
+  ): ?Font.Glyph {
+    this.font.getIndex(c).flatMap(index -> {
+      // Quantize to the sub-pixel granularity.
+      dotX = (dotLocation.x + this.subPixelBiasX).and(this.subPixelMaskX);
+      dotY = (dotLocation.y + this.subPixelBiasY).and(this.subPixelMaskY);
+      // Split the coordinates into their integer and fractional parts.
+      (ix, fx) = (dotX.floor(), dotX.fractional());
+      (iy, fy) = (dotY.floor(), dotY.fractional());
+      vtry<?Font.Glyph>(
+        () -> {
+          (optPath, offset, width, height, bounds) = this.draw(
+            index.toInt(),
+            Fixed.Point26_6(fx, fy),
+          );
+          dr = Geometry.Rectangle(
+            Geometry.Point(ix + offset.x, iy + offset.y),
+            Geometry.Point(ix + offset.x + width, iy + offset.y + height),
+          );
+          Some(Font.Glyph{index => index.toInt(), bounds, optPath, dr})
+        },
+        _e -> None(),
+      )
+    });
+  }
+
+  fun draw(
+    index: Int,
+    subPixelOffset: Fixed.Point26_6,
+  ): (?Shape.Path, Geometry.Point, Int, Int, Font.Bounds) {
+    glyphBuf = mutable GlyphBuf{};
+    !glyphBuf = glyphBuf.load(this.font, this.scale, index, this.hinting);
+    toPath(
+      glyphBuf.points,
+      glyphBuf.ends,
+      glyphBuf.bounds,
+      glyphBuf.advanceWidth,
+      subPixelOffset,
+    );
+  }
+}
+
+fun toPath(
+  points: readonly Vector<TrueType.Point>,
+  ends: readonly Vector<Int>,
+  glyphBounds: Fixed.Rectangle26_6,
+  advanceWidth: Fixed.Int26_6,
+  subPixelOffset: Fixed.Point26_6 = Fixed.Point26_6::zero,
+): (?Shape.Path, Geometry.Point, Int, Int, Font.Bounds) {
+  // Calculate the integer-pixel bounds for the glyph.
+  xmin = (subPixelOffset.x + glyphBounds.min.x).floor();
+  ymin = (subPixelOffset.y - glyphBounds.max.y).floor();
+  xmax = (subPixelOffset.x + glyphBounds.max.x).ceil();
+  ymax = (subPixelOffset.y - glyphBounds.min.y).ceil();
+  invariant(xmin <= xmax && ymin <= ymax, "Invalid glyph integer-pixel bounds");
+  // A TrueType's glyph's nodes can have negative co-ordinates, but the
+  // rasterizer clips anything left of x=0 or above y=0. xmin and ymin are
+  // the pixel offsets, based on the font's FUnit metrics, that let a
+  // negative co-ordinate in TrueType space be non-negative in rasterizer
+  // space. xmin and ymin are typically <= 0.
+  !subPixelOffset =
+    subPixelOffset -
+    Fixed.Point26_6(Fixed.Int26_6::fromInt(xmin), Fixed.Int26_6::fromInt(ymin));
+  elements = mutable Vector<Shape.PathElement>[];
+  e0 = 0;
+  for (e1 in ends) {
+    drawContour(points.slice(e0, e1).toArray(), subPixelOffset, elements);
+    !e0 = e1;
+  };
+  bounds = Font.Bounds{
+    bounds => Fixed.Rectangle26_6(
+      Fixed.Point26_6(glyphBounds.min.x, glyphBounds.max.y.neg()),
+      Fixed.Point26_6(glyphBounds.max.x, glyphBounds.min.y.neg()),
+    ),
+    advance => advanceWidth,
+  };
+  (
+    if (!elements.isEmpty()) {
+      Some(Shape.Path{elements => elements.toArray()});
+    } else {
+      None()
+    },
+    Geometry.Point(xmin, ymin),
+    xmax - xmin,
+    ymax - ymin,
+    bounds,
+  );
+}
+
+/**
+ * Draws the given closed contour with the given offset.
+ */
+fun drawContour(
+  points: Array<Point>,
+  offset: Fixed.Point26_6,
+  elements: mutable Vector<Shape.PathElement>,
+): void {
+  if (points.isEmpty()) {
+    return void;
+  };
+  // The low bit of each point's Flags value is whether the point is on the
+  // curve. Truetype fonts only have quadratic Bézier curves, not cubics.
+  // Thus, two consecutive off-curve points imply an on-curve point in the
+  // middle of those two.
+  //
+  // See http://chanae.walon.org/pub/ttf/ttf_glyphs.htm for more details.
+  // ps[0] is a truetype.Point measured in FUnits and positive Y going
+  // upwards. start is the same thing measured in fixed point units and
+  // positive Y going downwards, and offset by (dx, dy).
+  first = points.first();
+  start = Fixed.Point26_6(offset.x + first.x, offset.y - first.y);
+  others = if (first.flags.and(0x01) != 0) {
+    points.drop(1);
+  } else {
+    last = points.last();
+    end = Fixed.Point26_6(offset.x + last.x, offset.y - last.y);
+    if (last.flags.and(0x01) != 0) {
+      !start = end;
+      points.slice(0, points.size() - 1);
+    } else {
+      !start = Fixed.Point26_6(
+        (start.x + last.x).idiv(2),
+        (start.y + last.y).idiv(2),
+      );
+      points
+    }
+  };
+  elements.push(Shape.MoveTo(start.toOffset()));
+  (q0, on0) = (start, true);
+  for (p in others) {
+    q = Fixed.Point26_6(offset.x + p.x, offset.y - p.y);
+    on = p.flags.and(0x01) != 0;
+    if (on) {
+      if (on0) {
+        elements.push(Shape.LineTo(q.toOffset()));
+      } else {
+        elements.push(Shape.QuadCurveTo(q.toOffset(), q0.toOffset()));
+      }
+    } else if (!on0) {
+      mid = Fixed.Point26_6((q0.x + q.x).idiv(2), (q0.y + q.y).idiv(2));
+      elements.push(Shape.QuadCurveTo(mid.toOffset(), q0.toOffset()));
+    };
+    (!q0, !on0) = (q, on);
+  };
+  // Close the curve.
+  if (on0) {
+    elements.push(Shape.LineTo(start.toOffset()));
+  } else {
+    elements.push(Shape.QuadCurveTo(start.toOffset(), q0.toOffset()));
+  };
+  elements.push(Shape.ClosePath());
+}
+
+module end;

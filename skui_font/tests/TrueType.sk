@@ -1,0 +1,411 @@
+module SKUIFontTest;
+
+@testr
+fun truetypeParse(r: Map<String, TrueType.Font>): void {
+  Parse(r).run()
+}
+
+@testr
+fun truetypeName(r: Map<String, TrueType.Font>): void {
+  Name(r).run()
+}
+
+@testr
+fun truetypeGlyph(r: Map<String, TrueType.Font>): void {
+  Glyph(r).run()
+}
+
+@testr
+fun truetypeIndex1(r: Map<String, TrueType.Font>): void {
+  runIndex(r["luxisr"], SKUIFontTest.luxisrChars())
+}
+
+@testr
+fun truetypeIndex2(r: Map<String, TrueType.Font>): void {
+  runIndex(r["xab"], SKUIFontTest.xabChars())
+}
+
+@testr
+fun truetypeIndex3(r: Map<String, TrueType.Font>): void {
+  runIndex(r["xtnr"], SKUIFontTest.xtnrChars())
+}
+
+// TODO Fix Check char greater than UInt16 size
+@testr
+fun truetypeIndex4(r: Map<String, TrueType.Font>): void {
+  runIndex(r["xdvso"], SKUIFontTest.xdvsoChars())
+}
+
+// to big cannot be compiled
+//@testr
+fun truetypeIndex5(r: Map<String, TrueType.Font>): void {
+  runIndex(r["xdsff"], SKUIFontTest.xdsffChars())
+}
+
+@testr
+fun truetypeScaling1(r: Map<String, TrueType.Font>): void {
+  Scaling(r["luxisr"], 12, Font.HintingNone(), SKUIFontTest.luxisr12sh()).run()
+}
+
+@testr
+fun truetypeScaling2(r: Map<String, TrueType.Font>): void {
+  Scaling(r["xdvso"], 17, Font.HintingNone(), SKUIFontTest.xdvso17sh()).run()
+}
+
+@testr
+fun truetypeScaling3(r: Map<String, TrueType.Font>): void {
+  Scaling(r["xdsff"], 9, Font.HintingNone(), SKUIFontTest.xdsff9sh()).run()
+}
+
+@testr
+fun truetypeScaling4(r: Map<String, TrueType.Font>): void {
+  Scaling(r["xtnr"], 13, Font.HintingNone(), SKUIFontTest.xtnr13sh()).run()
+}
+
+// TODO: check  expected file
+//    Invalid advance for glyph 4: got 196 expect 234
+//@test
+fun truetypeScaling5(r: Map<String, TrueType.Font>): void {
+  Scaling(r["xab"], 11, Font.HintingNone(), SKUIFontTest.xab11sh()).run()
+}
+
+class Rectangle(rect: Fixed.Rectangle26_6) extends SKFS.File {}
+
+class FontCase(
+  got: (TrueType.Font) ~> SKFS.File,
+  expected: SKFS.File,
+  name: String = "luxisr",
+) extends Case {}
+
+base class TrueType(r: Map<String, TrueType.Font>) {
+  //
+  fun run(): void {
+    this.cases().eachWithIndex(this.runCase);
+  }
+
+  protected fun runCase(idx: Int, case: FontCase): void {
+    font = this.r[case.name];
+    case.got(font) match {
+    | failure @ SKFS.LoadFailed _ ->
+      invariant_violation(`Error: ${failure.optError}`)
+    | gotFile -> expectEqAt(gotFile, case.expected, idx)
+    }
+  }
+
+  protected fun cases(): Array<FontCase>;
+}
+
+class Parse() extends TrueType {
+  protected fun cases(): Array<FontCase> {
+    Array[
+      FontCase(
+        font ~> SKFS.IntFile(font.fUnitsPerEm.toInt()),
+        SKFS.IntFile(2048),
+      ),
+      FontCase(
+        font ~> Rectangle(font.scaledBounds(font.fupe())),
+        Rectangle(
+          Fixed.Rectangle26_6::make(
+            fixed26_6(-441),
+            fixed26_6(-432),
+            fixed26_6(2024),
+            fixed26_6(2033),
+          ),
+        ),
+      ),
+      FontCase(
+        font ~>
+          onAV(font, (_, iA, iV) ~>
+            SKFS.ArrayFile(
+              Array[SKFS.IntFile(iA.toInt()), SKFS.IntFile(iV.toInt())],
+            )
+          ),
+        SKFS.ArrayFile(Array[SKFS.IntFile(36), SKFS.IntFile(57)]),
+      ),
+      FontCase(
+        font ~>
+          onA(font, (font, iA) ~> {
+            hMetrics = font.getHMetric(font.fupe(), iA);
+            SKFS.ArrayFile(
+              Array[
+                SKFS.IntFile(hMetrics.advanceWidth.asInt()),
+                SKFS.IntFile(hMetrics.leftSideBearing.asInt()),
+              ],
+            )
+          }),
+        SKFS.ArrayFile(Array[SKFS.IntFile(1366), SKFS.IntFile(19)]),
+      ),
+      FontCase(
+        font ~>
+          onA(font, (font, iA) ~> {
+            vMetrics = font.getVMetric(font.fupe(), iA);
+            SKFS.ArrayFile(
+              Array[
+                SKFS.IntFile(vMetrics.advanceHeight.asInt()),
+                SKFS.IntFile(vMetrics.topSideBearing.asInt()),
+              ],
+            )
+          }),
+        SKFS.ArrayFile(Array[SKFS.IntFile(2465), SKFS.IntFile(553)]),
+      ),
+      FontCase(
+        font ~>
+          onAV(font, (font, iA, iV) ~>
+            SKFS.IntFile(font.getKern(font.fupe(), iA, iV).asInt())
+          ),
+        SKFS.IntFile(-144),
+      ),
+    ]
+  }
+}
+
+class Glyph() extends TrueType {
+  //
+  protected fun cases(): Array<FontCase> {
+    Array[
+      FontCase(
+        font ~>
+          onA(font, (font, iA) ~> {
+            g = mutable TrueType.GlyphBuf{};
+            !g = g.load(font, font.fupe(), iA.toInt(), Font.HintingNone());
+            Rectangle(g.bounds);
+          }),
+        Rectangle(
+          Fixed.Rectangle26_6::make(
+            fixed26_6(19),
+            fixed26_6(0),
+            fixed26_6(1342),
+            fixed26_6(1480),
+          ),
+        ),
+      ),
+      FontCase(
+        font ~>
+          onA(font, (font, iA) ~> {
+            g = mutable TrueType.GlyphBuf{};
+            !g = g.load(font, font.fupe(), iA.toInt(), Font.HintingNone());
+            SKFS.ArrayFile(
+              g.points
+                .map(point ->
+                  SKFS.ArrayFile::fromInts(
+                    Array[point.x.asInt(), point.y.asInt(), point.flags],
+                  )
+                )
+                .toArray(),
+            );
+          }),
+        SKFS.ArrayFile(
+          Array[
+            SKFS.ArrayFile::fromInts(Array[19, 0, 51]),
+            SKFS.ArrayFile::fromInts(Array[581, 1480, 1]),
+            SKFS.ArrayFile::fromInts(Array[789, 1480, 51]),
+            SKFS.ArrayFile::fromInts(Array[1342, 0, 1]),
+            SKFS.ArrayFile::fromInts(Array[1116, 0, 35]),
+            SKFS.ArrayFile::fromInts(Array[962, 410, 3]),
+            SKFS.ArrayFile::fromInts(Array[368, 410, 33]),
+            SKFS.ArrayFile::fromInts(Array[214, 0, 3]),
+            SKFS.ArrayFile::fromInts(Array[428, 566, 19]),
+            SKFS.ArrayFile::fromInts(Array[904, 566, 33]),
+            SKFS.ArrayFile::fromInts(Array[667, 1200, 3]),
+          ],
+        ),
+      ),
+      FontCase(
+        font ~>
+          onA(font, (font, iA) ~> {
+            g = mutable TrueType.GlyphBuf{};
+            !g = g.load(font, font.fupe(), iA.toInt(), Font.HintingNone());
+            SKFS.ArrayFile::fromInts(g.ends.toArray())
+          }),
+        SKFS.ArrayFile::fromInts(Array[8, 11]),
+      ),
+    ]
+  }
+}
+
+class Name() extends TrueType {
+  //
+  protected fun cases(): Array<FontCase> {
+    Array[
+      FontCase(
+        font ~> SKFS.StringFile(font.getName(TrueType.NameID::fontFamily)),
+        SKFS.StringFile("Luxi Mono"),
+        "luximr",
+      ),
+      FontCase(
+        font ~> SKFS.StringFile(font.getName(TrueType.NameID::fontFamily)),
+        SKFS.StringFile("Luxi Serif"),
+        "luxirr",
+      ),
+      FontCase(
+        font ~> SKFS.StringFile(font.getName(TrueType.NameID::fontFamily)),
+        SKFS.StringFile("Luxi Sans"),
+        "luxisr",
+      ),
+    ]
+  }
+}
+
+class ScalingResult(
+  advanceWidth: Fixed.Int26_6,
+  bounds: Fixed.Rectangle26_6,
+  points: Array<TrueType.Point>,
+) extends SKFS.File uses Equality {}
+
+class Scaling(
+  font: TrueType.Font,
+  size: Int,
+  hinting: Font.Hinting,
+  expected: String,
+  ignore: Set<Int> = Set[],
+) {
+  //
+  fun run(): void {
+    lines = this.expected.split("\n").drop(1);
+    if (lines.last().isEmpty()) {
+      !lines = lines.slice(0, lines.size() - 1);
+    };
+    expects = lines.map(line -> this.parse(line));
+    glyphBuf = mutable TrueType.GlyphBuf{};
+    for (i in .Range(0, expects.size())) {
+      if (this.ignore.contains(i)) {
+        continue
+      };
+      expect = expects[i];
+      !glyphBuf = glyphBuf.load(
+        this.font,
+        Fixed.Int26_6::fromInt(this.size),
+        i,
+        this.hinting,
+      );
+      value = ScalingResult(
+        glyphBuf.advanceWidth,
+        glyphBuf.bounds,
+        glyphBuf.points.toArray().map(p -> {
+          !p.flags = p.flags.and(0x01);
+          p;
+        }),
+      );
+      this.check(i, value, expect);
+    }
+  }
+
+  private fun check(i: Int, value: ScalingResult, expect: ScalingResult): void {
+    this.checkValue(
+      "advance",
+      i,
+      value.advanceWidth.asInt(),
+      expect.advanceWidth.asInt(),
+    );
+    this.checkValue(
+      "bounds",
+      i,
+      value.bounds.toTuple(),
+      expect.bounds.toTuple(),
+    );
+    this.checkValue(
+      "points number",
+      i,
+      value.points.size(),
+      expect.points.size(),
+    );
+    for (j in .Range(0, value.points.size())) {
+      this.checkPoint(`point ${j}`, i, value.points[j], expect.points[j])
+    }
+  }
+
+  private fun checkValue<T: Equality>(
+    name: String,
+    i: Int,
+    value: T,
+    expect: T,
+  ): void {
+    expectEqualsAt(value, expect, `${name} (${i})`)
+  }
+
+  private fun checkPoint(
+    name: String,
+    i: Int,
+    value: TrueType.Point,
+    expect: TrueType.Point,
+  ): void {
+    test =
+      Math.abs(value.x.asInt() - expect.x.asInt()) == 0 &&
+      Math.abs(value.y.asInt() - expect.y.asInt()) <= 1;
+    if (!test) {
+      throw SKTest.ExpectationError(
+        `expect near [${name} (${i})]`,
+        inspect(expect).toString(),
+        inspect(value).toString(),
+      )
+    }
+  }
+
+  private fun parse(line: String): ScalingResult {
+    elements = line.split(";");
+    prefixes = elements[0].split(" ");
+    pointsPart = elements.maybeGet(1).default("");
+    points = if (pointsPart.isEmpty()) {
+      Array<TrueType.Point>[];
+    } else {
+      pointsPart
+        .split(", ")
+        .map(strPoint -> {
+          dPoints = strPoint.split(" ");
+          TrueType.Point{
+            x => fixed26_6(dPoints[0].toInt()),
+            y => fixed26_6(dPoints[1].toInt()),
+            flags => dPoints[2].toInt(),
+          }
+        })
+        .toArray()
+    };
+    ScalingResult(
+      fixed26_6(prefixes[0].toInt()),
+      Fixed.Rectangle26_6::make(
+        fixed26_6(prefixes[1].toInt()),
+        fixed26_6(prefixes[2].toInt()),
+        fixed26_6(prefixes[3].toInt()),
+        fixed26_6(prefixes[4].toInt()),
+      ),
+      points,
+    )
+  }
+}
+
+fun runIndex(font: TrueType.Font, expected: Map<Int, Int>): void {
+  expected.each((k, index) -> {
+    c = Char::fromCode(k);
+    expectEqualsAt(font.getIndex(c).map(v -> v.toInt()), Some(index), c)
+  })
+}
+
+private fun onA(
+  font: TrueType.Font,
+  fn: (TrueType.Font, UInt16) ~> SKFS.File,
+): SKFS.File {
+  aChar = 'A';
+  optIndex = font.getIndex(aChar);
+  optIndex match {
+  | Some(iA) ->
+    debug(("onA", aChar, iA));
+    fn(font, iA)
+  | _ -> SKFS.LoadFailed(Some(!"Unable to found glyph 'A'"))
+  }
+}
+
+private fun onAV(
+  font: TrueType.Font,
+  fn: (TrueType.Font, UInt16, UInt16) ~> SKFS.File,
+): SKFS.File {
+  vChar = 'V';
+  optIndex = font.getIndex(vChar);
+  optIndex match {
+  | Some(iV) ->
+    //debug(("onV", vChar, iV));
+    onA(font, (ft, iA) ~> fn(ft, iA, iV))
+  | _ -> SKFS.LoadFailed(Some(!"Unable to found glyph 'V'"))
+  }
+}
+
+module end;

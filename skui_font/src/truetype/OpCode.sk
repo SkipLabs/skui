@@ -1,0 +1,526 @@
+module TrueType;
+
+const ui8_0: UInt8 = uint8(0);
+const ui8_1: UInt8 = uint8(1);
+const ui8_2: UInt8 = uint8(2);
+const ui8_3: UInt8 = uint8(3);
+const ui8_5: UInt8 = uint8(5);
+
+// popCount is the number of stack elements that each opcode pops.
+const popCount: Array<UInt8> = Array[
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_5,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_0,
+  ui8_0,
+  ui8_1,
+  ui8_0,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_0,
+  ui8_2,
+  ui8_0,
+  ui8_1,
+  ui8_1,
+  ui8_2,
+  ui8_0,
+  ui8_1,
+  ui8_2,
+  ui8_1,
+  ui8_1,
+  ui8_0,
+  ui8_1,
+  ui8_1,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_0,
+  ui8_2,
+  ui8_2,
+  ui8_0,
+  ui8_0,
+  ui8_2,
+  ui8_2,
+  ui8_0,
+  ui8_0,
+  ui8_2,
+  ui8_1,
+  ui8_2,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_0,
+  ui8_2,
+  ui8_2,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_2,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_2,
+  ui8_2,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_1,
+  ui8_1,
+  ui8_0,
+  ui8_2,
+  ui8_2,
+  ui8_0,
+  ui8_0,
+  ui8_1,
+  ui8_2,
+  ui8_2,
+  ui8_1,
+  ui8_1,
+  ui8_3,
+  ui8_2,
+  ui8_2,
+  ui8_1,
+  ui8_2,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_0,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_1,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+  ui8_2,
+];
+
+const opSVTCA0: Int = 0x00; // Set freedom and projection Vectors To Coordinate Axis
+const opSVTCA1: Int = 0x01; // .
+const opSPVTCA0: Int = 0x02; // Set Projection Vector To Coordinate Axis
+const opSPVTCA1: Int = 0x03; // .
+const opSFVTCA0: Int = 0x04; // Set Freedom Vector to Coordinate Axis
+const opSFVTCA1: Int = 0x05; // .
+const opSPVTL0: Int = 0x06; // Set Projection Vector To Line
+const opSPVTL1: Int = 0x07; // .
+const opSFVTL0: Int = 0x08; // Set Freedom Vector To Line
+const opSFVTL1: Int = 0x09; // .
+const opSPVFS: Int = 0x0a; // Set Projection Vector From Stack
+const opSFVFS: Int = 0x0b; // Set Freedom Vector From Stack
+const opGPV: Int = 0x0c; // Get Projection Vector
+const opGFV: Int = 0x0d; // Get Freedom Vector
+const opSFVTPV: Int = 0x0e; // Set Freedom Vector To Projection Vector
+const opISECT: Int = 0x0f; // moves point p to the InterSECTion of two lines
+const opSRP0: Int = 0x10; // Set Reference Point 0
+const opSRP1: Int = 0x11; // Set Reference Point 1
+const opSRP2: Int = 0x12; // Set Reference Point 2
+const opSZP0: Int = 0x13; // Set Zone Pointer 0
+const opSZP1: Int = 0x14; // Set Zone Pointer 1
+const opSZP2: Int = 0x15; // Set Zone Pointer 2
+const opSZPS: Int = 0x16; // Set Zone PointerS
+const opSLOOP: Int = 0x17; // Set LOOP variable
+const opRTG: Int = 0x18; // Round To Grid
+const opRTHG: Int = 0x19; // Round To Half Grid
+const opSMD: Int = 0x1a; // Set Minimum Distance
+const opELSE: Int = 0x1b; // ELSE clause
+const opJMPR: Int = 0x1c; // JuMP Relative
+const opSCVTCI: Int = 0x1d; // Set Control Value Table Cut-In
+const opSSWCI: Int = 0x1e; // Set Single Width Cut-In
+const opSSW: Int = 0x1f; // Set Single Width
+const opDUP: Int = 0x20; // DUPlicate top stack element
+const opPOP: Int = 0x21; // POP top stack element
+const opCLEAR: Int = 0x22; // CLEAR the stack
+const opSWAP: Int = 0x23; // SWAP the top two elements on the stack
+const opDEPTH: Int = 0x24; // DEPTH of the stack
+const opCINDEX: Int = 0x25; // Copy the INDEXed element to the top of the stack
+const opMINDEX: Int = 0x26; // Move the INDEXed element to the top of the stack
+const opALIGNPTS: Int = 0x27; // ALIGN PoinTS
+const op_0x28: Int = 0x28; // deprecated
+const opUTP: Int = 0x29; // UnTouch Point
+const opLOOPCALL: Int = 0x2a; // LOOP and CALL function
+const opCALL: Int = 0x2b; // CALL function
+const opFDEF: Int = 0x2c; // Function DEFinition
+const opENDF: Int = 0x2d; // END Function definition
+const opMDAP0: Int = 0x2e; // Move Direct Absolute Point
+const opMDAP1: Int = 0x2f; // .
+const opIUP0: Int = 0x30; // Interpolate Untouched Points through the outline
+const opIUP1: Int = 0x31; // .
+const opSHP0: Int = 0x32; // SHift Point using reference point
+const opSHP1: Int = 0x33; // .
+const opSHC0: Int = 0x34; // SHift Contour using reference point
+const opSHC1: Int = 0x35; // .
+const opSHZ0: Int = 0x36; // SHift Zone using reference point
+const opSHZ1: Int = 0x37; // .
+const opSHPIX: Int = 0x38; // SHift point by a PIXel amount
+const opIP: Int = 0x39; // Interpolate Point
+const opMSIRP0: Int = 0x3a; // Move Stack Indirect Relative Point
+const opMSIRP1: Int = 0x3b; // .
+const opALIGNRP: Int = 0x3c; // ALIGN to Reference Point
+const opRTDG: Int = 0x3d; // Round To Double Grid
+const opMIAP0: Int = 0x3e; // Move Indirect Absolute Point
+const opMIAP1: Int = 0x3f; // .
+const opNPUSHB: Int = 0x40; // PUSH N Bytes
+const opNPUSHW: Int = 0x41; // PUSH N Words
+const opWS: Int = 0x42; // Write Store
+const opRS: Int = 0x43; // Read Store
+const opWCVTP: Int = 0x44; // Write Control Value Table in Pixel units
+const opRCVT: Int = 0x45; // Read Control Value Table entry
+const opGC0: Int = 0x46; // Get Coordinate projected onto the projection vector
+const opGC1: Int = 0x47; // .
+const opSCFS: Int = 0x48; // Sets Coordinate From the Stack using projection vector and freedom vector
+const opMD0: Int = 0x49; // Measure Distance
+const opMD1: Int = 0x4a; // .
+const opMPPEM: Int = 0x4b; // Measure Pixels Per EM
+const opMPS: Int = 0x4c; // Measure Point Size
+const opFLIPON: Int = 0x4d; // set the auto FLIP Boolean to ON
+const opFLIPOFF: Int = 0x4e; // set the auto FLIP Boolean to OFF
+const opDEBUG: Int = 0x4f; // DEBUG call
+const opLT: Int = 0x50; // Less Than
+const opLTEQ: Int = 0x51; // Less Than or EQual
+const opGT: Int = 0x52; // Greater Than
+const opGTEQ: Int = 0x53; // Greater Than or EQual
+const opEQ: Int = 0x54; // EQual
+const opNEQ: Int = 0x55; // Not EQual
+const opODD: Int = 0x56; // ODD
+const opEVEN: Int = 0x57; // EVEN
+const opIF: Int = 0x58; // IF test
+const opEIF: Int = 0x59; // End IF
+const opAND: Int = 0x5a; // logical AND
+const opOR: Int = 0x5b; // logical OR
+const opNOT: Int = 0x5c; // logical NOT
+const opDELTAP1: Int = 0x5d; // DELTA exception P1
+const opSDB: Int = 0x5e; // Set Delta Base in the graphics state
+const opSDS: Int = 0x5f; // Set Delta Shift in the graphics state
+const opADD: Int = 0x60; // ADD
+const opSUB: Int = 0x61; // SUBtract
+const opDIV: Int = 0x62; // DIVide
+const opMUL: Int = 0x63; // MULtiply
+const opABS: Int = 0x64; // ABSolute value
+const opNEG: Int = 0x65; // NEGate
+const opFLOOR: Int = 0x66; // FLOOR
+const opCEILING: Int = 0x67; // CEILING
+const opROUND00: Int = 0x68; // ROUND value
+const opROUND01: Int = 0x69; // .
+const opROUND10: Int = 0x6a; // .
+const opROUND11: Int = 0x6b; // .
+const opNROUND00: Int = 0x6c; // No ROUNDing of value
+const opNROUND01: Int = 0x6d; // .
+const opNROUND10: Int = 0x6e; // .
+const opNROUND11: Int = 0x6f; // .
+const opWCVTF: Int = 0x70; // Write Control Value Table in Funits
+const opDELTAP2: Int = 0x71; // DELTA exception P2
+const opDELTAP3: Int = 0x72; // DELTA exception P3
+const opDELTAC1: Int = 0x73; // DELTA exception C1
+const opDELTAC2: Int = 0x74; // DELTA exception C2
+const opDELTAC3: Int = 0x75; // DELTA exception C3
+const opSROUND: Int = 0x76; // Super ROUND
+const opS45ROUND: Int = 0x77; // Super ROUND 45 degrees
+const opJROT: Int = 0x78; // Jump Relative On True
+const opJROF: Int = 0x79; // Jump Relative On False
+const opROFF: Int = 0x7a; // Round OFF
+const op_0x7b: Int = 0x7b; // deprecated
+const opRUTG: Int = 0x7c; // Round Up To Grid
+const opRDTG: Int = 0x7d; // Round Down To Grid
+const opSANGW: Int = 0x7e; // Set ANGle Weight
+const opAA: Int = 0x7f; // Adjust Angle
+const opFLIPPT: Int = 0x80; // FLIP PoinT
+const opFLIPRGON: Int = 0x81; // FLIP RanGe ON
+const opFLIPRGOFF: Int = 0x82; // FLIP RanGe OFF
+const op_0x83: Int = 0x83; // deprecated
+const op_0x84: Int = 0x84; // deprecated
+const opSCANCTRL: Int = 0x85; // SCAN conversion ConTRoL
+const opSDPVTL0: Int = 0x86; // Set Dual Projection Vector To Line
+const opSDPVTL1: Int = 0x87; // .
+const opGETINFO: Int = 0x88; // GET INFOrmation
+const opIDEF: Int = 0x89; // Instruction DEFinition
+const opROLL: Int = 0x8a; // ROLL the top three stack elements
+const opMAX: Int = 0x8b; // MAXimum of top two stack elements
+const opMIN: Int = 0x8c; // MINimum of top two stack elements
+const opSCANTYPE: Int = 0x8d; // SCANTYPE
+const opINSTCTRL: Int = 0x8e; // INSTRuction execution ConTRoL
+const op_0x8f: Int = 0x8f;
+const op_0x90: Int = 0x90;
+const op_0x91: Int = 0x91;
+const op_0x92: Int = 0x92;
+const op_0x93: Int = 0x93;
+const op_0x94: Int = 0x94;
+const op_0x95: Int = 0x95;
+const op_0x96: Int = 0x96;
+const op_0x97: Int = 0x97;
+const op_0x98: Int = 0x98;
+const op_0x99: Int = 0x99;
+const op_0x9a: Int = 0x9a;
+const op_0x9b: Int = 0x9b;
+const op_0x9c: Int = 0x9c;
+const op_0x9d: Int = 0x9d;
+const op_0x9e: Int = 0x9e;
+const op_0x9f: Int = 0x9f;
+const op_0xa0: Int = 0xa0;
+const op_0xa1: Int = 0xa1;
+const op_0xa2: Int = 0xa2;
+const op_0xa3: Int = 0xa3;
+const op_0xa4: Int = 0xa4;
+const op_0xa5: Int = 0xa5;
+const op_0xa6: Int = 0xa6;
+const op_0xa7: Int = 0xa7;
+const op_0xa8: Int = 0xa8;
+const op_0xa9: Int = 0xa9;
+const op_0xaa: Int = 0xaa;
+const op_0xab: Int = 0xab;
+const op_0xac: Int = 0xac;
+const op_0xad: Int = 0xad;
+const op_0xae: Int = 0xae;
+const op_0xaf: Int = 0xaf;
+const opPUSHB000: Int = 0xb0; // PUSH Bytes
+const opPUSHB001: Int = 0xb1; // .
+const opPUSHB010: Int = 0xb2; // .
+const opPUSHB011: Int = 0xb3; // .
+const opPUSHB100: Int = 0xb4; // .
+const opPUSHB101: Int = 0xb5; // .
+const opPUSHB110: Int = 0xb6; // .
+const opPUSHB111: Int = 0xb7; // .
+const opPUSHW000: Int = 0xb8; // PUSH Words
+const opPUSHW001: Int = 0xb9; // .
+const opPUSHW010: Int = 0xba; // .
+const opPUSHW011: Int = 0xbb; // .
+const opPUSHW100: Int = 0xbc; // .
+const opPUSHW101: Int = 0xbd; // .
+const opPUSHW110: Int = 0xbe; // .
+const opPUSHW111: Int = 0xbf; // .
+const opMDRP00000: Int = 0xc0; // Move Direct Relative Point
+const opMDRP00001: Int = 0xc1; // .
+const opMDRP00010: Int = 0xc2; // .
+const opMDRP00011: Int = 0xc3; // .
+const opMDRP00100: Int = 0xc4; // .
+const opMDRP00101: Int = 0xc5; // .
+const opMDRP00110: Int = 0xc6; // .
+const opMDRP00111: Int = 0xc7; // .
+const opMDRP01000: Int = 0xc8; // .
+const opMDRP01001: Int = 0xc9; // .
+const opMDRP01010: Int = 0xca; // .
+const opMDRP01011: Int = 0xcb; // .
+const opMDRP01100: Int = 0xcc; // .
+const opMDRP01101: Int = 0xcd; // .
+const opMDRP01110: Int = 0xce; // .
+const opMDRP01111: Int = 0xcf; // .
+const opMDRP10000: Int = 0xd0; // .
+const opMDRP10001: Int = 0xd1; // .
+const opMDRP10010: Int = 0xd2; // .
+const opMDRP10011: Int = 0xd3; // .
+const opMDRP10100: Int = 0xd4; // .
+const opMDRP10101: Int = 0xd5; // .
+const opMDRP10110: Int = 0xd6; // .
+const opMDRP10111: Int = 0xd7; // .
+const opMDRP11000: Int = 0xd8; // .
+const opMDRP11001: Int = 0xd9; // .
+const opMDRP11010: Int = 0xda; // .
+const opMDRP11011: Int = 0xdb; // .
+const opMDRP11100: Int = 0xdc; // .
+const opMDRP11101: Int = 0xdd; // .
+const opMDRP11110: Int = 0xde; // .
+const opMDRP11111: Int = 0xdf; // .
+const opMIRP00000: Int = 0xe0; // Move Indirect Relative Point
+const opMIRP00001: Int = 0xe1; // .
+const opMIRP00010: Int = 0xe2; // .
+const opMIRP00011: Int = 0xe3; // .
+const opMIRP00100: Int = 0xe4; // .
+const opMIRP00101: Int = 0xe5; // .
+const opMIRP00110: Int = 0xe6; // .
+const opMIRP00111: Int = 0xe7; // .
+const opMIRP01000: Int = 0xe8; // .
+const opMIRP01001: Int = 0xe9; // .
+const opMIRP01010: Int = 0xea; // .
+const opMIRP01011: Int = 0xeb; // .
+const opMIRP01100: Int = 0xec; // .
+const opMIRP01101: Int = 0xed; // .
+const opMIRP01110: Int = 0xee; // .
+const opMIRP01111: Int = 0xef; // .
+const opMIRP10000: Int = 0xf0; // .
+const opMIRP10001: Int = 0xf1; // .
+const opMIRP10010: Int = 0xf2; // .
+const opMIRP10011: Int = 0xf3; // .
+const opMIRP10100: Int = 0xf4; // .
+const opMIRP10101: Int = 0xf5; // .
+const opMIRP10110: Int = 0xf6; // .
+const opMIRP10111: Int = 0xf7; // .
+const opMIRP11000: Int = 0xf8; // .
+const opMIRP11001: Int = 0xf9; // .
+const opMIRP11010: Int = 0xfa; // .
+const opMIRP11011: Int = 0xfb; // .
+const opMIRP11100: Int = 0xfc; // .
+const opMIRP11101: Int = 0xfd; // .
+const opMIRP11110: Int = 0xfe; // .
+const opMIRP11111: Int = 0xff; // .
+
+module end;

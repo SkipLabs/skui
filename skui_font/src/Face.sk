@@ -1,0 +1,191 @@
+module Font;
+
+base class Hinting uses Hashable, Orderable, Show {
+  children =
+  | HintingNone()
+  | HintingVertical()
+  | HintingFull()
+
+  fun toString(): String {
+    this match {
+    | HintingNone() -> "none"
+    | HintingVertical() -> "vertical"
+    | HintingFull() -> "full"
+    }
+  }
+}
+
+base class Stretch uses Hashable, Orderable {
+  children =
+  | UltraCondensed()
+  | ExtraCondensed()
+  | Condensed()
+  | SemiCondensed()
+  | StretchNormal()
+  | SemiExpanded()
+  | Expanded()
+  | ExtraExpanded()
+  | UltraExpanded()
+
+  fun incr(): Int {
+    this match {
+    | UltraCondensed() -> -4
+    | ExtraCondensed() -> -3
+    | Condensed() -> -2
+    | SemiCondensed() -> -1
+    | StretchNormal() -> 0
+    | SemiExpanded() -> 1
+    | Expanded() -> 2
+    | ExtraExpanded() -> 3
+    | UltraExpanded() -> 4
+    }
+  }
+}
+
+/**
+ * Options are optional arguments to NewFace.
+ */
+class Options{
+  /**
+   * The font size in points.
+   *
+   * A zero value means to use a 12 point font size.
+   */
+  size: Float = 12.0,
+  /**
+   * DPI is the dots-per-inch resolution.
+   *
+   * A zero value means to use 96 DPI.
+   */
+  dpi: Float = 96.0,
+  /**
+   * Hinting is how to quantize the glyph nodes.
+   */
+  hinting: Hinting = HintingNone(),
+  /**
+   * The number of sub-pixel locations a glyph's dot is
+   * quantized to, in the horizontal direction. For example, a value of 8
+   * means that the dot is quantized to 1/8th of a pixel.
+   *
+   * It must be a power of 2, and be between 1 and 64 inclusive.
+   */
+  subPixelsX: Int = 4,
+  /**
+
+   * The number of sub-pixel locations a glyph's dot is
+   * quantized to, in the vertical direction. For example, a value of 8
+   * means that the dot is quantized to 1/8th of a pixel.
+   *
+   * It must be a power of 2, and be between 1 and 64 inclusive.
+   */
+  subPixelsY: Int = 4,
+} {
+  fun computeSubPixelsX(): (Fixed.Int26_6, Fixed.Int26_6) {
+    (fixed26_6(32 / this.subPixelsX), fixed26_6(-64 / this.subPixelsX))
+  }
+  fun computeSubPixelsY(): (Fixed.Int26_6, Fixed.Int26_6) {
+    (fixed26_6(32 / this.subPixelsY), fixed26_6(-64 / this.subPixelsY))
+  }
+}
+
+/**
+ * Metrics holds the metrics for a Face. A visual depiction is at
+ * https://developer.apple.com/library/mac/documentation/TextFonts/Conceptual/CocoaTextArchitecture/Art/glyph_metrics_2x.png
+ */
+class Metrics{
+  /**
+   * The distance from the top of a line to its baseline.
+   */
+  ascent: Fixed.Int26_6 = fixed26_6(0),
+  /**
+   * The distance from the bottom of a line to its baseline. The
+   * value is typically positive, even though a descender goes below the
+   * baseline.
+   */
+  descent: Fixed.Int26_6 = fixed26_6(0),
+  /**
+   * The distance from the top of non-ascending lowercase letters
+   * to the baseline.
+   */
+  xHeight: Fixed.Int26_6 = fixed26_6(0),
+  /**
+   * The distance from the top of uppercase letters to the
+   * baseline.
+   */
+  capHeight: Fixed.Int26_6 = fixed26_6(0),
+  /**
+   * CaretSlope is the slope of a caret as a vector with the Y axis pointing up.
+   * The slope {0, 1} is the vertical caret.
+   */
+  caretSlope: Geometry.Point = Geometry.Point(0, 1),
+} {
+  fun height(): Float {
+    (this.ascent + this.descent).toFloat();
+  }
+}
+
+class Bounds{bounds: Fixed.Rectangle26_6, advance: Fixed.Int26_6}
+
+class Glyph{
+  index: Int,
+  optPath: ?Shape.Path,
+  bounds: Bounds,
+  private dr: Geometry.Rectangle,
+} {
+  fun imageHeight(): Int {
+    this.dr.height()
+  }
+
+  fun imageWidth(): Int {
+    this.dr.width()
+  }
+
+  fun height(): Float {
+    (this.dr.max.y - this.dr.min.y).toFloat()
+  }
+
+  fun width(): Float {
+    this.bounds.advance.toFloat();
+  }
+
+  fun topLeft(): Geometry.Offset {
+    this.dr.min.toOffset()
+  }
+}
+
+base class Face{metrics: Metrics} {
+  fun height(): Float {
+    this.metrics.height();
+  }
+
+  /**
+   * Returns the glyph at the sub-pixel destination location dotLocation.
+   */
+  fun getGlyph(
+    c: Char,
+    dotLocation: Fixed.Point26_6 = Fixed.Point26_6::zero,
+  ): ?Glyph;
+
+  /**
+   * Returns the bounding box of r's glyph, drawn at a dot equal
+   * to the origin, and that glyph's advance width.
+   * The glyph's ascent and descent are equal to -bounds.Min.Y and
+   * +bounds.Max.Y. The glyph's left-side and right-side bearings are equal
+   * to bounds.Min.X and advance-bounds.Max.X. A visual depiction of what
+   * these metrics are is at
+   * https://developer.apple.com/library/archive/documentation/TextFonts/Conceptual/CocoaTextArchitecture/Art/glyphterms_2x.png
+   */
+  fun getGlyphBounds(c: Char): ?Bounds;
+  /**
+   * Kern returns the horizontal adjustment for the kerning pair (r0, r1). A
+   * positive kern means to move the glyphs further apart.
+   */
+  fun getKern(c0: Char, i1: Int): Fixed.Int26_6;
+
+  /**
+   * GlyphAdvance returns the advance width of r's glyph.
+   */
+  fun getGlyphAdvance(c: Char): ?Fixed.Int26_6;
+}
+
+module end;

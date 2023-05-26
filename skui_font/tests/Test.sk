@@ -1,0 +1,102 @@
+module SKUIFontTest;
+
+base class Case uses HasClassName
+
+fun expectEq<T: frozen>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected equality",
+): void {
+  if (inspect(actual) != inspect(expected)) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+fun expectEqAt<T: frozen, I: Show>(
+  actual: T,
+  expected: T,
+  number: I,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected equality",
+): void {
+  expectEq(actual, expected, conv, `${msg} [${number}]`)
+}
+
+fun expectNEq<T: frozen>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected inequality",
+): void {
+  if (inspect(actual) == inspect(expected)) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+fun expectEquals<T: Equality>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected equality",
+): void {
+  if (actual != expected) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+fun expectEqualsAt<T: Equality, I: Show>(
+  actual: T,
+  expected: T,
+  number: I,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected equality",
+): void {
+  expectEquals(actual, expected, conv, `${msg} [${number}]`)
+}
+
+fun expectNEquals<T: Equality>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected inequality",
+): void {
+  if (actual == expected) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+fun mute<T>(_t: T): void {
+  void
+}
+
+class File(font: TrueType.Font) extends SKFS.File
+
+fun main(): void {
+  resources = mutable Map[];
+  #forEachFunction (@resources, #function, #functionName) {
+    #function(resources)
+  };
+  roResources = unsafe_chill_trust_me(resources);
+  tests = mutable Map[];
+  #forEachFunction (@testr, #function, #functionName) {
+    // TODO: Properly handle tests outside of module/suite?
+    (testSuite, testName) = #functionName.splitFirst(".");
+    if (!tests.containsKey(testSuite)) {
+      tests.set(testSuite, mutable Map[])
+    };
+    tests[testSuite].set(testName, () ~> #function(roResources))
+  };
+  mute(roResources);
+  #forEachFunction (@test, #function, #functionName) {
+    // TODO: Properly handle tests outside of module/suite?
+    (testSuite, testName) = #functionName.splitFirst(".");
+    if (!tests.containsKey(testSuite)) {
+      tests.set(testSuite, mutable Map[])
+    };
+    tests[testSuite].set(testName, #function)
+  };
+  SKTest.test_harness(tests)
+}
+
+module end;

@@ -1,0 +1,612 @@
+module TrueType;
+/**
+ * Flags for decoding a glyph's contours. These flags are documented at
+ * http://developer.apple.com/fonts/TTRefMan/RM06/Chap6glyf.html.
+ */
+const flagOnCurve: Int = 1;
+const flagXShortVector: Int = 1.shl(1);
+const flagYShortVector: Int = 1.shl(2);
+const flagRepeat: Int = 1.shl(3);
+const flagPositiveXShortVector: Int = 1.shl(4);
+const flagPositiveYShortVector: Int = 1.shl(5);
+// The remaining flags are for internal use.
+const flagTouchedX: Int = 1.shl(6);
+const flagTouchedY: Int = 1.shl(7);
+
+// The same flag bits (0x10 and 0x20) are overloaded to have two meanings,
+// dependent on the value of the flag{X,Y}ShortVector bits.
+const flagThisXIsSame: Int = flagPositiveXShortVector;
+const flagThisYIsSame: Int = flagPositiveYShortVector;
+
+const flagArg1And2AreWords: Int = 1;
+const flagArgsAreXYValues: Int = 1.shl(1);
+const flagRoundXYToGrid: Int = 1.shl(2);
+const flagWeHaveAScale: Int = 1.shl(3);
+const flagUnused: Int = 1.shl(4);
+const flagMoreComponents: Int = 1.shl(5);
+const flagWeHaveAnXAndYScale: Int = 1.shl(6);
+const flagWeHaveATwoByTwo: Int = 1.shl(7);
+const flagWeHaveInstructions: Int = 1.shl(8);
+const flagUseMyMetrics: Int = 1.shl(9);
+const flagOverlapCompound: Int = 1.shl(10);
+
+value class Point{
+  x: Fixed.Int26_6 = fixed26_6(0),
+  y: Fixed.Int26_6 = fixed26_6(0),
+  flags: Int = 0,
+} uses Equality {
+  static fun trunc(x: Int, y: Int, flags: Int): Point {
+    Point{x => fixed26_6(x), y => fixed26_6(y), flags}
+  }
+
+  fun toTuple(): (Int, Int, Int) {
+    (this.x.asInt(), this.y.asInt(), this.flags)
+  }
+}
+
+mutable class GlyphBuf{
+  /**
+   * The glyph's advance width.
+   */
+  advanceWidth: Fixed.Int26_6 = fixed26_6(0),
+  /**
+   * Bounds is the glyph's bounding box.
+   */
+  bounds: Fixed.Rectangle26_6 = Fixed.Rectangle26_6::zero,
+  /**
+   * Points contains all Points from all contours of the glyph. If hinting
+   * was used to load a glyph then Unhinted contains those Points before they
+   * were hinted, and inFontUnits contains those Points before they were
+   * hinted and scaled.
+   */
+  points: mutable Vector<Point> = mutable Vector[],
+  unhinted: mutable Vector<Point> = mutable Vector[],
+  inFontUnits: mutable Vector<Point> = mutable Vector[],
+  /**
+   * Ends is the point indexes of the end point of each contour. The length
+   * of Ends is the number of contours in the glyph. The i'th contour
+   * consists of points Points[Ends[i-1]:Ends[i]], where Ends[-1] is
+   * interpreted to mean zero.
+   */
+  ends: mutable Vector<Int> = mutable Vector[],
+  font: Font = Font{},
+  scale: Fixed.Int26_6 = fixed26_6(0),
+  hinting: Font.Hinting = Font.HintingNone(),
+  hinter: mutable Hinter = mutable Hinter{},
+  // phantomPoints are the co-ordinates of the synthetic phantom points
+  // used for hinting and bounding box calculations.
+  phantomPoints: (Point, Point, Point, Point) = (
+    Point{},
+    Point{},
+    Point{},
+    Point{},
+  ),
+  // pp1x is the X co-ordinate of the first phantom point. The '1' is
+  // using 1-based indexing; pp1x is almost always phantomPoints[0].X.
+  // TODO: eliminate this and consistently use phantomPoints[0].X.
+  pp1x: Fixed.Int26_6 = fixed26_6(0),
+  metricsSet: Bool = false,
+  // tmp is a scratch buffer.
+  //tmp: mutable Vector<Point> = mutable Vector[],
+} {
+  // loadOffset is the initial offset for loadSimple and loadCompound. The first
+  // 10 bytes are the number of contours and the bounding box.
+  const loadOffset: Int = 10;
+
+  mutable fun getPpx1(): Fixed.Int26_6 {
+    (pp1, _, _, _) = this.phantomPoints;
+    pp1.x
+  }
+
+  mutable fun load(
+    font: Font,
+    scale: Fixed.Int26_6,
+    i: Int,
+    fontHinting: Font.Hinting,
+  ): mutable GlyphBuf {
+    this.points.clear();
+    this.unhinted.clear();
+    this.inFontUnits.clear();
+    this.ends.clear();
+    !this.font = font;
+    !this.hinting = fontHinting;
+    !this.scale = scale;
+    !this.pp1x = fixed26_6(0);
+    !this.phantomPoints = (Point{}, Point{}, Point{}, Point{});
+    !this.metricsSet = false;
+    !this.hinter.debug = false;
+    !this.hinter.index = i;
+    if (fontHinting != Font.HintingNone()) {
+      !this.hinter = this.hinter.init(font, scale);
+      vec = mutable Vector<(Int, Array<Int>)>[];
+      this.hinter.functions.each((k, v) ->
+        vec.push((k.toInt(), v.map(u -> u.toInt())))
+      );
+    };
+    !this = this.subload(0, i, true);
+    // TODO: this selection of either g.pp1x or g.phantomPoints[0].X isn't ideal,
+    // and should be cleaned up once we have all the testScaling tests passing,
+    // plus additional tests for Freetype-Go's bounding boxes matching C Freetype's.
+    ppx1 = this.pp1x;
+    if (fontHinting != Font.HintingNone()) {
+      !ppx1 = this.getPpx1();
+    };
+    if (ppx1.asInt() != 0) {
+      for (index in .Range(0, this.points.size())) {
+        p = this.points.get(index);
+        !p.x = p.x - ppx1;
+        this.points.set(index, p);
+      }
+    };
+    (pp0, pp1, _, _) = this.phantomPoints;
+    advanceWidth = pp1.x - pp0.x;
+    if (fontHinting != Font.HintingNone()) {
+      if (font.hdmx.size() >= 8) {
+        n = u32(font.hdmx, 4).toInt();
+        if (n > 3 + i) {
+          hdmx = font.hdmx.slice(8, font.hdmx.size());
+          tocheck = scale.asInt().ushr(6);
+          while (hdmx.size() >= n) {
+            if (hdmx[0] == tocheck) {
+              !advanceWidth = fixed26_6(hdmx[2 + i].toInt().shl(6));
+              break void;
+            };
+            !hdmx = hdmx.slice(n, hdmx.size());
+          }
+        }
+      };
+      !advanceWidth = fixed26_6((advanceWidth.asInt() + 32).and(63.not()));
+    };
+    !this.advanceWidth = advanceWidth;
+    // Set g.Bounds to the 'control box', which is the bounding box of the
+    // Bézier curves' control points. This is easier to calculate, no smaller
+    // than and often equal to the tightest possible bounding box of the curves
+    // themselves. This approach is what C Freetype does. We can't just scale
+    // the nominal bounding box in the glyf data as the hinting process and
+    // phantom point adjustment may move points outside of that box.
+    !this.bounds = if (this.points.isEmpty()) {
+      Fixed.Rectangle26_6::zero;
+    } else {
+      p = this.points.first();
+      minX = p.x;
+      maxX = p.x;
+      minY = p.y;
+      maxY = p.y;
+      this.points.each(cp -> {
+        if (minX > cp.x) {
+          !minX = cp.x
+        } else if (maxX < cp.x) {
+          !maxX = cp.x
+        };
+        if (minY > cp.y) {
+          !minY = cp.y
+        } else if (maxY < cp.y) {
+          !maxY = cp.y
+        };
+      });
+      // Snap the box to the grid, if hinting is on.
+      if (fontHinting != Font.HintingNone()) {
+        !minX = fixed26_6(minX.asInt().and(63.not()));
+        !minY = fixed26_6(minY.asInt().and(63.not()));
+        !maxX = fixed26_6((maxX.asInt() + 63).and(63.not()));
+        !maxY = fixed26_6((maxY.asInt() + 63).and(63.not()));
+      };
+      Fixed.Rectangle26_6::make(minX, minY, maxX, maxY);
+    };
+    this;
+  }
+
+  mutable fun subload(
+    recursion: Int,
+    i: Int,
+    useMyMetrics: Bool,
+  ): mutable GlyphBuf {
+    invariant(recursion < 32, "excessive compound glyph recursion");
+    (g0, g1) = if (this.font.locaOffsetFormat == Short()) {
+      (
+        2 * u16(this.font.loca, 2 * i).toInt(),
+        2 * u16(this.font.loca, 2 * i + 2).toInt(),
+      )
+    } else {
+      (
+        u32(this.font.loca, 4 * i).toInt(),
+        u32(this.font.loca, 4 * i + 4).toInt(),
+      )
+    };
+    // Decode the contour count and nominal bounding box, from the first
+    // 10 bytes of the glyf data. boundsYMin and boundsXMax, at offsets 4
+    // and 6, are unused.
+    (glyf, ne, boundsXMin, boundsYMax) = if (g0 + 10 <= g1) {
+      tglyf = this.font.glyf.slice(g0, g1);
+      (
+        tglyf,
+        toInt16(u16(tglyf, 0)),
+        fixed26_6(toInt16(u16(tglyf, 2))),
+        fixed26_6(toInt16(u16(tglyf, 8))),
+      )
+    } else {
+      (Array[], 0, fixed26_6(0), fixed26_6(0))
+    };
+    // Create the phantom points.
+    (uhm, pp1x) = (this.font.unscaledHMetric(uint16(i)), fixed26_6(0));
+    uvm = this.font.unscaledVMetric(uint16(i), boundsYMax);
+
+    !this.phantomPoints = (
+      Point{x => boundsXMin - uhm.leftSideBearing},
+      Point{x => boundsXMin - uhm.leftSideBearing + uhm.advanceWidth},
+      Point{
+        x => uhm.advanceWidth.idiv(2),
+        y => boundsYMax + uvm.topSideBearing,
+      },
+      Point{
+        x => uhm.advanceWidth.idiv(2),
+        y => boundsYMax + uvm.topSideBearing - uvm.advanceHeight,
+      },
+    );
+    if (glyf.isEmpty()) {
+      this.addPhantomsAndScale(
+        this.points.size(),
+        this.points.size(),
+        true,
+        true,
+      );
+      len = this.points.size();
+      !this.phantomPoints = (
+        this.points[len - 4],
+        this.points[len - 3],
+        this.points[len - 2],
+        this.points[len - 1],
+      );
+      for (_j in .Range(0, 4)) {
+        _ = this.points.pop();
+      };
+      // TODO: also trim g.InFontUnits and g.Unhinted?
+    } else {
+      // Load and hint the contours.
+      if (ne < 0) {
+        // http://developer.apple.com/fonts/TTRefMan/RM06/Chap6glyf.html says that
+        // "the values -2, -3, and so forth, are reserved for future use."
+        invariant(ne == -1, "negative number of contours");
+        !pp1x = fixed26_6(
+          this.font.scale(
+            this.scale.asInt() * (boundsXMin - uhm.leftSideBearing).asInt(),
+          ),
+        );
+        !this = this.loadCompound(recursion, uhm, i, glyf, useMyMetrics);
+      } else {
+        (np0, ne0) = (this.points.size(), this.ends.size());
+        program = this.loadSimple(glyf, ne);
+        this.addPhantomsAndScale(np0, np0, true, true);
+        !pp1x = this.points[this.points.size() - 4].x;
+        if (this.hinting != Font.HintingNone()) {
+          if (!program.isEmpty()) {
+            !this.hinter = this.hinter.run(
+              program,
+              Some(this.points.drop(np0)),
+              Some(this.unhinted.drop(np0)),
+              Some(this.inFontUnits.drop(np0)),
+              Some(this.ends.drop(ne0)),
+            );
+            for (j in .Range(np0, this.points.size())) {
+              this.points.set(j, this.hinter.glyphCurrent.get(j - np0));
+            };
+          }
+        };
+        if (useMyMetrics) {
+          len = this.points.size();
+          !this.phantomPoints = (
+            this.points[len - 4],
+            this.points[len - 3],
+            this.points[len - 2],
+            this.points[len - 1],
+          );
+        };
+        // Drop the four phantom points.
+        for (_j in .Range(0, 4)) {
+          _ = this.points.pop();
+          if (!this.inFontUnits.isEmpty()) {
+            _ = this.inFontUnits.pop()
+          };
+          if (!this.unhinted.isEmpty()) {
+            _ = this.unhinted.pop()
+          };
+        };
+        if (np0 != 0) {
+          // The hinting program expects the ends values to be indexed
+          // relative to the inner glyph, not the outer glyph, so we delay
+          // adding np0 until after the hinting program (if any) has run.
+          for (j in .Range(ne0, this.ends.size())) {
+            this.ends.set(j, this.ends.get(j) + np0);
+          }
+        }
+      };
+      if (useMyMetrics && !this.metricsSet) {
+        !this.metricsSet = true;
+        !this.pp1x = pp1x;
+      }
+    };
+    this;
+  }
+
+  mutable fun loadSimple(glyf: Array<UInt8>, ne: Int): Array<UInt8> {
+    offset = static::loadOffset;
+    for (_i in .Range(0, ne)) {
+      this.ends.push(1 + u16(glyf, offset).toInt());
+      !offset = offset + 2;
+    };
+    // Note the TrueType hinting instructions.
+    instrLen = u16(glyf, offset).toInt();
+    !offset = offset + 2;
+    program = glyf.slice(offset, offset + instrLen);
+    !offset = offset + instrLen;
+    if (ne != 0) {
+      np0 = this.points.size();
+      np1 = np0 + this.ends.last();
+      i = np0;
+      while (i < np1) {
+        c = glyf[offset].toInt();
+        !offset = offset + 1;
+        this.points.push(Point{flags => c});
+        !i = i + 1;
+        if (c.and(flagRepeat) != 0) {
+          count = glyf[offset].toInt();
+          !offset = offset + 1;
+          while (count > 0) {
+            this.points.push(Point{flags => c});
+            !i = i + 1;
+            !count = count - 1;
+          }
+        }
+      };
+      // Decode the co-ordinates.
+      x = 0;
+      for (j in .Range(np0, np1)) {
+        p = this.points[j];
+        !x = if (p.flags.and(flagXShortVector) != 0) {
+          dx = glyf[offset].toInt();
+          !offset = offset + 1;
+          if (p.flags.and(flagPositiveXShortVector) == 0) {
+            x - dx;
+          } else {
+            x + dx;
+          };
+        } else if (p.flags.and(flagThisXIsSame) == 0) {
+          tx = toInt16(u16(glyf, offset));
+          !offset = offset + 2;
+          x + tx;
+        } else {
+          x
+        };
+        !p.x = fixed26_6(x);
+        this.points.set(j, p);
+      };
+      y = 0;
+      for (j in .Range(np0, np1)) {
+        p = this.points[j];
+        !y = if (p.flags.and(flagYShortVector) != 0) {
+          dy = glyf[offset].toInt();
+          !offset = offset + 1;
+          if (p.flags.and(flagPositiveYShortVector) == 0) {
+            y - dy;
+          } else {
+            y + dy;
+          };
+        } else if (p.flags.and(flagThisYIsSame) == 0) {
+          ty = toInt16(u16(glyf, offset));
+          !offset = offset + 2;
+          y + ty;
+        } else {
+          y
+        };
+        !p.y = fixed26_6(y);
+        this.points.set(j, p);
+      };
+    };
+    program
+  }
+
+  mutable fun loadCompound(
+    recursion: Int,
+    _uhm: HMetric,
+    _i: Int,
+    glyf: Array<UInt8>,
+    useMyMetrics: Bool,
+  ): mutable GlyphBuf {
+    // Flags for decoding a compound glyph. These flags are documented at
+    // http://developer.apple.com/fonts/TTRefMan/RM06/Chap6glyf.html.
+    (np0, ne0) = (this.points.size(), this.ends.size());
+    offset = static::loadOffset;
+    loop {
+      flags = u16(glyf, offset).toInt();
+      component = u16(glyf, offset + 2).toInt();
+      (dx, dy) = if (flags.and(flagArg1And2AreWords) != 0) {
+        tdx = toInt16(u16(glyf, offset + 4));
+        tdy = toInt16(u16(glyf, offset + 6));
+        !offset = offset + 8;
+        (tdx, tdy)
+      } else {
+        tdx = toInt8(glyf[offset + 4]);
+        tdy = toInt8(glyf[offset + 5]);
+        !offset = offset + 6;
+        (tdx, tdy)
+      };
+      invariant(
+        flags.and(flagArgsAreXYValues) != 0,
+        "compound glyph transform vector",
+      );
+      optTransform = if (flags.and(flagWeHaveAScale) != 0) {
+        v03 = toInt16(u16(glyf, offset + 0));
+        !offset = offset + 2;
+        Some(Array[v03, 0, 0, v03]);
+      } else if (flags.and(flagWeHaveAnXAndYScale) != 0) {
+        v0 = toInt16(u16(glyf, offset));
+        v3 = toInt16(u16(glyf, offset + 2));
+        !offset = offset + 4;
+        Some(Array[v0, 0, 0, v3])
+      } else if (flags.and(flagWeHaveATwoByTwo) != 0) {
+        v0 = toInt16(u16(glyf, offset));
+        v1 = toInt16(u16(glyf, offset + 2));
+        v2 = toInt16(u16(glyf, offset + 4));
+        v3 = toInt16(u16(glyf, offset + 6));
+        !offset = offset + 8;
+        Some(Array[v0, v1, v2, v3])
+      } else {
+        None();
+      };
+      savedPP = this.phantomPoints;
+      lnp0 = this.points.size();
+      componentUMM = useMyMetrics && (flags.and(flagUseMyMetrics) != 0);
+      !this = this.subload(recursion + 1, component, componentUMM);
+      if (flags.and(flagUseMyMetrics) == 0) {
+        !this.phantomPoints = savedPP;
+      };
+      optTransform.each(transform -> {
+        for (j in .Range(lnp0, this.points.size())) {
+          p = this.points[j];
+          newX = fixed26_6(
+            (p.x.asInt() * transform[0] + 1.shl(13)).ushr(14) +
+              (p.y.asInt() * transform[2] + 1.shl(13)).ushr(14),
+          );
+          newY = fixed26_6(
+            (p.x.asInt() * transform[1] + 1.shl(13)).ushr(14) +
+              (p.y.asInt() * transform[3] + 1.shl(13)).ushr(14),
+          );
+          (!p.x, !p.y) = (newX, newY);
+          this.points.set(j, p);
+        }
+      });
+      !dx = this.font.scale(this.scale.asInt() * dx);
+      !dy = this.font.scale(this.scale.asInt() * dy);
+      if (flags.and(flagRoundXYToGrid) != 0) {
+        !dx = (dx + 32).and(63.not());
+        !dy = (dy + 32).and(63.not());
+      };
+      for (j in .Range(lnp0, this.points.size())) {
+        p = this.points[j];
+        !p.x = p.x + fixed26_6(dx);
+        !p.y = p.y + fixed26_6(dy);
+        this.points.set(j, p);
+      };
+      // TODO: also adjust g.InFontUnits and g.Unhinted?
+      if (flags.and(flagMoreComponents) == 0) {
+        break void;
+      }
+    };
+    instrLen = 0;
+    if (this.hinting != Font.HintingNone() && offset + 2 <= glyf.size()) {
+      !instrLen = u16(glyf, offset).toInt();
+      !offset = offset + 2;
+    };
+    this.addPhantomsAndScale(np0, this.points.size(), false, instrLen > 0);
+    points = this.points.drop(np0);
+    ends = this.ends.drop(ne0);
+    for (_j in .Range(0, 4)) {
+      _ = this.points.pop();
+    };
+    !points = points.map(p -> {
+      !p.flags = p.flags.and((flagTouchedX.or(flagTouchedY)).not());
+      p
+    });
+    if (instrLen == 0) {
+      if (!this.metricsSet) {
+        len = points.size();
+        !this.phantomPoints = (
+          points[len - 4],
+          points[len - 3],
+          points[len - 2],
+          points[len - 1],
+        );
+      };
+      return this;
+    };
+    // Hint the compound glyph.
+    program = glyf.slice(offset, offset + instrLen);
+    // Temporarily adjust the ends to be relative to this compound glyph.
+    if (np0 != 0) {
+      !ends = ends.map(e -> e - np0)
+    };
+    // Hinting instructions of a composite glyph completely refer to the
+    !this.hinter = this.hinter.run(
+      program,
+      Some(points),
+      Some(points),
+      Some(points),
+      Some(ends),
+    );
+    if (np0 != 0) {
+      !ends = Vector::createFromItems(this.hinter.ends.map(e -> e + np0));
+    };
+    for (j in .Range(np0, this.points.size())) {
+      this.points.set(j, this.hinter.glyphCurrent.get(j - np0));
+    };
+    for (j in .Range(ne0, this.ends.size())) {
+      this.ends.set(j, ends[j - ne0]);
+    };
+    if (!this.metricsSet) {
+      len = points.size();
+      !this.phantomPoints = (
+        points[len - 4],
+        points[len - 3],
+        points[len - 2],
+        points[len - 1],
+      );
+    };
+    this;
+  }
+
+  mutable fun addPhantomsAndScale(
+    np0: Int,
+    np1: Int,
+    simple: Bool,
+    adjust: Bool,
+  ): void {
+    // Add the four phantom points.
+    (pp0, pp1, pp2, pp3) = this.phantomPoints;
+    this.points.push(pp0);
+    this.points.push(pp1);
+    this.points.push(pp2);
+    this.points.push(pp3);
+    // Scale the points.
+    if (simple && this.hinting != Font.HintingNone()) {
+      this.points.drop(np1).each(p -> this.inFontUnits.push(p));
+    };
+    for (i in .Range(np1, this.points.size())) {
+      p = this.points.get(i);
+      !p.x = fixed26_6(this.font.scale(this.scale.asInt() * p.x.asInt()));
+      !p.y = fixed26_6(this.font.scale(this.scale.asInt() * p.y.asInt()));
+      this.points.set(i, p);
+    };
+    if (this.hinting != Font.HintingNone()) {
+      // Round the 1st phantom point to the grid, shifting all other points equally.
+      // Note that "all other points" starts from np0, not np1.
+      // TODO: delete this adjustment and the np0/np1 distinction, when
+      // we update the compatibility tests to C Freetype 2.5.3.
+      // See http://git.savannah.gnu.org/cgit/freetype/freetype2.git/commit/?id=05c786d990390a7ca18e62962641dac740bacb06
+      if (adjust) {
+        pp1x = this.points[this.points.size() - 4].x;
+        dx = (pp1x.asInt() + 32).and(63.not()) - pp1x.asInt();
+        if (dx != 0) {
+          for (i in .Range(np0, this.points.size())) {
+            p = this.points.get(i);
+            !p.x = fixed26_6(p.x.asInt() + dx);
+            this.points.set(i, p);
+          }
+        }
+      };
+      if (simple) {
+        this.points.drop(np1).each(p -> this.unhinted.push(p));
+      };
+      // Round the 2nd and 4th phantom point to the grid.
+      i1 = this.points.size() - 3;
+      p = this.points[i1];
+      !p.x = fixed26_6((p.x.asInt() + 32).and(63.not()));
+      this.points.set(i1, p);
+      i2 = this.points.size() - 1;
+      !p = this.points[i2];
+      !p.y = fixed26_6((p.y.asInt() + 32).and(63.not()));
+      this.points.set(i2, p);
+    };
+  }
+}
+
+module end;

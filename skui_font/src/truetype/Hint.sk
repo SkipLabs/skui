@@ -1,0 +1,1838 @@
+module TrueType;
+
+const twilightZone: Int = 0;
+const glyphZone: Int = 1;
+const numZone: Int = 2;
+
+const current: Int = 0;
+const unhinted: Int = 1;
+const inFontUnits: Int = 2;
+const numPointType: Int = 3;
+
+/**
+ * CallStackEntry is a bytecode call stack entry.
+ */
+class CallStackEntry(
+  program: Array<UInt8> = Array[],
+  pc: Int = 0,
+  loopCount: Int32 = int32(0),
+) {}
+
+/**
+ * graphicsState is described at https://developer.apple.com/fonts/TTRefMan/RM04/Chap4.html
+ */
+class GraphicsState{
+  // Projection vector, freedom vector and dual projection vector.
+  pv: (Int16, Int16), // 2.14 fixed point number
+  fv: (Int16, Int16), // 2.14 fixed point number
+  dv: (Int16, Int16), // 2.14 fixed point number
+  // Reference points and zone pointers.
+  rp: (Int32, Int32, Int32),
+  zp: (Int32, Int32, Int32),
+  // Control Value / Single Width Cut-In.
+  controlValueCutIn: Fixed.Int26_6,
+  singleWidthCutIn: Fixed.Int26_6,
+  singleWidth: Fixed.Int26_6,
+  // Delta base / shift.
+  deltaBase: Int32,
+  deltaShift: Int32,
+  // Minimum distance.
+  minDist: Fixed.Int26_6,
+  // Loop count.
+  loopCount: Int32,
+  // Rounding policy.
+  roundPeriod: Fixed.Int26_6,
+  roundPhase: Fixed.Int26_6,
+  roundThreshold: Fixed.Int26_6,
+  roundSuper45: Bool,
+  // Auto-flip.
+  autoFlip: Bool,
+} {
+  const default: GraphicsState = GraphicsState{
+    pv => (int16(0x4000), int16(0)), // Unit vector along the X axis.
+    fv => (int16(0x4000), int16(0)),
+    dv => (int16(0x4000), int16(0)),
+    rp => (int32(0), int32(0), int32(0)),
+    zp => (int32(1), int32(1), int32(1)),
+    controlValueCutIn => fixed26_6((17.shl(6)) / 16), // 17/16 as a fixed.Int26_6.
+    singleWidthCutIn => fixed26_6(0),
+    singleWidth => fixed26_6(0),
+    deltaBase => int32(9),
+    deltaShift => int32(3),
+    minDist => fixed26_6(1.shl(6)), // 1 as a fixed.Int26_6.
+    loopCount => int32(1),
+    roundPeriod => fixed26_6(1.shl(6)), // 1 as a fixed.Int26_6.
+    roundPhase => fixed26_6(0),
+    roundThreshold => fixed26_6(1.shl(5)), // 1/2 as a fixed.Int26_6.
+    roundSuper45 => false,
+    autoFlip => true,
+  };
+}
+
+/**
+ * Hinter implements bytecode hinting.
+ * A hinter can be re-used to hint a series of glyphs from a Font.
+ */
+mutable class Hinter{
+  stack: mutable Array<Int32> = mutable Array[],
+  store: mutable Array<Int32> = mutable Array[],
+  // functions is a map from function number to bytecode.
+  functions: mutable Map<Int32, Array<UInt8>> = mutable Map[],
+  // font and scale are the font and scale last used for this hinter.
+  // Changing the font will require running the new font's fpgm bytecode.
+  // Changing either will require running the font's prep bytecode.
+  font: Font = TrueType.Font{},
+  scale: Fixed.Int26_6 = fixed26_6(0),
+  // gs and defaultGS are the current and default graphics state. The
+  // default graphics state is the global default graphics state after
+  // the font's fpgm and prep programs have been run.
+  gs: GraphicsState = GraphicsState::default,
+  defaultGS: GraphicsState = GraphicsState::default,
+  // points and ends are the twilight zone's points, glyph's points
+  // and glyph's contour boundaries.
+  twilightCurrent: mutable Array<Point> = mutable Array[],
+  twilightUnhinted: mutable Array<Point> = mutable Array[],
+  twilightInFontUnits: mutable Array<Point> = mutable Array[],
+  glyphCurrent: mutable Array<Point> = mutable Array[],
+  glyphUnhinted: mutable Array<Point> = mutable Array[],
+  glyphInFontUnits: mutable Array<Point> = mutable Array[],
+  ends: mutable Array<Int> = mutable Array[],
+  // scaledCVT is the lazily initialized scaled Control Value Table.
+  mutable scaledCVTInitialized: Bool = false,
+  scaledCVT: mutable Vector<Fixed.Int26_6> = mutable Vector[],
+  debug: Bool = false,
+  index: Int = 0,
+} {
+  mutable fun init(font: Font, scale: Fixed.Int26_6): mutable Hinter {
+    !this.twilightCurrent = resetTwilightPoints(font, this.twilightCurrent);
+    !this.twilightUnhinted = resetTwilightPoints(font, this.twilightUnhinted);
+    !this.twilightInFontUnits = resetTwilightPoints(
+      font,
+      this.twilightInFontUnits,
+    );
+    rescale = this.scale != scale;
+    if (this.font != font) {
+      !this.font = font;
+      !rescale = true;
+      !this.functions = mutable Map[];
+      if (font.maxStackElements > this.stack.size()) {
+        x = font.maxStackElements + 255;
+        !x = x.and(255.not());
+        !this.stack = Array<Int32>::mfill(x, int32(0));
+      };
+      if (font.maxStorage > this.store.size()) {
+        x = font.maxStorage + 15;
+        !x = x.and(15.not());
+        !this.store = Array<Int32>::mfill(x, int32(0));
+      };
+      if (!font.fpgm.isEmpty()) {
+        !this = this.run(font.fpgm, None(), None(), None(), None());
+      }
+    };
+    if (rescale) {
+      !this.scale = scale;
+      this.!scaledCVTInitialized = false;
+      !this.defaultGS = GraphicsState::default;
+      if (!font.prep.isEmpty()) {
+        !this = this.run(font.prep, None(), None(), None(), None());
+        !this.defaultGS = this.gs;
+        // The MS rasterizer doesn't allow the following graphics state
+        // variables to be modified by the CVT program.
+        !this.defaultGS.pv = GraphicsState::default.pv;
+        !this.defaultGS.fv = GraphicsState::default.fv;
+        !this.defaultGS.dv = GraphicsState::default.dv;
+        !this.defaultGS.rp = GraphicsState::default.rp;
+        !this.defaultGS.zp = GraphicsState::default.zp;
+        !this.defaultGS.loopCount = GraphicsState::default.loopCount;
+      }
+    };
+    this;
+  }
+
+  mutable fun run(
+    program: Array<UInt8>,
+    optCurrent: ?(Vector<Point>) = None(),
+    optUnhinted: ?(Vector<Point>) = None(),
+    optInFontUnits: ?(Vector<Point>) = None(),
+    optEnds: ?(Vector<Int>) = None(),
+  ): mutable Hinter {
+    invariant(
+      program.size() <= 50000,
+      "TrueType: hinting: too many instructions",
+    );
+    !this.gs = this.defaultGS;
+    !this.glyphCurrent = Array::mcreateFromItems(optCurrent.default(Vector[]));
+    !this.glyphUnhinted = Array::mcreateFromItems(
+      optUnhinted.default(Vector[]),
+    );
+    !this.glyphInFontUnits = Array::mcreateFromItems(
+      optInFontUnits.default(Vector[]),
+    );
+    !this.ends = Array::mcreateFromItems(optEnds.default(Vector[]));
+    steps = 0;
+    pc = 0;
+    top = 0;
+    callStack = Array::mfill(32, CallStackEntry());
+    callStackTop = 0;
+    while (pc >= 0 && pc < program.size()) {
+      !steps = steps + 1;
+      invariant(steps < 100000, "TrueType: hinting: too many steps");
+      opcode = program[pc];
+      invariant(
+        top >= popCount[opcode.toInt()].toInt(),
+        "TrueType: hinting: stack underflow",
+      );
+      iOpcode = opcode.toInt();
+      if (iOpcode == opSVTCA0) {
+        !this.gs.pv = (int16(0), int16(0x4000));
+        !this.gs.fv = (int16(0), int16(0x4000));
+        !this.gs.dv = (int16(0), int16(0x4000));
+      } else if (iOpcode == opSVTCA1) {
+        !this.gs.pv = (int16(0x4000), int16(0));
+        !this.gs.fv = (int16(0x4000), int16(0));
+        !this.gs.dv = (int16(0x4000), int16(0));
+      } else if (iOpcode == opSPVTCA0) {
+        !this.gs.pv = (int16(0), int16(0x4000));
+        !this.gs.dv = (int16(0), int16(0x4000));
+      } else if (iOpcode == opSPVTCA1) {
+        !this.gs.pv = (int16(0x4000), int16(0));
+        !this.gs.dv = (int16(0x4000), int16(0));
+      } else if (iOpcode == opSFVTCA0) {
+        !this.gs.fv = (int16(0), int16(0x4000));
+      } else if (iOpcode == opSFVTCA1) {
+        !this.gs.fv = (int16(0x4000), int16(0));
+      } else if (
+        iOpcode == opSPVTL0 ||
+        iOpcode == opSPVTL1 ||
+        iOpcode == opSFVTL0 ||
+        iOpcode == opSFVTL1
+      ) {
+        !top = top - 2;
+        pPoints = this.getPoints(0, current);
+        p1 = pPoints.get(this.stack.get(top).toInt());
+        p2 = pPoints.get(this.stack.get(top + 1).toInt());
+        dx = int16(p1.x.value.toInt() - p2.x.value.toInt());
+        dy = int16(p1.y.value.toInt() - p2.y.value.toInt());
+        if (dx == 0 && dy == 0) {
+          !dx = int16(0x4000);
+        } else if (iOpcode.and(1) != 0) {
+          // Counter-clockwise rotation.
+          (!dx, !dy) = (int16(-dy.toInt()), dx);
+        };
+        v = normalize(dx, dy);
+        if (iOpcode < opSFVTL0) {
+          !this.gs.pv = v;
+          !this.gs.dv = v;
+        } else {
+          !this.gs.fv = v;
+        }
+      } else if (iOpcode == opSPVFS) {
+        !top = top - 2;
+        !this.gs.pv = normalize(
+          int16(this.stack.get(top).toInt()),
+          int16(this.stack.get(top + 1).toInt()),
+        );
+        !this.gs.dv = this.gs.pv
+      } else if (iOpcode == opSFVFS) {
+        !top = top - 2;
+        !this.gs.fv = normalize(
+          int16(this.stack.get(top).toInt()),
+          int16(this.stack.get(top + 1).toInt()),
+        );
+      } else if (iOpcode == opGPV || iOpcode == opGFV) {
+        invariant(
+          top + 1 < this.stack.size(),
+          "TrueType: hinting: stack overflow",
+        );
+        (x, y) = if (iOpcode == opGPV) this.gs.pv else this.gs.fv;
+        this.stack.set(top, int32(x.toInt()));
+        this.stack.set(top + 1, int32(y.toInt()));
+        !top = top + 2;
+      } else if (iOpcode == opSFVTPV) {
+        !this.gs.fv = this.gs.pv;
+      } else if (iOpcode == opISECT) {
+        !top = top - 5;
+        toUpdate = this.getPoints(2, current);
+        index = this.stack[top].toInt();
+        p = toUpdate.get(index);
+        a0 = this.getPoints(1, current).get(this.stack[top + 1].toInt());
+        a1 = this.getPoints(1, current).get(this.stack[top + 2].toInt());
+        b0 = this.getPoints(0, current).get(this.stack[top + 3].toInt());
+        b1 = this.getPoints(0, current).get(this.stack[top + 4].toInt());
+        dbx = b1.x - b0.x;
+        dby = b1.y - b0.y;
+        dax = a1.x - a0.x;
+        day = a1.y - a0.y;
+        dx = b0.x - a0.x;
+        dy = b0.y - a0.y;
+        discriminant =
+          mulDiv(dax.asInt(), -dby.asInt(), 0x40) +
+          mulDiv(day.asInt(), dbx.asInt(), 0x40);
+        dotProduct =
+          mulDiv(dax.asInt(), dbx.asInt(), 0x40) +
+          mulDiv(day.asInt(), dby.asInt(), 0x40);
+        // The discriminant above is actually a cross product of vectors
+        // da and db. Together with the dot product, they can be used as
+        // surrogates for sine and cosine of the angle between the vectors.
+        // Indeed,
+        //       dotproduct   = |da||db|cos(angle)
+        //       discriminant = |da||db|sin(angle)
+        // We use these equations to reject grazing intersections by
+        // thresholding abs(tan(angle)) at 1/19, corresponding to 3 degrees.
+        (absDisc, absDotP) = (discriminant, dotProduct);
+        if (absDisc < 0) {
+          !absDisc = -absDisc;
+        };
+        if (absDotP < 0) {
+          !absDotP = -absDotP;
+        };
+        if (19 * absDisc > absDotP) {
+          val =
+            mulDiv(dx.asInt(), -dby.asInt(), 0x40) +
+            mulDiv(dy.asInt(), dbx.asInt(), 0x40);
+          rx = mulDiv(val, dax.asInt(), discriminant);
+          ry = mulDiv(val, day.asInt(), discriminant);
+          !p.x = a0.x + fixed26_6(rx);
+          !p.y = a0.y + fixed26_6(ry);
+        } else {
+          !p.x = fixed26_6((a0.x + a1.x + b0.x + b1.x).asInt() / 4);
+          !p.y = fixed26_6((a0.y + a1.y + b0.y + b1.y).asInt() / 4);
+        };
+        !p.flags = p.flags.or(flagTouchedX.or(flagTouchedY));
+        toUpdate.set(index, p);
+      } else if (iOpcode == opSRP0 || iOpcode == opSRP1 || iOpcode == opSRP2) {
+        !top = top - 1;
+        val = this.stack[top];
+        (rp0, rp1, rp2) = this.gs.rp;
+        (opcode.toInt() - opSRP0) match {
+        | 0 -> !rp0 = val
+        | 1 -> !rp1 = val
+        | _ -> !rp2 = val
+        };
+        !this.gs.rp = (rp0, rp1, rp2);
+      } else if (iOpcode == opSZP0 || iOpcode == opSZP1 || iOpcode == opSZP2) {
+        !top = top - 1;
+        val = this.stack[top];
+        (zp0, zp1, zp2) = this.gs.zp;
+        (opcode.toInt() - opSZP0) match {
+        | 0 -> !zp0 = val
+        | 1 -> !zp1 = val
+        | _ -> !zp2 = val
+        };
+        !this.gs.zp = (zp0, zp1, zp2);
+      } else if (iOpcode == opSZPS) {
+        !top = top - 1;
+        val = this.stack[top];
+        !this.gs.zp = (val, val, val);
+      } else if (iOpcode == opSLOOP) {
+        !top = top - 1;
+        // https://developer.apple.com/fonts/TrueType-Reference-Manual/RM05/Chap5.html#SLOOP
+        // says that "Setting the loop variable to zero is an error". In
+        // theory, the inequality on the next line should be "<=" instead
+        // of "<". In practice, some font files' bytecode, such as the '2'
+        // glyph in the DejaVuSansMono.ttf that comes with Ubuntu 14.04,
+        // issue SLOOP with a zero on top of the stack. Just like the C
+        // Freetype code, we allow the zero.
+        invariant(this.stack[top] >= 0, "TrueType: hinting: invalid data");
+        !this.gs.loopCount = this.stack[top];
+      } else if (iOpcode == opRTG) {
+        !this.gs.roundPeriod = fixed26_6(1.shl(6));
+        !this.gs.roundPhase = fixed26_6(0);
+        !this.gs.roundThreshold = fixed26_6(1.shl(5));
+        !this.gs.roundSuper45 = false;
+      } else if (iOpcode == opRTHG) {
+        !this.gs.roundPeriod = fixed26_6(1.shl(6));
+        !this.gs.roundPhase = fixed26_6(1.shl(5));
+        !this.gs.roundThreshold = fixed26_6(1.shl(5));
+        !this.gs.roundSuper45 = false;
+      } else if (iOpcode == opSMD) {
+        !top = top - 1;
+        !this.gs.minDist = fixed26_6(this.stack[top].toInt());
+      } else if (iOpcode == opELSE) {
+        !pc = this.ifelse(program, 1, pc);
+        continue;
+      } else if (iOpcode == opJMPR) {
+        !top = top - 1;
+        !pc = pc + this.stack[top].toInt();
+        continue;
+      } else if (iOpcode == opSCVTCI) {
+        !top = top - 1;
+        !this.gs.controlValueCutIn = fixed26_6(this.stack[top].toInt());
+      } else if (iOpcode == opSSWCI) {
+        !top = top - 1;
+        !this.gs.singleWidthCutIn = fixed26_6(this.stack[top].toInt());
+      } else if (iOpcode == opSSW) {
+        !top = top - 1;
+        !this.gs.singleWidth = fixed26_6(
+          this.font.scale(this.scale.asInt() * this.stack[top].toInt()),
+        );
+      } else if (iOpcode == opDUP) {
+        invariant(top < this.stack.size(), "TrueType: hinting: stack overflow");
+        this.stack.set(top, this.stack[top - 1]);
+        !top = top + 1;
+      } else if (iOpcode == opPOP) {
+        !top = top - 1;
+      } else if (iOpcode == opCLEAR) {
+        !top = 0;
+      } else if (iOpcode == opSWAP) {
+        v1 = this.stack[top - 1];
+        v2 = this.stack[top - 2];
+        this.stack.set(top - 1, v2);
+        this.stack.set(top - 2, v1);
+      } else if (iOpcode == opDEPTH) {
+        invariant(top < this.stack.size(), "TrueType: hinting: stack overflow");
+        this.stack.set(top, int32(top));
+        !top = top + 1;
+      } else if (iOpcode == opCINDEX || iOpcode == opMINDEX) {
+        x = this.stack[top - 1].toInt();
+        invariant(x > 0 && x < top, "TrueType: hinting: invalid data");
+        this.stack.set(top - 1, this.stack[top - 1 - x]);
+        if (opcode == opMINDEX) {
+          toCopy = this.stack.slice(top - x, top);
+          toCopy.eachWithIndex((index, value) -> {
+            this.stack.set(top - x - 1 + index, value);
+          });
+          !top = top - 1;
+        };
+      } else if (iOpcode == opALIGNPTS) {
+        !top = top - 2;
+        pPoints = this.getPoints(1, current);
+        qPoints = this.getPoints(0, current);
+        ip = this.stack[top].toInt();
+        iq = this.stack[top + 1].toInt();
+        p = pPoints.get(ip);
+        q = qPoints.get(iq);
+        d = dotProduct(q.x - p.x, q.y - p.y, this.gs.pv).idiv(2);
+        pPoints.set(ip, this.move(p, d, true));
+        qPoints.set(ip, this.move(p, fixed26_6(0) - d, true));
+      } else if (iOpcode == opUTP) {
+        !top = top - 1;
+        pPoints = this.getPoints(1, current);
+        ip = this.stack[top].toInt();
+        p = pPoints.get(ip);
+        !p.flags = p.flags.and(flagTouchedX.or(flagTouchedY).not());
+        pPoints.set(ip, p);
+      } else if (iOpcode == opLOOPCALL || iOpcode == opCALL) {
+        invariant(
+          callStackTop < callStack.size(),
+          "TrueType: hinting: call stack overflow",
+        );
+        !top = top - 1;
+        f = this.functions.get(this.stack[top]);
+        stackEntry = CallStackEntry(program, pc, int32(1));
+        if (iOpcode == opLOOPCALL) {
+          !top = top - 1;
+          if (this.stack[top].toInt() == 0) {
+            break void;
+          };
+          !stackEntry.loopCount = this.stack[top];
+        };
+        callStack.set(callStackTop, stackEntry);
+        !callStackTop = callStackTop + 1;
+        !program = f;
+        !pc = 0;
+        continue;
+      } else if (iOpcode == opFDEF) {
+        // Save all bytecode up until the next ENDF.
+        startPC = pc + 1;
+        loop {
+          !pc = pc + 1;
+          invariant(pc < program.size(), "TrueType: hinting: unbalanced FDEF");
+          subCode = program[pc].toInt();
+          invariant(subCode != opFDEF, "TrueType: hinting: nested FDEF");
+          if (subCode == opENDF) {
+            !top = top - 1;
+            this.functions.set(this.stack[top], program.slice(startPC, pc + 1));
+            break void;
+          } else {
+            !pc = skipInstructionPayload(program, pc, "unbalanced FDEF");
+          }
+        };
+      } else if (iOpcode == opENDF) {
+        invariant(callStackTop != 0, "TrueType: hinting: call stack underflow");
+        !callStackTop = callStackTop - 1;
+        stackEntry = callStack[callStackTop];
+        !stackEntry.loopCount = int32(stackEntry.loopCount - 1);
+        callStack.set(callStackTop, stackEntry);
+        if (stackEntry.loopCount != 0) {
+          !callStackTop = callStackTop + 1;
+          !pc = 0;
+          continue;
+        };
+        !program = stackEntry.program;
+        !pc = stackEntry.pc;
+      } else if (iOpcode == opMDAP0 || iOpcode == opMDAP1) {
+        !top = top - 1;
+        i = this.stack[top];
+        toUpdate = this.getPoints(0, current);
+        p = toUpdate.get(i.toInt());
+        distance = fixed26_6(0);
+        if (iOpcode == opMDAP1) {
+          !distance = dotProduct(p.x, p.y, this.gs.pv);
+          // TODO: metrics compensation.
+          !distance = this.round(distance) - distance;
+        };
+        !p = this.move(p, distance, true);
+        toUpdate.set(i.toInt(), p);
+        (_, _, rp2) = this.gs.rp;
+        !this.gs.rp = (i, i, rp2);
+      } else if (iOpcode == opIUP0 || iOpcode == opIUP1) {
+        iupY = iOpcode == opIUP0;
+        mask = if (iupY) flagTouchedY else flagTouchedX;
+        prevEnd = 0;
+        this.ends.each(end -> {
+          i = prevEnd;
+          while (i < end) {
+            p = this.glyphCurrent.get(i);
+            while (i < end && p.flags.and(mask) == 0) {
+              !i = i + 1;
+              !p = this.glyphCurrent.get(i);
+            };
+            if (i == end) {
+              break void;
+            };
+            (firstTouched, curTouched) = (i, i);
+            !i = i + 1;
+            while (i < end) {
+              !p = this.glyphCurrent.get(i);
+              if (p.flags.and(mask) != 0) {
+                this.iupInterp(iupY, curTouched + 1, i - 1, curTouched, i);
+                !curTouched = i;
+              };
+              !i = i + 1;
+            };
+            if (curTouched == firstTouched) {
+              this.iupShift(iupY, prevEnd, end, curTouched);
+            } else {
+              this.iupInterp(
+                iupY,
+                curTouched + 1,
+                end - 1,
+                curTouched,
+                firstTouched,
+              );
+              if (firstTouched > 0) {
+                this.iupInterp(
+                  iupY,
+                  prevEnd,
+                  firstTouched - 1,
+                  curTouched,
+                  firstTouched,
+                );
+              }
+            }
+          };
+          !prevEnd = end;
+        });
+      } else if (iOpcode == opSHP0 || iOpcode == opSHP1) {
+        invariant(
+          top >= this.gs.loopCount,
+          "TrueType: hinting:  stack underflow",
+        );
+        (_, _, d) = this.displacement(iOpcode.and(1) == 0);
+        loopCount = this.gs.loopCount.toInt();
+        toMove = this.getPoints(2, current);
+        while (loopCount > 0) {
+          !top = top - 1;
+          i = this.stack[top].toInt();
+          toMove.set(i, this.move(toMove.get(i), d, true));
+          !loopCount = loopCount - 1;
+        };
+        !this.gs.loopCount = int32(1);
+      } else if (iOpcode == opSHC0 || iOpcode == opSHC1) {
+        !top = top - 1;
+        (zonePointer, i, d) = this.displacement(iOpcode.and(1) == 0);
+        (zp0, zp1, zp2) = this.gs.zp;
+        invariant(
+          zp2 != 0,
+          "TrueType: hinting:  unimplemented SHC instruction",
+        );
+        contour = this.stack[top];
+        j0 = if (contour.toInt() > 0) {
+          this.ends[contour.toInt() - 1]
+        } else {
+          0
+        };
+        j1 = this.ends[contour.toInt()];
+        czp = zonePointer match {
+        | 0 -> zp0
+        | 1 -> zp1
+        | _ -> zp2
+        };
+        move = czp != zp2;
+        toMove = this.getPoints(2, current);
+        for (j in .Range(j0, j1)) {
+          if (move || j != i) {
+            toMove.set(j, this.move(toMove.get(j), d, true));
+          }
+        };
+      } else if (iOpcode == opSHZ0 || iOpcode == opSHZ1) {
+        !top = top - 1;
+        (zonePointer, i, d) = this.displacement(iOpcode.and(1) == 0);
+        // As per C Freetype, SHZ doesn't move the phantom points, or mark
+        // the points as touched.
+        (zp0, zp1, zp2) = this.gs.zp;
+        toMove = this.getPoints(2, current);
+        limit = toMove.size();
+        if (zp2.toInt() == glyphZone) {
+          !limit = limit - 4;
+        };
+        czp = zonePointer match {
+        | 0 -> zp0
+        | 1 -> zp1
+        | _ -> zp2
+        };
+        for (j in .Range(0, limit)) {
+          if (i != j || czp != zp2) {
+            toMove.set(j, this.move(toMove.get(j), d, false));
+          }
+        }
+      } else if (iOpcode == opSHPIX) {
+        !top = top - 1;
+        d = fixed26_6(this.stack[top.toInt()].toInt());
+        loopCount = this.gs.loopCount.toInt();
+        toMove = this.getPoints(2, current);
+        while (loopCount > 0) {
+          !top = top - 1;
+          i = this.stack[top].toInt();
+          toMove.set(i, this.move(toMove.get(i), d, true));
+          !loopCount = loopCount - 1;
+        };
+        !this.gs.loopCount = int32(1);
+      } else if (iOpcode == opIP) {
+        invariant(
+          top >= this.gs.loopCount.toInt(),
+          "TrueType: hinting:  opIP stack underflow",
+        );
+        pointType = inFontUnits;
+        (zp0, zp1, zp2) = this.gs.zp;
+        twilight = zp0 == 0 || zp1 == 0 || zp2 == 0;
+        if (twilight) {
+          !pointType = unhinted
+        };
+        (_, rp1, rp2) = this.gs.rp;
+        p = this.getPoints(1, pointType).get(rp2.toInt());
+        oldP = this.getPoints(0, pointType).get(rp1.toInt());
+        oldRange = dotProduct(p.x - oldP.x, p.y - oldP.y, this.gs.dv);
+        !p = this.getPoints(1, current).get(rp2.toInt());
+        curP = this.getPoints(0, current).get(rp1.toInt());
+        curRange = dotProduct(p.x - curP.x, p.y - curP.y, this.gs.pv);
+        loopCount = this.gs.loopCount.toInt();
+        oldPoints = this.getPoints(2, pointType);
+        curPoints = this.getPoints(2, current);
+        while (loopCount > 0) {
+          !top = top - 1;
+          i = this.stack[top].toInt();
+          !p = oldPoints.get(i);
+          oldDist = dotProduct(p.x - oldP.x, p.y - oldP.y, this.gs.dv);
+          !p = curPoints.get(i);
+          curDist = dotProduct(p.x - curP.x, p.y - curP.y, this.gs.pv);
+          newDist = if (oldDist.asInt() != 0) {
+            if (oldRange.asInt() != 0) {
+              fixed26_6(
+                mulDiv(oldDist.asInt(), curRange.asInt(), oldRange.asInt()),
+              )
+            } else {
+              fixed26_6(0) - oldDist
+            }
+          } else {
+            fixed26_6(0)
+          };
+          curPoints.set(i, this.move(p, newDist - curDist, true));
+          !loopCount = loopCount - 1;
+        };
+        !this.gs.loopCount = int32(1);
+      } else if (iOpcode == opMSIRP0 || iOpcode == opMSIRP1) {
+        !top = top - 2;
+        i = this.stack[top].toInt();
+        distance = fixed26_6(this.stack[top + 1].toInt());
+        // TODO: special case h.gs.zp[1] == 0 in C Freetype.
+        (rp0, rp1, rp2) = this.gs.rp;
+        ref = this.getPoints(0, current).get(rp0.toInt());
+        toMove = this.getPoints(1, current);
+        p = toMove.get(i);
+        curDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.pv);
+        // Set-RP0 bit.
+        if (opcode == opMSIRP1) {
+          !rp0 = int32(i);
+        };
+        !rp1 = rp0;
+        !rp2 = int32(i);
+        !this.gs.rp = (rp0, rp1, rp2);
+        // Move the point.
+        toMove.set(i, this.move(p, distance - curDist, true));
+      } else if (iOpcode == opALIGNRP) {
+        (rp0, _, _) = this.gs.rp;
+        ref = this.getPoints(0, current).get(rp0.toInt());
+        loopCount = this.gs.loopCount.toInt();
+        toMove = this.getPoints(1, current);
+        while (loopCount > 0) {
+          !top = top - 1;
+          i = this.stack[top].toInt();
+          p = toMove.get(i);
+          distance =
+            fixed26_6(0) - dotProduct(p.x - ref.x, p.y - ref.y, this.gs.pv);
+          toMove.set(i, this.move(p, distance, true));
+          !loopCount = loopCount - 1;
+        };
+        !this.gs.loopCount = int32(1);
+      } else if (iOpcode == opRTDG) {
+        !this.gs.roundPeriod = fixed26_6(1.shl(5));
+        !this.gs.roundPhase = fixed26_6(0);
+        !this.gs.roundThreshold = fixed26_6(1.shl(4));
+        !this.gs.roundSuper45 = false;
+      } else if (iOpcode == opMIAP0 || iOpcode == opMIAP1) {
+        !top = top - 2;
+        i = this.stack[top].toInt();
+        ref = this.stack[top + 1].toInt();
+        distance = this.getScaledCVT(ref);
+        (zp0, _, _) = this.gs.zp;
+        if (zp0 == 0) {
+          (fv0, fv1) = this.gs.fv;
+          pPoints = this.getPoints(0, unhinted);
+          p = pPoints.get(i);
+          !p.x = fixed26_6((distance.asInt() * fv0.toInt()).shr(14));
+          !p.y = fixed26_6((distance.asInt() * fv1.toInt()).shr(14));
+
+          pPoints.set(i, p);
+          this.getPoints(0, current).set(i, p);
+        };
+        toMove = this.getPoints(0, current);
+        p = toMove.get(i);
+        oldDist = dotProduct(p.x, p.y, this.gs.pv);
+        if (opcode == opMIAP1) {
+          if ((distance - oldDist).abs() > this.gs.controlValueCutIn) {
+            !distance = oldDist;
+          };
+          // TODO: metrics compensation.
+          !distance = this.round(distance);
+        };
+        toMove.set(i, this.move(p, distance - oldDist, true));
+        (rp0, rp1, rp2) = this.gs.rp;
+        !rp0 = int32(i);
+        !rp1 = int32(i);
+        !this.gs.rp = (rp0, rp1, rp2);
+      } else if (iOpcode == opNPUSHB) {
+        (!pc, !top) = this.push(program, 0, pc, top);
+        continue;
+      } else if (iOpcode == opNPUSHW) {
+        (!pc, !top) = this.push(program, 0x80, pc, top);
+        continue;
+      } else if (iOpcode == opWS) {
+        !top = top - 2;
+        i = this.stack[top].toInt();
+        this.store.set(i, this.stack[top + 1]);
+      } else if (iOpcode == opRS) {
+        i = this.stack[top - 1].toInt();
+        this.stack.set(top - 1, this.store[i]);
+      } else if (iOpcode == opWCVTP) {
+        !top = top - 2;
+        index = this.stack[top].toInt();
+        value = this.stack[top + 1].toInt();
+        this.setScaledCVT(index, fixed26_6(value));
+      } else if (iOpcode == opRCVT) {
+        this.stack.set(
+          top - 1,
+          int32(this.getScaledCVT(this.stack[top - 1].toInt()).asInt()),
+        );
+      } else if (iOpcode == opGC0 || iOpcode == opGC1) {
+        i = this.stack[top - 1].toInt();
+        if (iOpcode == opGC0) {
+          p = this.getPoints(2, current).get(i);
+          this.stack.set(
+            top - 1,
+            int32(dotProduct(p.x, p.y, this.gs.pv).asInt()),
+          );
+        } else {
+          p = this.getPoints(2, unhinted).get(i);
+          // Using dv as per C Freetype.
+          this.stack.set(
+            top - 1,
+            int32(dotProduct(p.x, p.y, this.gs.dv).asInt()),
+          );
+        }
+      } else if (iOpcode == opSCFS) {
+        !top = top - 2;
+        i = this.stack[top].toInt();
+        toMove = this.getPoints(2, current);
+        p = toMove.get(i);
+        c = dotProduct(p.x, p.y, this.gs.pv);
+        !p = this.move(
+          p,
+          fixed26_6(this.stack[top + 1].toInt() - c.asInt()),
+          true,
+        );
+        toMove.set(i, p);
+        (_, _, zp2) = this.gs.zp;
+        if (zp2 == 0) {
+          this.getPoints(2, unhinted).set(i, p);
+        };
+      } else if (iOpcode == opMD0 || iOpcode == opMD1) {
+        !top = top - 1;
+        (zp0, zp1, _) = this.gs.zp;
+        (pt, v, scale) = if (iOpcode == opMD0) {
+          (current, this.gs.pv, false)
+        } else if (zp0 == 0 || zp1 == 0) {
+          (unhinted, this.gs.dv, false)
+        } else {
+          (inFontUnits, this.gs.dv, true)
+        };
+        pPoints = this.getPoints(0, pt);
+        qPoints = this.getPoints(1, pt);
+        p = pPoints.get(this.stack[top - 1].toInt());
+        q = qPoints.get(this.stack[top].toInt());
+        d = dotProduct(p.x - q.x, p.y - q.y, v).asInt();
+        if (scale) {
+          !d = d * this.scale.asInt() / this.font.fUnitsPerEm;
+        };
+        this.stack.set(top - 1, int32(d));
+      } else if (iOpcode == opMPPEM || iOpcode == opMPS) {
+        this.stack.set(top, int32(this.scale.asInt().shr(6)));
+        !top = top + 1;
+      } else if (iOpcode == opFLIPON || iOpcode == opFLIPOFF) {
+        !this.gs.autoFlip = iOpcode == opFLIPON;
+      } else if (iOpcode == opDEBUG) {
+        // No-op.
+        void;
+      } else if (iOpcode == opLT) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1] < this.stack[top]) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opLTEQ) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1] <= this.stack[top]) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opGT) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1] > this.stack[top]) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opGTEQ) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1] >= this.stack[top]) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opEQ) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1] == this.stack[top]) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opNEQ) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1] != this.stack[top]) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opODD || iOpcode == opEVEN) {
+        i = this.round(fixed26_6(this.stack[top - 1].toInt())).asInt().shr(6);
+        this.stack.set(top - 1, int32(i.and(1).xor(iOpcode - opODD)));
+      } else if (iOpcode == opIF) {
+        !top = top - 1;
+        if (this.stack[top].toInt() == 0) {
+          !pc = this.ifelse(program, 0, pc);
+          continue;
+        }
+      } else if (iOpcode == opEIF) {
+        // No-op.
+        void;
+      } else if (iOpcode == opAND) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1] != int32(0) && this.stack[top] != int32(0)) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opOR) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1].toInt().or(this.stack[top].toInt()) != 0) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opNOT) {
+        this.stack.set(
+          top - 1,
+          if (this.stack[top - 1].toInt() == 0) {
+            int32(1)
+          } else {
+            int32(0)
+          },
+        )
+      } else if (iOpcode == opDELTAP1) {
+        (!pc, !top) = this.delta(iOpcode, pc, top);
+        continue;
+      } else if (iOpcode == opSDB) {
+        !top = top - 1;
+        !this.gs.deltaBase = this.stack[top];
+      } else if (iOpcode == opSDS) {
+        !top = top - 1;
+        !this.gs.deltaShift = this.stack[top];
+      } else if (iOpcode == opADD) {
+        !top = top - 1;
+        this.stack.set(top - 1, int32(this.stack[top - 1] + this.stack[top]));
+      } else if (iOpcode == opSUB) {
+        !top = top - 1;
+        this.stack.set(top - 1, int32(this.stack[top - 1] - this.stack[top]));
+      } else if (iOpcode == opDIV) {
+        !top = top - 1;
+        st = this.stack[top].toInt();
+        invariant(st != 0, "TrueType: hinting: division by zero");
+        this.stack.set(
+          top - 1,
+          int32(
+            fdiv(fixed26_6(this.stack[top - 1].toInt()), fixed26_6(st)).asInt(),
+          ),
+        );
+      } else if (iOpcode == opMUL) {
+        !top = top - 1;
+        this.stack.set(
+          top - 1,
+          int32(
+            fmul(
+              fixed26_6(this.stack[top - 1].toInt()),
+              fixed26_6(this.stack[top].toInt()),
+            ).asInt(),
+          ),
+        );
+      } else if (iOpcode == opABS) {
+        st = this.stack[top - 1].toInt();
+        if (st < 0) {
+          this.stack.set(top - 1, int32(-st));
+        }
+      } else if (iOpcode == opNEG) {
+        st = this.stack[top - 1].toInt();
+        this.stack.set(top - 1, int32(-st));
+      } else if (iOpcode == opFLOOR) {
+        st = this.stack[top - 1].toInt();
+        this.stack.set(top - 1, int32(st.and(63.not())));
+      } else if (iOpcode == opCEILING) {
+        st = this.stack[top - 1].toInt() + 63;
+        this.stack.set(top - 1, int32(st.and(63.not())));
+      } else if (
+        iOpcode == opROUND00 ||
+        iOpcode == opROUND01 ||
+        iOpcode == opROUND10 ||
+        iOpcode == opROUND11
+      ) {
+        // The four flavors of opROUND are equivalent. See the comment below on
+        // opNROUND for the rationale.
+        st = this.stack[top - 1].toInt();
+        this.stack.set(top - 1, int32(this.round(fixed26_6(st)).asInt()));
+      } else if (
+        iOpcode == opNROUND00 ||
+        iOpcode == opNROUND01 ||
+        iOpcode == opNROUND10 ||
+        iOpcode == opNROUND11
+      ) {
+        // No-op. The spec says to add one of four "compensations for the engine
+        // characteristics", to cater for things like "different dot-size printers".
+        // https://developer.apple.com/fonts/TTRefMan/RM02/Chap2.html#engine_compensation
+        // This code does not implement engine compensation, as we don't expect to
+        // be used to output on dot-matrix printers.
+        void;
+      } else if (iOpcode == opWCVTF) {
+        !top = top - 2;
+        index = this.stack[top].toInt();
+        value = this.stack[top + 1].toInt();
+        this.setScaledCVT(
+          index,
+          fixed26_6(this.font.scale(this.scale.asInt() * value)),
+        )
+      } else if (
+        iOpcode == opDELTAP2 ||
+        iOpcode == opDELTAP3 ||
+        iOpcode == opDELTAC1 ||
+        iOpcode == opDELTAC2 ||
+        iOpcode == opDELTAC3
+      ) {
+        (!pc, !top) = this.delta(iOpcode, pc, top);
+        continue;
+      } else if (iOpcode == opSROUND || iOpcode == opS45ROUND) {
+        !top = top - 1;
+        val = this.stack[top].toInt().shr(6).and(0x03);
+        if (val == 0) {
+          !this.gs.roundPeriod = fixed26_6(1.shl(5));
+        } else if (val == 1 || val == 3) {
+          !this.gs.roundPeriod = fixed26_6(1.shl(6));
+        } else if (val == 2) {
+          !this.gs.roundPeriod = fixed26_6(1.shl(7));
+        };
+        !this.gs.roundSuper45 = iOpcode == opS45ROUND;
+        if (this.gs.roundSuper45) {
+          // The spec says to multiply by √2, but the C Freetype code says 1/√2.
+          // We go with 1/√2.
+          rp = this.gs.roundPeriod.asInt();
+          !this.gs.roundPeriod = fixed26_6(rp * 46341 / 65536);
+        };
+        rp = this.gs.roundPeriod.asInt();
+        mult = this.stack[top].toInt().shr(4).and(0x03);
+        !this.gs.roundPhase = fixed26_6(rp * mult / 4);
+        x = this.stack[top].toInt().and(0x0f);
+        !this.gs.roundThreshold = if (x != 0) {
+          fixed26_6(rp * (x - 4) / 8);
+        } else {
+          fixed26_6(rp - 1);
+        };
+      } else if (iOpcode == opJROT) {
+        !top = top - 2;
+        if (this.stack[top + 1].toInt() != 0) {
+          !pc = pc + this.stack[top].toInt();
+          continue;
+        }
+      } else if (iOpcode == opJROF) {
+        !top = top - 2;
+        if (this.stack[top + 1].toInt() == 0) {
+          !pc = pc + this.stack[top].toInt();
+          continue;
+        }
+      } else if (iOpcode == opROFF) {
+        !this.gs.roundPeriod = fixed26_6(0);
+        !this.gs.roundPhase = fixed26_6(0);
+        !this.gs.roundThreshold = fixed26_6(0);
+        !this.gs.roundSuper45 = false;
+      } else if (iOpcode == opRUTG) {
+        !this.gs.roundPeriod = fixed26_6(1.shl(6));
+        !this.gs.roundPhase = fixed26_6(0);
+        !this.gs.roundThreshold = fixed26_6(1.shl(6) - 1);
+        !this.gs.roundSuper45 = false;
+      } else if (iOpcode == opRDTG) {
+        !this.gs.roundPeriod = fixed26_6(1.shl(6));
+        !this.gs.roundPhase = fixed26_6(0);
+        !this.gs.roundThreshold = fixed26_6(0);
+        !this.gs.roundSuper45 = false;
+      } else if (iOpcode == opSANGW || iOpcode == opAA) {
+        // These ops are "anachronistic" and no longer used.
+        !top = top - 1;
+      } else if (iOpcode == opFLIPPT) {
+        loopCount = this.gs.loopCount.toInt();
+        while (loopCount > 0) {
+          !top = top - 1;
+          i = this.stack[top].toInt();
+          p = this.glyphCurrent.get(i);
+          !p.flags = p.flags.xor(flagOnCurve);
+          this.glyphCurrent.set(i, p);
+          !loopCount = loopCount - 1;
+        };
+        !this.gs.loopCount = int32(1);
+      } else if (iOpcode == opFLIPRGON || iOpcode == opFLIPRGOFF) {
+        !top = top - 2;
+        i = this.stack[top].toInt();
+        j = this.stack[top + 1].toInt();
+        for (index in .Range(i, j + 1)) {
+          p = this.glyphCurrent.get(index);
+          !p.flags = if (iOpcode == opFLIPRGON) {
+            p.flags.or(flagOnCurve);
+          } else {
+            p.flags.and(flagOnCurve.not());
+          };
+          this.glyphCurrent.set(i, p);
+        }
+      } else if (iOpcode == opSCANCTRL) {
+        //  We do not support dropout control, as we always rasterize grayscale glyphs.
+        !top = top - 1;
+      } else if (iOpcode == opSDPVTL0 || iOpcode == opSDPVTL1) {
+        !top = top - 2;
+        for (i in .Range(0, 2)) {
+          pt = if (i == 0) {
+            unhinted
+          } else {
+            current
+          };
+          p = this.getPoints(1, pt).get(this.stack[top].toInt());
+          q = this.getPoints(2, pt).get(this.stack[top + 1].toInt());
+          dx = (p.x - q.x).asInt();
+          dy = (p.y - q.y).asInt();
+          if (dx == 0 && dy == 0) {
+            !dx = 0x4000;
+          } else if (iOpcode.and(1) != 0) {
+            // Counter-clockwise rotation.
+            (!dx, !dy) = (-dy, dx);
+          };
+          if (i == 0) {
+            !this.gs.dv = normalize(int16(dx), int16(dy))
+          } else {
+            !this.gs.pv = normalize(int16(dx), int16(dy))
+          }
+        }
+      } else if (iOpcode == opGETINFO) {
+        bst = this.stack[top - 1].toInt();
+        res = 0;
+        if (bst.and(1.shl(0)) != 0) {
+          !res = res.or(35);
+        };
+        if (bst.and(1.shl(5)) != 0) {
+          !res = res.or(1.shl(12));
+        };
+        this.stack.set(top - 1, int32(res));
+      } else if (iOpcode == opIDEF) {
+        // IDEF is for ancient versions of the bytecode interpreter, and is no longer used.
+        invariant_violation("TrueType: hinting: unsupported IDEF instruction");
+      } else if (iOpcode == opROLL) {
+        st1 = this.stack[top - 1];
+        st2 = this.stack[top - 2];
+        st3 = this.stack[top - 3];
+        this.stack.set(top - 1, st3);
+        this.stack.set(top - 3, st2);
+        this.stack.set(top - 2, st1);
+      } else if (iOpcode == opMAX) {
+        !top = top - 1;
+        st = this.stack[top];
+        bst = this.stack[top - 1];
+        if (bst < st) {
+          this.stack.set(top - 1, st);
+        }
+      } else if (iOpcode == opMIN) {
+        !top = top - 1;
+        st = this.stack[top];
+        bst = this.stack[top - 1];
+        if (bst > st) {
+          this.stack.set(top - 1, st);
+        }
+      } else if (iOpcode == opSCANTYPE) {
+        //  We do not support dropout control, as we always rasterize grayscale glyphs.
+        !top = top - 1;
+      } else if (iOpcode == opINSTCTRL) {
+        // TODO: support instruction execution control? It seems rare, and even when
+        // nominally used (e.g. Source Sans Pro), it seems conditional on extreme or
+        // unusual rasterization conditions. For example, the code snippet at
+        // https://developer.apple.com/fonts/TTRefMan/RM05/Chap5.html#INSTCTRL
+        // uses INSTCTRL when grid-fitting a rotated or stretched glyph.
+        !top = top - 2;
+      } else {
+        invariant(
+          iOpcode >= opPUSHB000,
+          `TrueType: hinting: unrecognized instruction ${iOpcode}`,
+        );
+        if (iOpcode < opMDRP00000) {
+          // PUSHxxxx opcode.
+          (!pc, !top) = this.push(
+            program,
+            if (iOpcode < opPUSHW000) {
+              iOpcode - (opPUSHB000 - 1)
+            } else {
+              iOpcode - (opPUSHW000 - 1 - 0x80)
+            },
+            pc,
+            top,
+          );
+          continue;
+        };
+        if (iOpcode < opMIRP00000) {
+          // MDRPxxxxx opcode.
+          !top = top - 1;
+          i = this.stack[top].toInt();
+          (rp0, rp1, rp2) = this.gs.rp;
+          (zp0, zp1, _) = this.gs.zp;
+          toUpdate = this.getPoints(1, current);
+          ref = this.getPoints(0, current).get(rp0.toInt());
+          p = toUpdate.get(i);
+          oldDist = if (zp0 == 0 || zp1 == 0) {
+            p0 = this.getPoints(1, unhinted).get(i);
+            p1 = this.getPoints(0, unhinted).get(rp0.toInt());
+            dotProduct(p0.x - p1.x, p0.y - p1.y, this.gs.dv);
+          } else {
+            p0 = this.getPoints(1, inFontUnits).get(i);
+            p1 = this.getPoints(0, inFontUnits).get(rp0.toInt());
+            tmp = dotProduct(p0.x - p1.x, p0.y - p1.y, this.gs.dv);
+            fixed26_6(this.font.scale(this.scale.asInt() * tmp.asInt()))
+          };
+          x = (oldDist - this.gs.singleWidth).abs();
+          if (x < this.gs.singleWidthCutIn) {
+            !oldDist = if (oldDist.asInt() >= 0) {
+              this.gs.singleWidth
+            } else {
+              fixed26_6(0) - this.gs.singleWidth
+            }
+          };
+          // Rounding bit.
+          // TODO: metrics compensation.
+          distance = if (iOpcode.and(0x04) != 0) {
+            this.round(oldDist)
+          } else {
+            oldDist
+          };
+          // Minimum distance bit.
+          if (iOpcode.and(0x08) != 0) {
+            if (oldDist.asInt() >= 0) {
+              if (distance < this.gs.minDist) {
+                !distance = this.gs.minDist;
+              }
+            } else {
+              negMinDist = fixed26_6(0) - this.gs.minDist;
+              if (distance > negMinDist) {
+                !distance = negMinDist
+              }
+            }
+          };
+          // Set-RP0 bit.
+          !rp1 = rp0;
+          !rp2 = int32(i);
+          if (iOpcode.and(0x10) != 0) {
+            !rp0 = int32(i);
+          };
+          !this.gs.rp = (rp0, rp1, rp2);
+          // Move the point.
+          !oldDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.pv);
+          toUpdate.set(i, this.move(p, distance - oldDist, true));
+        } else {
+          // MIRPxxxxx opcode.
+          !top = top - 2;
+          i = this.stack[top].toInt();
+          cvtDist = this.getScaledCVT(this.stack[top + 1].toInt());
+          if (
+            (cvtDist - this.gs.singleWidth).abs() < this.gs.singleWidthCutIn
+          ) {
+            !cvtDist = if (cvtDist.asInt() >= 0) {
+              cvtDist + this.gs.singleWidth
+            } else {
+              cvtDist - this.gs.singleWidth
+            }
+          };
+          (rp0, rp1, rp2) = this.gs.rp;
+          (zp0, zp1, _) = this.gs.zp;
+          // TODO: implement once we have a .ttf file that triggers
+          // this, so that we can step through C's freetype.
+          invariant(
+            zp1 != 0,
+            "TrueType: hinting: unimplemented twilight point adjustment",
+          );
+          ref = this.getPoints(0, unhinted).get(rp0.toInt());
+          p = this.getPoints(1, unhinted).get(i);
+          oldDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.dv);
+          !ref = this.getPoints(0, current).get(rp0.toInt());
+          !p = this.getPoints(1, current).get(i);
+          curDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.pv);
+          if (this.gs.autoFlip && oldDist.asInt().xor(cvtDist.asInt()) < 0) {
+            !cvtDist = fixed26_6(0) - cvtDist;
+          };
+          // Rounding bit.
+          // TODO: metrics compensation.
+          distance = if (iOpcode.and(0x04) != 0) {
+            // The CVT value is only used if close enough to oldDist.
+            this.round(
+              if (
+                zp0 == zp1 &&
+                (cvtDist - oldDist).abs() > this.gs.controlValueCutIn
+              ) {
+                oldDist
+              } else {
+                cvtDist
+              },
+            )
+          } else {
+            cvtDist
+          };
+          // Minimum distance bit.
+          if (iOpcode.and(0x08) != 0) {
+            if (oldDist.asInt() >= 0) {
+              if (distance < this.gs.minDist) {
+                !distance = this.gs.minDist
+              }
+            } else {
+              if (distance > fixed26_6(0) - this.gs.minDist) {
+                !distance = fixed26_6(0) - this.gs.minDist
+              }
+            }
+          };
+          // Set-RP0 bit.
+          !rp1 = rp0;
+          !rp2 = int32(i);
+          if (iOpcode.and(0x10) != 0) {
+            !rp0 = int32(i);
+          };
+          !this.gs.rp = (rp0, rp1, rp2);
+          // Move the point.
+          this.getPoints(1, current).set(
+            i,
+            this.move(p, distance - curDist, true),
+          );
+        }
+      };
+      !pc = pc + 1;
+    };
+    this
+  }
+
+  mutable fun delta(opcode: Int, pc: Int, top: Int): (Int, Int) {
+    if (opcode >= opDELTAC1 && !this.scaledCVTInitialized) {
+      this.initializeScaledCVT()
+    };
+    !top = top - 1;
+    n = this.stack[top].toInt();
+    invariant(top >= 2 * n, "TrueType: hinting: stack underflow");
+    while (n > 0) {
+      !top = top - 2;
+      b = this.stack[top].toInt();
+      c = b.and(0xf0).shr(4);
+      if (opcode == opDELTAP2 || opcode == opDELTAC2) {
+        !c = c + 16;
+      } else if (opcode == opDELTAP3 || opcode == opDELTAC3) {
+        !c = c + 32;
+      };
+      !c = c + this.gs.deltaBase.toInt();
+      ppem = (this.scale.asInt() + 1.shl(5)).shr(6);
+      if (ppem == c) {
+        !b = b.and(0x0f) - 8;
+        if (b >= 0) {
+          !b = b + 1;
+        };
+        !b = b * 64 / 1.shl(toUInt32(this.gs.deltaShift));
+        a = this.stack[top + 1].toInt();
+        if (opcode >= opDELTAC1) {
+          this.scaledCVT.set(a, this.scaledCVT.get(a) + fixed26_6(b));
+        } else {
+          points = this.getPoints(0, current);
+          p = points.get(a);
+          points.set(a, this.move(p, fixed26_6(b), true));
+        }
+      };
+      !n = n - 1;
+    };
+    !pc = pc + 1;
+    (pc, top)
+  }
+
+  mutable fun push(
+    program: Array<UInt8>,
+    opcode: Int,
+    pc: Int,
+    top: Int,
+  ): (Int, Int) {
+    width = 1;
+    if (opcode.and(0x80) != 0) {
+      !opcode = opcode.and(0x80.not());
+      !width = 2;
+    };
+    if (opcode == 0) {
+      !pc = pc + 1;
+      invariant(pc < program.size(), "TrueType: hinting:  insufficient data");
+      !opcode = program[pc].toInt();
+    };
+    !pc = pc + 1;
+    invariant(
+      top + opcode <= this.stack.size(),
+      "TrueType: hinting:  stack overflow",
+    );
+    invariant(
+      pc + (width * opcode) <= program.size(),
+      "TrueType: hinting:  insufficient data",
+    );
+    while (opcode > 0) {
+      v1 = program[pc];
+      this.stack.set(
+        top,
+        if (width == 1) {
+          int32(v1.toInt())
+        } else {
+          v2 = program[pc + 1].toInt();
+          int32(toInt8(v1).shl(8).or(v2))
+        },
+      );
+      !top = top + 1;
+      !pc = pc + width;
+      !opcode = opcode - 1;
+    };
+    (pc, top)
+  }
+  /**
+   * Overrides the scaled value from the font's Control Value Table.
+   */
+  mutable fun setScaledCVT(i: Int, v: Fixed.Int26_6): void {
+    if (!this.scaledCVTInitialized) {
+      this.initializeScaledCVT();
+    };
+    if (i >= 0 && i < this.scaledCVT.size()) {
+      this.scaledCVT.set(i, v);
+    };
+  }
+
+  /**
+   * Returns the scaled value from the font's Control Value Table.
+   */
+  mutable fun getScaledCVT(i: Int): Fixed.Int26_6 {
+    if (!this.scaledCVTInitialized) {
+      this.initializeScaledCVT();
+    };
+    this.scaledCVT.maybeGet(i).default(fixed26_6(0));
+  }
+
+  mutable fun initializeScaledCVT(): void {
+    this.!scaledCVTInitialized = true;
+    len = this.font.cvt.size() / 2;
+    n = if (len < 32) {
+      32
+    } else {
+      len
+    };
+    this.scaledCVT.resize(n, fixed26_6(0));
+    for (i in .Range(0, len)) {
+      v1 = this.font.cvt[2 * i];
+      v2 = this.font.cvt[(2 * i) + 1];
+      unscaled = v1.toInt().shl(8).or(v2.toInt());
+      scaled = this.font.scale(this.scale.asInt() * toInt16(uint16(unscaled)));
+      this.scaledCVT.set(i, fixed26_6(scaled));
+    };
+  }
+
+  mutable fun iupShift(interpY: Bool, p1: Int, p2: Int, p: Int): void {
+    delta = if (interpY) {
+      this.glyphCurrent.get(p).y - this.glyphUnhinted.get(p).y;
+    } else {
+      this.glyphCurrent.get(p).x - this.glyphUnhinted.get(p).x;
+    };
+    if (delta.asInt() == 0) {
+      return void
+    };
+    for (i in .Range(p1, p2)) {
+      if (i == p) {
+        continue;
+      };
+      cp = this.glyphCurrent.get(i);
+      if (interpY) {
+        !cp.y = cp.y + delta;
+      } else {
+        !cp.x = cp.x + delta;
+      };
+      this.glyphCurrent.set(i, cp);
+    }
+  }
+
+  mutable fun displacement(useZP1: Bool): (Int, Int, Fixed.Int26_6) {
+    (_, rp1, rp2) = this.gs.rp;
+    (zonePointer, i) = if (useZP1) {
+      (1, rp2.toInt());
+    } else {
+      (0, rp1.toInt());
+    };
+    p = this.getPoints(zonePointer, current).get(i);
+    q = this.getPoints(zonePointer, unhinted).get(i);
+    d = dotProduct(p.x - q.x, p.y - q.y, this.gs.pv);
+    (zonePointer, i, d)
+  }
+
+  mutable fun iupInterp(
+    interpY: Bool,
+    p1: Int,
+    p2: Int,
+    ref1: Int,
+    ref2: Int,
+  ): void {
+    if (p1 > p2) {
+      return void;
+    };
+    if (ref1 >= this.glyphCurrent.size() || ref2 >= this.glyphCurrent.size()) {
+      return void;
+    };
+    ip1 = this.glyphInFontUnits.get(ref1);
+    ip2 = this.glyphInFontUnits.get(ref2);
+    (ifu1, ifu2) = if (interpY) {
+      (ip1.y, ip2.y)
+    } else {
+      (ip1.x, ip2.x)
+    };
+    if (ifu1 > ifu2) {
+      (!ifu1, !ifu2) = (ifu2, ifu1);
+      (!ref1, !ref2) = (ref2, ref1);
+    };
+    up1 = this.glyphUnhinted.get(ref1);
+    up2 = this.glyphUnhinted.get(ref2);
+    (unh1, unh2, delta1, delta2) = if (interpY) {
+      (
+        up1.y,
+        up2.y,
+        this.glyphCurrent.get(ref1).y - up1.y,
+        this.glyphCurrent.get(ref2).y - up2.y,
+      )
+    } else {
+      (
+        up1.x,
+        up2.x,
+        this.glyphCurrent.get(ref1).x - up1.x,
+        this.glyphCurrent.get(ref2).x - up2.x,
+      )
+    };
+    if (ifu1 == ifu2) {
+      for (i in .Range(p1, p2 + 1)) {
+        up = this.glyphUnhinted.get(i);
+        xy = if (interpY) {
+          up.y
+        } else {
+          up.x
+        };
+        !xy = if (xy <= unh1) {
+          xy + delta1
+        } else {
+          xy + delta2
+        };
+        cp = this.glyphCurrent.get(i);
+        if (interpY) {
+          !cp.y = xy;
+        } else {
+          !cp.x = xy;
+        };
+        this.glyphCurrent.set(i, cp);
+      };
+      return void;
+    };
+    scale = 0;
+    scaleOK = false;
+    for (i in .Range(p1, p2 + 1)) {
+      up = this.glyphUnhinted.get(i);
+      ifup = this.glyphInFontUnits.get(i);
+      (xy, ifuXY) = if (interpY) {
+        (up.y, ifup.y)
+      } else {
+        (up.x, ifup.x)
+      };
+      !xy = if (xy <= unh1) {
+        xy + delta1
+      } else if (xy >= unh2) {
+        xy + delta2
+      } else {
+        if (!scaleOK) {
+          !scaleOK = true;
+          !scale = mulDiv(
+            (unh2 + delta2 - unh1 - delta1).asInt(),
+            0x10000,
+            (ifu2 - ifu1).asInt(),
+          )
+        };
+        numer = (ifuXY - ifu1).asInt() * scale;
+        !numer = if (numer >= 0) {
+          numer + 0x8000
+        } else {
+          numer - 0x8000
+        };
+        unh1 + delta1 + fixed26_6(numer / 0x10000);
+      };
+      cp = this.glyphCurrent.get(i);
+      if (interpY) {
+        !cp.y = xy;
+      } else {
+        !cp.x = xy;
+      };
+      this.glyphCurrent.set(i, cp);
+    };
+  }
+
+  /**
+   * Skip past bytecode until the next ELSE (if opcode == 0) or the
+   * next EIF (for all opcodes). Opcode == 0 means that we have come
+   * from an IF. Opcode == 1 means that we have come from an ELSE.
+   */
+  mutable fun ifelse(program: Array<UInt8>, opcode: Int, pc: Int): Int {
+    depth = 0;
+    loop {
+      !pc = pc + 1;
+      invariant(
+        pc < program.size(),
+        "TrueType: hinting: unbalanced IF or ELSE",
+      );
+      code = program[pc].toInt();
+      if (code == opIF) {
+        !depth = depth + 1;
+      } else if (code == opELSE) {
+        if (depth == 0 && opcode == 0) {
+          break void;
+        }
+      } else if (code == opEIF) {
+        !depth = depth - 1;
+        if (depth < 0) {
+          break void;
+        }
+      } else {
+        !pc = skipInstructionPayload(program, pc, "unbalanced IF or ELSE")
+      }
+    };
+    !pc = pc + 1;
+    pc;
+  }
+
+  mutable fun getPoints(zp: Int, pt: Int): mutable Array<Point> {
+    (zp0, zp1, zp2) = this.gs.zp;
+    czp = zp match {
+    | 0 -> zp0
+    | 1 -> zp1
+    | _ -> zp2
+    };
+    czp.toInt() match {
+    | 0 ->
+      if (pt == current) {
+        this.twilightCurrent
+      } else if (pt == unhinted) {
+        this.twilightUnhinted
+      } else {
+        this.twilightInFontUnits
+      }
+    | _ ->
+      if (pt == current) {
+        this.glyphCurrent
+      } else if (pt == unhinted) {
+        this.glyphUnhinted
+      } else {
+        this.glyphInFontUnits
+      }
+    };
+  }
+
+  mutable fun move(p: Point, distance: Fixed.Int26_6, touch: Bool): Point {
+    (fv0, fv1) = this.gs.fv;
+    (pv0, pv1) = this.gs.pv;
+    fvx = fv0.toInt();
+    pvx = pv0.toInt();
+    if (fvx == 0x4000 && pvx == 0x4000) {
+      if (this.debug) {
+        debug(("Before move 1", p.toTuple(), distance));
+      };
+      !p.x = p.x + distance;
+      if (touch) {
+        !p.flags = p.flags.or(flagTouchedX)
+      };
+      if (this.debug) {
+        debug(("After move 1", p.toTuple()));
+      };
+      return p;
+    };
+    fvy = fv1.toInt();
+    pvy = pv1.toInt();
+    if (fvy == 0x4000 && pvy == 0x4000) {
+      if (this.debug) {
+        debug(("Before move 2", p.toTuple(), distance));
+      };
+      !p.y = p.y + distance;
+      if (touch) {
+        !p.flags = p.flags.or(flagTouchedY)
+      };
+      if (this.debug) {
+        debug(("After move 2", p.toTuple()));
+      };
+      return p;
+    };
+    fvDotPv = (fvx * pvx + fvy * pvy).shr(14);
+    if (this.debug) {
+      debug(
+        ("Before move 3", p.toTuple(), distance.asInt(), fvx, fvy, fvDotPv),
+      );
+    };
+    if (fvx != 0) {
+      !p.x = p.x + fixed26_6(mulDiv(fvx, distance.asInt(), fvDotPv));
+      if (touch) {
+        !p.flags = p.flags.or(flagTouchedX)
+      };
+    };
+    if (fvy != 0) {
+      !p.y = p.y + fixed26_6(mulDiv(fvy, distance.asInt(), fvDotPv));
+      if (touch) {
+        !p.flags = p.flags.or(flagTouchedY)
+      };
+    };
+    if (this.debug) {
+      debug(("After move 3", p.toTuple()));
+    };
+    p;
+  }
+
+  /**
+   * Rounds the given number. The rounding algorithm is described at
+   * https://developer.apple.com/fonts/TTRefMan/RM02/Chap2.html#rounding
+   */
+  mutable fun round(x: Fixed.Int26_6): Fixed.Int26_6 {
+    zero = fixed26_6(0);
+    if (this.gs.roundPeriod == zero) {
+      // Rounding is off.
+      return x
+    };
+    if (x >= zero) {
+      ret = x - this.gs.roundPhase + this.gs.roundThreshold;
+      if (this.gs.roundSuper45) {
+        !ret = fixed26_6(ret.asInt() / this.gs.roundPeriod.asInt());
+        !ret = fixed26_6(ret.asInt() * this.gs.roundPeriod.asInt());
+      } else {
+        !ret = fixed26_6(ret.asInt().and(-this.gs.roundPeriod.asInt()));
+      };
+      if (x != zero && ret < zero) {
+        !ret = zero;
+      };
+      return ret + this.gs.roundPhase;
+    };
+    ret = zero - x - this.gs.roundPhase + this.gs.roundThreshold;
+    if (this.gs.roundSuper45) {
+      !ret = fixed26_6(ret.asInt() / this.gs.roundPeriod.asInt());
+      !ret = fixed26_6(ret.asInt() * this.gs.roundPeriod.asInt());
+    } else {
+      !ret = fixed26_6(ret.asInt().and(-this.gs.roundPeriod.asInt()));
+    };
+    if (ret < zero) {
+      !ret = zero;
+    };
+    zero - ret - this.gs.roundPhase;
+  }
+}
+/**
+ * Returns x/y in 26.6 fixed point arithmetic.
+ */
+fun fdiv(x: Fixed.Int26_6, y: Fixed.Int26_6): Fixed.Int26_6 {
+  fixed26_6(x.asInt().shl(6) / y.asInt());
+}
+/**
+ * Returns x*y in 26.6 fixed point arithmetic.
+ */
+fun fmul(x: Fixed.Int26_6, y: Fixed.Int26_6): Fixed.Int26_6 {
+  fixed26_6((x.asInt() * y.asInt() + 1.shl(5)).shr(6))
+}
+
+/**
+ * Increments pc by the extra data that follows a
+ * variable length PUSHB or PUSHW instruction.
+ */
+fun skipInstructionPayload(
+  program: Array<UInt8>,
+  pc: Int,
+  message: String,
+): Int {
+  code = program[pc].toInt();
+  if (code == opNPUSHB) {
+    !pc = pc + 1;
+    invariant(pc < program.size(), `TrueType: hinting: ${message}`);
+    pc + program[pc].toInt();
+  } else if (code == opNPUSHW) {
+    !pc = pc + 1;
+    invariant(pc < program.size(), `TrueType: hinting: ${message}`);
+    pc + (2 * program[pc].toInt());
+  } else if (
+    code == opPUSHB000 ||
+    code == opPUSHB001 ||
+    code == opPUSHB010 ||
+    code == opPUSHB011 ||
+    code == opPUSHB100 ||
+    code == opPUSHB101 ||
+    code == opPUSHB110 ||
+    code == opPUSHB111
+  ) {
+    pc + program[pc].toInt() - (opPUSHB000 - 1);
+  } else if (
+    code == opPUSHW000 ||
+    code == opPUSHW001 ||
+    code == opPUSHW010 ||
+    code == opPUSHW011 ||
+    code == opPUSHW100 ||
+    code == opPUSHW101 ||
+    code == opPUSHW110 ||
+    code == opPUSHW111
+  ) {
+    pc + (2 * (program[pc].toInt() - (opPUSHW000 - 1)));
+  } else {
+    pc;
+  }
+}
+
+fun resetTwilightPoints(
+  f: Font,
+  p: mutable Array<Point>,
+): mutable Array<Point> {
+  n = f.maxTwilightPoints.toInt() + 4;
+  len = p.size();
+  if (n <= len) {
+    Array<Point>::mfillBy(len, index -> {
+      if (index < n) {
+        Point{}
+      } else {
+        p.get(index)
+      }
+    })
+  } else {
+    Array<Point>::mfill(n, Point{})
+  }
+}
+/**
+ * dotProduct returns the dot product of [x, y] and q. It is almost the same as
+ *	return Fixed.Int26_6((px*qx + py*qy + 1<<13) >> 14)
+ */
+fun dotProduct(
+  x: Fixed.Int26_6,
+  y: Fixed.Int26_6,
+  q: (Int16, Int16),
+): Fixed.Int26_6 {
+  (q0, q1) = q;
+  ires = (x.asInt() * q0.toInt()) + (y.asInt() * q1.toInt());
+  fixed26_6((ires + 1.shl(13)).shr(14));
+}
+
+/**
+ * mulDiv returns x*y/z, rounded to the nearest integer.
+ */
+fun mulDiv(x: Int, y: Int, z: Int): Int {
+  xy = x * y;
+  if (z < 0) {
+    (!xy, !z) = (-xy, -z);
+  };
+  if (xy >= 0) {
+    !xy = xy + (z / 2);
+  } else {
+    !xy = xy - (z / 2);
+  };
+  xy / z
+}
+
+fun normalize(x: Int16, y: Int16): (Int16, Int16) {
+  fx = x.toInt().toFloat();
+  fy = y.toInt().toFloat();
+  hypot = Math.sqrt((fx * fx) + (fy * fy));
+  l = 0x4000.toFloat() / hypot;
+  !fx = fx * l;
+  !fx = if (fx >= 0.0) {
+    fx + 0.5
+  } else {
+    fx - 0.5
+  };
+  !fy = fy * l;
+  !fy = if (fy >= 0.0) {
+    fy + 0.5
+  } else {
+    fy - 0.5
+  };
+  (int16(fx.toInt()), int16(fy.toInt()))
+}
+
+fun toPrintable(array: Array<Point>): Array<(Int, Int, Int)> {
+  array.map(p -> p.toTuple())
+}
+
+module end;
