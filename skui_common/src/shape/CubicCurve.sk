@@ -1,0 +1,117 @@
+module Shape;
+
+/**
+ * Creates an CubicCurve.
+ * @param start the start point of the cubic curve segment.
+ * @param end the end point of the cubic curve segment.
+ * @param firstControl the first control point of the cubic curve segment.
+ * @param secondControl the second control point of the cubic curve segment.
+ */
+class CubicCurve{
+  start: Geometry.Offset,
+  end: Geometry.Offset,
+  firstControl: Geometry.Offset,
+  secondControl: Geometry.Offset,
+} extends PathEdge {
+  fun getBounds(): Geometry.Rect {
+    minx = Math.min(
+      Math.min(this.start.dx, this.firstControl.dx),
+      Math.min(this.secondControl.dx, this.end.dx),
+    );
+    maxx = Math.max(
+      Math.max(this.start.dx, this.firstControl.dx),
+      Math.max(this.secondControl.dx, this.end.dx),
+    );
+    miny = Math.min(
+      Math.min(this.start.dy, this.firstControl.dy),
+      Math.min(this.secondControl.dy, this.end.dy),
+    );
+    maxy = Math.max(
+      Math.max(this.start.dy, this.firstControl.dy),
+      Math.max(this.secondControl.dy, this.end.dy),
+    );
+    Geometry.Rect(minx, miny, maxx, maxy)
+  }
+
+  fun isFinite(): Bool {
+    this.start.isFinite() &&
+      this.end.isFinite() &&
+      this.firstControl.isFinite() &&
+      this.secondControl.isFinite()
+  }
+
+  fun reverse(): CubicCurve {
+    CubicCurve{
+      start => this.end,
+      end => this.start,
+      firstControl => this.secondControl,
+      secondControl => this.firstControl,
+    }
+  }
+
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): CubicCurve {
+    CubicCurve{
+      start => conv(this.start),
+      end => conv(this.end),
+      firstControl => conv(this.firstControl),
+      secondControl => conv(this.secondControl),
+    }
+  }
+
+  // P0 * (1-t)3 + 3 * P1 * t * (t - 1)2 + 3 * P2 * t2 * (1 - t) + P3 * t3 = P
+  // (1-t)3 + 3 * t * (t - 1)2 + 3 * t2 * (1 - t) + t3 = [t + (1 - t)3] = 1
+  fun pointAt(t: Float): Geometry.Offset {
+    if (t <= 0.0) {
+      return this.start;
+    };
+    if (t >= 1.0) {
+      return this.end;
+    };
+    oneT = 1.0 - t;
+    oneT2 = oneT * oneT;
+    a = oneT2 * oneT;
+    b = 3.0 * oneT2 * t;
+    t2 = t * t;
+    c = 3.0 * oneT * t2;
+    d = t2 * t;
+    Geometry.Offset(
+      a * this.start.dx +
+        b * this.firstControl.dx +
+        c * this.secondControl.dx +
+        d * this.end.dx,
+      a * this.start.dy +
+        b * this.firstControl.dy +
+        c * this.secondControl.dy +
+        d * this.end.dy,
+    );
+  }
+
+  // 3 ((P1 - P0) (1 - t)²) + 2 (P2 - P1) t (1 - t) + (P3 - P2) t²)
+  fun derivativeAt(t: Float): Geometry.Offset {
+    p01 = this.firstControl - this.start;
+    p11 = this.secondControl - this.firstControl;
+    p21 = this.end - this.secondControl;
+    if (t <= 0.0) {
+      return p01 * 3.0;
+    };
+    if (t >= 1.0) {
+      return p21 * 3.0;
+    };
+    oneT = 1.0 - t;
+    a = oneT * oneT;
+    b = 2.0 * oneT * t;
+    c = t * t;
+    ((p01 * a) + (p11 * b) + (p21 * c)) * 3.0
+  }
+
+  fun toPath(): Path {
+    Path{
+      elements => Array[
+        MoveTo(this.start),
+        CubicCurveTo(this.end, this.firstControl, this.secondControl),
+      ],
+    }
+  }
+}
+
+module end;

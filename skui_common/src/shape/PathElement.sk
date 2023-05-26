@@ -1,0 +1,99 @@
+module Shape;
+
+base class PathEntity {
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): this;
+}
+
+base class PathSegment extends PathEntity {}
+
+base class PathEdge extends PathEntity {}
+
+base class PathElement() uses Hashable, Equality {
+  fun getEndOffset(previous: Geometry.Offset): Geometry.Offset;
+}
+
+class ClosePath() extends PathElement, PathSegment {
+  fun getEndOffset(previous: Geometry.Offset): Geometry.Offset {
+    previous;
+  }
+
+  fun transform(_conv: Geometry.Offset ~> Geometry.Offset): ClosePath {
+    this
+  }
+}
+
+/**
+ * Creates an MoveTo.
+ * @param the coordinate to move to
+ */
+class MoveTo(point: Geometry.Offset) extends PathElement, PathSegment {
+  fun getEndOffset(_previous: Geometry.Offset): Geometry.Offset {
+    this.point;
+  }
+
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): MoveTo {
+    MoveTo(conv(this.point))
+  }
+}
+
+/**
+ * Creates an LineTo.
+ * @param the coordinate to line to
+ */
+class LineTo(point: Geometry.Offset) extends PathElement, PathSegment {
+  fun getEndOffset(_previous: Geometry.Offset): Geometry.Offset {
+    this.point
+  }
+
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): LineTo {
+    LineTo(conv(this.point))
+  }
+}
+
+/**
+ * Creates an CubicCurveTo.
+ * @param end the final end point.
+ * @param firstControl the first bezier control point.
+ * @param secondControl the second bezier control point.
+ */
+class CubicCurveTo(
+  end: Geometry.Offset,
+  firstControl: Geometry.Offset,
+  secondControl: Geometry.Offset,
+) extends PathElement, PathSegment {
+  fun getEndOffset(_previous: Geometry.Offset): Geometry.Offset {
+    this.end
+  }
+
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): CubicCurveTo {
+    CubicCurveTo(
+      conv(this.end),
+      conv(this.firstControl),
+      conv(this.secondControl),
+    )
+  }
+}
+
+/**
+ * Creates an QuadCurveTo.
+ * @param end the final end point.
+ * @param control the bezier control point.
+ */
+class QuadCurveTo(
+  end: Geometry.Offset,
+  control: Geometry.Offset,
+) extends PathElement, PathSegment {
+  fun getEndOffset(_previous: Geometry.Offset): Geometry.Offset {
+    this.end
+  }
+
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): QuadCurveTo {
+    QuadCurveTo(conv(this.end), conv(this.control))
+  }
+
+  fun toSvg(): String {
+    `Q ${this.control.dx} ${this.control.dy} ${this.end.dx} ${this.end.dy}`
+  }
+}
+
+module end;

@@ -1,0 +1,10 @@
+[package]
+name = "skui_common"
+version = "0.1.0"
+format-on-checkCheck = true
+auto-remove-state = true
+
+[dependencies]
+prelude = { }
+skfs = { }
+skui_base = { }

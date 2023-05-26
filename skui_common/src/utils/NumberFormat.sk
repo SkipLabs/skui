@@ -1,0 +1,624 @@
+module Number;
+
+class Symbols{
+  internationalCurrencySymbol: Text = LocaleText("USD", Some("Number")),
+  currencySymbol: Text = LocaleText("$", Some("Currency")),
+  percent: Text = LocaleText("%", Some("Number")),
+  permille: Text = LocaleText("\u2030", Some("Number")),
+  minusSign: Text = LocaleText("-", Some("Number")),
+  infinity: Text = LocaleText("\u221E", Some("Number")),
+  groupingSeparator: Text = LocaleText(",", Some("Number")),
+  decimalSeparator: Text = LocaleText(".", Some("Number")),
+  monetaryDecimalSeparator: Text = LocaleText(".", Some("Currency")),
+  exponentialSeparator: Text = LocaleText("x10^", Some("Number")),
+} {}
+
+class IntegerPart(
+  prefix: String = "",
+  suffix: String = "",
+  minimumDigits: Int = 0,
+  maximumDigits: Int = 0,
+  groupingCount: Int = 0,
+  groupingSize: ?Int = None(),
+  inQuote: Bool = false,
+  needFractional: Bool = false,
+  skipNext: Bool = false,
+  isCurrencyFormat: Bool = false,
+  needExponential: Bool = false,
+  multiplier: Int = 1,
+) uses Hashable, Equality {
+  fun appendAffix(toAppend: String): IntegerPart {
+    if (this.minimumDigits > 0 || this.maximumDigits > 0) {
+      !this.suffix = this.suffix + toAppend;
+    } else {
+      !this.prefix = this.prefix + toAppend;
+    };
+    this;
+  }
+
+  fun check(ch: Char, next: ?Char, pattern: String): IntegerPart {
+    if (this.inQuote) {
+      // A quote within quotes indicates either the closing
+      // quote or two quotes, which is a quote literal. That
+      // is, we have the second quote in 'do' or 'don''t'.
+      if (ch == Pattern::quote) {
+        if (next.map(n -> n == Pattern::quote).default(false)) {
+          !this = this.appendAffix("''"); // 'don''t'
+          !this.skipNext = true;
+        } else {
+          !this.inQuote = false; // 'do'
+        }
+      }
+    } else if (ch == Pattern::digit) {
+      if (this.minimumDigits > 0) {
+        !this.minimumDigits = this.minimumDigits + 1;
+      };
+      !this.maximumDigits = this.maximumDigits + 1;
+      !this.groupingCount = this.groupingCount + 1;
+    } else if (ch == Pattern::zeroDigit) {
+      !this.minimumDigits = this.minimumDigits + 1;
+      !this.maximumDigits = this.maximumDigits + 1;
+      !this.groupingCount = this.groupingCount + 1;
+    } else if (ch == Pattern::groupingSeparator) {
+      !this.groupingCount = 0;
+    } else if (ch == Pattern::decimalSeparator) {
+      !this.needFractional = true;
+      !this.groupingSize = if (this.groupingCount > 0) {
+        Some(this.groupingCount)
+      } else {
+        None()
+      };
+    } else if (ch == Pattern::quote) {
+      next match {
+      | Some(nch) ->
+        if (nch == Pattern::currencySign) {
+          !this = this.appendAffix("''");
+        }
+      | _ -> !this.inQuote = true
+      }
+    } else if (ch == Pattern::currencySign) {
+      // Use lookahead to determine if the currency sign
+      // is doubled or not.
+      doubled = next.map(n -> n == Pattern::currencySign).default(false);
+      if (doubled) {
+        // Skip over the doubled character
+        !this.skipNext = true;
+      };
+      !this.isCurrencyFormat = true;
+      !this = this.appendAffix(
+        if (doubled) {
+          "'\u00A4\u00A4"
+        } else {
+          "'\u00A4"
+        },
+      );
+    } else if (ch == Pattern::exponent) {
+      !this.needExponential = true;
+    } else if (ch == Pattern::percent) {
+      // Next handle characters which are appended directly.
+      if (this.multiplier != 1) {
+        invariant_violation(
+          `Too many percent/per mille characters in pattern "${pattern}"`,
+        );
+      };
+      !this.multiplier = 100;
+      !this = this.appendAffix("'%");
+    } else if (ch == Pattern::permille) {
+      // Next handle characters which are appended directly.
+      if (this.multiplier != 1) {
+        invariant_violation(
+          `Too many percent/per mille characters in pattern "${pattern}"`,
+        );
+      };
+      !this.multiplier = 1000;
+      !this = this.appendAffix("'\u2030");
+    } else if (ch == Pattern::minus) {
+      !this = this.appendAffix("'-");
+    };
+    this;
+  }
+}
+
+class FractionalPart(
+  inQuote: Bool = false,
+  suffix: String = "",
+  minimumDigits: Int = 0,
+  maximumDigits: Int = 0,
+  isCurrencyFormat: Bool = false,
+  needExponential: Bool = false,
+  skipNext: Bool = false,
+  multiplier: Int = 1,
+) uses Hashable, Equality {
+  fun check(ch: Char, next: ?Char, pattern: String): FractionalPart {
+    if (this.inQuote) {
+      // A quote within quotes indicates either the closing
+      // quote or two quotes, which is a quote literal. That
+      // is, we have the second quote in 'do' or 'don''t'.
+      if (ch == Pattern::quote) {
+        if (next.map(n -> n == Pattern::quote).default(false)) {
+          !this.suffix = this.suffix + "''"; // 'don''t'
+          !this.skipNext = true;
+        } else {
+          !this.inQuote = false; // 'do'
+        }
+      }
+    } else if (ch == Pattern::digit) {
+      !this.maximumDigits = this.maximumDigits + 1;
+    } else if (ch == Pattern::zeroDigit) {
+      if (this.maximumDigits > 0) {
+        !this.minimumDigits = this.maximumDigits;
+      };
+      !this.minimumDigits = this.minimumDigits + 1;
+      !this.maximumDigits = this.maximumDigits + 1;
+    } else if (ch == Pattern::groupingSeparator) {
+      invariant_violation(
+        `Invalid grouping separators in pattern "${pattern}"`,
+      );
+    } else if (ch == Pattern::decimalSeparator) {
+      invariant_violation(
+        `Multiple decimal separators in pattern "${pattern}"`,
+      );
+    } else if (ch == Pattern::quote) {
+      next match {
+      | Some(nch) ->
+        if (nch == Pattern::currencySign) {
+          !this.suffix = this.suffix + "''";
+        }
+      | _ -> !this.inQuote = true
+      }
+    } else if (ch == Pattern::currencySign) {
+      // Use lookahead to determine if the currency sign
+      // is doubled or not.
+      doubled = next.map(n -> n == Pattern::currencySign).default(false);
+      if (doubled) {
+        // Skip over the doubled character
+        !this.skipNext = true;
+      };
+      !this.isCurrencyFormat = true;
+      !this.suffix =
+        this.suffix +
+        if (doubled) {
+          "'\u00A4\u00A4"
+        } else {
+          "'\u00A4"
+        };
+    } else if (ch == Pattern::exponent) {
+      if (this.needExponential) {
+        invariant_violation(
+          `Multiple exponential symbols in pattern "${pattern}"`,
+        );
+      };
+      !this.needExponential = true;
+    } else if (ch == Pattern::percent) {
+      // Next handle characters which are appended directly.
+      if (this.multiplier != 1) {
+        invariant_violation(
+          `Too many percent/per mille characters in pattern "${pattern}"`,
+        );
+      };
+      !this.multiplier = 100;
+      !this.suffix = this.suffix + "'%";
+    } else if (ch == Pattern::permille) {
+      // Next handle characters which are appended directly.
+      if (this.multiplier != 1) {
+        invariant_violation(
+          `Too many percent/per mille characters in pattern "${pattern}"`,
+        );
+      };
+      !this.multiplier = 1000;
+      !this.suffix = this.suffix + "'\u2030";
+    };
+    this;
+  }
+}
+
+class ExponentPart(
+  inQuote: Bool = false,
+  suffix: String = "",
+  digits: Int = 0,
+  isCurrencyFormat: Bool = false,
+  skipNext: Bool = false,
+) uses Hashable, Equality {
+  fun check(ch: Char, next: ?Char, pattern: String): ExponentPart {
+    if (this.inQuote) {
+      // A quote within quotes indicates either the closing
+      // quote or two quotes, which is a quote literal. That
+      // is, we have the second quote in 'do' or 'don''t'.
+      if (ch == Pattern::quote) {
+        if (next.map(n -> n == Pattern::quote).default(false)) {
+          !this.suffix = this.suffix + "''"; // 'don''t'
+          !this.skipNext = true;
+        } else {
+          !this.inQuote = false; // 'do'
+        }
+      }
+    } else if (ch == Pattern::exponent) {
+      invariant_violation(
+        `Multiple exponential symbols in pattern "${pattern}"`,
+      );
+    } else if (ch == Pattern::groupingSeparator) {
+      invariant_violation(
+        `Invalid grouping separators in pattern "${pattern}"`,
+      );
+    } else if (ch == Pattern::decimalSeparator) {
+      invariant_violation(`Invalid decimal separators in pattern "${pattern}"`);
+    } else if (ch == Pattern::digit || ch == Pattern::zeroDigit) {
+      !this.digits = this.digits + 1;
+    } else if (ch == Pattern::quote) {
+      next match {
+      | Some(nch) ->
+        if (nch == Pattern::currencySign) {
+          !this.suffix = this.suffix + "''";
+        }
+      | _ -> !this.inQuote = true
+      }
+    } else if (ch == Pattern::currencySign) {
+      // Use lookahead to determine if the currency sign
+      // is doubled or not.
+      doubled = next.map(n -> n == Pattern::currencySign).default(false);
+      if (doubled) {
+        // Skip over the doubled character
+        !this.skipNext = true;
+      };
+      !this.isCurrencyFormat = true;
+      !this.suffix =
+        this.suffix +
+        if (doubled) {
+          "'\u00A4\u00A4"
+        } else {
+          "'\u00A4"
+        };
+    };
+    this
+  }
+}
+
+/**
+ * NumberFormat is the abstract base class for all number
+ * formats. This class provides the interface for formatting and parsing
+ * numbers. NumberFormat also provides methods for determining
+ * which locales have number formats, and what their names are.
+ *
+ * NumberFormat helps you to format and parse numbers for any locale.
+ * Your code can be completely independent of the locale conventions for
+ * decimal points, thousands-separators, or even the particular decimal
+ * digits used, or whether the number format is even decimal.
+ *
+ * You can also use a NumberFormat to parse numbers.
+ *
+ * You can also control the display of numbers with such parameter like
+ * minimumFractionDigits.
+ *
+ * NumberFormat and DecimalFormat are designed such that some controls
+ * work for formatting and others work for parsing.  The following is
+ * the detailed description for each these control methods,
+ *
+ * parseIntegerOnly : only affects parsing, e.g.
+ * if true,  "3456.78" → 3456 (and leaves the parse position just after index 6)
+ * if false, "3456.78" → 3456.78 (and leaves the parse position just after index 8)
+ * This is independent of formatting.  If you want to not show a decimal point
+ * where there might be no digits after the decimal point, use
+ * decimalSeparatorAlwaysShown.
+ *
+ * decimalSeparatorAlwaysShown : only affects formatting, and only where
+ * there might be no digits after the decimal point, such as with a pattern
+ * like "#,##0.##", e.g.,
+ * if true,  3456.00 → "3,456."
+ * if false, 3456.00 → "3456"
+ * This is independent of parsing.  If you want parsing to stop at the decimal
+ * point, use parseIntegerOnly.
+ *
+ */
+class Pattern{symbols: Symbols = Symbols{}} {
+  // Constants for characters used in programmatic (unlocalized) patterns.
+  const zeroDigit: Char = '0';
+  const groupingSeparator: Char = ',';
+  const decimalSeparator: Char = '.';
+  const permille: Char = '\u2030';
+  const percent: Char = '%';
+  const digit: Char = '#';
+  const separator: Char = ';';
+  const exponent: Char = 'E';
+  const minus: Char = '-';
+  const currencySign: Char = '\u00A4';
+  const quote: Char = '\'';
+  const integerDigits: Int = 309;
+  const fractionDigits: Int = 340;
+
+  fun compile(pattern: String): Formater {
+    integerPart = IntegerPart();
+    fractionalPart = FractionalPart();
+    exponentPart = ExponentPart();
+    chars = pattern.chars();
+    size = chars.size();
+    index = 0;
+    phase = 0;
+    while (index < size) {
+      ch = chars.get(index);
+      next = chars.maybeGet(index + 1);
+      if (phase == 0) {
+        !integerPart = integerPart.check(ch, next, pattern);
+        if (integerPart.skipNext) {
+          !index = index + 1;
+        };
+        if (integerPart.needFractional) {
+          !phase = 1;
+        } else if (integerPart.needExponential) {
+          !phase = 2;
+        }
+      } else if (phase == 1) {
+        !fractionalPart = fractionalPart.check(ch, next, pattern);
+        if (fractionalPart.skipNext) {
+          !index = index + 1;
+        };
+        if (fractionalPart.needExponential) {
+          !phase = 2;
+        };
+      } else if (phase == 2) {
+        !exponentPart = exponentPart.check(ch, next, pattern);
+        if (exponentPart.skipNext) {
+          !index = index + 1;
+        };
+      };
+      !index = index + 1;
+    };
+    needExponential =
+      (integerPart.needExponential || fractionalPart.needExponential) &&
+      exponentPart.digits > 0;
+    Formater{
+      symbols => this.symbols,
+      integerPart,
+      fractionalPart,
+      exponentPart => if (needExponential) Some(exponentPart) else None(),
+      pattern,
+    }
+  }
+}
+
+class Formater{
+  symbols: Symbols = Symbols{},
+  integerPart: IntegerPart,
+  fractionalPart: FractionalPart,
+  exponentPart: ?ExponentPart,
+  pattern: String,
+} {
+  /**
+   * Specialization of format for Float.
+   *
+   * @param number the double number to format
+   * @return the formatted Text
+   */
+  fun format(number: Float): Text {
+    multiplier = Math.max(
+      this.integerPart.multiplier,
+      this.fractionalPart.multiplier,
+    );
+    isNegative = ((number < 0.0) || (number == 0.0 && 1.0 / number < 0.0)).xor(
+      multiplier < 0,
+    );
+    if (multiplier != 1) {
+      !number = number * multiplier.toFloat();
+    };
+    if (isNegative) {
+      !number = -number;
+    };
+    format = "";
+    params = mutable Vector<Text>[];
+    this.expandAffix(this.integerPart.prefix).each(p -> {
+      params.push(p);
+      !format = format + `{${params.size()}}`;
+    });
+    exponent = this.exponentPart.map(exponentPart -> {
+      exp = Math.log10(number).toInt();
+      size = exp.toString().chars().size();
+      if (size > exponentPart.digits) {
+        diff = size - exponentPart.digits;
+        if (exp < 0) {
+          !diff = diff + 1;
+        };
+        mult = Math.pow(10.0, diff.toFloat()).toInt();
+        invariant(
+          Math.abs(exp) > mult,
+          `Invalid exponent ${exp}: Number ${number} cannot be displayed in the format ${
+            this.pattern
+          }`,
+        );
+        !exp = exp / mult;
+      };
+      factor = Math.pow(10.0, Math.abs(exp).toFloat());
+      if (exp < 0) {
+        !factor = 1.0 / factor;
+      };
+      !number = number / factor;
+      (exp, exponentPart.suffix);
+    });
+    params.push(this.formatNumber(number, exponent));
+    !format = format + `{${params.size()}}`;
+    .Format(Raw(format), params.toArray())
+  }
+
+  fun formatExponential(_number: Float): Text {
+    todo();
+  }
+
+  fun formatNumber(number: Float, exponent: ?(Int, String)): Text {
+    format = "";
+    params = mutable Vector<Text>[];
+    if (Math.like(number, Float::inf)) {
+      params.push(this.symbols.infinity);
+      !format = format + `{${params.size()}}`;
+    } else {
+      params.push(this.leftPart(number));
+      !format = format + `{${params.size()}}`;
+      if (this.integerPart.needFractional) {
+        optRightPart = this.rightPart(number);
+        isCurrencyFormat =
+          this.integerPart.isCurrencyFormat ||
+          this.fractionalPart.isCurrencyFormat;
+        if (isCurrencyFormat) {
+          params.push(this.symbols.monetaryDecimalSeparator);
+          !format = format + `{${params.size()}}`;
+        } else {
+          params.push(this.symbols.decimalSeparator);
+          !format = format + `{${params.size()}}`;
+        };
+        optRightPart.each(rightPart -> {
+          params.push(rightPart);
+          !format = format + `{${params.size()}}`;
+        });
+        exponent.each(tuple -> {
+          (exp, suffix) = tuple;
+          params.push(this.symbols.exponentialSeparator);
+          !format = format + `{${params.size()}}`;
+          params.push(Raw(exp.toString()));
+          !format = format + `{${params.size()}}`;
+          this.expandAffix(suffix).each(p -> {
+            params.push(p);
+            !format = format + `{${params.size()}}`;
+          });
+        });
+        this.expandAffix(this.fractionalPart.suffix).each(p -> {
+          params.push(p);
+          !format = format + `{${params.size()}}`;
+        });
+      } else {
+        this.expandAffix(this.integerPart.suffix).each(p -> {
+          params.push(p);
+          !format = format + `{${params.size()}}`;
+        });
+      };
+    };
+    .Format(Raw(format), params.toArray())
+  }
+
+  fun rightPart(number: Float): ?Text {
+    leftPart = number.toInt();
+    mult = Math.pow(10.0, this.fractionalPart.maximumDigits.toFloat());
+    rightPart = ((number * mult) - (leftPart.toFloat() * mult)).toInt();
+    rightStr = rightPart.toString();
+    rightChars = rightStr.chars();
+    zeroCount = Math.max(
+      this.fractionalPart.minimumDigits - rightChars.size(),
+      0,
+    );
+    !rightStr = rightStr.searchRight(ch ~> ch != '0') match {
+    | Some(i) ->
+      _ = i.next();
+      rightStr.getIter().substring(i)
+    | None() -> ""
+    };
+    !rightChars = rightStr.chars();
+    displayedRightChars = mutable Vector<Char>[];
+    count = 0;
+    while (zeroCount > 0) {
+      displayedRightChars.push('0');
+      !zeroCount = zeroCount - 1;
+      !count = count + 1;
+    };
+    rightChars.each(c -> {
+      displayedRightChars.push(c);
+      !count = count + 1;
+    });
+    while (count < this.fractionalPart.minimumDigits) {
+      displayedRightChars.push('0');
+      !count = count + 1;
+    };
+    if (displayedRightChars.isEmpty()) {
+      None();
+    } else {
+      Some(Raw(String::fromChars(displayedRightChars.toArray())));
+    };
+  }
+
+  fun leftPart(number: Float): Text {
+    leftPart = number.toInt();
+    leftChars = leftPart.toString().chars();
+    invariant(
+      leftChars.size() <= this.integerPart.maximumDigits,
+      `Number ${number} cannot be displayed in the format ${this.pattern}`,
+    );
+    zeroCount = Math.max(this.integerPart.minimumDigits - leftChars.size(), 0);
+    displayedLeftChars = mutable Vector<Char>[];
+    while (zeroCount > 0) {
+      displayedLeftChars.push('0');
+      !zeroCount = zeroCount - 1;
+    };
+    leftChars.each(c -> displayedLeftChars.push(c));
+    this.integerPart.groupingSize.map(groupingSize -> {
+      params = mutable Vector<Text>[];
+      format = "";
+      displayedLeftChars.reverse();
+      for (i in .Range(0, displayedLeftChars.size())) {
+        if (i == groupingSize) {
+          params.push(this.symbols.groupingSeparator);
+          !format = `{${params.size()}}` + format;
+        };
+        c = displayedLeftChars.get(i);
+        !format = `${c}${format}`;
+      };
+      if (params.isEmpty()) {
+        Raw(format)
+      } else {
+        .Format(Raw(format), params.toArray())
+      }
+    }).default(Raw(String::fromChars(displayedLeftChars.toArray())));
+  }
+
+  /**
+   * Expand an affix pattern into an affix string.  All characters in the
+   * pattern are literal unless prefixed by QUOTE.  The following characters
+   * after QUOTE are recognized: PATTERN_PERCENT, PATTERN_PER_MILLE,
+   * PATTERN_MINUS, and CURRENCY_SIGN.  If CURRENCY_SIGN is doubled (QUOTE +
+   * CURRENCY_SIGN + CURRENCY_SIGN), it is interpreted as an ISO 4217
+   * currency code.  Any other character after a QUOTE represents itself.
+   * QUOTE must be followed by another character; QUOTE may not occur by
+   * itself at the end of the pattern.
+   *
+   * @param pattern the non-null, possibly empty pattern
+   * @param buffer a scratch StringBuffer; its contents will be lost
+   * @return the expanded equivalent of pattern
+   */
+  private fun expandAffix(pattern: String): ?Text {
+    chars = pattern.chars();
+    if (chars.isEmpty()) {
+      None()
+    } else {
+      size = chars.size();
+      format = "";
+      params = mutable Vector<Text>[];
+      i = 0;
+      while (i < size) {
+        c = chars.get(i);
+        !i = i + 1;
+        if (c == Pattern::quote) {
+          !c = chars.get(i);
+          !i = i + 1;
+          if (c == Pattern::currencySign) {
+            if (i < size && chars.get(i) == Pattern::currencySign) {
+              !i = i + 1;
+              params.push(this.symbols.internationalCurrencySymbol);
+              !format = format + `{${params.size()}}`;
+            } else {
+              params.push(this.symbols.currencySymbol);
+              !format = format + `{${params.size()}}`;
+            };
+          } else if (c == Pattern::percent) {
+            params.push(this.symbols.percent);
+            !format = format + `{${params.size()}}`;
+          } else if (c == Pattern::permille) {
+            params.push(this.symbols.permille);
+            !format = format + `{${params.size()}}`;
+          } else if (c == Pattern::minus) {
+            params.push(this.symbols.minusSign);
+            !format = format + `{${params.size()}}`;
+          }
+        } else {
+          !format = format + c;
+        }
+      };
+      Some(.Format(Raw(format), params.toArray()));
+    }
+  }
+}
+
+module end;

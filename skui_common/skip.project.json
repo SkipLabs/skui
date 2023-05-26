@@ -1,0 +1,88 @@
+{
+  "skipVersion": "1.0",
+  "variables": {
+    "backend": {
+      "values": ["native"],
+      "default": "native"
+    }
+  },
+  "programUnits": {
+    "skui_common": {
+      "kind": "Library",
+      "sources": ["src/**"],
+      "references": [
+        { "path": ".", "name": "prelude"},
+        { "path": ".", "name": "skfs"},
+        { "path": ".", "name": "base"}
+      ]
+    },
+    "test": {
+      "kind": "Library",
+      "sources": ["tests/**"],
+      "references": [
+        { "path": ".", "name": "skui_common"},
+        { "path": ".", "name": "sktest"}
+      ]
+    },
+    "base": {
+      "kind": "Library",
+      "sources": [
+        "../skui_base/src/**"
+      ],
+      "references": []
+    },
+    "skfs": {
+      "kind": "Library",
+      "sources": [
+        "../skfs/src/**"
+      ],
+      "references": []
+    },
+    "prelude": {
+      "kind": "Library",
+      "sources": [
+        "../prelude/src/Runtime.sk",
+        "../prelude/src/core/**",
+        "../prelude/src/stdlib/**"
+      ],
+      "parameters": {
+        "backend": {
+            "native": {"sources": ["../prelude/src/native"]}
+        }
+      },
+      "references": []
+    },
+    "sktest": {
+      "kind": "Library",
+      "sources": [
+        "../sktest/src/**"
+      ],
+      "references": [
+        { "path": ".", "name": "termcolor"},
+        { "path": ".", "name": "cli"}
+      ]
+    },
+    "skui_test": {
+      "kind": "Library",
+      "sources": [
+        "../skui_test/src/**"
+      ],
+      "references": []
+    },
+    "termcolor": {
+      "kind": "Library",
+      "sources": [
+        "../termcolor/src/**"
+      ],
+      "references": []
+    },
+    "cli": {
+      "kind": "Library",
+      "sources": [
+        "../cli/src/**"
+      ],
+      "references": []
+    }
+  },
+  "default": "skui_common"
+}

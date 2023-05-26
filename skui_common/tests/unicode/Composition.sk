@@ -1,0 +1,126 @@
+module SKUICommonTest;
+
+@test
+fun unicodeInsert(): void {
+  UnicodeCompose(Unicode.NFD(), decompositionNFDTest).run();
+}
+
+@test
+fun decompositionNFKD(): void {
+  UnicodeCompose(Unicode.NFKD(), decompositionNFKDTest).run();
+}
+
+@test
+fun compositionNFC(): void {
+  UnicodeCompose(Unicode.NFC(), compositionTest).run();
+}
+
+class CompositionCase(src: Array<Char>, dst: Array<Char>) extends Case {
+  static fun make(src: String, dst: String): CompositionCase {
+    CompositionCase(src.chars().toArray(), dst.chars().toArray())
+  }
+
+  static fun ints(src: Array<Int>, dst: Array<Int>): CompositionCase {
+    CompositionCase(src.map(Char::fromCode), dst.map(Char::fromCode))
+  }
+}
+
+class UnicodeCompose(norm: Unicode.Norm, tests: Array<Case>) {
+  //
+  fun run(): void {
+    this.cases().each(this.runCase);
+  }
+
+  protected fun runCase(testCase: Case): void {
+    testCase match {
+    | case @ CompositionCase _ ->
+      rb = mutable Unicode.ReorderBuffer{};
+      rb.init(this.norm, Array[]);
+      rb.setFlusher(None(), Unicode.appendFlush);
+      init = false;
+      for (char in case.src) {
+        bytes = Utf8.encodeChar(char);
+        props = this.norm.lookup(bytes, 0);
+        if (!init) {
+          rb.!streamSafe = props.nTrailingNonStarters();
+          !init = true;
+        } else {
+          _ = rb.nextStreamSafe(props);
+        };
+        SKTest.expectTrue(
+          rb.insertFlush(bytes, 0, props).isNone(),
+          `Insert failed for char ${char}`,
+        )
+      };
+      _ = rb.doFlush();
+      got = String::fromUtf8(rb.out.toArray());
+      expect = String::fromChars(case.dst);
+      expectEq(got, expect, v ~> v)
+    | _ -> invariant_violation("Must be a SKUICommonTest.CompositionCase")
+    };
+  }
+
+  protected fun cases(): Array<Case> {
+    this.tests;
+  }
+}
+
+const insertTests: Array<Case> = Array[
+  CompositionCase(Array['a'], Array['a']),
+  CompositionCase::ints(Array[0x300], Array[0x300]),
+  CompositionCase::ints(Array[0x300, 0x316], Array[0x316, 0x300]), // CCC(0x300)==230; CCC(0x316)==220
+  CompositionCase::ints(Array[0x316, 0x300], Array[0x316, 0x300]),
+  CompositionCase::ints(Array[0x41, 0x316, 0x300], Array[0x41, 0x316, 0x300]),
+  CompositionCase::ints(Array[0x41, 0x300, 0x316], Array[0x41, 0x316, 0x300]),
+  CompositionCase::ints(Array[0x300, 0x316, 0x41], Array[0x316, 0x300, 0x41]),
+  CompositionCase::ints(
+    Array[0x41, 0x300, 0x40, 0x316],
+    Array[0x41, 0x300, 0x40, 0x316],
+  ),
+];
+
+const decompositionNFDTest: Array<Case> = Array[
+  CompositionCase(Array['â'], Array['a', '\u0302']),
+  CompositionCase(Array['ä'], Array['a', '\u0308']),
+  CompositionCase::ints(Array[0xC0], Array[0x41, 0x300]),
+  CompositionCase::ints(Array[0xAC00], Array[0x1100, 0x1161]),
+  CompositionCase::ints(Array[0x01C4], Array[0x01C4]),
+  CompositionCase::ints(Array[0x320E], Array[0x320E]),
+  CompositionCase(
+    "음ẻ과".chars().toArray(),
+    Array[0x110B, 0x1173, 0x11B7, 0x65, 0x309, 0x1100, 0x116A].map(
+      Char::fromCode,
+    ),
+  ),
+];
+
+const decompositionNFKDTest: Array<Case> = Array[
+  CompositionCase::ints(Array[0xC0], Array[0x41, 0x300]),
+  CompositionCase::ints(Array[0xAC00], Array[0x1100, 0x1161]),
+  CompositionCase::ints(Array[0x01C4], Array[0x44, 0x5A, 0x030C]),
+  CompositionCase::ints(Array[0x320E], Array[0x28, 0x1100, 0x1161, 0x29]),
+];
+
+const compositionTest: Array<Case> = Array[
+  CompositionCase(Array['a', '\u0302'], Array['â']),
+  CompositionCase(Array['a', '\u0308'], Array['ä']),
+  CompositionCase(Array['o', '\u0302'], Array['ô']),
+  CompositionCase(Array['o', '\u0308'], Array['ö']),
+  CompositionCase::ints(Array[0x41, 0x300], Array[0xC0]),
+  CompositionCase::ints(Array[0x41, 0x316], Array[0x41, 0x316]),
+  CompositionCase::ints(Array[0x41, 0x300, 0x35D], Array[0xC0, 0x35D]),
+  CompositionCase::ints(Array[0x41, 0x316, 0x300], Array[0xC0, 0x316]),
+  // blocking starter
+  CompositionCase::ints(
+    Array[0x41, 0x316, 0x40, 0x300],
+    Array[0x41, 0x316, 0x40, 0x300],
+  ),
+  CompositionCase::ints(Array[0x1100, 0x1161], Array[0xAC00]),
+  // parenthesized Hangul, alternate between ASCII and Hangul.
+  CompositionCase::ints(
+    Array[0x28, 0x1100, 0x1161, 0x29],
+    Array[0x28, 0xAC00, 0x29],
+  ),
+];
+
+module end;

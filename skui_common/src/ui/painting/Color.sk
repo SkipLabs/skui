@@ -1,0 +1,885 @@
+module Ui;
+
+value class AlphaPremultiplied(r: Int, g: Int, b: Int, a: Int) uses Equality {
+  static fun fromRGBA(rgba: UInt32): AlphaPremultiplied {
+    hex = rgba.toInt();
+    a = hex.and(0xFF);
+    !hex = hex.shr(8);
+    b = hex.and(0xFF);
+    !hex = hex.shr(8);
+    g = hex.and(0xFF);
+    !hex = hex.shr(8);
+    r = hex.and(0xFF);
+    AlphaPremultiplied(r, g, b, a);
+  }
+
+  fun toRGBA(): UInt32 {
+    hex = 0;
+    !hex = hex.or(this.r);
+    !hex = hex.shl(8);
+    !hex = hex.or(this.g);
+    !hex = hex.shl(8);
+    !hex = hex.or(this.b);
+    !hex = hex.shl(8);
+    !hex = hex.or(this.a);
+    UInt32::truncate(hex);
+  }
+
+  fun toColor(): Color {
+    if (this.a == 0) {
+      Color::rgbaInt(this.r, this.g, this.b, this.a)
+    } else {
+      a = this.a.toFloat();
+      Color::rgbaInt(
+        Math.round(this.r.toFloat() * 255.0 / a).toInt(),
+        Math.round(this.g.toFloat() * 255.0 / a).toInt(),
+        Math.round(this.b.toFloat() * 255.0 / a).toInt(),
+        this.a,
+      )
+    }
+  }
+}
+/**
+ * A color represented using [alpha], [hue], [saturation], and [value].
+ *
+ * An [HSVColor] is represented in a parameter space that's based on human
+ * perception of color in pigments (e.g. paint and printer's ink). The
+ * representation is useful for some color computations (e.g. rotating the hue
+ * through the colors), because interpolation and picking of
+ * colors as red, green, and blue channels doesn't always produce intuitive
+ * results.
+ *
+ * The HSV color space models the way that different pigments are perceived
+ * when mixed. The hue describes which pigment is used, the saturation
+ * describes which shade of the pigment, and the value resembles mixing the
+ * pigment with different amounts of black or white pigment.
+ *
+ */
+class HSVColor private (
+  /**
+   * Alpha, from 0.0 to 1.0. The describes the transparency of the color.
+   * A value of 0.0 is fully transparent, and 1.0 is fully opaque.
+   */
+  alpha: Float,
+  /**
+   * Hue, from 0.0 to 360.0. Describes which color of the spectrum is
+   * represented. A value of 0.0 represents red, as does 360.0. Values in
+   * between go through all the hues representable in RGB. You can think of
+   * this as selecting which pigment will be added to a color.
+   */
+  hue: Float,
+  /**
+   * Saturation, from 0.0 to 1.0. This describes how colorful the color is.
+   * 0.0 implies a shade of grey (i.e. no pigment), and 1.0 implies a color as
+   * vibrant as that hue gets. You can think of this as the equivalent of
+   * how much of a pigment is added.
+   */
+  saturation: Float,
+  /**
+   * Value, from 0.0 to 1.0. The "value" of a color that, in this context,
+   * describes how bright a color is. A value of 0.0 indicates black, and 1.0
+   * indicates full intensity color. You can think of this as the equivalent of
+   * removing black from the color as value increases.
+   */
+  value: Float,
+) uses Hashable, Equality {
+  /**
+   * Creates a color.
+   *
+   * All the arguments must not be null and be in their respective ranges. See
+   * the fields for each parameter for a description of their ranges.
+   */
+  static fun fromAHSV(
+    alpha: Float,
+    hue: Float,
+    saturation: Float,
+    value: Float,
+  ): HSVColor {
+    invariant(alpha >= 0.0 && alpha <= 1.0, "Expected alpha in [0.0,1.0]");
+    invariant(hue >= 0.0 && hue <= 1.0, "Expected alpha in [0.0,360.0]");
+    invariant(
+      saturation >= 0.0 && saturation <= 1.0,
+      "Expected saturation in [0.0,1.0]",
+    );
+    invariant(value >= 0.0 && value <= 1.0, "Expected value in [0.0,1.0]");
+    HSVColor(alpha, hue, saturation, value);
+  }
+
+  /**
+   * Creates an [HSVColor] from an RGB [Color].
+   *
+   * This constructor does not necessarily round-trip with [toColor] because
+   * of floating point imprecision.
+   */
+  static fun fromColor(color: Color): HSVColor {
+    red = color.red;
+    green = color.green;
+    blue = color.blue;
+
+    max = Math.max(red, Math.max(green, blue));
+    min = Math.min(red, Math.min(green, blue));
+    delta = max - min;
+    alpha = color.alpha;
+    hue = getHue(red, green, blue, max, delta);
+    saturation = if (max == 0.0) {
+      0.0
+    } else {
+      delta / max
+    };
+
+    HSVColor::fromAHSV(alpha, hue, saturation, max);
+  }
+
+  /**
+   * Returns a copy of this color with the [alpha] parameter replaced with the
+   * given value.
+   */
+  fun withAlpha(alpha: Float): HSVColor {
+    !this.alpha = alpha;
+    this;
+  }
+
+  /**
+   * Returns a copy of this color with the [hue] parameter replaced with
+   * the given value
+   */
+  fun withHue(hue: Float): HSVColor {
+    HSVColor::fromAHSV(this.alpha, hue, this.saturation, this.value);
+  }
+
+  /**
+   * Returns a copy of this color with the [saturation] parameter replaced with
+   * the given value
+   */
+  fun withSaturation(saturation: Float): HSVColor {
+    HSVColor::fromAHSV(this.alpha, this.hue, saturation, this.value);
+  }
+
+  /**
+   * Returns a copy of this color with the [value] parameter replaced with
+   * the given value
+   */
+  fun withValue(value: Float): HSVColor {
+    HSVColor::fromAHSV(this.alpha, this.hue, this.saturation, value);
+  }
+  /**
+   * Returns this color in RGB.
+   */
+  fun toColor(): Color {
+    chroma = this.saturation * this.value;
+    secondary =
+      chroma *
+      (1.0 - Math.abs(((this.hue / 60.0).toInt() % 2).toFloat() - 1.0));
+    matchVal = this.value - chroma;
+    (red, green, blue) = if (this.hue < 60.0) {
+      (chroma, secondary, 0.0);
+    } else if (this.hue < 120.0) {
+      (secondary, chroma, 0.0);
+    } else if (this.hue < 180.0) {
+      (0.0, chroma, secondary);
+    } else if (this.hue < 240.0) {
+      (0.0, secondary, chroma);
+    } else if (this.hue < 300.0) {
+      (secondary, 0.0, chroma);
+    } else {
+      (chroma, 0.0, secondary);
+    };
+    Color::fromRGBA(
+      red + matchVal,
+      green + matchVal,
+      blue + matchVal,
+      this.alpha,
+    );
+  }
+
+  /**
+   * Linearly interpolate between two HSVColors.
+   *
+   * The colors are interpolated by interpolating the [alpha], [hue],
+   * [saturation], and [value] channels separately, which usually leads to a
+   * more pleasing effect than [Color.lerp] (which interpolates the red, green,
+   * and blue channels separately).
+   *
+   * If either color is null, this function linearly interpolates from a
+   * transparent instance of the other color. This is usually preferable to
+   * interpolating from [Colors.transparent] (`const Color(0x00000000)`) since
+   * that will interpolate from a transparent red and cycle through the hues to
+   * match the target color, regardless of what that color's hue is.
+   *
+   * Values outside of the valid range for each channel will be clamped.
+   **/
+  static fun lerp(optA: ?HSVColor, optB: ?HSVColor, t: Float): ?HSVColor {
+    optA match {
+    | Some(a) ->
+      optB match {
+      | Some(b) ->
+        Some(
+          HSVColor::fromAHSV(
+            Math.clamp(Math.lerp(a.alpha, b.alpha, t), 0.0, 1.0),
+            (Math.lerp(a.hue, b.hue, t).toInt() % 360).toFloat(),
+            Math.clamp(Math.lerp(a.saturation, b.saturation, t), 0.0, 1.0),
+            Math.clamp(Math.lerp(a.value, b.value, t), 0.0, 1.0),
+          ),
+        )
+      | _ -> Some(a.scaleAlpha(1.0 - t))
+      }
+    | _ ->
+      optB match {
+      | Some(b) -> Some(b.scaleAlpha(t))
+      | _ -> None()
+      }
+    }
+  }
+
+  fun scaleAlpha(factor: Float): HSVColor {
+    this.withAlpha(this.alpha * factor);
+  }
+}
+
+/**
+ * A color represented using [alpha], [hue], [saturation], and [lightness].
+ *
+ * An [HSLColor] is represented in a parameter space that's based up human
+ * perception of colored light. The representation is useful for some color
+ * computations (e.g., combining colors of light), because interpolation and
+ * picking of colors as red, green, and blue channels doesn't always produce
+ * intuitive results.
+ *
+ * HSL is a perceptual color model, placing fully saturated colors around a
+ * circle (conceptually) at a lightness of ​0.5, with a lightness of 0.0 being
+ * completely black, and a lightness of 1.0 being completely white. As the
+ * lightness increases or decreases from 0.5, the apparent saturation decreases
+ * proportionally (even though the [saturation] parameter hasn't changed).
+ *
+ * See also:
+ *
+ *  * [HSVColor], a color that uses a color space based on human perception of
+ *    pigments (e.g. paint and printer's ink).
+ *  * [HSV and HSL](https://en.wikipedia.org/wiki/HSL_and_HSV) Wikipedia
+ *    article, which this implementation is based upon.
+ */
+class HSLColor private (
+  /**
+   * Hue, from 0.0 to 360.0. Describes which color of the spectrum is
+   * represented. A value of 0.0 represents red, as does 360.0. Values in
+   * between go through all the hues representable in RGB. You can think of
+   * this as selecting which pigment will be added to a color.
+   */
+  hue: Float,
+  /**
+   * Saturation, from 0.0 to 1.0. This describes how colorful the color is.
+   * 0.0 implies a shade of grey (i.e. no pigment), and 1.0 implies a color as
+   * vibrant as that hue gets. You can think of this as the equivalent of
+   * how much of a pigment is added.
+   */
+  saturation: Float,
+  /**
+   * Lightness, from 0.0 to 1.0. The lightness of a color describes how bright
+   * a color is. A value of 0.0 indicates black, and 1.0 indicates white. You
+   * can think of this as the intensity of the light behind the filter. As the
+   * lightness approaches 0.5, the colors get brighter and appear more
+   * saturated, and over 0.5, the colors start to become less saturated and
+   * approach white at 1.0.
+   */
+  lightness: Float,
+  /*
+   * Alpha, from 0.0 to 1.0. The describes the transparency of the color.
+   * A value of 0.0 is fully transparent, and 1.0 is fully opaque.
+   */
+  alpha: Float,
+) uses Hashable, Equality {
+  static fun fromHSLA(
+    hue: Float,
+    saturation: Float,
+    lightness: Float,
+    alpha: Float,
+  ): HSLColor {
+    invariant(alpha >= 0.0 && alpha <= 1.0, "Expected alpha in [0.0,1.0]");
+    invariant(hue >= 0.0 && hue <= 360.0, "Expected hue in [0.0,360.0]");
+    invariant(
+      saturation >= 0.0 && saturation <= 1.0,
+      "Expected saturation in [0.0,1.0]",
+    );
+    invariant(
+      lightness >= 0.0 && lightness <= 1.0,
+      "Expected lightness in [0.0,1.0]",
+    );
+    HSLColor(hue, saturation, lightness, alpha);
+  }
+
+  static fun fromHSL(
+    hue: Float,
+    saturation: Float,
+    lightness: Float,
+  ): HSLColor {
+    static::fromHSLA(hue, saturation, lightness, 1.0);
+  }
+
+  /**
+   * Creates an [HSLColor] from an RGB [Color].
+   *
+   * This constructor does not necessarily round-trip with [toColor] because
+   * of floating point imprecision.
+   */
+  static fun fromColor(color: Color): HSLColor {
+    red = color.red;
+    green = color.green;
+    blue = color.blue;
+
+    max = Math.max(red, Math.max(green, blue));
+    min = Math.min(red, Math.min(green, blue));
+    delta = max - min;
+    alpha = color.alpha;
+    hue = getHue(red, green, blue, max, delta);
+    lightness = (max + min) / 2.0;
+    saturation = if (lightness == 1.0) {
+      0.0
+    } else {
+      Math.clamp((delta / (1.0 - Math.abs(2.0 * lightness - 1.0))), 0.0, 1.0);
+    };
+    HSLColor::fromHSLA(hue, saturation, lightness, alpha);
+  }
+
+  /**
+   * Returns a copy of this color with the [alpha] parameter replaced with the
+   * given value.
+   */
+  fun withAlpha(alpha: Float): HSLColor {
+    !this.alpha = alpha;
+    this;
+  }
+
+  /**
+   * Returns a copy of this color with the [hue] parameter replaced with
+   * the given value
+   */
+  fun withHue(hue: Float): HSLColor {
+    HSLColor::fromHSLA(hue, this.saturation, this.lightness, this.alpha);
+  }
+
+  /**
+   * Returns a copy of this color with the [saturation] parameter replaced with
+   * the given value
+   */
+  fun withSaturation(saturation: Float): HSLColor {
+    HSLColor::fromHSLA(this.hue, saturation, this.lightness, this.alpha);
+  }
+
+  /**
+   * Returns a copy of this color with the [lightness] parameter replaced with
+   * the given value
+   */
+  fun withLightness(lightness: Float): HSLColor {
+    HSLColor::fromHSLA(this.hue, this.saturation, lightness, this.alpha);
+  }
+
+  fun toColor(): Color {
+    chroma = (1.0 - Math.abs(2.0 * this.lightness - 1.0)) * this.saturation;
+    secondary =
+      chroma *
+      (1.0 - Math.abs(((this.hue / 60.0).toInt() % 2).toFloat() - 1.0));
+    matchVal = this.lightness - chroma / 2.0;
+    (red, green, blue) = if (this.hue < 60.0) {
+      (chroma, secondary, 0.0);
+    } else if (this.hue < 120.0) {
+      (secondary, chroma, 0.0);
+    } else if (this.hue < 180.0) {
+      (0.0, chroma, secondary);
+    } else if (this.hue < 240.0) {
+      (0.0, secondary, chroma);
+    } else if (this.hue < 300.0) {
+      (secondary, 0.0, chroma);
+    } else {
+      (chroma, 0.0, secondary);
+    };
+    Color::fromRGBA(
+      red + matchVal,
+      green + matchVal,
+      blue + matchVal,
+      this.alpha,
+    );
+  }
+
+  fun asInts(): Array<Int> {
+    Array[
+      this.hue.toInt(),
+      Math.ceil(this.saturation * 100.0).toInt(),
+      Math.ceil(this.lightness * 100.0).toInt(),
+      Math.ceil(this.alpha * 100.0).toInt(),
+    ]
+  }
+
+  /**
+   * Linearly interpolate between two HSLColors.
+   *
+   * The colors are interpolated by interpolating the [alpha], [hue],
+   * [saturation], and [lightness] channels separately, which usually leads to
+   * a more pleasing effect than [Color.lerp] (which interpolates the red,
+   * green, and blue channels separately).
+   *
+   * If either color is null, this function linearly interpolates from a
+   * transparent instance of the other color. This is usually preferable to
+   * interpolating from [Colors.transparent] (`const Color(0x00000000)`) since
+   * that will interpolate from a transparent red and cycle through the hues to
+   * match the target color, regardless of what that color's hue is.
+   *
+   * The `t` argument represents position on the timeline, with 0.0 meaning
+   * that the interpolation has not started, returning `a` (or something
+   * equivalent to `a`), 1.0 meaning that the interpolation has finished,
+   * returning `b` (or something equivalent to `b`), and values between them
+   * meaning that the interpolation is at the relevant point on the timeline
+   * between `a` and `b`. The interpolation can be extrapolated beyond 0.0 and
+   * 1.0, so negative values and values greater than 1.0 are valid
+   * (and can easily be generated by curves such as [Curves.elasticInOut]).
+   *
+   * Values outside of the valid range for each channel will be clamped.
+   *
+   * Values for `t` are usually obtained from an [Animation<double>], such as
+   * an [AnimationController].
+   */
+  static fun lerp(optA: ?HSLColor, optB: ?HSLColor, t: Float): ?HSLColor {
+    optA match {
+    | Some(a) ->
+      optB match {
+      | Some(b) ->
+        Some(
+          HSLColor::fromHSLA(
+            (Math.lerp(a.hue, b.hue, t).toInt() % 360).toFloat(),
+            Math.clamp(Math.lerp(a.saturation, b.saturation, t), 0.0, 1.0),
+            Math.clamp(Math.lerp(a.lightness, b.lightness, t), 0.0, 1.0),
+            Math.clamp(Math.lerp(a.alpha, b.alpha, t), 0.0, 1.0),
+          ),
+        )
+      | _ -> Some(a.scaleAlpha(1.0 - t))
+      }
+    | _ ->
+      optB match {
+      | Some(b) -> Some(b.scaleAlpha(t))
+      | _ -> None()
+      }
+    }
+  }
+
+  private fun scaleAlpha(factor: Float): HSLColor {
+    this.withAlpha(this.alpha * factor);
+  }
+}
+
+class .Color private (red: Float, green: Float, blue: Float) extends Paint {
+  static fun new(red: Float, green: Float, blue: Float, alpha: Float): Color {
+    Color(red, green, blue, alpha);
+  }
+
+  static fun fromARGBHex(hex: Int): Color {
+    b = hex.and(0xFF);
+    !hex = hex.shr(8);
+    g = hex.and(0xFF);
+    !hex = hex.shr(8);
+    r = hex.and(0xFF);
+    !hex = hex.shr(8);
+    a = hex.and(0xFF);
+    Color(
+      r.toFloat() / 255.0,
+      g.toFloat() / 255.0,
+      b.toFloat() / 255.0,
+      a.toFloat() / 255.0,
+    );
+  }
+
+  static fun fromRGBA(
+    red: Float,
+    green: Float,
+    blue: Float,
+    alpha: Float = 1.0,
+  ): Color {
+    invariant(alpha >= 0.0 && alpha <= 1.0, "Expected alpha in [0.0,1.0]");
+    invariant(red >= 0.0 && red <= 1.0, "Expected red in [0.0,1.0]");
+    invariant(green >= 0.0 && green <= 1.0, "Expected green in [0.0,1.0]");
+    invariant(blue >= 0.0 && blue <= 1.0, "Expected value in [0.0,1.0]");
+    Color(red, green, blue, alpha);
+  }
+
+  static fun rgbaInt(red: Int, green: Int, blue: Int, alpha: Int = 255): Color {
+    invariant(red >= 0 && red <= 255, "Expected red in [0,255]");
+    invariant(green >= 0 && green <= 255, "Expected green in [0,255]");
+    invariant(blue >= 0 && blue <= 255, "Expected blue in [0,255]");
+    invariant(alpha >= 0 && alpha <= 255, "Expected alpha in [0,255]");
+    static::rgba(
+      UInt8::truncate(red),
+      UInt8::truncate(green),
+      UInt8::truncate(blue),
+      alpha.toFloat() / 255.0,
+    );
+  }
+
+  static fun rgbaInt16(
+    red: Int,
+    green: Int,
+    blue: Int,
+    alpha: Int = 0xffff,
+  ): Color {
+    invariant(red >= 0 && red <= 0xffff, "Expected red in [0,0xffff]");
+    invariant(green >= 0 && green <= 0xffff, "Expected green in [0,0xffff]");
+    invariant(blue >= 0 && blue <= 0xffff, "Expected blue in [0,0xffff]");
+    invariant(alpha >= 0 && alpha <= 0xffff, "Expected alpha in [0,0xffff]");
+    div = (0xffff).toFloat();
+    Color(
+      red.toFloat() / div,
+      green.toFloat() / div,
+      blue.toFloat() / div,
+      blue.toFloat() / div,
+    );
+  }
+
+  static fun rgba(
+    red: UInt8,
+    green: UInt8,
+    blue: UInt8,
+    alpha: Float = 1.0,
+  ): Color {
+    invariant(alpha >= 0.0 && alpha <= 1.0, "Expected alpha in [0.0,1.0]");
+    Color(
+      red.toInt().toFloat() / 255.0,
+      green.toInt().toFloat() / 255.0,
+      blue.toInt().toFloat() / 255.0,
+      alpha,
+    );
+  }
+
+  fun translate(_offset: Geometry.Offset): this {
+    this
+  }
+
+  fun toPainter(priority: Priority = High()): Painter {
+    Ui.SolidPainter(this, priority);
+  }
+
+  fun toAlphaPremultiplied(): AlphaPremultiplied {
+    r = Math.round(this.red * 255.0 * this.alpha).toInt();
+    g = Math.round(this.green * 255.0 * this.alpha).toInt();
+    b = Math.round(this.blue * 255.0 * this.alpha).toInt();
+    a = Math.round(this.alpha * 255.0).toInt();
+    AlphaPremultiplied(r, g, b, a);
+  }
+
+  /**
+   * Returns a copy of this color with the [alpha] parameter replaced with the
+   * given value.
+   */
+  fun withAlpha(alpha: Float): .Color {
+    !this.alpha = alpha;
+    this;
+  }
+
+  static fun gray(level: UInt8, alpha: Float = 1.0): Color {
+    Color::rgba(level, level, level, alpha);
+  }
+
+  @always_inline
+  fun getRed(): UInt8 {
+    UInt8::truncate((this.red * 255.0).toInt());
+  }
+
+  @always_inline
+  fun getGreen(): UInt8 {
+    UInt8::truncate((this.green * 255.0).toInt());
+  }
+
+  @always_inline
+  fun getBlue(): UInt8 {
+    UInt8::truncate((this.blue * 255.0).toInt());
+  }
+
+  @always_inline
+  fun getAlpha(): UInt8 {
+    UInt8::truncate((this.alpha * 255.0).toInt());
+  }
+
+  /**
+   * Creates a new Color that is grayscale equivalent of this Color.
+   * Opacity is preserved.
+   */
+  fun grayscale(): Color {
+    gray = 0.21 * this.red + 0.71 * this.green + 0.07 * this.blue;
+    Color(gray, gray, gray, this.alpha);
+  }
+
+  /**
+   * Gets whether this Paint is completely opaque.
+   */
+  fun isOpaque(): Bool {
+    this.alpha >= 1.0;
+  }
+
+  fun -(other: Color): Color {
+    static::new(
+      this.red - other.red,
+      this.green - other.green,
+      this.blue - other.blue,
+      this.alpha - other.alpha,
+    )
+  }
+
+  fun +(other: Color): Color {
+    static::new(
+      this.red + other.red,
+      this.green + other.green,
+      this.blue + other.blue,
+      this.alpha + other.alpha,
+    )
+  }
+
+  fun div(v: Float): Color {
+    static::new(this.red / v, this.green / v, this.blue / v, this.alpha / v)
+  }
+
+  fun mult(v: Float): Color {
+    static::new(this.red * v, this.green * v, this.blue * v, this.alpha * v)
+  }
+
+  /**
+   * Gets whether this Paint is completely opaque.
+   */
+  fun interpolate(endValue: Color, t: Float): Color {
+    if (t <= 0.0) {
+      this;
+    } else if (t >= 1.0) {
+      endValue;
+    } else {
+      Color(
+        this.red + (endValue.red - this.red) * t,
+        this.green + (endValue.green - this.green) * t,
+        this.blue + (endValue.blue - this.blue) * t,
+        this.alpha + (endValue.alpha - this.alpha) * t,
+      );
+    };
+  }
+
+  /**
+   * Get the inverted color
+   */
+  fun invert(): Color {
+    Color(1.0 - this.red, 1.0 - this.green, 1.0 - this.blue, this.alpha);
+  }
+
+  fun deriveColor(
+    hueShift: Float, // 0.0
+    saturationFactor: Float, // 1.0
+    lightnessFactor: Float, // 0.7
+    alphaFactor: Float, //1.0
+  ): Color {
+    hsl = this.toHSL();
+    /* Allow lightness increase of black color */
+    b = if (hsl.lightness == 0.0 && lightnessFactor > 1.0) {
+      0.05;
+    } else {
+      hsl.lightness
+    };
+    h = Math.modulo(Math.modulo(hsl.hue + hueShift, 360) + 360.0, 360);
+    s = Math.clamp(hsl.saturation * saturationFactor, 0.0, 1.0);
+    !b = Math.clamp(b * lightnessFactor, 0.0, 1.0);
+    a = Math.clamp(this.alpha * alphaFactor, 0.0, 1.0);
+    HSLColor::fromHSLA(h, s, b, a).toColor();
+  }
+
+  /**
+   * Returns a string representation of this Color.
+   */
+  fun toString(): String {
+    r = Math.round(this.red * 255.0).toInt();
+    g = Math.round(this.green * 255.0).toInt();
+    b = Math.round(this.blue * 255.0).toInt();
+    a = Math.round(this.alpha * 255.0).toInt();
+    `rgba(${r},${g},${b},${a})`;
+  }
+
+  fun toHtml(): String {
+    r = Math.round(this.red * 255.0).toInt();
+    g = Math.round(this.green * 255.0).toInt();
+    b = Math.round(this.blue * 255.0).toInt();
+    a = Math.round(this.alpha * 100.0) / 100.0;
+    `rgba(${r},${g},${b},${a})`;
+  }
+
+  fun toStringHex(): String {
+    this.toRGBAHex().toHex(8)
+  }
+
+  static fun fromStringHex(strColor: String): this {
+    i = strColor.getIter();
+    r = nextHexInt(i, 0, 2);
+    g = nextHexInt(i, 0, 2);
+    b = nextHexInt(i, 0, 2);
+    a = nextHexInt(i, 0, 2);
+    static::rgba(
+      UInt8::truncate(r),
+      UInt8::truncate(g),
+      UInt8::truncate(b),
+      a.toFloat() / 255.0,
+    );
+  }
+
+  fun hash(): Int {
+    this.toARGBHex();
+  }
+
+  fun ==(other: Paint): Bool {
+    other match {
+    | color @ .Color _ -> this.toARGBHex() == color.toARGBHex()
+    | _ -> false
+    }
+  }
+
+  fun toHSL(): HSLColor {
+    HSLColor::fromColor(this);
+  }
+
+  fun toHSV(): HSVColor {
+    HSVColor::fromColor(this);
+  }
+
+  fun toARGBHex(): Int {
+    hex = 0;
+    !hex = hex.or((this.alpha * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.red * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.green * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.blue * 255.0).toInt());
+    hex;
+  }
+
+  fun toRGBAHex(): Int {
+    hex = 0;
+    !hex = hex.or((this.red * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.green * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.blue * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.alpha * 255.0).toInt());
+    hex;
+  }
+
+  fun toRGBHex(): Int {
+    hex = 0;
+    !hex = hex.or((this.red * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.green * 255.0).toInt());
+    !hex = hex.shl(8);
+    !hex = hex.or((this.blue * 255.0).toInt());
+    hex;
+  }
+
+  fun toWeb(): String {
+    `rgba(${Math.clamp((this.red * 255.0).toInt(), 0, 255)}, ${Math.clamp(
+      (this.green * 255.0).toInt(),
+      0,
+      255,
+    )}, ${Math.clamp((this.blue * 255.0).toInt(), 0, 255)}, ${Math.clamp(
+      this.alpha,
+      0.0,
+      1.0,
+    )})`
+  }
+
+  fun toSvg(_defs: mutable Vector<String>, name: String): String {
+    `${name}:#${this.toRGBHex().toHex(6)}; ${name}-opacity:${this.alpha};`
+  }
+
+  fun lerpWith(other: Color, t: Float): Color {
+    Color(
+      Math.clamp(Math.lerp(this.red, other.red, t), 0.0, 1.0),
+      Math.clamp(Math.lerp(this.green, other.green, t), 0.0, 1.0),
+      Math.clamp(Math.lerp(this.blue, other.blue, t), 0.0, 1.0),
+      Math.clamp(Math.lerp(this.alpha, other.alpha, t), 0.0, 1.0),
+    )
+  }
+
+  /**
+   * Linearly interpolate between two colors.
+   * This is intended to be fast but as a result may be ugly. Consider HSVColor or writing custom logic for interpolating colors.
+   * If either color is null, this function linearly interpolates from a transparent instance of the other color. This is usually preferable to interpolating from material.Colors.transparent (const Color(0x00000000)), which is specifically transparent black.
+   * The t argument represents position on the timeline, with 0.0 meaning that the interpolation has not started, returning a (or something equivalent to a), 1.0 meaning that the interpolation has finished, returning b (or something equivalent to b), and values in between meaning that the interpolation is at the relevant point on the timeline between a and b. The interpolation can be extrapolated beyond 0.0 and 1.0, so negative values and values greater than 1.0 are valid (and can easily be generated by curves such as Curves.elasticInOut). Each channel will be clamped to the range 0 to 255.
+   */
+  protected fun lerpTo(b: Paint, t: Float): Paint {
+    b match {
+    | color @ .Color _ -> this.lerpWith(color, t)
+    | _ -> this
+    }
+  }
+
+  fun scaleAlpha(factor: Float): Color {
+    this.withAlpha(this.alpha * factor);
+  }
+
+  fun sameCompare(other: Paint): Order {
+    other match {
+    | color @ Color _ ->
+      (this.red, this.green, this.blue, this.alpha).compare(
+        (color.red, color.green, color.blue, color.alpha),
+      )
+    | _ -> invariant_violation("Must be compared with a .Color")
+    }
+  }
+}
+
+private fun nextHexInt(
+  i: mutable String.StringIterator,
+  cur: Int,
+  size: Int,
+): Int {
+  if (size == 0) {
+    cur
+  } else {
+    toCheck = i.next();
+    toCheck match {
+    | Some(ch) if (ch >= '0' && ch <= '9') ->
+      v = ch.code() - '0'.code();
+      nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
+    | Some(ch) if (ch >= 'a' && ch <= 'f') ->
+      v = ch.code() - 'a'.code() + 10;
+      nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
+    | Some(ch) if (ch >= 'A' && ch <= 'F') ->
+      v = ch.code() - 'A'.code() + 10;
+      nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
+    | _ -> nextHexInt(i, cur, size - 1)
+    };
+  }
+}
+
+private fun getHue(
+  red: Float,
+  green: Float,
+  blue: Float,
+  max: Float,
+  delta: Float,
+): Float {
+  hue = if (max == 0.0) {
+    0.0;
+  } else if (max == red) {
+    60.0 * (((green - blue) / delta).toInt() % 6).toFloat();
+  } else if (max == green) {
+    60.0 * (((blue - red) / delta) + 2.0);
+  } else if (max == blue) {
+    60.0 * (((red - green) / delta) + 4.0);
+  } else {
+    0.0;
+  };
+  !hue = if (hue.isNaN()) {
+    // Set hue to 0.0 when red == green == blue.
+    0.0;
+  } else {
+    hue;
+  };
+  while (hue > 360.0) {
+    !hue = hue - 360.0
+  };
+  while (hue < 0.0) {
+    !hue = hue + 360.0
+  };
+  hue;
+}
+
+module end;

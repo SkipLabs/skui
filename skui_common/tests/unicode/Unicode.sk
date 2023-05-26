@@ -1,0 +1,25 @@
+module SKUICommonTest;
+
+class UnicodeUpper() {
+  const cases: Array<(Char, Char)> = Array[('é', 'É'), ('à', 'À'), ('è', 'È')];
+
+  fun run(): void {
+    static::cases.each(case -> {
+      (lower, upper) = case;
+      expectEq(Unicode.toUpper(lower), upper, v ~> `${v}`)
+    });
+  }
+}
+
+class UnicodeLower() {
+  const cases: Array<(Char, Char)> = Array[('É', 'é'), ('À', 'à'), ('È', 'è')];
+
+  fun run(): void {
+    static::cases.each(case -> {
+      (upper, lower) = case;
+      expectEq(Unicode.toLower(upper), lower, v ~> `${v}`)
+    });
+  }
+}
+
+module end;

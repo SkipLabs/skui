@@ -1,0 +1,57 @@
+module Bmp;
+
+fun bytesPerLine(width: Int): Int {
+  ret = width * 3;
+  if (ret % 4 != 0) {
+    !ret = (ret / 4 + 1) * 4;
+  };
+  ret;
+}
+
+fun encode(
+  write: mutable IO.Write,
+  width: Int,
+  height: Int,
+  accessor: (Int, Int) -> Pixel,
+): void {
+  header = Array::mcreateFromItems(bmpHeader.map(v ~> UInt8::truncate(v)));
+  bytesPerLine = bytesPerLine(width);
+  rowPadding = bytesPerLine - (width * 3);
+  byteMapSize = bytesPerLine * height; // Bitmap size, RGB-data + padding-data
+  filesizeBytes = byteMapSize + BMP_SIZE_HEADER;
+  writeIntLE(header, BMP_OFFSET_FILESIZE_BYTES, filesizeBytes);
+  writeIntLE(header, BMP_OFFSET_IMAGE_WIDTH, width);
+  writeIntLE(header, BMP_OFFSET_IMAGE_HEIGHT, height);
+  writeIntLE(header, BMP_OFFSET_IMAGE_DATA_BYTES, byteMapSize);
+  //writeIntLE(header, BMP_OFFSET_HORIZONTAL_RESOLUTION, 1000);
+  //writeIntLE(header, BMP_OFFSET_VERTICAL_RESOLUTION, 1000);
+  write.writeAll(header.chill());
+  for (y in Range(0, height).reversedValues()) {
+    for (x in Range(0, width)) {
+      px = accessor(x, y);
+      write.write(px.b);
+      write.write(px.g);
+      write.write(px.r);
+    };
+    for (_ in Range(0, rowPadding)) {
+      write.write(UInt8::truncate(0));
+    };
+  }
+}
+
+/**
+ *  Write an integer to a byte array (as little endian) at a
+ *  specific offset.
+ */
+private fun writeIntLE(
+  bytes: mutable Array<UInt8>,
+  startoffset: Int,
+  value: Int,
+): void {
+  bytes.set(startoffset, UInt8::truncate(value.and(0xFF)));
+  bytes.set(startoffset + 1, UInt8::truncate(value.ushr(8).and(0xFF)));
+  bytes.set(startoffset + 2, UInt8::truncate(value.ushr(16).and(0xFF)));
+  bytes.set(startoffset + 3, UInt8::truncate(value.ushr(24).and(0xFF)));
+}
+
+module end;

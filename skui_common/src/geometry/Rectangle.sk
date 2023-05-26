@@ -1,0 +1,125 @@
+module Geometry;
+
+class Rectangle(min: Point, max: Point) uses Hashable, Orderable {
+  /**
+   * Returns the largest rectangle contained by both r and other. If the
+   * two rectangles do not overlap then the zero rectangle will be returned.
+   */
+  fun intersect(other: Rectangle): Rectangle {
+    rect = Rectangle(
+      Point(
+        Math.max(this.min.x, other.min.x),
+        Math.max(this.min.y, other.min.y),
+      ),
+      Point(
+        Math.min(this.max.x, other.max.x),
+        Math.min(this.max.y, other.max.y),
+      ),
+    );
+    // Letting r0 and s0 be the values of r and s at the time that the method
+    // is called, this next line is equivalent to:
+    //
+    // if max(r0.min.x, s0.min.x) >= min(r0.max.x, s0.max.x) || likewiseFory { etc }
+    if (rect.isEmpty()) {
+      !rect.min.x = 0;
+      !rect.min.y = 0;
+      !rect.max.x = 0;
+      !rect.max.y = 0;
+    };
+    rect
+  }
+
+  fun overlaps(other: Rectangle): Bool {
+    !this.intersect(other).isEmpty();
+  }
+
+  /**
+   * Reports whether the rectangle contains no pointother.
+   */
+  fun isEmpty(): Bool {
+    this.min.x >= this.max.x || this.min.y >= this.max.y
+  }
+
+  /**
+   * Returns this translated by point.
+   */
+  fun translate(point: Point): Rectangle {
+    Rectangle(
+      Point(this.min.x + point.x, this.min.y + point.y),
+      Point(this.max.x + point.x, this.max.y + point.y),
+    )
+  }
+
+  /**
+   * In returns whether other is in this.
+   */
+  fun contains(other: Rectangle): Bool {
+    if (other.isEmpty()) {
+      true
+    } else {
+      this.containsPoint(other.min.x, other.min.y) &&
+        this.containsPoint(other.max.x, other.max.y)
+    }
+  }
+
+  /**
+   * In returns whether point is in this.
+   */
+  fun containsPoint(x: Int, y: Int): Bool {
+    this.min.x <= x && x < this.max.x && this.min.y <= y && y < this.max.y
+  }
+
+  /**
+   * Returns a new rectangle which is the bounding box containing this rectangle and the given rectangle.
+   */
+  fun expandToInclude(other: Rectangle): Rectangle {
+    Rectangle(
+      Point(
+        Math.min(this.min.x, other.min.x),
+        Math.min(this.min.y, other.min.y),
+      ),
+      Point(
+        Math.max(this.max.x, other.max.x),
+        Math.max(this.max.y, other.max.y),
+      ),
+    );
+  }
+
+  fun scale(scale: Int): Rectangle {
+    Rectangle(this.min * scale, this.max * scale)
+  }
+
+  fun toRect(): Rect {
+    Rect::fromPoints(this.min.toOffset(), this.max.toOffset())
+  }
+
+  fun top(): Int {
+    this.min.y;
+  }
+
+  fun bottom(): Int {
+    this.max.y;
+  }
+
+  fun left(): Int {
+    this.min.x;
+  }
+
+  fun right(): Int {
+    this.max.x;
+  }
+
+  fun width(): Int {
+    this.max.x - this.min.x
+  }
+
+  fun height(): Int {
+    this.max.y - this.min.y
+  }
+
+  fun topLeft(): Point {
+    Point(this.left(), this.top())
+  }
+}
+
+module end;

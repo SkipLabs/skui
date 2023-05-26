@@ -1,0 +1,66 @@
+module Shape;
+
+/**
+ * Creates an QuadCurve.
+ * @param start the start point of the cubic curve segment.
+ * @param end the end point of the cubic curve segment.
+ * @param control the control point of the cubic curve segment.
+ */
+class QuadCurve{
+  start: Geometry.Offset,
+  end: Geometry.Offset,
+  control: Geometry.Offset,
+} extends PathEdge {
+  fun getBounds(): Geometry.Rect {
+    minx = Math.min(Math.min(this.start.dx, this.control.dx), this.end.dx);
+    maxx = Math.max(Math.max(this.start.dx, this.control.dx), this.end.dx);
+    miny = Math.min(Math.min(this.start.dy, this.control.dy), this.end.dy);
+    maxy = Math.max(Math.max(this.start.dy, this.control.dy), this.end.dy);
+    Geometry.Rect(minx, miny, maxx, maxy)
+  }
+
+  fun isFinite(): Bool {
+    this.start.isFinite() && this.end.isFinite() && this.control.isFinite()
+  }
+
+  fun toPath(): Path {
+    Path{
+      elements => Array[
+        MoveTo(this.start),
+        QuadCurveTo(this.end, this.control),
+      ],
+    }
+  }
+
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): QuadCurve {
+    QuadCurve{
+      start => conv(this.start),
+      end => conv(this.end),
+      control => conv(this.control),
+    }
+  }
+
+  fun reverse(): QuadCurve {
+    QuadCurve{start => this.end, end => this.start, control => this.control}
+  }
+
+  // P0 * (1-t)2 + 2 * P1 * t * (1 - t) + P2 * t² = P
+  fun pointAt(t: Float): Geometry.Offset {
+    if (t <= 0.0) {
+      return this.start;
+    };
+    if (t >= 1.0) {
+      return this.end;
+    };
+    oneT = 1.0 - t;
+    a = oneT * oneT;
+    b = 2.0 * oneT * t;
+    c = t * t;
+    Geometry.Offset(
+      a * this.start.dx + b * this.control.dx + c * this.end.dx,
+      a * this.start.dy + b * this.control.dy + c * this.end.dy,
+    );
+  }
+}
+
+module end;

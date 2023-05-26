@@ -1,0 +1,45 @@
+module SKUICommonTest;
+
+@test
+fun numberFormatControl(): void {
+  NumberFormatControl().run();
+}
+
+class NumberFormatControl() {
+  //
+  fun run(): void {
+    for (i in Range(0, 5)) {
+      this.test(i)
+    }
+  }
+
+  fun test(number: Int): void {
+    i18n = NoI18N();
+    pattern = Number.Pattern{};
+    number match {
+    | 0 ->
+      formater = pattern.compile("#,##0.##");
+      text = formater.format(3456.78);
+      expectEq(i18n.translate(text), "3,456.78", v ~> v)
+    | 1 ->
+      formater = pattern.compile("#,##0.##");
+      text = formater.format(3456.2);
+      expectEq(i18n.translate(text), "3,456.2", v ~> v)
+    | 2 ->
+      formater = pattern.compile("#,##0.00");
+      text = formater.format(3456.2);
+      expectEq(i18n.translate(text), "3,456.20", v ~> v)
+    | 3 ->
+      formater = pattern.compile("0.00E##");
+      text = formater.format(3456.2);
+      expectEq(i18n.translate(text), "3.45x10^3", v ~> v)
+    | 4 ->
+      formater = pattern.compile("###%");
+      text = formater.format(0.25);
+      expectEq(i18n.translate(text), "25%", v ~> v)
+    | _ -> invariant_violation(`Invalid test number ${number}`)
+    }
+  }
+}
+
+module end;

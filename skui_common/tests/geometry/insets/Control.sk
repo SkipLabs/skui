@@ -1,0 +1,134 @@
+module SKUICommonTest;
+
+@test
+fun insetsControl(): void {
+  InsetsControl().run()
+}
+
+class InsetsControl() {
+  const insets: Geometry.Insets = Geometry.Insets::fromLTRB(
+    5.0,
+    7.0,
+    11.0,
+    13.0,
+  );
+
+  fun run(): void {
+    this.cases().each(this.runCase);
+  }
+
+  protected fun runCase(testCase: Case): void {
+    testCase match {
+    | ocase @ OffsetCase _ ->
+      result = ocase.index match {
+      | 1 -> static::insets.topLeft()
+      | 2 -> static::insets.topRight()
+      | 3 -> static::insets.bottomLeft()
+      | _ -> static::insets.bottomRight()
+      };
+      expectEq(result, ocase.expected, v ~> `(${v.dx}, ${v.dy})`)
+    | scase @ SizeCase _ ->
+      result = scase.index match {
+      | 5 -> static::insets.collapsedSize()
+      | 9 -> static::insets.inflateSize(Geometry.Size(100.0, 125.0))
+      | _ -> static::insets.deflateSize(Geometry.Size(100.0, 125.0))
+      };
+      expectEq(result, scase.expected, v ~> `(${v.width}, ${v.height})`)
+    | rcase @ RectCase _ ->
+      result = rcase.index match {
+      | 7 -> static::insets.inflateRect(Geometry.Rect(23.0, 32.0, 124.0, 143.0))
+      | _ -> static::insets.deflateRect(Geometry.Rect(23.0, 32.0, 124.0, 143.0))
+      };
+      expectEq(result, rcase.expected, v ~>
+        `(${v.left}, ${v.top}, ${v.right}, ${v.bottom})`
+      )
+    | incase @ InsetsCase _ ->
+      result = incase.index match {
+      | 6 -> static::insets.flip()
+      | 11 -> static::insets / 2.0
+      | 12 -> static::insets.iDiv(2)
+      | _ -> static::insets % 5
+      };
+      expectEq(result, incase.expected, v ~>
+        `(${v.left}, ${v.top}, ${v.right}, ${v.bottom})`
+      )
+    | indcase @ InsetsDirectionalCase _ ->
+      result = Geometry.InsetsDirectional::only{top => 1.0};
+      expectNEq(result, indcase.expected, v ~>
+        `(${v.left}, ${v.top}, ${v.right}, ${v.bottom})`
+      )
+    | icase @ IntCase _ ->
+      result = static::insets.hash();
+      expectEq(result, icase.expected, v ~> `${v}`)
+    | _ -> invariant_violation(`Invalid case ${testCase.getClassName()}`)
+    };
+  }
+
+  protected fun cases(): Array<Case> {
+    Array[
+      IntCase(0, Geometry.Insets::fromLTRB(5.0, 7.0, 11.0, 13.0).hash()),
+      OffsetCase(1, Geometry.Offset(5.0, 7.0)),
+      OffsetCase(2, Geometry.Offset(-11.0, 7.0)),
+      OffsetCase(3, Geometry.Offset(5.0, -13.0)),
+      OffsetCase(4, Geometry.Offset(-11.0, -13.0)),
+      SizeCase(5, Geometry.Size(16.0, 20.0)),
+      InsetsCase(6, Geometry.Insets::fromLTRB(11.0, 13.0, 5.0, 7.0)),
+      RectCase(7, Geometry.Rect(18.0, 25.0, 135.0, 156.0)),
+      RectCase(8, Geometry.Rect(28.0, 39.0, 113.0, 130.0)),
+      SizeCase(9, Geometry.Size(116.0, 145.0)),
+      SizeCase(10, Geometry.Size(84.0, 105.0)),
+      InsetsCase(11, Geometry.Insets::fromLTRB(2.5, 3.5, 5.5, 6.5)),
+      InsetsCase(12, Geometry.Insets::fromLTRB(2.0, 3.0, 5.0, 6.0)),
+      InsetsCase(13, Geometry.Insets::fromLTRB(0.0, 2.0, 1.0, 3.0)),
+      InsetsDirectionalCase(
+        14,
+        Geometry.InsetsDirectional::only{bottom => 1.0},
+      ),
+    ]
+  }
+}
+
+class OffsetCase(index: Int, expected: Geometry.Offset) extends Case {
+  fun toString(): String {
+    `(${this.expected.dx}, ${this.expected.dy})`
+  }
+}
+
+class SizeCase(index: Int, expected: Geometry.Size) extends Case {
+  fun toString(): String {
+    `(${this.expected.width}, ${this.expected.height})`
+  }
+}
+
+class FloatCase(index: Int, expected: Float) extends Case {}
+
+class RectCase(index: Int, expected: Geometry.Rect) extends Case {
+  fun toString(): String {
+    `(${this.expected.left}, ${
+      this.expected.top
+    }) => (${this.expected.width()}, ${this.expected.height()})`
+  }
+}
+
+class IntCase(index: Int, expected: Int) extends Case {}
+
+class InsetsCase(index: Int, expected: Geometry.Insets) extends Case {
+  fun toString(): String {
+    `(${this.expected.left}, ${this.expected.top}, ${this.expected.right}, ${
+      this.expected.bottom
+    })`
+  }
+}
+
+class InsetsDirectionalCase(
+  index: Int,
+  expected: Geometry.InsetsDirectional,
+) extends Case {
+  fun toString(): String {
+    `(${this.expected.start}, ${this.expected.top}, ${this.expected.end}, ${
+      this.expected.bottom
+    })`
+  }
+}
+
+module end;

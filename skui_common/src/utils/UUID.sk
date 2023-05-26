@@ -1,0 +1,210 @@
+/**
+ * A class that represents an immutable universally unique identifier (UUID).
+ * A UUID represents a 128-bit value.
+ *
+ * There exist different variants of these global identifiers.  The methods
+ * of this class are for manipulating the Leach-Salz variant, although the
+ * constructors allow the creation of any variant of UUID (described below).
+ *
+ * The layout of a variant 2 (Leach-Salz) UUID is as follows:
+ *
+ * The most significant long consists of the following unsigned fields:
+ *
+ * 0xFFFFFFFF00000000 time_low
+ * 0x00000000FFFF0000 time_mid
+ * 0x000000000000F000 version
+ * 0x0000000000000FFF time_hi
+ *
+ * The least significant long consists of the following unsigned fields:
+ *
+ * 0xC000000000000000 variant
+ * 0x3FFF000000000000 clock_seq
+ * 0x0000FFFFFFFFFFFF node
+ *
+ *
+ * The variant field contains a value which identifies the layout of the UUID.
+ * The bit layout described above is valid only for a UUID
+ * with a variant value of 2, which indicates the Leach-Salz variant.
+ *
+ * The version field holds a value that describes the type of this UUID.
+ * There are four different basic types of UUIDs: time-based, DCE
+ * security, name-based, and randomly generated UUIDs.  These types have a
+ * version value of 1, 2, 3 and 4, respectively.
+ *
+ * For more information including algorithms used to create UUIDs,
+ * see http://www.ietf.org/rfc/rfc4122.txt RFC 4122: A
+ * Universally Unique IDentifier (UUID) URN Namespace, section 4.2
+ * Algorithms for Creating a Time-Based UUID.
+ */
+value class UUID(
+  /**
+   * The most significant 64 bits of this UUID.
+   */
+  private mostSigBits: Array<UInt8>,
+  /**
+   * The least significant 64 bits of this UUID.
+   *
+   */
+  private leastSigBits: Array<UInt8>,
+) uses Hashable, Orderable, Show {
+  /*
+   * Private constructor which uses a byte array to construct the new UUID.
+   */
+  private static fun fromBytes(data: Array<UInt8>): UUID {
+    invariant(data.size() == 16, "data must be 16 bytes in length");
+    index = 0;
+    msb = Array::mfill(8, UInt8::truncate(0));
+    while (index < 8) {
+      msb.set(7 - index, data.get(index));
+      !index = index + 1;
+    };
+    lsb = Array::mfill(8, UInt8::truncate(0));
+    while (index < 16) {
+      lsb.set(15 - index, data.get(index));
+      !index = index + 1;
+    };
+    UUID(Array::createFromItems(msb), Array::createFromItems(lsb));
+  }
+
+  /**
+   * Static factory to retrieve a type 4 (pseudo randomly generated) UUID.
+   *
+   * The UUID is generated using a cryptographically strong pseudo
+   * random number generator.
+   *
+   * @return  A randomly generated UUID
+   */
+  static fun randomUUID(context: mutable SKFS.Context): UUID {
+    bytes = context.randomBytes(16).clone();
+    bytes.set(
+      6,
+      UInt8::truncate(bytes.get(6).toInt().and(0x0f)),
+    ); /* clear version        */
+    bytes.set(
+      6,
+      UInt8::truncate(bytes.get(6).toInt().or(0x40)),
+    ); /* set to version 4     */
+    bytes.set(
+      8,
+      UInt8::truncate(bytes.get(8).toInt().and(0x3f)),
+    ); /* clear variant        */
+    bytes.set(
+      8,
+      UInt8::truncate(bytes.get(8).toInt().or(0x80)),
+    ); /* set to IETF variant  */
+    static::fromBytes(Array::createFromItems(bytes));
+  }
+
+  /**
+   * Creates a UUID from the string standard representation as
+   * described in the toString method.
+   *
+   * @param  name
+   *  A string that specifies a UUID
+   *
+   * @return  A UUID with the specified value
+   *
+   */
+  static fun fromString(name: String): UUID {
+    components = name.split("-");
+    invariant(components.size() == 5, `Invalid UUID string: ${name}`);
+    msb = Array::mfill(8, UInt8::truncate(0));
+    static::fill(msb, components.get(0), 4, 4);
+    static::fill(msb, components.get(1), 2, 2);
+    static::fill(msb, components.get(2), 0, 2);
+    lsb = Array::mfill(8, UInt8::truncate(0));
+    static::fill(lsb, components.get(3), 6, 2);
+    static::fill(lsb, components.get(4), 0, 6);
+    UUID(Array::createFromItems(msb), Array::createFromItems(lsb));
+  }
+
+  /**
+   * The version number associated with this UUID.  The version
+   * number describes how this UUID was generated.
+   *
+   * The version number has the following meaning:
+   *
+   * 1    Time-based UUID
+   * 2    DCE security UUID
+   * 3    Name-based UUID
+   * 4    Randomly generated UUID
+   *
+   *
+   * @return  The version number of this UUID
+   */
+  fun version(): Int {
+    // Version is bits masked by 0x000000000000F000 in MS long
+    this.mostSigBits.get(1).toInt().shr(4).and(0xf);
+  }
+
+  /**
+   * Returns a String object representing this UUID.
+   *
+   * The UUID string representation is as described by this BNF:
+   *
+   *
+   * UUID                   = <time_low> "-" <time_mid> "-"
+   *                          <time_high_and_version> "-"
+   *                          <variant_and_sequence> "-"
+   *                          <node>
+   * time_low               = 4*<hexOctet>
+   * time_mid               = 2*<hexOctet>
+   * time_high_and_version  = 2*<hexOctet>
+   * variant_and_sequence   = 2*<hexOctet>
+   * node                   = 6*<hexOctet>
+   * hexOctet               = <hexDigit><hexDigit>
+   * hexDigit               =
+   *       "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+   *       | "a" | "b" | "c" | "d" | "e" | "f"
+   *       | "A" | "B" | "C" | "D" | "E" | "F"
+   *
+   *
+   * @return  A string representation of this UUID
+   */
+  fun toString(): String {
+    c1 = static::digits(this.mostSigBits, 4, 4);
+    c2 = static::digits(this.mostSigBits, 2, 2);
+    c3 = static::digits(this.mostSigBits, 0, 2);
+    c4 = static::digits(this.leastSigBits, 6, 2);
+    c5 = static::digits(this.leastSigBits, 0, 6);
+    `${c1}-${c2}-${c3}-${c4}-${c5}`;
+  }
+
+  /** Returns val represented by the specified number of hex digits. */
+  private static fun digits(
+    array: Array<UInt8>,
+    start: Int,
+    size: Int,
+  ): String {
+    sub = array.slice(start, start + size).reversed();
+    sub.reduce((acc, ui8) -> acc + static::intToHexDigits(ui8.toInt(), 2), "");
+  }
+
+  private static fun fill(
+    array: mutable Array<UInt8>,
+    value: String,
+    start: Int,
+    size: Int,
+  ): void {
+    chars = value.chars().reversed();
+    index = 0;
+    while (index < size) {
+      c1 = chars.get(2 * index);
+      c2 = chars.get((2 * index) + 1);
+      v = Chars.hexDigitToInt(c1);
+      !v = v.shl(4).or(Chars.hexDigitToInt(c2));
+      array.set(start + index, UInt8::truncate(v));
+      !index = index + 1;
+    }
+  }
+
+  private static fun intToHexDigits(n: Int, numDigits: Int): String {
+    if (numDigits == 0) {
+      ""
+    } else {
+      hiBits = n.and(0xF);
+      ch = Chars.intToHexDigit(hiBits);
+      "" + ch + static::intToHexDigits(n.shr(4), numDigits - 1);
+    }
+  }
+}

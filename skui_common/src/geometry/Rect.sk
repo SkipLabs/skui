@@ -1,0 +1,380 @@
+module Geometry;
+
+/**
+ * An immutable, 2D, axis-aligned, floating-point rectangle whose coordinates are relative to a given origin.
+ * Construct a rectangle from its left, top, right, and bottom edges.
+ */
+class Rect(
+  /**
+   * The offset of the left edge of this rectangle from the x axis.
+   */
+  left: Float,
+  /**
+   * The offset of the top edge of this rectangle from the y axis.
+   */
+  top: Float,
+  /**
+   * The offset of the right edge of this rectangle from the x axis.
+   */
+  right: Float,
+  /**
+   * The offset of the bottom edge of this rectangle from the y axis.
+   */
+  bottom: Float,
+) uses Hashable, Orderable {
+  /**
+   * Construct a rectangle that bounds the given circle.
+   * The center argument is assumed to be an offset from the origin.
+   */
+  static fun fromCenter(center: Offset, width: Float, height: Float): Rect {
+    Rect(
+      center.dx - width / 2.0,
+      center.dy - height / 2.0,
+      center.dx + width / 2.0,
+      center.dy + height / 2.0,
+    );
+  }
+
+  static fun fromOffsetSize(offet: Offset, size: Size): Rect {
+    Rect(offet.dx, offet.dy, offet.dx + size.width, offet.dy + size.height);
+  }
+
+  /**
+   * Construct a rectangle that bounds the given circle.
+   * The center argument is assumed to be an offset from the origin.
+   */
+  static fun fromCircle(center: Offset, radius: Float): Rect {
+    static::fromCenter(center, radius * 2.0, radius * 2.0);
+  }
+
+  /**
+   * Construct a rectangle from its left and top edges, its width, and its height.
+   */
+  static fun fromLTWH(
+    left: Float,
+    top: Float,
+    width: Float,
+    height: Float,
+  ): Rect {
+    Rect(left, top, left + width, top + height);
+  }
+
+  static fun zero(): Rect {
+    Rect(0.0, 0.0, 0.0, 0.0);
+  }
+
+  /**
+   * Construct the smallest rectangle that encloses the given offsets, treating them as vectors from the origin.
+   */
+  static fun fromPoints(a: Offset, b: Offset): Rect {
+    Rect(
+      Math.min(a.dx, b.dx),
+      Math.min(a.dy, b.dy),
+      Math.max(a.dx, b.dx),
+      Math.max(a.dy, b.dy),
+    );
+  }
+
+  /**
+   * The distance between the left and right edges of this rectangle.
+   */
+  fun width(): Float {
+    Math.abs(this.right - this.left);
+  }
+
+  /**
+   * The distance between the top and bottom edges of this rectangle.
+   */
+  fun height(): Float {
+    Math.abs(this.bottom - this.top);
+  }
+
+  /**
+   * The offset to the center of the bottom edge of this rectangle
+   */
+  fun bottomCenter(): Offset {
+    Offset(this.left + this.width() / 2.0, this.bottom);
+  }
+
+  /**
+   * The offset to the intersection of the bottom and left edges of this rectangle
+   */
+  fun bottomLeft(): Offset {
+    Offset(this.left, this.bottom);
+  }
+
+  /**
+   * The offset to the intersection of the bottom and right edges of this rectangle.
+   */
+  fun bottomRight(): Offset {
+    Offset(this.right, this.bottom);
+  }
+
+  /**
+   * The offset to the point halfway between the left and right and the top and bottom edges of this rectangle.
+   */
+  fun center(): Offset {
+    Offset(this.left + this.width() / 2.0, this.top + this.height() / 2.0);
+  }
+
+  /**
+   * The offset to the center of the left edge of this rectangle.
+   */
+  fun centerLeft(): Offset {
+    Offset(this.left, this.top + this.height() / 2.0);
+  }
+
+  /**
+   * The offset to the center of the right edge of this rectangle
+   */
+  fun centerRight(): Offset {
+    Offset(this.right, this.top + this.height() / 2.0);
+  }
+
+  /**
+   * Whether any of the dimensions are NaN.
+   */
+  fun hasNaN(): Bool {
+    this.left.isNaN() ||
+      this.top.isNaN() ||
+      this.right.isNaN() ||
+      this.bottom.isNaN();
+  }
+
+  /**
+   * Whether this rectangle encloses a non-zero area. Negative areas are considered empty.
+   */
+  fun isEmpty(): Bool {
+    this.left >= this.right || this.top >= this.bottom;
+  }
+
+  fun area(): Float {
+    this.width() * this.height();
+  }
+
+  /**
+   * Whether all coordinates of this rectangle are finite.
+   */
+  fun isFinite(): Bool {
+    this.left < Float::inf &&
+      this.left > -Float::inf &&
+      this.top < Float::inf &&
+      this.top > -Float::inf &&
+      this.right < Float::inf &&
+      this.right > -Float::inf &&
+      this.bottom < Float::inf &&
+      this.bottom > -Float::inf;
+  }
+
+  /**
+   * Whether all coordinates of this rectangle are finite.
+   */
+  fun isInfinite(): Bool {
+    this.left == Float::inf ||
+      this.top == Float::inf ||
+      this.right == Float::inf ||
+      this.bottom == Float::inf;
+  }
+
+  /**
+   * The greater of the magnitudes of the width and the height of this rectangle.
+   */
+  fun longestSide(): Float {
+    Math.max(this.width(), this.height());
+  }
+
+  /**
+   * The lowest of the magnitudes of the width and the height of this rectangle.
+   */
+  fun shortestSide(): Float {
+    Math.min(this.width(), this.height());
+  }
+
+  /**
+   * The distance between the upper-left corner and the lower-right corner of this rectangle.
+   */
+  fun size(): Size {
+    Size(this.width(), this.height());
+  }
+
+  /**
+   * The offset to the center of the top edge of this rectangle.
+   */
+  fun topCenter(): Offset {
+    Offset(this.left + this.width() / 2.0, this.top);
+  }
+
+  /**
+   * The offset to the center of the top edge of this rectangle.
+   */
+  fun topLeft(): Offset {
+    Offset(this.left, this.top);
+  }
+
+  /**
+   * The offset to the center of the top edge of this rectangle.
+   */
+  fun topRight(): Offset {
+    Offset(this.right, this.top);
+  }
+
+  /**
+   * Whether the point specified by the given offset
+   * (which is assumed to be relative to the origin) lies between the left and right
+   * and the top and bottom edges of this rectangle.
+   */
+  fun contains(offset: Offset): Bool {
+    offset.dx >= this.left &&
+      offset.dx < this.right &&
+      offset.dy >= this.top &&
+      offset.dy < this.bottom;
+  }
+
+  fun containsRect(rect: Rect): Bool {
+    this.intersect(rect).like(rect);
+  }
+
+  fun like(rect: Rect): Bool {
+    Math.like(this.left, rect.left) &&
+      Math.like(this.top, rect.top) &&
+      Math.like(this.right, rect.right) &&
+      Math.like(this.bottom, rect.bottom)
+  }
+
+  /**
+   * Returns a new rectangle with edges moved outwards by the given delta.
+   */
+  fun inflate(delta: Float): Rect {
+    Rect(
+      this.left - delta,
+      this.top - delta,
+      this.right + delta,
+      this.bottom + delta,
+    );
+  }
+
+  /**
+   * Returns a new rectangle with edges moved inwards by the given delta.
+   */
+  fun deflate(delta: Float): Rect {
+    this.inflate(-delta);
+  }
+
+  /**
+   * Returns a new rectangle which is the bounding box containing this rectangle and the given rectangle.
+   */
+  fun expandToInclude(other: Rect): Rect {
+    Rect(
+      Math.min(this.left, other.left),
+      Math.min(this.top, other.top),
+      Math.max(this.right, other.right),
+      Math.max(this.bottom, other.bottom),
+    );
+  }
+
+  /**
+   * Returns a new rectangle that is the intersection of the given rectangle and this rectangle.
+   * The two rectangles must overlap for this to be meaningful.
+   * If the two rectangles do not overlap, then the resulting Rect will have a negative width or height.
+   */
+  fun intersect(other: Rect): Rect {
+    Rect(
+      Math.max(this.left, other.left),
+      Math.max(this.top, other.top),
+      Math.min(this.right, other.right),
+      Math.min(this.bottom, other.bottom),
+    );
+  }
+
+  /**
+   * Whether other has a nonzero area of overlap with this rectangle.
+   */
+  fun overlaps(other: Rect): Bool {
+    !this.intersect(other).isEmpty();
+  }
+
+  /**
+   * Returns a new rectangle translated by the given offset.
+   */
+  fun shift(offset: Offset): Rect {
+    Rect(
+      this.left + offset.dx,
+      this.top + offset.dy,
+      this.right + offset.dx,
+      this.bottom + offset.dy,
+    );
+  }
+
+  fun enlarge(offset: Offset): Rect {
+    Rect(this.left, this.top, this.right + offset.dx, this.bottom + offset.dy);
+  }
+
+  /**
+   * Returns a new rectangle with translateX added to the x components and translateY added to the y components.
+   */
+  fun translate(translateX: Float, translateY: Float): Rect {
+    Rect(
+      this.left + translateX,
+      this.top + translateY,
+      this.right + translateX,
+      this.bottom + translateY,
+    );
+  }
+
+  fun scale(scale: Float): Rect {
+    Rect(
+      this.left * scale,
+      this.top * scale,
+      this.right * scale,
+      this.bottom * scale,
+    );
+  }
+
+  fun toRectangle(): Rectangle {
+    Rectangle(this.topLeft().toFloorPoint(), this.bottomRight().toCeilPoint())
+  }
+
+  fun toInnerRectangle(): Rectangle {
+    Rectangle(this.topLeft().toCeilPoint(), this.bottomRight().toFloorPoint())
+  }
+
+  fun tooBigForReliableFloatMath(): Bool {
+    // limit set as the largest float value for which we can still reliably compute things like
+    // - chopping at XY extrema
+    // - chopping at Y or X values for clipping
+    //
+    // Current value chosen just by experiment. Larger (and still succeeds) is always better.
+    limit = 1.shl(22).toFloat();
+    this.left < -limit ||
+      this.top < -limit ||
+      this.right > limit ||
+      this.bottom > limit
+  }
+
+  static fun lerp(optA: ?Rect, optB: ?Rect, t: Float): ?Rect {
+    optA match {
+    | Some(a) ->
+      optB match {
+      | Some(b) ->
+        Some(
+          Rect(
+            Math.lerp(a.left, b.left, t),
+            Math.lerp(a.top, b.top, t),
+            Math.lerp(a.right, b.right, t),
+            Math.lerp(a.bottom, b.bottom, t),
+          ),
+        )
+      | _ ->
+        k = 1.0 - t;
+        Some(Rect(a.left * k, a.top * k, a.right * k, a.bottom * k))
+      }
+    | _ ->
+      optB match {
+      | Some(b) -> Some(Rect(b.left * t, b.top * t, b.right * t, b.bottom * t))
+      | _ -> None()
+      }
+    }
+  }
+}
+
+module end;

@@ -1,0 +1,199 @@
+module IO;
+
+class Url{
+  protocol: String,
+  host: String,
+  optPort: ?Int = None(),
+  optPath: ?String = None(),
+  optQuery: ?String = None(),
+  optUserInfo: ?String = None(),
+} extends SKFS.File uses Show {
+  static fun parse(strUrl: String): this {
+    spec = strUrl.chars();
+    limit = spec.size();
+    while ((limit > 0) && (spec[limit - 1] <= ' ')) {
+      !limit = limit - 1; //eliminate trailing whitespace
+    };
+    start = 0;
+    while ((start < limit) && (spec[start] <= ' ')) {
+      !start = start + 1; // eliminate leading whitespace
+    };
+    if (
+      spec.slice(start, start + 4).map(char -> Unicode.toLower(char)) ==
+      Vector['u', 'r', 'l', ':']
+    ) {
+      !start = start + 4;
+    };
+    optProtocol = for (i in Range(start, limit)) {
+      if (spec[i] == '/') {
+        break None()
+      } else if (spec[i] == ':') {
+        protocol = spec.slice(start, i).toArray().map(char ->
+          Unicode.toLower(char)
+        );
+        invariant(checkValidProtocol(protocol));
+        !start = i + 1;
+        break Some(String::fromChars(protocol));
+      }
+    } else {
+      None()
+    };
+    invariant(optProtocol.isSome(), "no protocol");
+    optQuery = for (i in Range(start, limit).reversed()) {
+      if (spec[i] == '?') {
+        query = spec.slice(i + 1, limit);
+        !limit = i;
+        break Some(query.toArray());
+      }
+    } else {
+      None()
+    };
+    // Parse the authority part if any
+    isUNCName =
+      (start <= limit - 4) &&
+      (spec[start] == '/') &&
+      (spec[start + 1] == '/') &&
+      (spec[start + 2] == '/') &&
+      (spec[start + 3] == '/');
+    withAuthority =
+      !isUNCName &&
+      (start <= limit - 2) &&
+      (spec[start] == '/') &&
+      (spec[start + 1] == '/');
+    (host, optPort, optUserInfo) = if (withAuthority) {
+      !start = start + 2;
+      end = for (i in Range(start, limit)) {
+        if (spec[i] == '/') {
+          break i
+        }
+      } else {
+        limit
+      };
+      authority = spec.slice(start, end).toArray();
+      elems = String::fromChars(authority).split("@");
+      invariant(
+        elems.size() <= 2,
+        `invalid authority ${String::fromChars(authority)}`,
+      );
+      (optUserInfo, host) = if (elems.size() == 2) {
+        (Some(elems[0]), elems[1].chars().toArray())
+      } else {
+        (None(), authority)
+      };
+      // If the host is surrounded by [ and ] then its an IPv6
+      // literal address as specified in RFC2732
+      (!host, optPort) = if (host.size() > 0 && (host[0] == '[')) {
+        host.indexOf(']') match {
+        | Some(idx) if (idx > 2) ->
+          (
+            host.slice(0, idx + 1),
+            if (host.size() > idx + 1) {
+              invariant(
+                host[idx + 1] == ':',
+                `invalid authority ${String::fromChars(authority)}`,
+              );
+              !idx = idx + 1;
+              if (host.size() > idx + 1) {
+                Some(String::fromChars(host.drop(idx)).toInt())
+              } else {
+                None()
+              }
+            } else {
+              None()
+            },
+          )
+        | _ ->
+          invariant_violation(
+            `invalid authority ${String::fromChars(authority)}`,
+          )
+        }
+      } else {
+        hostPort = String::fromChars(host).split(":");
+        invariant(
+          hostPort.size() <= 2,
+          `invalid host ${String::fromChars(host)}`,
+        );
+        if (hostPort.size() == 2) {
+          (hostPort[0].chars().toArray(), Some(hostPort[1].toInt()))
+        } else {
+          (host, None())
+        }
+      };
+      optPort.each(port -> invariant(port >= 0, `invalid port number ${port}`));
+      !start = end;
+      (host, optPort, optUserInfo)
+    } else {
+      (Array[], None(), None())
+    };
+    // Parse the file path if any
+    optPath = if (start < limit) {
+      if (spec[start] == '/' || !withAuthority) {
+        Some(spec.slice(start, limit).toArray())
+      } else {
+        Some(Arrays.merge(Array['/'], spec.slice(start, limit).toArray()))
+      }
+    } else {
+      None()
+    };
+    Url{
+      protocol => optProtocol.fromSome(),
+      host => String::fromChars(host),
+      optPort,
+      optPath => optPath.map(path -> String::fromChars(path)),
+      optQuery => optQuery.map(query -> String::fromChars(query)),
+      optUserInfo,
+    }
+  }
+
+  fun toString(): String {
+    vec = mutable Vector[this.protocol, ":"];
+    this.optUserInfo match {
+    | Some(userInfo) ->
+      vec.push("//");
+      vec.push(userInfo);
+      vec.push("@");
+      vec.push(this.host)
+    | _ ->
+      if (!this.host.isEmpty()) {
+        vec.push("//");
+        vec.push(this.host);
+      }
+    };
+    this.optPort.each(port -> {
+      vec.push(":");
+      vec.push(port.toString());
+    });
+    this.optPath.each(path -> vec.push(path));
+    this.optQuery.each(query -> {
+      vec.push("?");
+      vec.push(query)
+    });
+    vec.join("");
+  }
+}
+
+fun checkValidProtocol(protocol: Array<Char>): Bool {
+  len = protocol.size();
+  if (len < 1) {
+    return false;
+  };
+  c = protocol[0];
+  if (!Unicode.isLetter(c)) {
+    return false;
+  };
+  for (i in Range(1, len)) {
+    !c = protocol[i];
+    if (
+      !Unicode.isLetter(c) &&
+      !Unicode.isNumber(c) &&
+      c != '.' &&
+      c != '+' &&
+      c != '-'
+    ) {
+      return false;
+    }
+  };
+  true;
+}
+
+module end;

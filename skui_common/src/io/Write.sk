@@ -1,0 +1,41 @@
+module IO;
+
+mutable base class Write {
+  mutable fun writeAll(buffer: Array<UInt8>): void;
+  mutable fun write(byte: UInt8): void;
+
+  mutable fun writeAsLEBytes(value: Int, size: Int): void {
+    for (_ in Range(0, size)) {
+      this.write(UInt8::truncate(value.and(0xFF)));
+      !value = value.ushr(8);
+    };
+  }
+
+  mutable fun writeAsBEBytes(value: Int, size: Int): void {
+    for (i in Range(0, size).reversedValues()) {
+      this.write(UInt8::truncate(value.ushr(8 * i).and(0xFF)));
+    };
+  }
+}
+
+mutable class WriteMemory(
+  private buffer: mutable Vector<UInt8> = mutable Vector[],
+) extends Write {
+  mutable fun writeAll(buffer: Array<UInt8>): void {
+    buffer.each(b -> this.write(b));
+  }
+
+  mutable fun write(byte: UInt8): void {
+    this.buffer.push(byte)
+  }
+
+  mutable fun finalize(): Array<UInt8> {
+    this.buffer.toArray();
+  }
+
+  mutable fun reset(): void {
+    this.buffer.clear();
+  }
+}
+
+module end;

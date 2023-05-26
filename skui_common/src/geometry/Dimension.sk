@@ -1,0 +1,34 @@
+module Geometry;
+
+base class Dimension(
+  width: Float,
+  height: Float,
+) uses Show, Hashable, Equality {}
+
+class Dimension2D() extends Dimension {
+  /**
+   * Returns zero dimension
+   */
+  static fun zero(): Dimension2D {
+    Dimension2D(0.0, 0.0);
+  }
+
+  fun toString(): String {
+    `Dimension2D(${this.width}, ${this.height})`
+  }
+}
+
+class Dimension3D(depth: Float) extends Dimension {
+  /**
+   * Returns zero dimension
+   */
+  static fun zero(): Dimension3D {
+    Dimension3D(0.0, 0.0, 0.0);
+  }
+
+  fun toString(): String {
+    `Dimension3D(${this.width}, ${this.height}, ${this.depth})`
+  }
+}
+
+module end;

@@ -1,0 +1,54 @@
+module Geometry;
+
+class Point(x: Int, y: Int) uses Hashable, Orderable {
+  const zero: Point = Point(0, 0);
+  /**
+   * Returns the vector this + other.
+   */
+  fun +(other: Point): Point {
+    Point(this.x + other.x, this.y + other.y)
+  }
+
+  /**
+   * Returns the vector this - other.
+   */
+  fun -(other: Point): Point {
+    Point(this.x - other.x, this.y - other.y)
+  }
+
+  /**
+   * Returns the vector this * scale.
+   */
+  fun *(scale: Int): Point {
+    Point(this.x * scale, this.y * scale)
+  }
+
+  /**
+   * Returns the vector this / scale.
+   */
+  fun /(scale: Int): Point {
+    Point(this.x / scale, this.y / scale)
+  }
+
+  fun neg(): Point {
+    Point(-this.x, -this.y)
+  }
+
+  fun toOffset(): Offset {
+    Offset(this.x.toFloat(), this.y.toFloat());
+  }
+
+  fun min(other: Point): Point {
+    Point(Math.min(this.x, other.x), Math.min(this.y, other.y))
+  }
+
+  fun max(other: Point): Point {
+    Point(Math.max(this.x, other.x), Math.max(this.y, other.y))
+  }
+
+  fun translate(x: Int, y: Int): Point {
+    Point(this.x + x, this.y + y)
+  }
+}
+
+module end;

@@ -1,0 +1,83 @@
+extension class Range extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "start" => JSON.IntNumber(this.start),
+        "end" => JSON.IntNumber(this.end),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Range {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Range" -> Range(jso.getInt("start"), jso.getInt("end"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Range`)
+    }
+  }
+}
+
+extension base class Text extends JSONValue {
+  fun toJSON(): JSON.Value
+  | Raw(text) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "text" => JSON.String(text),
+      ],
+    )
+  | Texts(texts) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "texts" => JSON.Array(
+          Vector::createFromItems(texts.map(text -> text.toJSON())),
+        ),
+      ],
+    )
+  | LocaleText(text, optCategory) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "text" => JSON.String(text),
+        "category" => optCategory
+          .map(category -> JSON.String(category))
+          .default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Format(format, parameters) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "format" => format.toJSON(),
+        "parameters" => JSON.Array(
+          Vector::createFromItems(parameters.map(text -> text.toJSON())),
+        ),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Text {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Raw" -> Raw(jso.getString("text"))
+    | "Texts" ->
+      Texts(
+        jso.getArray("texts").value.map(jsv -> Text::fromJSON(jsv)).toArray(),
+      )
+    | "LocaleText" ->
+      LocaleText(jso.getString("text"), jso.maybeGetString("category"))
+    | "Format" ->
+      Format(
+        Text::fromJSON(jso.get("format")),
+        jso
+          .getArray("parameters")
+          .value.map(jsv -> Text::fromJSON(jsv))
+          .toArray(),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Text`)
+    }
+  }
+}

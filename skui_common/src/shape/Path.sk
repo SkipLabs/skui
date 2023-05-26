@@ -1,0 +1,220 @@
+module Shape;
+
+class Path{elements: Array<PathElement> = Array[]} {
+  static fun rectangle(rect: Geometry.Rect): Path {
+    Path{
+      elements => Array[
+        MoveTo(rect.topLeft()),
+        LineTo(rect.topRight()),
+        LineTo(rect.bottomRight()),
+        LineTo(rect.bottomLeft()),
+        ClosePath(),
+      ],
+    };
+  }
+
+  static fun strokeRectangle(rect: Geometry.Rect, width: Float): Path {
+    Path{
+      elements => Array[
+        MoveTo(rect.topLeft()),
+        LineTo(rect.topRight()),
+        LineTo(rect.bottomRight()),
+        LineTo(rect.bottomLeft()),
+        ClosePath(),
+        MoveTo(rect.topLeft().translate(width, width)),
+        LineTo(rect.topRight().translate(-width, width)),
+        LineTo(rect.bottomRight().translate(-width, -width)),
+        LineTo(rect.bottomLeft().translate(width, -width)),
+        ClosePath(),
+      ],
+    };
+  }
+
+  static fun roundedRectangle(
+    rect: Geometry.Rect,
+    radius: Geometry.RectRadius,
+  ): Shape.Path {
+    tlRadiusX = Math.max(0.0, clampToShortest(rect, radius.getTopLeft().x));
+    tlRadiusY = Math.max(0.0, clampToShortest(rect, radius.getTopLeft().y));
+    trRadiusX = Math.max(0.0, clampToShortest(rect, radius.getTopRight().x));
+    trRadiusY = Math.max(0.0, clampToShortest(rect, radius.getTopRight().y));
+    blRadiusX = Math.max(0.0, clampToShortest(rect, radius.getBottomLeft().x));
+    blRadiusY = Math.max(0.0, clampToShortest(rect, radius.getBottomLeft().y));
+    brRadiusX = Math.max(0.0, clampToShortest(rect, radius.getBottomRight().x));
+    brRadiusY = Math.max(0.0, clampToShortest(rect, radius.getBottomRight().y));
+    path = Shape.Path{};
+    !path = path.moveTo(rect.left, rect.top + tlRadiusX);
+    !path = path.cubicTo(
+      rect.left,
+      rect.top,
+      rect.left,
+      rect.top,
+      rect.left + tlRadiusY,
+      rect.top,
+    );
+    !path = path.lineTo(rect.right - trRadiusX, rect.top);
+    !path = path.cubicTo(
+      rect.right,
+      rect.top,
+      rect.right,
+      rect.top,
+      rect.right,
+      rect.top + trRadiusY,
+    );
+    !path = path.lineTo(rect.right, rect.bottom - brRadiusX);
+    !path = path.cubicTo(
+      rect.right,
+      rect.bottom,
+      rect.right,
+      rect.bottom,
+      rect.right - brRadiusY,
+      rect.bottom,
+    );
+    !path = path.lineTo(rect.left + blRadiusX, rect.bottom);
+    !path = path.cubicTo(
+      rect.left,
+      rect.bottom,
+      rect.left,
+      rect.bottom,
+      rect.left,
+      rect.bottom - blRadiusY,
+    );
+    path.close();
+  }
+
+  static fun zigZag(start: Geometry.Offset, length: Float, width: Float): Path {
+    vec = mutable Vector<PathElement>[];
+    zigs = (length / (width * 2.0)).toInt();
+    vec.push(MoveTo(start));
+    for (index in Range(0, zigs)) {
+      x = start.dx + (index.toFloat() * 2.0 + 1.0) * width;
+      y = start.dy + width * ((index % 2).toFloat() * 2.0 - 1.0);
+      vec.push(LineTo(Geometry.Offset(x, y)));
+    };
+    vec.push(LineTo(start.translateX(length)));
+    Path{elements => vec.toArray()};
+  }
+
+  static fun circleElements(
+    center: Geometry.Offset,
+    radius: Float,
+  ): Array<PathElement> {
+    dr = 0.53 * radius;
+    Array[
+      MoveTo(center.translateY(-radius)),
+      CubicCurveTo(
+        center.translateX(-radius),
+        center.translate(-dr, -radius),
+        center.translate(-radius, -dr),
+      ),
+      CubicCurveTo(
+        center.translateY(radius),
+        center.translate(-radius, dr),
+        center.translate(-dr, radius),
+      ),
+      CubicCurveTo(
+        center.translateX(radius),
+        center.translate(dr, radius),
+        center.translate(radius, dr),
+      ),
+      CubicCurveTo(
+        center.translateY(-radius),
+        center.translate(radius, -dr),
+        center.translate(dr, -radius),
+      ),
+      ClosePath(),
+    ];
+  }
+
+  static fun circle(center: Geometry.Offset, radius: Float): Path {
+    Path{elements => static::circleElements(center, radius)};
+  }
+
+  static fun disk(
+    center: Geometry.Offset,
+    radius: Float,
+    tickness: Float,
+  ): Path {
+    if (radius > tickness) {
+      Path{
+        elements => Arrays.merge(
+          static::circleElements(center, radius),
+          static::circleElements(center, radius - tickness),
+        ),
+      };
+    } else {
+      static::circle(center, radius)
+    }
+  }
+
+  fun add(element: PathElement): Path {
+    vec = Vector::mcreateFromItems(this.elements);
+    vec.push(element);
+    this with {elements => vec.toArray()};
+  }
+
+  fun moveTo(x: Float, y: Float): Path {
+    this.add(MoveTo(Geometry.Offset(x, y)));
+  }
+
+  fun lineTo(x: Float, y: Float): Path {
+    this.add(LineTo(Geometry.Offset(x, y)));
+  }
+
+  fun close(): Path {
+    this.add(ClosePath());
+  }
+
+  fun cubicTo(
+    x1: Float,
+    y1: Float,
+    x2: Float,
+    y2: Float,
+    x3: Float,
+    y3: Float,
+  ): Path {
+    this.add(
+      CubicCurveTo(
+        Geometry.Offset(x1, y1),
+        Geometry.Offset(x2, y2),
+        Geometry.Offset(x3, y3),
+      ),
+    );
+  }
+
+  fun quadraticBezierTo(
+    endX: Float,
+    endY: Float,
+    controlX: Float,
+    controlY: Float,
+  ): Path {
+    this.add(
+      QuadCurveTo(
+        Geometry.Offset(endX, endY),
+        Geometry.Offset(controlX, controlY),
+      ),
+    );
+  }
+
+  fun getInitOffset(): Geometry.Offset {
+    this.elements.maybeGet(0) match {
+    | Some(element) ->
+      element match {
+      | MoveTo(point) -> point
+      | _ -> Geometry.Offset::zero
+      }
+    | _ -> Geometry.Offset::zero
+    }
+  }
+}
+
+fun clampToShortest(rect: Geometry.Rect, value: Float): Float {
+  shortestSide = rect.shortestSide();
+  if (value > shortestSide) {
+    shortestSide
+  } else {
+    value
+  }
+}
+
+module end;

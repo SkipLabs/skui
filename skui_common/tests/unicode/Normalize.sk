@@ -1,0 +1,366 @@
+module SKUICommonTest;
+
+@test
+fun decomposeSegment(): void {
+  NormalizePosition(
+    Unicode.NFC(),
+    decomposeSegmentF,
+    decomposeSegmentTests,
+  ).run()
+}
+
+@test
+fun firstBoundary(): void {
+  NormalizePosition(Unicode.NFC(), firstBoundaryF, firstBoundaryTests).run()
+}
+
+@test
+fun decomposeToLastBoundary(): void {
+  NormalizePosition(Unicode.NFKC(), decomposeToLast, decomposeToLastTests).run()
+}
+
+@test
+fun isNormalNFD1(): void {
+  NormalizePosition(Unicode.NFD(), isNormalF, isNormalTests).run()
+}
+
+@test
+fun isNormalNFD2(): void {
+  NormalizePosition(Unicode.NFD(), isNormalF, isNormalNFDTests).run()
+}
+
+@test
+fun isNormalNFKD1(): void {
+  NormalizePosition(Unicode.NFKD(), isNormalF, isNormalTests).run()
+}
+
+@test
+fun isNormalNFKD2(): void {
+  NormalizePosition(Unicode.NFKD(), isNormalF, isNormalNFDTests).run()
+}
+
+@test
+fun isNormalNFKD3(): void {
+  NormalizePosition(Unicode.NFKD(), isNormalF, isNormalNFKXTests).run()
+}
+
+@test
+fun isNormalNFC1(): void {
+  NormalizePosition(Unicode.NFC(), isNormalF, isNormalTests).run()
+}
+
+@test
+fun isNormalNFC2(): void {
+  NormalizePosition(Unicode.NFC(), isNormalF, isNormalNFCTests).run()
+}
+
+@test
+fun isNormalNFKC1(): void {
+  NormalizePosition(Unicode.NFKC(), isNormalF, isNormalTests).run()
+}
+
+@test
+fun isNormalNFKC2(): void {
+  NormalizePosition(Unicode.NFKC(), isNormalF, isNormalNFCTests).run()
+}
+
+@test
+fun isNormalNFKC3(): void {
+  NormalizePosition(Unicode.NFKC(), isNormalF, isNormalNFKXTests).run()
+}
+
+const cgj: Char = Char::fromCode(0x034F);
+
+fun repeat(char: Char, number: Int): String {
+  String::fromChars(Array::fill(number, char))
+}
+
+fun grave(number: Int): String {
+  repeat(Char::fromCode(0x0300), number)
+}
+
+class PosCase(
+  src: Array<UInt8>,
+  position: Int,
+  buffer: Array<UInt8>, // expected contents of reorderBuffer, if applicable
+) extends Case {
+  static fun make(src: String, position: Int, buffer: String = ""): PosCase {
+    PosCase(src.toBytes(), position, buffer.toBytes())
+  }
+
+  static fun ints(
+    src: Array<Int>,
+    position: Int,
+    buffer: Array<Int> = Array[],
+  ): PosCase {
+    PosCase(src.map(UInt8::truncate), position, buffer.map(UInt8::truncate))
+  }
+}
+
+class NormalizePosition(
+  norm: Unicode.Norm,
+  function: (mutable Unicode.ReorderBuffer, Array<UInt8>) ~> (
+    Int,
+    Array<UInt8>,
+  ),
+  tests: Array<Case>,
+) {
+  //
+
+  fun run(): void {
+    this.cases().each(this.runCase);
+  }
+
+  protected fun runCase(testCase: Case): void {
+    testCase match {
+    | posCase @ PosCase _ ->
+      rb = mutable Unicode.ReorderBuffer{};
+      rb.init(this.norm, posCase.src);
+      (pos, got) = this.function(rb, posCase.src);
+      expectEq(pos, posCase.position, v ~> `${v}`);
+      expectEq(got, posCase.buffer, v ~> `${v}`)
+    | _ -> invariant_violation("Must be a SKUICommonTest.PosCase")
+    };
+  }
+
+  protected fun cases(): Array<Case> {
+    this.tests;
+  }
+}
+
+fun decomposeSegmentF(
+  reorderBuffer: mutable Unicode.ReorderBuffer,
+  src: Array<UInt8>,
+): (Int, Array<UInt8>) {
+  reorderBuffer.init(Unicode.NFD(), src);
+  reorderBuffer.setFlusher(None(), Unicode.appendFlush);
+  p = Unicode.decomposeSegment(reorderBuffer, 0, true);
+  (p, reorderBuffer.out.toArray())
+}
+
+fun firstBoundaryF(
+  reorderBuffer: mutable Unicode.ReorderBuffer,
+  src: Array<UInt8>,
+): (Int, Array<UInt8>) {
+  (reorderBuffer.norm.firstBoundary(src), Array[])
+}
+
+fun isNormalF(
+  reorderBuffer: mutable Unicode.ReorderBuffer,
+  src: Array<UInt8>,
+): (Int, Array<UInt8>) {
+  if (reorderBuffer.norm.isNormal(src)) {
+    (1, Array[])
+  } else {
+    (0, Array[])
+  }
+}
+
+fun decomposeToLast(
+  reorderBuffer: mutable Unicode.ReorderBuffer,
+  src: Array<UInt8>,
+): (Int, Array<UInt8>) {
+  reorderBuffer.setFlusher(Some(src), Unicode.appendFlush);
+  Unicode.decomposeToLastBoundary(reorderBuffer);
+  buffer = mutable Vector<UInt8>[];
+  reorderBuffer.flushBytes(buffer);
+  (reorderBuffer.out.size(), buffer.toArray());
+}
+
+const decomposeSegmentTests: Array<Case> = Array[
+  // illegal runes
+  PosCase(Array[UInt8::truncate(0xC2)], 0, Array[]),
+  PosCase(Array[UInt8::truncate(0xC0)], 1, Array[UInt8::truncate(0xC0)]),
+  // error
+  PosCase("\u00E0\x80".toBytes(), 2, "\u0061\u0300".toBytes()),
+  // starter
+  PosCase("a".toBytes(), 1, "a".toBytes()),
+  PosCase("ab".toBytes(), 1, "a".toBytes()),
+  // starter + composing
+  PosCase("a\u0300".toBytes(), 3, "a\u0300".toBytes()),
+  PosCase("a\u0300b".toBytes(), 3, "a\u0300".toBytes()),
+  // with decomposition
+  PosCase("\u00C0".toBytes(), 2, "A\u0300".toBytes()),
+  PosCase("\u00C0b".toBytes(), 2, "A\u0300".toBytes()),
+  // long
+  PosCase(grave(31).toBytes(), 60, (grave(30) + cgj).toBytes()),
+  PosCase(("a" + grave(31)).toBytes(), 61, ("a" + grave(30) + cgj).toBytes()),
+  // Stability tests: see https://www.unicode.org/review/pr-29.html.
+  // U+0300 COMBINING GRAVE ACCENT;Mn;230;NSM;;;;;N;NON-SPACING GRAVE;;;;
+  // U+0B47 ORIYA VOWEL SIGN E;Mc;0;L;;;;;N;;;;;
+  // U+0B3E ORIYA VOWEL SIGN AA;Mc;0;L;;;;;N;;;;;
+  // U+1100 HANGUL CHOSEONG KIYEOK;Lo;0;L;;;;;N;;;;;
+  // U+1161 HANGUL JUNGSEONG A;Lo;0;L;;;;;N;;;;;
+  PosCase("\u0B47\u0300\u0B3E".toBytes(), 8, "\u0B47\u0300\u0B3E".toBytes()),
+  PosCase("\u1100\u0300\u1161".toBytes(), 8, "\u1100\u0300\u1161".toBytes()),
+  PosCase("\u0B47\u0B3E".toBytes(), 6, "\u0B47\u0B3E".toBytes()),
+  PosCase("\u1100\u1161".toBytes(), 6, "\u1100\u1161".toBytes()),
+
+  // U+04DA MALAYALAM VOWEL SIGN O;Mc;0;L;0D46 0D3E;;;;N;;;;;
+  // Sequence of decomposing characters that are starters and modifiers.
+  PosCase(
+    ("\u0d4a" + repeat('\u0d3e', 31)).toBytes(),
+    90,
+    ("\u0d46" + repeat('\u0d3e', 30) + cgj).toBytes(),
+  ),
+
+  PosCase(grave(30).toBytes(), 60, grave(30).toBytes()),
+  // U+FF9E is a starter, but decomposes to U+3099, which is not.
+  PosCase((grave(30) + "\uff9e").toBytes(), 60, (grave(30) + cgj).toBytes()),
+  // ends with incomplete UTF-8 encoding
+  PosCase(Array[UInt8::truncate(0xCC)], 0, Array[]),
+  PosCase(
+    Arrays.add("\u0300".toBytes(), UInt8::truncate(0xCC)),
+    2,
+    "\u0300".toBytes(),
+  ),
+];
+
+const firstBoundaryTests: Array<Case> = Array[
+  // no boundary
+  PosCase(Array[], -1, Array[]),
+  PosCase("\u0300".toBytes(), -1, Array[]),
+  PosCase(Array[0x80, 0x80].map(UInt8::truncate), -1, Array[]),
+  // illegal runes
+  PosCase(Array[UInt8::truncate(0xFF)], 0, Array[]),
+  PosCase(Arrays.add("\u0300".toBytes(), UInt8::truncate(0xFF)), 2, Array[]),
+  PosCase(
+    Arrays.merge(
+      "\u0300".toBytes(),
+      Array[0xc0, 0x80, 0x80].map(UInt8::truncate),
+    ),
+    2,
+    Array[],
+  ),
+  // boundaries
+  PosCase::make("a", 0),
+  PosCase::make("\u0300a", 2),
+  // Hangul
+  PosCase::make("\u1103\u1161", 0),
+  PosCase::make("\u110B\u1173\u11B7", 0),
+  PosCase::make("\u1161\u110B\u1173\u11B7", 3),
+  PosCase::make("\u1173\u11B7\u1103\u1161", 6),
+  // too many combining characters.
+  PosCase::make(grave(Unicode.maxNonStarters - 1), -1),
+  PosCase::make(grave(Unicode.maxNonStarters.toInt()), 60),
+  PosCase::make(grave(Unicode.maxNonStarters + 1), 60),
+];
+
+const isNormalTests: Array<Case> = Array[
+  PosCase::make("", 1),
+  // illegal runes
+  PosCase::ints(Array[0xFF], 1),
+  // starters
+  PosCase::make("a", 1),
+  PosCase::make("abc", 1),
+  PosCase::make("\u043Eb", 1),
+  // incorrectly ordered combining characters
+  PosCase::make("\u0300\u0316", 0),
+  PosCase::make("ab\u0300\u0316", 0),
+  PosCase::make("ab\u0300\u0316cd", 0),
+  PosCase::make("\u0300\u0316cd", 0),
+];
+
+const isNormalNFDTests: Array<Case> = Array[
+  // needs decomposing
+  PosCase::make("\u00C0", 0),
+  PosCase::make("abc\u00C0", 0),
+  // correctly ordered combining characters
+  PosCase::make("\u0300", 1),
+  PosCase::make("ab\u0300", 1),
+  PosCase::make("ab\u0300cd", 1),
+  PosCase::make("\u0300cd", 1),
+  PosCase::make("\u0316\u0300", 1),
+  PosCase::make("ab\u0316\u0300", 1),
+  PosCase::make("ab\u0316\u0300cd", 1),
+  PosCase::make("\u0316\u0300cd", 1),
+  PosCase::make("\u043E\u0308b", 1),
+  // Hangul
+  PosCase::make("같은", 0),
+];
+
+const isNormalNFCTests: Array<Case> = Array[
+  // okay composed
+  PosCase::make("\u00C0", 1),
+  PosCase::make("abc\u00C0", 1),
+  // need reordering
+  PosCase::make("a\u0300", 0),
+  PosCase::make("a\u0300cd", 0),
+  PosCase::make("a\u0316\u0300", 0),
+  PosCase::make("a\u0316\u0300cd", 0),
+  // correctly ordered combining characters
+  PosCase::make("ab\u0300", 1),
+  PosCase::make("ab\u0300cd", 1),
+  PosCase::make("ab\u0316\u0300", 1),
+  PosCase::make("ab\u0316\u0300cd", 1),
+  PosCase::make("\u00C0\u035D", 1),
+  PosCase::make("\u0300", 1),
+  PosCase::make("\u0316\u0300cd", 1),
+  // Hangul
+  PosCase::make("같은", 1),
+];
+
+const isNormalNFKXTests: Array<Case> = Array[
+  // Special case.
+  PosCase::make("\u00BC", 0),
+];
+
+const decomposeToLastTests: Array<Case> = Array[
+  // ends with inert character
+  PosCase::make("Hello!", 6),
+  PosCase::make("\u0632", 2),
+  PosCase::make("a\u0301\u0635", 5),
+  // ends with non-inert starter
+  PosCase::make("a", 0, "a"),
+  PosCase::make("a\u0301a", 3, "a"),
+  PosCase::make("a\u0301\u03B9", 3, "\u03B9"),
+  PosCase::make("a\u0327", 0, "a\u0327"),
+  // illegal runes
+  PosCase::ints(Array[0xFF], 1),
+  PosCase(Arrays.add("aa".toBytes(), UInt8::truncate(0xFF)), 3, Array[]),
+  PosCase::ints(Array[0xC0, 0x80, 0x80], 3),
+  PosCase::ints(Array[0xCC, 0x80, 0x80], 3),
+  // ends with incomplete UTF-8 encoding
+  PosCase(Arrays.add("a".toBytes(), UInt8::truncate(0xCC)), 2, Array[]),
+  // ends with combining characters
+  PosCase::make("\u0300\u0301", 0, "\u0300\u0301"),
+  PosCase::make("a\u0300\u0301", 0, "a\u0300\u0301"),
+  PosCase::make("a\u0301\u0308", 0, "a\u0301\u0308"),
+  PosCase::make("a\u0308\u0301", 0, "a\u0308\u0301"),
+  PosCase::make("aaaa\u0300\u0301", 3, "a\u0300\u0301"),
+  PosCase::make("\u0300a\u0300\u0301", 2, "a\u0300\u0301"),
+  PosCase::make("\u00C0", 0, "A\u0300"),
+  PosCase::make("a\u00C0", 1, "A\u0300"),
+  // decomposing
+  PosCase::make("a\u0300\u00E0", 3, "a\u0300"),
+  // multisegment decompositions (flushes leading segments)
+  PosCase::make("a\u0300\uFDC0", 7, "\u064A"),
+  PosCase::make("\uFDC0" + grave(29), 4, "\u064A" + grave(29)),
+  PosCase::make("\uFDC0" + grave(30), 4, "\u064A" + grave(30)), // 23
+  PosCase::make("\uFDC0" + grave(31), 5, grave(30)),
+  PosCase::make("\uFDFA" + grave(14), 31, "\u0645" + grave(14)),
+  // Overflow
+  PosCase::make("\u00E0" + grave(29), 0, "a" + grave(30)),
+  PosCase::make("\u00E0" + grave(30), 2, grave(30)),
+  // Hangul
+  PosCase::make("a\u1103", 1, "\u1103"),
+  PosCase::make("a\u110B", 1, "\u110B"),
+  PosCase::make("a\u110B\u1173", 1, "\u110B\u1173"),
+  // See comment in composition.go:compBoundaryAfter.
+  PosCase::make("a\u110B\u1173\u11B7", 1, "\u110B\u1173\u11B7"),
+  PosCase::make("a\uC73C", 1, "\u110B\u1173"),
+  PosCase::make("다음", 3, "\u110B\u1173\u11B7"),
+  PosCase::make("다", 0, "\u1103\u1161"),
+  PosCase::make("\u1103\u1161\u110B\u1173\u11B7", 6, "\u110B\u1173\u11B7"),
+  PosCase::make("\u110B\u1173\u11B7\u1103\u1161", 9, "\u1103\u1161"),
+  PosCase::make("다음음", 6, "\u110B\u1173\u11B7"),
+  PosCase::make("음다다", 6, "\u1103\u1161"),
+  // maximized buffer
+  PosCase::make("a" + grave(30), 0, "a" + grave(30)),
+  // Buffer overflow
+  PosCase::make("a" + grave(31), 3, grave(30)),
+  // weird UTF-8
+  PosCase::make("a\u0300\u11B7", 0, "a\u0300\u11B7"),
+];
+
+module end;

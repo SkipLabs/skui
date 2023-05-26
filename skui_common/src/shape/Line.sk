@@ -1,0 +1,22 @@
+module Shape;
+
+/**
+ * Creates a Line.
+ * @param start the coordinates of the start point of the line segment
+ * @param end the coordinates of the end point of the line segment
+ */
+class Line{start: Geometry.Offset, end: Geometry.Offset} extends PathEdge {
+  fun isFinite(): Bool {
+    this.start.isFinite() && this.end.isFinite()
+  }
+
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): Line {
+    Line{start => conv(this.start), end => conv(this.end)}
+  }
+
+  fun toPath(): Path {
+    Path{elements => Array[MoveTo(this.start), LineTo(this.end)]}
+  }
+}
+
+module end;

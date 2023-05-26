@@ -1,0 +1,357 @@
+module Ui;
+
+@always_inline
+fun index(x: Int, y: Int, width: Int): Int {
+  (y * width) + x
+}
+
+base class AlphaSupplier {
+  fun getAlpha(x: Int, y: Int): Float;
+}
+
+base class Draw extends AlphaSupplier, SKFS.File uses Hashable, Equality {
+  static fun forFile(obj: SKFS.File): Draw {
+    obj match {
+    | x @ Draw _ -> x
+    | _ -> invariant_violation("Invalid Draw")
+    }
+  }
+
+  fun getBounds(): Geometry.Rect;
+
+  fun size(): Geometry.Size {
+    this.getBounds().size()
+  }
+}
+
+base class Priority uses Hashable, Orderable {
+  children =
+  | High()
+  | Low()
+
+  fun update(other: Priority): Priority {
+    other match {
+    | High() -> High()
+    | Low() -> this
+    }
+  }
+}
+
+value class Pixel(
+  color: Color = Colors.transparent(),
+  priority: Priority = Low(),
+) uses Hashable, Equality {
+  fun withAlpha(alpha: Float): Pixel {
+    !this.color = this.color.withAlpha(Math.clamp(alpha, 0.0, 1.0));
+    this;
+  }
+
+  @always_inline
+  fun getRed(): UInt8 {
+    this.color.getRed();
+  }
+
+  @always_inline
+  fun getGreen(): UInt8 {
+    this.color.getGreen();
+  }
+
+  @always_inline
+  fun getBlue(): UInt8 {
+    this.color.getBlue();
+  }
+
+  @always_inline
+  fun getAlpha(): UInt8 {
+    this.color.getAlpha();
+  }
+
+  fun isOpaque(): Bool {
+    Math.like(this.color.alpha, 1.0);
+  }
+
+  fun isTransparent(): Bool {
+    Math.like(this.color.alpha, 0.0);
+  }
+
+  fun scaleAlpha(alpha: Float): Pixel {
+    !this.color = this.color.scaleAlpha(Math.clamp(alpha, 0.0, 1.0));
+    this;
+  }
+
+  fun update(foreground: Pixel): Pixel {
+    if (foreground.isOpaque() || this.isTransparent()) {
+      foreground
+    } else if (foreground.isTransparent()) {
+      this
+    } else {
+      Pixel(
+        this.color +
+          (foreground.color - this.color).mult(foreground.color.alpha),
+        this.priority.update(foreground.priority),
+      );
+    };
+  }
+
+  fun add(other: Pixel): Pixel {
+    Pixel(this.color + other.color, this.priority.update(other.priority));
+  }
+}
+
+base class Painter extends SKFS.File uses Hashable, Equality {
+  static fun forFile(obj: SKFS.File): Painter {
+    obj match {
+    | x @ Painter _ -> x
+    | _ -> invariant_violation("Invalid Painter")
+    }
+  }
+
+  fun getColorAt(x: Int, y: Int): Pixel;
+  fun getBounds(): ?Geometry.Rect;
+}
+
+class Shift(x: Int, y: Int) uses Hashable, Equality {}
+
+class ArrayDraw(
+  width: Int,
+  height: Int,
+  alphas: Array<Float>,
+  optShift: ?Shift = None(),
+) extends Draw, SKFS.File {
+  fun getAlpha(x: Int, y: Int): Float {
+    this.alphas[index(x, y, this.width)]
+  }
+
+  fun getBounds(): Geometry.Rect {
+    Geometry.Rect(0.0, 0.0, this.width.toFloat(), this.height.toFloat())
+  }
+}
+
+class EmptyDraw() extends Draw {
+  fun getAlpha(_x: Int, _y: Int): Float {
+    0.0;
+  }
+
+  fun getBounds(): Geometry.Rect {
+    Geometry.Rect::zero()
+  }
+}
+
+class Distributor(offset: Geometry.Offset, draw: ArrayDraw) extends Draw {
+  private fun getAlphaAtX(
+    x: Int,
+    yIndex: Int,
+    fy: Float,
+    xScale: Float,
+  ): Float {
+    alpha = if (yIndex > 0) {
+      this.draw.getAlpha(x, yIndex - 1) * fy * xScale;
+    } else {
+      0.0;
+    };
+    alpha +
+      if (yIndex < this.draw.height) {
+        this.draw.getAlpha(x, yIndex) * (1.0 - fy) * xScale;
+      } else {
+        0.0;
+      };
+  }
+
+  fun getAlpha(x: Int, y: Int): Float {
+    bounds = Geometry.Rect::fromOffsetSize(
+      this.offset,
+      Geometry.Size(this.draw.width.toFloat(), this.draw.height.toFloat()),
+    ).toRectangle();
+    if (!bounds.containsPoint(x, y)) {
+      return 0.0;
+    };
+    xIndex = x - bounds.left();
+    yIndex = y - bounds.top();
+    fx = Math.ceil(this.offset.dx) - this.offset.dx;
+    fy = Math.ceil(this.offset.dy) - this.offset.dy;
+    alpha = if (xIndex > 0) {
+      this.getAlphaAtX(xIndex - 1, yIndex, fy, fx);
+    } else {
+      0.0;
+    };
+    alpha +
+      if (xIndex < this.draw.width) {
+        this.getAlphaAtX(xIndex, yIndex, fy, 1.0 - fx);
+      } else {
+        0.0
+      };
+  }
+
+  fun getBounds(): Geometry.Rect {
+    this.draw.getBounds().shift(this.offset)
+  }
+}
+
+class DrawPainter(draw: Draw, painter: Painter) extends Painter {
+  fun getColorAt(x: Int, y: Int): Pixel {
+    alpha = this.draw.getAlpha(x, y);
+    if (Math.like(alpha, 0.0)) {
+      Pixel()
+    } else {
+      this.painter.getColorAt(x, y).scaleAlpha(alpha);
+    }
+  }
+
+  fun getBounds(): ?Geometry.Rect {
+    Some(this.draw.getBounds())
+  }
+}
+
+class SolidPainter(color: Color, priority: Priority = High()) extends Painter {
+  @always_inline
+  fun getColorAt(_x: Int, _y: Int): Pixel {
+    Pixel(this.color, this.priority);
+  }
+
+  fun getBounds(): ?Geometry.Rect {
+    None()
+  }
+}
+
+class BackgroundedPainter(color: Color, painter: Painter) extends Painter {
+  fun getColorAt(x: Int, y: Int): Pixel {
+    px = this.painter.getColorAt(x, y);
+    if (px.isOpaque()) {
+      px;
+    } else if (px.isTransparent()) {
+      Pixel(this.color, Low());
+    } else {
+      Pixel(this.color, Low()).update(px)
+    }
+  }
+
+  fun getBounds(): ?Geometry.Rect {
+    this.painter.getBounds();
+  }
+}
+
+class EmptyPainter() extends Painter {
+  fun getColorAt(_x: Int, _y: Int): Pixel {
+    Pixel();
+  }
+
+  fun getBounds(): ?Geometry.Rect {
+    Some(Geometry.Rect::zero())
+  }
+}
+
+class LambdaPainter(
+  fnc: (Int, Int) ~> Pixel,
+  optBounds: ?Geometry.Rect = None(),
+) extends Painter {
+  fun getColorAt(x: Int, y: Int): Pixel {
+    this.fnc(x, y);
+  }
+
+  fun ==(other: Painter): Bool {
+    other match {
+    | lP @ LambdaPainter _ -> native_eq(this.fnc, lP.fnc) == 0
+    | _ -> false
+    }
+  }
+
+  fun getBounds(): ?Geometry.Rect {
+    this.optBounds;
+  }
+
+  macro fun hash(): Int {
+    h = #thisClassName.hash();
+    !h = Hashable.combine(h, inspect(this.fnc));
+    h
+  }
+}
+
+//TODO location index to prevent passage on all element
+value class Index(x: Int, y: Int) uses Hashable, Equality
+
+class CompoundPainter(
+  painters: Map<Index, Array<Painter>>,
+  whol: Array<Painter>,
+  gap: Int,
+  optBounds: ?Geometry.Rect = None(),
+) extends Painter {
+  static fun fromPositions(
+    elements: Array<Painter>,
+    gap: Int,
+  ): CompoundPainter {
+    painters = mutable Map<Index, Array<Painter>>[];
+    whol = elements.filter(painter -> painter.getBounds().isNone());
+    filtered = elements.filter(painter -> painter.getBounds().isSome());
+    reducer = (acc, painter) ~>
+      painter.getBounds() match {
+      | Some(fBounds) -> acc.expandToInclude(fBounds)
+      | _ -> acc
+      };
+    fullbounds = elements.reduce(reducer, Geometry.Rect::zero());
+    bounds = fullbounds.toRectangle();
+    startX = bounds.left() / gap;
+    endX = bounds.right() / gap;
+    startY = bounds.top() / gap;
+    endY = bounds.bottom() / gap;
+    for (x in .Range(startX, endX + 1)) {
+      for (y in .Range(startY, endY + 1)) {
+        min = Geometry.Point(x * gap, y * gap);
+        max = min + Geometry.Point(gap, gap);
+        toCheck = Geometry.Rectangle(min, max).toRect();
+        values = filtered.filter(painter ->
+          painter.getBounds().fromSome().overlaps(toCheck)
+        );
+        if (!values.isEmpty()) {
+          painters.set(Index(x, y), values);
+        }
+      }
+    };
+    CompoundPainter(painters.chill(), whol, gap, Some(fullbounds));
+  }
+
+  fun getColorAt(x: Int, y: Int): Pixel {
+    index = Index(x / this.gap, y / this.gap);
+    optPainters = this.painters.maybeGet(index);
+    pixels = if (optPainters.isNone()) {
+      this.whol.map(painter -> painter.getColorAt(x, y))
+    } else {
+      Arrays.merge(
+        optPainters.fromSome().map(painter -> painter.getColorAt(x, y)),
+        this.whol.map(painter -> painter.getColorAt(x, y)),
+      )
+    };
+    if (pixels.isEmpty()) {
+      return Pixel()
+    };
+    highs = pixels.filter(pixel -> pixel.priority == High()).reversed();
+    optPixel: ?Pixel = None();
+    for (high in highs) {
+      pixel = optPixel match {
+      | Some(current) -> high.update(current)
+      | _ -> high
+      };
+      if (pixel.isOpaque()) {
+        return pixel;
+      };
+      !optPixel = Some(pixel)
+    };
+    lows = pixels.filter(pixel -> pixel.priority == Low()).reversed();
+    for (low in lows) {
+      pixel = optPixel match {
+      | Some(current) -> low.update(current)
+      | _ -> low
+      };
+      if (pixel.isOpaque()) {
+        return pixel;
+      };
+      !optPixel = Some(pixel)
+    };
+    optPixel.default(Pixel());
+  }
+
+  fun getBounds(): ?Geometry.Rect {
+    this.optBounds;
+  }
+}
+
+module end;

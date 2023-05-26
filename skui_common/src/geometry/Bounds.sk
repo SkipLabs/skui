@@ -1,0 +1,15 @@
+module Geometry;
+
+base class Position(x: Float, y: Float) uses Hashable, Equality {}
+
+base class .Bounds() uses Hashable, Equality {
+  fun contains(position: Position): Bool;
+  fun getX(): Float;
+  fun getY(): Float;
+  fun getZ(): Float;
+  fun getWidth(): Float;
+  fun getHeight(): Float;
+  fun getDepth(): Float;
+}
+
+module end;

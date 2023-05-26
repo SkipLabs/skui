@@ -1,0 +1,192 @@
+module Geometry;
+
+/**
+ * An 2D, axis-aligned, floating-point rectangle whose coordinates
+ * are given relative to another rectangle's edges, known as the container.
+ * Since the dimensions of the rectangle are relative to those of the
+ * container, this class has no width and height members. To determine the
+ * width or height of the rectangle, convert it to a [Rect] using [toRect()]
+ * (passing the container's own Rect), and then examine that object.
+ */
+class RelativeRect(
+  /*
+   * Distance from the left side of the container to the left side of this rectangle.
+   *
+   * May be negative if the left side of the rectangle is outside of the container.
+   */
+  left: Float,
+  /**
+   * Distance from the top side of the container to the top side of this rectangle.
+   *
+   * May be negative if the top side of the rectangle is outside of the container.
+   */
+  top: Float,
+  /**
+   * Distance from the right side of the container to the right side of this rectangle.
+   *
+   * May be negative if the right side of the rectangle is outside of the container.
+   */
+  right: Float,
+  /**
+   * Distance from the bottom side of the container to the bottom side of this rectangle.
+   *
+   * May be negative if the bottom side of the rectangle is outside of the container.
+   */
+  bottom: Float,
+) uses Hashable, Equality {
+  /**
+   * Creates a RelativeRect from a Rect and a Size. The Rect (first argument)
+   * and the RelativeRect (the output) are in the coordinate space of the
+   * rectangle described by the Size, with 0,0 being at the top left.
+   */
+  static fun fromSize(
+    rect: Geometry.Rect,
+    container: Geometry.Size,
+  ): RelativeRect {
+    RelativeRect(
+      rect.left,
+      rect.top,
+      container.width - rect.right,
+      container.height - rect.bottom,
+    );
+  }
+  /**
+   * Creates a RelativeRect from two Rects. The second Rect provides the
+   * container, the first provides the rectangle, in the same coordinate space,
+   * that is to be converted to a RelativeRect. The output will be in the
+   * container's coordinate space.
+   *
+   * For example, if the top left of the rect is at 0,0, and the top left of
+   * the container is at 100,100, then the top left of the output will be at
+   * -100,-100.
+   *
+   * If the first rect is actually in the container's coordinate space, then
+   * use [RelativeRect.fromSize] and pass the container's size as the second
+   * argument instead.
+   */
+  static fun fromRect(
+    rect: Geometry.Rect,
+    container: Geometry.Rect,
+  ): RelativeRect {
+    RelativeRect(
+      rect.left - container.left,
+      rect.top - container.top,
+      container.right - rect.right,
+      container.bottom - rect.bottom,
+    );
+  }
+  /**
+   * A rect that covers the entire container.
+   */
+  const fill: RelativeRect = RelativeRect(0.0, 0.0, 0.0, 0.0);
+
+  /**
+   * Returns whether any of the values are greater than zero.
+   *
+   * This corresponds to one of the sides ([left], [top], [right], or [bottom]) having
+   * some positive inset towards the center.
+   */
+  fun hasInsets(): Bool {
+    this.left > 0.0 || this.top > 0.0 || this.right > 0.0 || this.bottom > 0.0
+  }
+  /**
+   * Returns a new rectangle object translated by the given offset.
+   */
+  fun shift(offset: Geometry.Offset): RelativeRect {
+    RelativeRect(
+      this.left + offset.dx,
+      this.top + offset.dy,
+      this.right - offset.dx,
+      this.bottom - offset.dy,
+    );
+  }
+
+  /**
+   * Returns a new rectangle with edges moved outwards by the given delta.
+   */
+  fun inflate(delta: Float): RelativeRect {
+    RelativeRect(
+      this.left - delta,
+      this.top - delta,
+      this.right - delta,
+      this.bottom - delta,
+    );
+  }
+
+  /**
+   * Returns a new rectangle with edges moved inwards by the given delta.
+   */
+  fun deflate(delta: Float): RelativeRect {
+    this.inflate(-delta);
+  }
+
+  /**
+   * Returns a new rectangle that is the intersection of the given rectangle and this rectangle.
+   */
+  fun intersect(other: RelativeRect): RelativeRect {
+    RelativeRect(
+      Math.max(this.left, other.left),
+      Math.max(this.top, other.top),
+      Math.max(this.right, other.right),
+      Math.max(this.bottom, other.bottom),
+    );
+  }
+
+  /**
+   * Convert this [RelativeRect] to a [Rect], in the coordinate space of the container.
+   */
+  fun toRect(container: Geometry.Rect): Geometry.Rect {
+    Geometry.Rect(
+      this.left,
+      this.top,
+      container.width() - this.right,
+      container.height() - this.bottom,
+    );
+  }
+
+  /**
+   * Convert this [RelativeRect] to a [Size], assuming a container with the given size.
+   */
+  fun toSize(container: Geometry.Size): Geometry.Size {
+    Geometry.Size(
+      container.width - this.left - this.right,
+      container.height - this.top - this.bottom,
+    );
+  }
+  /**
+   * Linearly interpolate between two RelativeRects.
+   *
+   * If either rect is null, this function interpolates from [RelativeRect.fill].
+   */
+  static fun lerp(
+    optA: ?RelativeRect,
+    optB: ?RelativeRect,
+    t: Float,
+  ): ?RelativeRect {
+    optA match {
+    | Some(a) ->
+      optB match {
+      | Some(b) ->
+        Some(
+          RelativeRect(
+            Math.lerp(a.left, b.left, t),
+            Math.lerp(a.top, b.top, t),
+            Math.lerp(a.right, b.right, t),
+            Math.lerp(a.bottom, b.bottom, t),
+          ),
+        )
+      | _ ->
+        k = 1.0 - t;
+        Some(RelativeRect(a.left * k, a.top * k, a.right * k, a.bottom * k))
+      }
+    | _ ->
+      optB match {
+      | Some(b) ->
+        Some(RelativeRect(b.left * t, b.top * t, b.right * t, b.bottom * t))
+      | _ -> None()
+      }
+    }
+  }
+}
+
+module end;

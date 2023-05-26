@@ -1,0 +1,69 @@
+module Ui;
+
+base class Paint private (alpha: Float = 1.0) uses Hashable, Orderable {
+  fun withAlpha(alpha: Float): this;
+  fun scaleAlpha(factor: Float): this;
+
+  fun toPainter(priority: Priority = High()): Ui.Painter;
+  fun translate(offset: Geometry.Offset): this;
+
+  overridable protected fun lerpTo(b: Paint, t: Float): Paint {
+    if (t > 0.5) {
+      b.scaleAlpha((t - 0.5) * 2.0)
+    } else {
+      this.scaleAlpha(1.0 - (2.0 * t))
+    }
+  }
+
+  static fun lerp(optA: ?Paint, optB: ?Paint, t: Float): ?Paint {
+    optA match {
+    | Some(a) ->
+      optB match {
+      | Some(b) -> Some(a.lerpTo(b, t))
+      | _ -> Some(a.scaleAlpha(1.0 - t))
+      }
+    | _ ->
+      optB match {
+      | Some(b) -> Some(b.scaleAlpha(t))
+      | _ -> None()
+      }
+    }
+  }
+
+  overridable fun compare(y: Paint): Order {
+    (this, y) match {
+    | (.Color(_, _, _, _), .Color(_, _, _, _)) -> this.sameCompare(y)
+    | (.Color(_, _, _, _), _) -> LT()
+    | (_, .Color(_, _, _, _)) -> GT()
+    | _ ->
+      order = this.getClassName().compare(y.getClassName());
+      order match {
+      | EQ() -> this.sameCompare(y)
+      | _ -> order
+      }
+    }
+  }
+
+  overridable fun sameCompare(y: Paint): Order {
+    this.hash().compare(y.hash())
+  }
+}
+
+class DummyPaint() extends Paint {
+  fun withAlpha(_alpha: Float): this {
+    dummy()
+  }
+
+  fun scaleAlpha(_factor: Float): this {
+    dummy()
+  }
+
+  fun toPainter(_priority: Priority = High()): Ui.Painter {
+    dummy()
+  }
+  fun translate(_offset: Geometry.Offset): this {
+    dummy()
+  }
+}
+
+module end;

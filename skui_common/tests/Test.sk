@@ -1,0 +1,49 @@
+module SKUICommonTest;
+
+base class Case uses HasClassName
+
+fun expectEq<T: frozen>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected equality",
+): void {
+  if (inspect(actual) != inspect(expected)) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+fun expectNEq<T: frozen>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected inequality",
+): void {
+  if (inspect(actual) == inspect(expected)) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+fun expectEquals<T: Equality>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected equality",
+): void {
+  if (actual != expected) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+fun expectNEquals<T: Equality>(
+  actual: T,
+  expected: T,
+  conv: T ~> String = v ~> inspect(v).toString(),
+  msg: String = "expected inequality",
+): void {
+  if (actual == expected) {
+    throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
+  }
+}
+
+module end;

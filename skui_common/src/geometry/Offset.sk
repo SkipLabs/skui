@@ -1,0 +1,148 @@
+module Geometry;
+
+base class SearchAxis {
+  children =
+  | X()
+  | Y()
+}
+
+class Offset(dx: Float, dy: Float) uses Hashable, Orderable {
+  const zero: Offset = Offset(0.0, 0.0);
+
+  fun isZero(): Bool {
+    Math.like(this.dx, 0.0) && Math.like(this.dy, 0.0);
+  }
+
+  fun isFinite(): Bool {
+    this.dx * this.dy != Float::inf
+  }
+
+  /**
+   * The angle of this offset as radians clockwise from the positive x-axis, in the range -pi to pi, assuming positive values of the x-axis go to the left and positive values of the y-axis go down.
+   * Zero means that dy is zero and dx is zero or positive.
+   * Values from zero to pi/2 indicate positive values of dx and dy, the bottom-right quadrant.
+   * Values from pi/2 to pi indicate negative values of dx and positive values of dy, the bottom-left quadrant.
+   * Values from zero to -pi/2 indicate positive values of dx and negative values of dy, the top-right quadrant.
+   * Values from -pi/2 to -pi indicate negative values of dx and dy, the top-left quadrant.
+   * When dy is zero and dx is negative, the direction is pi.
+   * When dx is zero, direction is pi/2 if dy is positive and -pi/2 if dy is negative.
+   */
+  fun direction(): Float {
+    Math.atan2(this.dy, this.dx);
+  }
+  /**
+   * The magnitude of the offset.
+   */
+  fun distance(): Float {
+    Math.sqrt(this.dx * this.dx + this.dy * this.dy);
+  }
+
+  /**
+   * Returns a new offset with the x component scaled by scaleX and the y component scaled by scaleY.
+   * If the two scale arguments are the same, consider using the * operator instead
+   */
+  fun scale(scaleX: Float, scaleY: Float): Offset {
+    Offset(this.dx * scaleX, this.dy * scaleY)
+  }
+
+  /**
+   * Returns a new offset with translateX added to the x component and translateY added to the y component.
+   * If the arguments come from another Offset, consider using the + or - operators instead
+   */
+  fun translate(translateX: Float, translateY: Float): Offset {
+    Offset(this.dx + translateX, this.dy + translateY)
+  }
+
+  fun move(offset: Offset): Offset {
+    this.translate(offset.dx, offset.dy)
+  }
+
+  fun translateX(translateX: Float): Offset {
+    this.translate(translateX, 0.0);
+  }
+
+  fun translateY(translateY: Float): Offset {
+    this.translate(0.0, translateY);
+  }
+
+  fun translateCentered(src: Size, dst: Size): Offset {
+    this.translate(
+      (src.width - dst.width) / 2.0,
+      (src.height - dst.height) / 2.0,
+    );
+  }
+
+  /**
+   * Returns an offset whose coordinates are the remainder of dividing the coordinates of the left-hand-side
+   * operand (an Offset) by the scalar right-hand-side operand (a double).
+   */
+  fun %(operand: Int): Offset {
+    Offset(Math.modulo(this.dx, operand), Math.modulo(this.dy, operand));
+  }
+
+  fun +(other: Offset): Offset {
+    Offset(this.dx + other.dx, this.dy + other.dy);
+  }
+
+  fun -(other: Offset): Offset {
+    Offset(this.dx - other.dx, this.dy - other.dy);
+  }
+
+  fun *(operand: Float): Offset {
+    Offset(this.dx * operand, this.dy * operand);
+  }
+
+  fun /(operand: Float): Offset {
+    Offset(this.dx / operand, this.dy / operand);
+  }
+
+  fun size(size: Size): Size {
+    Size(this.dx + size.width, this.dy + size.height)
+  }
+
+  fun max(other: Offset): Offset {
+    Offset(Math.max(this.dx, other.dx), Math.max(this.dy, other.dy))
+  }
+
+  fun min(other: Offset): Offset {
+    Offset(Math.min(this.dx, other.dx), Math.min(this.dy, other.dy))
+  }
+
+  fun round(): Offset {
+    Offset(Math.round(this.dx), Math.round(this.dy))
+  }
+
+  fun ceil(): Offset {
+    Offset(Math.ceil(this.dx), Math.ceil(this.dy))
+  }
+
+  fun floor(): Offset {
+    Offset(Math.floor(this.dx), Math.floor(this.dy))
+  }
+
+  fun neg(): Offset {
+    Offset(-this.dx, -this.dy)
+  }
+
+  fun toFloorPoint(): Point {
+    Point(Math.floor(this.dx).toInt(), Math.floor(this.dy).toInt())
+  }
+
+  fun toCeilPoint(): Point {
+    Point(Math.ceil(this.dx).toInt(), Math.ceil(this.dy).toInt())
+  }
+
+  fun axisCoord(axis: SearchAxis): Float {
+    axis match {
+    | X() -> this.dx
+    | Y() -> this.dy
+    }
+  }
+
+  fun like(other: Offset, precision: Float = precisionErrorTolerance): Bool {
+    Math.like(this.dx, other.dx, precision) &&
+      Math.like(this.dy, other.dy, precision);
+  }
+}
+
+module end;

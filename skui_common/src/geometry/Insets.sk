@@ -1,0 +1,448 @@
+module Geometry;
+
+/**
+ * Base class for [Insets] that allows for text-direction aware
+ * resolution.
+ *
+ * A property or argument of this type accepts classes created either with [new
+ * Insets.fromLTRB] and its variants, or [new
+ * Insets.fromSTEB] and its variants.
+ */
+base class InsetsGeometry private (
+  left: Float,
+  start: Float,
+  right: Float,
+  end: Float,
+  top: Float,
+  bottom: Float,
+) uses Hashable, Equality {
+  static fun mixed(
+    left: Float,
+    start: Float,
+    right: Float,
+    end: Float,
+    top: Float,
+    bottom: Float,
+  ): this;
+
+  static fun all(value: Float): this;
+
+  /**
+   * Whether every dimension is non-negative.
+   */
+  fun isNonNegative(): Bool {
+    this.left >= 0.0 &&
+      this.start >= 0.0 &&
+      this.right >= 0.0 &&
+      this.end >= 0.0 &&
+      this.top >= 0.0 &&
+      this.bottom >= 0.0;
+  }
+
+  /**
+   * The total offset in the horizontal direction.
+   */
+  fun horizontal(): Float {
+    this.left + this.right + this.start + this.end
+  }
+
+  /**
+   * The total offset in the vertical direction.
+   */
+  fun vertical(): Float {
+    this.top + this.bottom
+  }
+
+  /**
+   * The size that this [Insets] would occupy with an empty interior.
+   */
+  fun collapsedSize(): Geometry.Size {
+    Geometry.Size(this.horizontal(), this.vertical())
+  }
+
+  /**
+   * An [Insets] with top and bottom, left and right, and start and end flipped.
+   */
+  fun flip(): this {
+    static::mixed(
+      this.right,
+      this.end,
+      this.left,
+      this.start,
+      this.bottom,
+      this.top,
+    );
+  }
+
+  /**
+   * Returns a new size that is bigger than the given size by the amount of
+   * inset in the horizontal and vertical directions.
+   *
+   * See also:
+   *
+   *  * [Insets.inflateRect], to inflate a [Rect] rather than a [Size] (for
+   *    [InsetsDirectional], requires first calling [resolve] to establish
+   *    how the start and end map to the left or right).
+   *  * [deflateSize], to deflate a [Size] rather than inflating it.
+   */
+  fun inflateSize(size: Geometry.Size): Geometry.Size {
+    Geometry.Size(
+      size.width + this.horizontal(),
+      size.height + this.vertical(),
+    );
+  }
+  /**
+   * Returns a new size that is smaller than the given size by the amount of
+   * inset in the horizontal and vertical directions.
+   *
+   * If the argument is smaller than [collapsedSize], then the resulting size
+   * will have negative dimensions.
+   *
+   * See also:
+   *
+   *  * [Insets.deflateRect], to deflate a [Rect] rather than a [Size]. (for
+   *    [InsetsDirectional], requires first calling [resolve] to establish
+   *    how the start and end map to the left or right).
+   *  * [inflateSize], to inflate a [Size] rather than deflating it.
+   */
+  fun deflateSize(size: Geometry.Size): Geometry.Size {
+    Geometry.Size(
+      size.width - this.horizontal(),
+      size.height - this.vertical(),
+    );
+  }
+
+  /**
+   * Returns the difference between two [Insets] objects.
+   *
+   * If you know you are applying this to two [Insets] or two
+   * [InsetsDirectional] objects, consider using the binary infix `-`
+   * operator instead, which always returns an object of the same type as the
+   * operands, and is typed accordingly.
+   *
+   * If [subtract] is applied to two objects of the same type ([Insets] or
+   * [InsetsDirectional]), an object of that type will be returned (though
+   * this is not reflected in the type system). Otherwise, an object
+   * representing a combination of both is returned. That object can be turned
+   * into a concrete [Insets] using [resolve].
+   *
+   * This method returns the same result as [add] applied to the result of
+   * negating the argument (using the prefix unary `-` operator or multiplying
+   * the argument by -1.0 using the `*` operator).
+   */
+  fun -(other: InsetsGeometry): this {
+    static::mixed(
+      this.left - other.left,
+      this.start - other.start,
+      this.right - other.right,
+      this.end - other.end,
+      this.top - other.top,
+      this.bottom - other.bottom,
+    );
+  }
+
+  fun substract(other: InsetsGeometry): this {
+    this - other;
+  }
+
+  /**
+   * Returns the sum of two [Insets] objects.
+   *
+   * If you know you are adding two [Insets] or two [InsetsDirectional]
+   * objects, consider using the `+` operator instead, which always returns an
+   * object of the same type as the operands, and is typed accordingly.
+   *
+   * If [add] is applied to two objects of the same type ([Insets] or
+   * [InsetsDirectional]), an object of that type will be returned (though
+   * this is not reflected in the type system). Otherwise, an object
+   * representing a combination of both is returned. That object can be turned
+   * into a concrete [Insets] using [resolve].
+   */
+  fun +(other: InsetsGeometry): this {
+    static::mixed(
+      this.left + other.left,
+      this.start + other.start,
+      this.right + other.right,
+      this.end + other.end,
+      this.top + other.top,
+      this.bottom + other.bottom,
+    );
+  }
+
+  fun add(other: InsetsGeometry): this {
+    this + other;
+  }
+
+  /**
+   * Returns the a new [Insets] object with all values greater than
+   * or equal to `min`, and less than or equal to `max`.
+   */
+  fun clamp(min: InsetsGeometry, max: InsetsGeometry): this {
+    static::mixed(
+      Math.clamp(this.left, min.left, max.left),
+      Math.clamp(this.start, min.start, max.start),
+      Math.clamp(this.right, min.right, max.right),
+      Math.clamp(this.end, min.end, max.end),
+      Math.clamp(this.top, min.top, max.top),
+      Math.clamp(this.bottom, min.bottom, max.bottom),
+    );
+  }
+
+  /**
+   * Returns the [Insets] object with each dimension negated.
+   *
+   * This is the same as multiplying the object by -1.0.
+   *
+   * This operator returns an object of the same type as the operand.
+   */
+  fun negate(): this {
+    static::mixed(
+      -this.left,
+      -this.start,
+      -this.right,
+      -this.end,
+      -this.top,
+      -this.bottom,
+    );
+  }
+
+  /**
+   * Scales the [Insets] object in each dimension by the given factor.
+   *
+   * This operator returns an object of the same type as the operand.
+   */
+  fun *(scale: Float): this {
+    static::mixed(
+      this.left * scale,
+      this.start * scale,
+      this.right * scale,
+      this.end * scale,
+      this.top * scale,
+      this.bottom * scale,
+    );
+  }
+
+  /**
+   * Divides the [Insets] object in each dimension by the given factor.
+   *
+   * This operator returns an object of the same type as the operand.
+   */
+  fun /(divider: Float): this {
+    static::mixed(
+      this.left / divider,
+      this.start / divider,
+      this.right / divider,
+      this.end / divider,
+      this.top / divider,
+      this.bottom / divider,
+    );
+  }
+
+  /**
+   * Integer divides the [Insets] object in each dimension by the given factor.
+   *
+   * This operator returns an object of the same type as the operand.
+   *
+   * This operator may have unexpected results when applied to a mixture of
+   * [Insets] and [InsetsDirectional] objects.
+   */
+  fun iDiv(divider: Int): this {
+    left = this.left.toInt() / divider;
+    start = this.start.toInt() / divider;
+    right = this.right.toInt() / divider;
+    end = this.end.toInt() / divider;
+    top = this.top.toInt() / divider;
+    bottom = this.bottom.toInt() / divider;
+    static::mixed(
+      left.toFloat(),
+      start.toFloat(),
+      right.toFloat(),
+      end.toFloat(),
+      top.toFloat(),
+      bottom.toFloat(),
+    );
+  }
+
+  fun ==(other: InsetsGeometry): Bool {
+    this.left == other.left &&
+      this.start == other.start &&
+      this.right == other.right &&
+      this.end == other.end &&
+      this.top == other.top &&
+      this.bottom == other.bottom;
+  }
+
+  /**
+   * Computes the remainder in each dimension by the given factor.
+   *
+   * This operator returns an object of the same type as the operand.
+   *
+   * This operator may have unexpected results when applied to a mixture of
+   * [Insets] and [InsetsDirectional] objects.
+   */
+  fun %(divider: Int): this {
+    static::mixed(
+      Math.modulo(this.left, divider),
+      Math.modulo(this.start, divider),
+      Math.modulo(this.right, divider),
+      Math.modulo(this.end, divider),
+      Math.modulo(this.top, divider),
+      Math.modulo(this.bottom, divider),
+    );
+  }
+}
+
+class Insets private () extends InsetsGeometry {
+  static fun fromLTRB(
+    left: Float,
+    top: Float,
+    right: Float,
+    bottom: Float,
+  ): Insets {
+    Insets(left, 0.0, right, 0.0, top, bottom)
+  }
+
+  static fun only{
+    left: Float = 0.0,
+    top: Float = 0.0,
+    right: Float = 0.0,
+    bottom: Float = 0.0,
+  }: Insets {
+    Insets(left, 0.0, right, 0.0, top, bottom)
+  }
+
+  static fun mixed(
+    left: Float,
+    start: Float,
+    right: Float,
+    end: Float,
+    top: Float,
+    bottom: Float,
+  ): Insets {
+    Insets(left, start, right, end, top, bottom)
+  }
+
+  static fun all(value: Float): Insets {
+    static::fromLTRB(value, value, value, value)
+  }
+
+  static fun zero(): Insets {
+    static::all(0.0);
+  }
+
+  /**
+   * Returns a new rect that is bigger than the given rect in each direction by
+   * the amount of inset in each direction. Specifically, the left edge of the
+   * rect is moved left by [left], the top edge of the rect is moved up by
+   * [top], the right edge of the rect is moved right by [right], and the
+   * bottom edge of the rect is moved down by [bottom].
+   *
+   * See also:
+   *
+   *  * [inflateSize], to inflate a [Size] rather than a [Rect].
+   *  * [deflateRect], to deflate a [Rect] rather than inflating it.
+   */
+  fun inflateRect(rect: Geometry.Rect): Geometry.Rect {
+    Geometry.Rect(
+      rect.left - this.left,
+      rect.top - this.top,
+      rect.right + this.right,
+      rect.bottom + this.bottom,
+    );
+  }
+
+  /**
+   * Returns a new rect that is smaller than the given rect in each direction by
+   * the amount of inset in each direction. Specifically, the left edge of the
+   * rect is moved right by [left], the top edge of the rect is moved down by
+   * [top], the right edge of the rect is moved left by [right], and the
+   * bottom edge of the rect is moved up by [bottom].
+   *
+   * If the argument's [Rect.size] is smaller than [collapsedSize], then the
+   * resulting rectangle will have negative dimensions.
+   *
+   * See also:
+   *
+   *  * [deflateSize], to deflate a [Size] rather than a [Rect].
+   *  * [inflateRect], to inflate a [Rect] rather than deflating it.
+   */
+  fun deflateRect(rect: Geometry.Rect): Geometry.Rect {
+    Geometry.Rect(
+      rect.left + this.left,
+      rect.top + this.top,
+      rect.right - this.right,
+      rect.bottom - this.bottom,
+    );
+  }
+  /**
+   * An Offset describing the vector from the top left of a rectangle to the
+   * top left of that rectangle inset by this object.
+   */
+  fun topLeft(): Geometry.Offset {
+    Geometry.Offset(this.left, this.top)
+  }
+  /**
+   * An Offset describing the vector from the top right of a rectangle to the
+   * top right of that rectangle inset by this object.
+   */
+  fun topRight(): Geometry.Offset {
+    Geometry.Offset(-this.right, this.top)
+  }
+
+  /**
+   * An Offset describing the vector from the bottom left of a rectangle to the
+   * bottom left of that rectangle inset by this object.
+   */
+  fun bottomLeft(): Geometry.Offset {
+    Geometry.Offset(this.left, -this.bottom)
+  }
+
+  /**
+   * An Offset describing the vector from the bottom right of a rectangle to the
+   * bottom right of that rectangle inset by this object.
+   */
+  fun bottomRight(): Geometry.Offset {
+    Geometry.Offset(-this.right, -this.bottom)
+  }
+}
+
+class InsetsDirectional private () extends InsetsGeometry {
+  static fun fromSTEB(
+    start: Float,
+    top: Float,
+    end: Float,
+    bottom: Float,
+  ): InsetsDirectional {
+    InsetsDirectional(0.0, start, 0.0, end, top, bottom)
+  }
+
+  static fun only{
+    start: Float = 0.0,
+    top: Float = 0.0,
+    end: Float = 0.0,
+    bottom: Float = 0.0,
+  }: InsetsDirectional {
+    InsetsDirectional(0.0, start, 0.0, end, top, bottom)
+  }
+
+  static fun mixed(
+    left: Float,
+    start: Float,
+    right: Float,
+    end: Float,
+    top: Float,
+    bottom: Float,
+  ): InsetsDirectional {
+    InsetsDirectional(left, start, right, end, top, bottom)
+  }
+
+  static fun all(value: Float): InsetsDirectional {
+    static::fromSTEB(value, value, value, value)
+  }
+
+  static fun zero(): InsetsDirectional {
+    static::all(0.0);
+  }
+}
+
+module end;

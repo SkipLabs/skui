@@ -1,0 +1,126 @@
+module SKUICommonTest;
+
+@test
+fun diff(): void {
+  Diff().run();
+}
+
+const text1: String = Array[
+  "This is the first line of diff test.",
+  "Followed by second line of diff test.",
+].join("\n");
+
+const text2: String = Array[
+  "This is the first line of diff test.",
+  "Followed by second line of diff test with changes.",
+].join("\n");
+
+const text3: String = Array[
+  "This is the first line of diff test.",
+  "With insertion.",
+  "Followed by second line of diff test.",
+].join("\n");
+
+const text4: String = Array[
+  "Followed by second line of diff test.",
+  "This is the first line of diff test.",
+].join("\n");
+
+const text5: String = Array[
+  "This is the first line of diff test.",
+  "This is the first line of diff test.",
+  "This is the first line of diff test.",
+  "This is the first line of diff test.",
+  "This is the first line of diff test.",
+  "Followed by second line of diff test.",
+].join("\n");
+
+const text6: String = Array[
+  "This is the first line of diff test.",
+  "Followed by second line of diff test.",
+  "Followed by second line of diff test.",
+  "Followed by second line of diff test.",
+  "Followed by second line of diff test.",
+  "Followed by second line of diff test.",
+].join("\n");
+
+class DiffCase(
+  text1: String,
+  text2: String,
+  expected: Array<Diff.Step>,
+) extends Case {}
+
+class Diff() {
+  //
+  fun run(): void {
+    this.cases().each(this.runCase);
+  }
+
+  protected fun runCase(testCase: Case): void {
+    testCase match {
+    | dCase @ DiffCase _ ->
+      oldChars = dCase.text1.chars().toArray();
+      newChars = dCase.text2.chars().toArray();
+      expectEq(Diff.process(oldChars, newChars), dCase.expected);
+      expectEq(Diff.patch(oldChars, dCase.expected), newChars)
+    | _ -> invariant_violation("Must be a SKUICommonTest.DiffCase")
+    }
+  }
+
+  protected fun cases(): Array<Case> {
+    Array[
+      DiffCase(text1, text1, Array[]),
+      DiffCase(
+        text1,
+        text2,
+        Array[
+          Diff.Delete(1),
+          Diff.Insert(
+            1,
+            "Followed by second line of diff test with changes."
+              .chars()
+              .toArray(),
+          ),
+        ],
+      ),
+      DiffCase(
+        text1,
+        text3,
+        Array[Diff.Insert(1, "With insertion.".chars().toArray())],
+      ),
+      DiffCase(text1, text4, Array[Diff.Move(1, 0), Diff.Move(0, 1)]),
+      DiffCase(
+        text1,
+        text5,
+        Array[
+          Diff.Move(0, 1),
+          Diff.Move(0, 2),
+          Diff.Move(0, 3),
+          Diff.Move(0, 4),
+          Diff.Move(1, 5),
+        ],
+      ),
+      DiffCase(
+        text5,
+        text6,
+        Array[
+          Diff.Delete(3),
+          Diff.Delete(2),
+          Diff.Delete(1),
+          Diff.Delete(0),
+          Diff.Move(5, 2),
+          Diff.Move(5, 3),
+          Diff.Move(5, 4),
+          Diff.Move(5, 5),
+        ],
+      ),
+      DiffCase(
+        text5,
+        text1,
+        Array[Diff.Delete(3), Diff.Delete(2), Diff.Delete(1), Diff.Delete(0)],
+      ),
+    ]
+  }
+}
+
+module end;

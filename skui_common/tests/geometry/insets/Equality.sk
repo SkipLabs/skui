@@ -1,0 +1,119 @@
+module SKUICommonTest;
+
+@test
+fun insetsEquality(): void {
+  InsetsEquality().run()
+}
+
+class InsetsEquality() {
+  //
+  fun run(): void {
+    this.cases().each(this.runCase);
+  }
+
+  protected fun runCase(testCase: Case): void {
+    not = false;
+    (result, expected) = testCase match {
+    | icase @ InsetsCase _ ->
+      icase.index match {
+      | 0 ->
+        !not = true;
+        (Geometry.InsetsDirectional::only{start => 5.0}, icase.expected)
+      | 1 ->
+        !not = true;
+        (Geometry.InsetsDirectional::only{end => 5.0}, icase.expected)
+      | 2 ->
+        !not = true;
+        (Geometry.InsetsDirectional::only{start => 5.0}, icase.expected)
+      | 3 ->
+        (
+          Geometry.InsetsDirectional::only{end => 5.0}.add(
+            Geometry.Insets::only{right => 5.0},
+          ),
+          icase.expected,
+        )
+      | 6 ->
+        (
+          Geometry.InsetsDirectional::only{top => 1.0}.add(
+            Geometry.Insets::only{top => 2.0},
+          ),
+          icase.expected,
+        )
+      | _ ->
+        (
+          Geometry.InsetsDirectional::only{top => 1.0}.add(
+            Geometry.Insets::only{top => 2.0},
+          ),
+          icase.expected,
+        )
+      }
+    | indcase @ InsetsDirectionalCase _ ->
+      indcase.index match {
+      | 4 ->
+        !not = true;
+        (
+          Geometry.InsetsDirectional::only{end => 5.0}.add(
+            Geometry.Insets::only{right => 5.0},
+          ),
+          indcase.expected,
+        )
+      | 5 ->
+        (
+          Geometry.InsetsDirectional::only{top => 1.0}.add(
+            Geometry.Insets::only{top => 2.0},
+          ),
+          indcase.expected,
+        )
+      | _ ->
+        (
+          Geometry.InsetsDirectional::only{top => 1.0}.add(
+            Geometry.Insets::only{top => 2.0},
+          ),
+          indcase.expected,
+        )
+      }
+    | _ -> invariant_violation(`Invalid case ${testCase.getClassName()}`)
+    };
+    if (not) {
+      expectNEquals(result, expected)
+    } else {
+      expectEquals(result, expected)
+    }
+  }
+
+  protected fun cases(): Array<Case> {
+    Array[
+      InsetsCase(0, Geometry.Insets::only{left => 5.0}),
+      InsetsCase(1, Geometry.Insets::only{right => 5.0}),
+      InsetsCase(2, Geometry.Insets::only{right => 5.0}),
+      InsetsCase(
+        3,
+        Geometry.Insets::only{right => 5.0}.add(
+          Geometry.InsetsDirectional::only{end => 5.0},
+        ),
+      ),
+      InsetsDirectionalCase(
+        4,
+        Geometry.InsetsDirectional::only{end => 5.0}.add(
+          Geometry.Insets::only{left => 5.0},
+        ),
+      ),
+      InsetsDirectionalCase(
+        5,
+        Geometry.InsetsDirectional::only{top => 3.0}.add(
+          Geometry.Insets::only{top => 0.0},
+        ),
+      ),
+      InsetsCase(
+        6,
+        Geometry.Insets::only{top => 3.0}.add(
+          Geometry.InsetsDirectional::only{top => 0.0},
+        ),
+      ),
+      InsetsDirectionalCase(7, Geometry.InsetsDirectional::only{top => 3.0}),
+      InsetsCase(8, Geometry.Insets::only{top => 3.0}),
+    ]
+  }
+}
+
+module end;

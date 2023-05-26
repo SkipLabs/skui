@@ -1,0 +1,275 @@
+module Diff;
+
+base class Step uses Equality {
+  children =
+  | Insert(index: Int, value: Array<Char>)
+  | Delete(index: Int)
+  | Move(from: Int, to: Int)
+  | Update(index: Int, value: Array<Char>)
+
+  fun execute(
+    src: Vector<Array<Char>>,
+    dst: mutable Vector<Array<Char>>,
+  ): void {
+    this match {
+    | Insert(index, value) -> dst.insert(index, value)
+    | Delete(index) -> dst.delete(index)
+    | Move(from, to) ->
+      if (to < dst.size()) {
+        dst.set(to, src[from])
+      } else {
+        dst.push(src[from])
+      }
+    | Update(index, value) -> dst.set(index, value)
+    }
+  }
+}
+
+base class Occurence uses Equality {
+  children =
+  | Zero()
+  | One()
+  | Two()
+  | Many()
+
+  fun incr(): Occurence {
+    this match {
+    | Zero() -> One()
+    | One() -> Two()
+    | Two()
+    | Many() ->
+      Many()
+    }
+  }
+}
+
+class Data(
+  oldOccurence: Occurence = Zero(),
+  newOccurence: Occurence = Zero(),
+  optLastOldIndex: ?Int = None(),
+) {
+  fun inBoth(): Bool {
+    !(this.oldOccurence == Zero() || this.newOccurence == Zero())
+  }
+}
+
+class Line(hash: Int, range: Range, optOther: ?Int = None())
+
+fun process(old: Array<Char>, new: Array<Char>): Array<Step> {
+  table = mutable Map<Int, Data>[];
+  newVector = fillData(new, table, false);
+  oldVector = fillData(old, table, true);
+  findUniqueVirtualEntries(oldVector, newVector, table);
+  expandUniqueEntriesAsc(oldVector, newVector);
+  expandUniqueEntriesDesc(oldVector, newVector);
+  steps = mutable Vector<Step>[];
+  deleteOffsets = Array::mfill(oldVector.size(), 0);
+  offset = 0;
+  oldVector.eachWithIndex((index, line) -> {
+    deleteOffsets.set(index, offset);
+    if (line.optOther.isNone()) {
+      steps.insert(0, Delete(index));
+      !offset = offset + 1;
+    }
+  });
+  !offset = 0;
+  newVector.eachWithIndex((index, line) -> {
+    range = line.range;
+    line.optOther match {
+    | Some(oldIndex) ->
+      oldLine = oldVector[oldIndex];
+      if (oldLine.hash != line.hash) {
+        steps.push(Update(index, new.slice(range.start, range.end)));
+      };
+      deleteOffset = deleteOffsets[oldIndex];
+      if ((oldIndex - deleteOffset + offset) != index) {
+        steps.push(Move(oldIndex, index))
+      }
+    | _ ->
+      steps.push(Insert(index, new.slice(range.start, range.end)));
+      !offset = offset + 1
+    }
+  });
+  steps.toArray();
+}
+
+fun patch(text: Array<Char>, steps: Array<Step>): Array<Char> {
+  (endl, lines) = toLines(text);
+  target = lines.clone();
+  steps.each(step -> step.execute(lines, target));
+  Arrays.join(target.toArray(), endl);
+}
+
+fun findUniqueVirtualEntries(
+  old: mutable Vector<Line>,
+  new: mutable Vector<Line>,
+  table: readonly Map<Int, Data>,
+): void {
+  new.eachWithIndex((index, line) -> {
+    data = table.get(line.hash);
+    if (data.inBoth()) {
+      data.optLastOldIndex.each(oldIndex -> {
+        !line.optOther = Some(oldIndex);
+        new.set(index, line);
+        oldLine = old[oldIndex];
+        !oldLine.optOther = Some(index);
+        old.set(oldIndex, oldLine);
+      })
+    }
+  });
+}
+
+fun expandUniqueEntriesAsc(
+  old: mutable Vector<Line>,
+  new: mutable Vector<Line>,
+): void {
+  new.eachWithIndex((i, line) -> {
+    line.optOther.each(j -> {
+      new.maybeGet(i + 1).each(nlp1 ->
+        old.maybeGet(j + 1).each(olp1 ->
+          if (nlp1.hash == olp1.hash) {
+            !nlp1.optOther = Some(j + 1);
+            new.set(i + 1, nlp1);
+            !olp1.optOther = Some(i + 1);
+            old.set(j + 1, olp1);
+          }
+        )
+      )
+    })
+  });
+}
+
+fun expandUniqueEntriesDesc(
+  old: mutable Vector<Line>,
+  new: mutable Vector<Line>,
+): void {
+  for (i in Range(0, new.size()).reversed()) {
+    line = new[i];
+    line.optOther.each(j -> {
+      new.maybeGet(i - 1).each(nlm1 ->
+        old.maybeGet(j - 1).each(olm1 ->
+          if (nlm1.hash == olm1.hash) {
+            !nlm1.optOther = Some(j - 1);
+            new.set(i - 1, nlm1);
+            !olm1.optOther = Some(i - 1);
+            old.set(j - 1, olm1);
+          }
+        )
+      )
+    })
+  }
+}
+
+fun fillData(
+  chars: Sequence<Char>,
+  table: mutable Map<Int, Data>,
+  old: Bool,
+): mutable Vector<Line> {
+  lines = mutable Vector<Line>[];
+  optSeparator: ?Char = None();
+  hashInit = "Line".hash();
+  start = 0;
+  hash = hashInit;
+  optEndLine: ?Array<Char> = None();
+  chars.eachWithIndex((index, char) -> {
+    if (char == '\n' || char == '\r') {
+      optSeparator match {
+      | Some(separator) ->
+        if (separator != char) {
+          // Two char separator ignore
+          !optEndLine = optEndLine match {
+          | Some(newLine) if (newLine.size() == 1) ->
+            Some(Array[separator, char])
+          | _ -> optEndLine
+          };
+          !optSeparator = None();
+        } else {
+          // Empty line
+          checkData(hash, lines.size(), table, old);
+          lines.push(Line(hash, Range(index, index)));
+          !hash = hashInit;
+        }
+      | _ ->
+        checkData(hash, lines.size(), table, old);
+        lines.push(Line(hash, Range(start, index)));
+        !hash = hashInit;
+        !optSeparator = Some(char);
+        if (optEndLine.isNone()) {
+          !optEndLine = Some(Array[char]);
+        }
+      };
+      !start = index + 1;
+    } else {
+      if (optSeparator.isSome()) {
+        !start = index;
+      };
+      !optSeparator = None();
+      !hash = Hashable.combine(hash, char.hash());
+    }
+  });
+  if (start < chars.size()) {
+    checkData(hash, lines.size(), table, old);
+    lines.push(Line(hash, Range(start, chars.size())));
+  };
+  lines;
+}
+
+fun checkData(
+  hash: Int,
+  index: Int,
+  table: mutable Map<Int, Data>,
+  old: Bool,
+): void {
+  data = table.maybeGet(hash).default(Data());
+  if (old) {
+    !data.oldOccurence = data.oldOccurence.incr();
+    !data.optLastOldIndex = Some(index);
+  } else {
+    !data.newOccurence = data.newOccurence.incr()
+  };
+  table.set(hash, data);
+}
+
+fun toLines(chars: Array<Char>): (Array<Char>, Vector<Array<Char>>) {
+  lines = mutable Vector<Array<Char>>[];
+  optSeparator: ?Char = None();
+  start = 0;
+  optEndLine: ?Array<Char> = None();
+  chars.eachWithIndex((index, char) -> {
+    if (char == '\n' || char == '\r') {
+      optSeparator match {
+      | Some(separator) ->
+        if (separator != char) {
+          // Two char separator ignore
+          !optEndLine = optEndLine match {
+          | Some(newLine) if (newLine.size() == 1) ->
+            Some(Array[separator, char])
+          | _ -> optEndLine
+          };
+          !optSeparator = None();
+        } else {
+          // Empty line
+          lines.push(Array[]);
+          if (optEndLine.isNone()) {
+            !optEndLine = Some(Array[char]);
+          }
+        }
+      | _ ->
+        lines.push(chars.slice(start, index));
+        !optSeparator = Some(char)
+      };
+      !start = index + 1;
+    } else {
+      if (optSeparator.isSome()) {
+        !start = index;
+      };
+      !optSeparator = None();
+    }
+  });
+  if (start < chars.size()) {
+    lines.push(chars.slice(start, chars.size()));
+  };
+  (optEndLine.default(Array['\n']), unsafe_chill_trust_me(lines));
+}
+
+module end;
