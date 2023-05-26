@@ -258,7 +258,24 @@ class Image(
       );
     }
   }
+
+  fun save(path: String): Bool {
+    Ui.saveImage(
+      path,
+      this.data,
+      UInt32::truncate(this.width),
+      UInt32::truncate(this.height),
+    )
+  }
 }
+
+@cpp_extern
+private native fun saveImage(
+  path: String,
+  data: Array<Ui.Pix>,
+  width: UInt32,
+  height: UInt32,
+): Bool;
 
 class DummyPaint() extends Paint {
   fun withAlpha(_alpha: Float): this {
