@@ -1,0 +1,512 @@
+module MTSDF;
+
+value class EdgeCache(
+  point: Vector2 = Vector2(0.0, 0.0),
+  absDistance: Float = 0.0,
+  aDomainDistance: Float = 0.0,
+  bDomainDistance: Float = 0.0,
+  aPseudoDistance: Float = 0.0,
+  bPseudoDistance: Float = 0.0,
+)
+
+mutable base class Selector {
+  mutable fun reset(p: Vector2): void;
+  mutable fun addEdge(
+    cache: EdgeCache,
+    prevEdge: EdgeSegment,
+    edge: EdgeSegment,
+    nextEdge: EdgeSegment,
+  ): EdgeCache;
+
+  mutable fun merge(other: readonly Selector): void;
+  readonly fun distance(): Distance;
+}
+
+mutable base class Selectors {
+  static fun make(shape: Shape, mode: Mode): mutable this;
+  mutable fun reset(p: Vector2): void;
+  mutable fun getSelector(index: Int): mutable Selector;
+  readonly fun distance(): Distance;
+}
+
+mutable class TrueDistanceSelector(
+  private mutable p: Vector2 = Vector2(0.0, 0.0),
+  private mutable minDistance: SignedDistance = SignedDistance::new(),
+) extends Selector {
+  //
+
+  mutable fun reset(p: Vector2): void {
+    delta = distanceDeltaFactor * (p - this.p).length();
+    minDistance = this.minDistance;
+    !minDistance.distance =
+      minDistance.distance +
+      nonZeroSign(minDistance.distance) * delta;
+    this.!minDistance = minDistance;
+    this.!p = p;
+  }
+
+  mutable fun addEdge(
+    cache: EdgeCache,
+    _prevEdge: EdgeSegment,
+    edge: EdgeSegment,
+    _nextEdge: EdgeSegment,
+  ): EdgeCache {
+    delta = distanceDeltaFactor * (this.p - cache.point).length();
+    if (cache.absDistance - delta <= Math.abs(this.minDistance.distance)) {
+      (_, distance) = edge.signedDistance(this.p);
+      if (distance < this.minDistance) this.!minDistance = distance;
+      !cache.point = this.p;
+      !cache.absDistance = Math.abs(distance.distance)
+    };
+    cache
+  }
+
+  mutable fun merge(other: readonly Selector): void {
+    other match {
+    | tds @ TrueDistanceSelector _ ->
+      if (tds.minDistance < this.minDistance) {
+        this.!minDistance = tds.minDistance
+      }
+    | _ ->
+      invariant_violation("Could only be merged with TrueDistanceSelector ")
+    }
+  }
+
+  readonly fun distance(): Distance {
+    SingleDistance(this.minDistance.distance)
+  }
+}
+
+fun getPseudoDistance(
+  distance: Float,
+  ep: Vector2,
+  edgeDir: Vector2,
+): (Bool, Float) {
+  ts = ep.dotProduct(edgeDir);
+  if (ts > 0.0) {
+    pseudoDistance = ep.crossProduct(edgeDir);
+    if (Math.abs(pseudoDistance) < Math.abs(distance)) {
+      return (true, pseudoDistance)
+    }
+  };
+  (false, distance)
+}
+
+mutable base class PseudoDistanceSelectorBase(
+  private mutable minTrueDistance: SignedDistance = SignedDistance::new(),
+  private mutable minNegativePseudoDistance: Float = 0.0,
+  private mutable minPositivePseudoDistance: Float = 0.0,
+  private mutable nearEdge: ?EdgeSegment = None(),
+  private mutable nearEdgeParam: Float = 0.0,
+) extends Selector {
+  //
+  mutable fun baseReset(delta: Float): void {
+    minTrueDistance = this.minTrueDistance;
+    !minTrueDistance.distance =
+      minTrueDistance.distance +
+      nonZeroSign(minTrueDistance.distance) * delta;
+    this.!minTrueDistance = minTrueDistance;
+    this.!minNegativePseudoDistance = -Math.abs(minTrueDistance.distance);
+    this.!minPositivePseudoDistance = Math.abs(minTrueDistance.distance);
+    this.!nearEdge = None();
+    this.!nearEdgeParam = 0.0;
+  }
+
+  readonly fun isEdgeRelevant(cache: EdgeCache, p: Vector2): Bool {
+    delta = distanceDeltaFactor * (p - cache.point).length();
+    (cache.absDistance - delta <= Math.abs(this.minTrueDistance.distance) ||
+      Math.abs(cache.aDomainDistance) < delta ||
+      Math.abs(cache.bDomainDistance) < delta ||
+      (cache.aDomainDistance > 0.0 &&
+        (if (cache.aPseudoDistance < 0.0) {
+          cache.aPseudoDistance + delta >= this.minNegativePseudoDistance
+        } else {
+          cache.aPseudoDistance - delta <= this.minPositivePseudoDistance
+        })) ||
+      (cache.bDomainDistance > 0.0 &&
+        (if (cache.bPseudoDistance < 0.0) {
+          cache.bPseudoDistance + delta >= this.minNegativePseudoDistance
+        } else {
+          cache.bPseudoDistance - delta <= this.minPositivePseudoDistance
+        })));
+  }
+
+  mutable fun addEdgeTrueDistance(
+    edge: EdgeSegment,
+    distance: SignedDistance,
+    param: Float,
+  ): void {
+    if (distance < this.minTrueDistance) {
+      this.!minTrueDistance = distance;
+      this.!nearEdge = Some(edge);
+      this.!nearEdgeParam = param;
+    }
+  }
+
+  mutable fun addEdgePseudoDistance(distance: Float): void {
+    if (distance <= 0.0 && distance > this.minNegativePseudoDistance) {
+      this.!minNegativePseudoDistance = distance
+    };
+    if (distance >= 0.0 && distance < this.minPositivePseudoDistance) {
+      this.!minPositivePseudoDistance = distance
+    };
+  }
+
+  mutable fun merge(other: readonly Selector): void {
+    other match {
+    | pds @ PseudoDistanceSelectorBase _ ->
+      if (pds.minTrueDistance < this.minTrueDistance) {
+        this.!minTrueDistance = pds.minTrueDistance;
+        this.!nearEdge = pds.nearEdge;
+        this.!nearEdgeParam = pds.nearEdgeParam;
+      };
+      if (pds.minNegativePseudoDistance > this.minNegativePseudoDistance) {
+        this.!minNegativePseudoDistance = pds.minNegativePseudoDistance
+      };
+      if (pds.minPositivePseudoDistance < this.minPositivePseudoDistance) {
+        this.!minPositivePseudoDistance = pds.minPositivePseudoDistance
+      }
+    | _ ->
+      invariant_violation(
+        "Could only be merged with PseudoDistanceSelectorBase ",
+      )
+    }
+  }
+
+  readonly fun computeDistance(p: Vector2): Float {
+    minDistance = if (this.minTrueDistance.distance < 0.0) {
+      this.minNegativePseudoDistance
+    } else {
+      this.minPositivePseudoDistance
+    };
+    this.nearEdge.each(nearEdge -> {
+      distance = this.minTrueDistance;
+      !distance = nearEdge.distanceToPseudoDistance(
+        distance,
+        p,
+        this.nearEdgeParam,
+      );
+      if (Math.abs(distance.distance) < Math.abs(minDistance)) {
+        !minDistance = distance.distance
+      };
+    });
+    minDistance;
+  }
+
+  readonly fun trueDistance(): SignedDistance {
+    this.minTrueDistance
+  }
+}
+
+mutable class PseudoDistanceSelector(
+  mutable p: Vector2 = Vector2(0.0, 0.0),
+) extends PseudoDistanceSelectorBase {
+  //
+  mutable fun reset(p: Vector2): void {
+    delta = distanceDeltaFactor * (p - this.p).length();
+    this.baseReset(delta);
+    this.!p = p;
+  }
+
+  mutable fun addEdge(
+    cache: EdgeCache,
+    prevEdge: EdgeSegment,
+    edge: EdgeSegment,
+    nextEdge: EdgeSegment,
+  ): EdgeCache {
+    if (this.isEdgeRelevant(cache, this.p)) {
+      (param, distance) = edge.signedDistance(this.p);
+      this.addEdgeTrueDistance(edge, distance, param);
+      !cache.point = this.p;
+      !cache.absDistance = Math.abs(distance.distance);
+
+      ap = this.p - edge.point(0.0);
+      bp = this.p - edge.point(1.0);
+      aDir = edge.direction(0.0).normalize(true);
+      bDir = edge.direction(1.0).normalize(true);
+      prevDir = prevEdge.direction(1.0).normalize(true);
+      nextDir = nextEdge.direction(0.0).normalize(true);
+      add = ap.dotProduct((prevDir + aDir).normalize(true));
+      bdd = -bp.dotProduct((bDir + nextDir).normalize(true));
+      if (add > 0.0) {
+        (wpd, pd) = getPseudoDistance(distance.distance, ap, aDir.neg());
+        if (wpd) {
+          !pd = -pd;
+          this.addEdgePseudoDistance(pd);
+        };
+        !cache.aPseudoDistance = pd;
+      };
+      if (bdd > 0.0) {
+        (wpd, pd) = getPseudoDistance(distance.distance, bp, bDir);
+        if (wpd) this.addEdgePseudoDistance(pd);
+        !cache.bPseudoDistance = pd;
+      };
+      !cache.aDomainDistance = add;
+      !cache.bDomainDistance = bdd;
+    };
+    cache
+  }
+
+  readonly fun distance(): Distance {
+    SingleDistance(this.computeDistance(this.p))
+  }
+}
+
+mutable base class MultiDistanceSelectorBase(
+  mutable p: Vector2 = Vector2(0.0, 0.0),
+  r: mutable PseudoDistanceSelectorBase = mutable PseudoDistanceSelector(),
+  g: mutable PseudoDistanceSelectorBase = mutable PseudoDistanceSelector(),
+  b: mutable PseudoDistanceSelectorBase = mutable PseudoDistanceSelector(),
+) extends Selector {
+  //
+  mutable fun reset(p: Vector2): void {
+    delta = distanceDeltaFactor * (p - this.p).length();
+    this.r.baseReset(delta);
+    this.g.baseReset(delta);
+    this.b.baseReset(delta);
+    this.!p = p;
+  }
+
+  mutable fun addEdge(
+    cache: EdgeCache,
+    prevEdge: EdgeSegment,
+    edge: EdgeSegment,
+    nextEdge: EdgeSegment,
+  ): EdgeCache {
+    risEdgeRelevant = this.r.isEdgeRelevant(cache, this.p);
+    gisEdgeRelevant = this.g.isEdgeRelevant(cache, this.p);
+    bisEdgeRelevant = this.b.isEdgeRelevant(cache, this.p);
+    if (
+      (edge.hasRed() && risEdgeRelevant) ||
+      (edge.hasGreen() && gisEdgeRelevant) ||
+      (edge.hasBlue() && bisEdgeRelevant)
+    ) {
+      (param, distance) = edge.signedDistance(this.p);
+      if (edge.hasRed()) {
+        this.r.addEdgeTrueDistance(edge, distance, param)
+      };
+      if (edge.hasGreen()) {
+        this.g.addEdgeTrueDistance(edge, distance, param)
+      };
+      if (edge.hasBlue()) {
+        this.b.addEdgeTrueDistance(edge, distance, param)
+      };
+      !cache.point = this.p;
+      !cache.absDistance = Math.abs(distance.distance);
+      ap = this.p - edge.point(0.0);
+      bp = this.p - edge.point(1.0);
+      aDir = edge.direction(0.0).normalize(true);
+      bDir = edge.direction(1.0).normalize(true);
+      prevDir = prevEdge.direction(1.0).normalize(true);
+      nextDir = nextEdge.direction(0.0).normalize(true);
+      add = ap.dotProduct((prevDir + aDir).normalize(true));
+      bdd = -bp.dotProduct((bDir + nextDir).normalize(true));
+      if (add > 0.0) {
+        (wpd, pd) = getPseudoDistance(distance.distance, ap, aDir.neg());
+        if (wpd) {
+          !pd = -pd;
+          if (edge.hasRed()) this.r.addEdgePseudoDistance(pd);
+          if (edge.hasGreen()) this.g.addEdgePseudoDistance(pd);
+          if (edge.hasBlue()) this.b.addEdgePseudoDistance(pd);
+        };
+        !cache.aPseudoDistance = pd;
+      };
+      if (bdd > 0.0) {
+        (wpd, pd) = getPseudoDistance(distance.distance, bp, bDir);
+        if (wpd) {
+          if (edge.hasRed()) this.r.addEdgePseudoDistance(pd);
+          if (edge.hasGreen()) this.g.addEdgePseudoDistance(pd);
+          if (edge.hasBlue()) this.b.addEdgePseudoDistance(pd);
+        };
+        !cache.bPseudoDistance = pd;
+      };
+      !cache.aDomainDistance = add;
+      !cache.bDomainDistance = bdd;
+    };
+    cache;
+  }
+
+  mutable fun merge(other: readonly Selector): void {
+    other match {
+    | ms @ MultiDistanceSelectorBase _ ->
+      this.r.merge(ms.r);
+      this.g.merge(ms.g);
+      this.b.merge(ms.b)
+    | _ ->
+      invariant_violation(
+        "Could only be merged with MultiDistanceSelectorBase ",
+      )
+    }
+  }
+
+  overridable readonly fun distance(): Distance {
+    MultiDistance{
+      r => this.r.computeDistance(this.p),
+      g => this.g.computeDistance(this.p),
+      b => this.b.computeDistance(this.p),
+    }
+  }
+
+  readonly fun trueDistance(): SignedDistance {
+    distance = this.r.trueDistance();
+    if (this.g.trueDistance() < distance) !distance = this.g.trueDistance();
+    if (this.b.trueDistance() < distance) !distance = this.b.trueDistance();
+    distance
+  }
+}
+
+mutable class MultiDistanceSelector extends MultiDistanceSelectorBase
+
+mutable class MultiAndTrueDistanceSelector extends MultiDistanceSelectorBase {
+  //
+  readonly fun distance(): Distance {
+    MultiAndTrueDistance{
+      r => this.r.computeDistance(this.p),
+      g => this.g.computeDistance(this.p),
+      b => this.b.computeDistance(this.p),
+      a => this.trueDistance().distance,
+    }
+  }
+}
+
+fun buildSelector(mode: Mode): mutable Selector {
+  mode match {
+  | Single() -> mutable TrueDistanceSelector()
+  | Pseudo() -> mutable PseudoDistanceSelector()
+  | Multi() -> mutable MultiDistanceSelector()
+  | MultiAndTrue() -> mutable MultiAndTrueDistanceSelector()
+  }
+}
+
+fun buildDistance(mode: Mode): Distance {
+  mode match {
+  | Single()
+  | Pseudo() ->
+    SingleDistance(-Float::inf)
+  | Multi() -> MultiDistance{}
+  | MultiAndTrue() -> MultiAndTrueDistance{}
+  }
+}
+
+mutable class SimpleSelectors(selector: mutable Selector) extends Selectors {
+  //
+  static fun make(_shape: Shape, mode: Mode): mutable SimpleSelectors {
+    mutable SimpleSelectors(buildSelector(mode))
+  }
+
+  mutable fun reset(p: Vector2): void {
+    this.selector.reset(p)
+  }
+
+  mutable fun getSelector(_index: Int): mutable Selector {
+    this.selector
+  }
+
+  readonly fun distance(): Distance {
+    this.selector.distance()
+  }
+}
+
+mutable class OverlappingSelectors private (
+  mutable p: Vector2,
+  windings: Array<Int>,
+  selectors: Array<mutable Selector>,
+  mode: Mode,
+) extends Selectors {
+  //
+  static fun make(shape: Shape, mode: Mode): mutable OverlappingSelectors {
+    windings = shape.contours.map(c -> c.winding());
+    mutable OverlappingSelectors(
+      Vector2(0.0, 0.0),
+      windings,
+      Array::fillBy(shape.contours.size(), _idx -> buildSelector(mode)),
+      mode,
+    )
+  }
+
+  mutable fun reset(p: Vector2): void {
+    this.!p = p;
+    this.selectors.each(selector -> selector.reset(p));
+  }
+
+  mutable fun getSelector(index: Int): mutable Selector {
+    this.selectors[index]
+  }
+
+  readonly fun distance(): Distance {
+    shapeEdgeSelector = buildSelector(this.mode);
+    innerEdgeSelector = buildSelector(this.mode);
+    outerEdgeSelector = buildSelector(this.mode);
+    shapeEdgeSelector.reset(this.p);
+    innerEdgeSelector.reset(this.p);
+    outerEdgeSelector.reset(this.p);
+    this.selectors.eachWithIndex((i, selector) -> {
+      distance = selector.distance();
+      shapeEdgeSelector.merge(selector);
+      if (this.windings[i] > 0 && distance.resolve() >= 0.0) {
+        innerEdgeSelector.merge(selector);
+      };
+      if (this.windings[i] < 0 && distance.resolve() <= 0.0) {
+        outerEdgeSelector.merge(selector);
+      };
+    });
+
+    shapeDistance = shapeEdgeSelector.distance();
+    innerDistance = innerEdgeSelector.distance();
+    outerDistance = outerEdgeSelector.distance();
+    innerScalarDistance = innerDistance.resolve();
+    outerScalarDistance = outerDistance.resolve();
+    distance = buildDistance(this.mode);
+    winding = 0;
+    distances = this.selectors.map(s -> s.distance());
+    if (
+      innerScalarDistance >= 0.0 &&
+      Math.abs(innerScalarDistance) <= Math.abs(outerScalarDistance)
+    ) {
+      !distance = innerDistance;
+      !winding = 1;
+      distances.eachWithIndex((i, contourDistance) -> {
+        if (this.windings[i] > 0) {
+          resolved = contourDistance.resolve();
+          if (
+            Math.abs(resolved) < Math.abs(outerScalarDistance) &&
+            resolved > distance.resolve()
+          ) !distance = contourDistance;
+        }
+      });
+    } else if (
+      outerScalarDistance <= 0.0 &&
+      Math.abs(outerScalarDistance) < Math.abs(innerScalarDistance)
+    ) {
+      !distance = outerDistance;
+      !winding = -1;
+      distances.eachWithIndex((i, contourDistance) -> {
+        if (this.windings[i] < 0) {
+          resolved = contourDistance.resolve();
+          if (
+            Math.abs(resolved) < Math.abs(innerScalarDistance) &&
+            resolved < distance.resolve()
+          ) !distance = contourDistance;
+        }
+      });
+    } else {
+      return shapeDistance
+    };
+    distances.eachWithIndex((i, contourDistance) -> {
+      if (this.windings[i] != winding) {
+        resolved = contourDistance.resolve();
+        distanceResolved = distance.resolve();
+        if (
+          resolved * distanceResolved >= 0.0 &&
+          Math.abs(resolved) < Math.abs(distanceResolved)
+        ) !distance = contourDistance;
+      }
+    });
+    if (distance.resolve() == shapeDistance.resolve()) {
+      !distance = shapeDistance
+    };
+    distance
+  }
+}
+
+module end;

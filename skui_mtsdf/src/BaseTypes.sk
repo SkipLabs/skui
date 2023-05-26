@@ -1,0 +1,244 @@
+module MTSDF;
+
+base class Mode uses Equality {
+  children =
+  | Single()
+  | Pseudo()
+  | Multi()
+  | MultiAndTrue()
+}
+
+class EdgeColor(value: Int) uses Equality {
+  const black: Int = 0;
+  const red: Int = 1;
+  const green: Int = 2;
+  const yellow: Int = 3;
+  const blue: Int = 4;
+  const magenta: Int = 5;
+  const cyan: Int = 6;
+  const white: Int = 7;
+
+  fun and(other: EdgeColor): EdgeColor {
+    EdgeColor(this.value.and(other.value))
+  }
+
+  fun xor(other: EdgeColor): EdgeColor {
+    EdgeColor(this.value.xor(other.value))
+  }
+
+  fun sub(code: Int): EdgeColor {
+    EdgeColor(this.value - code)
+  }
+
+  fun isRed(): Bool {
+    this.value == static::red;
+  }
+
+  fun isGreen(): Bool {
+    this.value == static::green;
+  }
+
+  fun isBlue(): Bool {
+    this.value == static::blue;
+  }
+
+  fun isBlack(): Bool {
+    this.value == static::black;
+  }
+
+  fun isWhite(): Bool {
+    this.value == static::white;
+  }
+
+  fun hasRed(): Bool {
+    this.value.and(static::red) == static::red;
+  }
+
+  fun hasGreen(): Bool {
+    this.value.and(static::green) == static::green;
+  }
+
+  fun hasBlue(): Bool {
+    this.value.and(static::blue) == static::blue;
+  }
+}
+
+base class FillRule {
+  children =
+  | NoneZero()
+  | EvenOdd()
+  | Positive()
+  | Negative()
+}
+
+base class Distance {
+  fun resolve(): Float;
+  fun compute(range: Float): Array<Float>;
+}
+
+base class RGB{
+  r: Float = -Float::inf,
+  g: Float = -Float::inf,
+  b: Float = -Float::inf,
+} extends Distance {
+  fun resolve(): Float {
+    fmedian(this.r, this.g, this.b)
+  }
+}
+
+class MultiDistance extends RGB {
+  //
+  fun compute(range: Float): Array<Float> {
+    Array[this.r / range + 0.5, this.g / range + 0.5, this.b / range + 0.5]
+  }
+}
+
+class MultiAndTrueDistance{a: Float = -Float::inf} extends RGB {
+  //
+  fun compute(range: Float): Array<Float> {
+    Array[
+      this.r / range + 0.5,
+      this.g / range + 0.5,
+      this.b / range + 0.5,
+      this.a / range + 0.5,
+    ]
+  }
+}
+
+class SingleDistance(value: Float) extends Distance {
+  //
+  fun compute(range: Float): Array<Float> {
+    Array[this.value / range + 0.5]
+  }
+
+  fun resolve(): Float {
+    this.value
+  }
+}
+
+class SignedDistance(distance: Float, dot: Float) uses Orderable, Equivalent {
+  //
+  static fun new(): SignedDistance {
+    static(-Float::inf, 1.0)
+  }
+
+  fun compare(other: SignedDistance): Order {
+    comp = Math.abs(this.distance).compare(Math.abs(other.distance));
+    if (comp == EQ()) {
+      this.dot.compare(other.dot)
+    } else {
+      comp
+    }
+  }
+
+  fun like(other: SignedDistance, precision: Float = precisionEpsilon): Bool {
+    Math.like(this.distance, other.distance, precision) &&
+      Math.like(this.dot, other.dot, precision)
+  }
+}
+
+mutable class BitmapRef<T> private (
+  data: mutable Array<T>,
+  colors: Int,
+  width: Int,
+  height: Int,
+) {
+  //
+  static fun make<T>(
+    colors: Int,
+    width: Int,
+    height: Int,
+    default: T,
+  ): mutable BitmapRef<T> {
+    data = Array::mfill(colors * width * height, default);
+    mutable BitmapRef(data, colors, width, height)
+  }
+
+  mutable fun set(x: Int, y: Int, vs: Array<T>): void {
+    invariant(vs.size() <= this.colors, "Invalid value size");
+    offset = this.offset(x, y);
+    vs.eachWithIndex((idx, v) -> this.data.set(offset + idx, v));
+  }
+
+  mutable fun updateOne(x: Int, y: Int, conv: T -> T, idx: Int = 0): void {
+    offset = this.offset(x, y);
+    this.data.set(offset + idx, conv(this.data.get(offset + idx)))
+  }
+
+  mutable fun updateAll(conv: T -> T): void {
+    this.data.eachWithIndex((idx, v) -> this.data.set(idx, conv(v)))
+  }
+
+  readonly fun elem(x: Int, y: Int, i: Int): T {
+    invariant(i >= 0 && i < this.colors, "Invalid element index");
+    offset = this.offset(x, y);
+    this.data.get(offset + i);
+  }
+
+  readonly fun get(x: Int, y: Int): Array<T> {
+    offset = this.offset(x, y);
+    this.data.slice(offset, offset + this.colors)
+  }
+
+  readonly fun interpolate[T: Float](pos: Vector2): Array<Float> {
+    !pos = pos.sub(0.5);
+    l = Math.floor(pos.x).toInt();
+    b = Math.floor(pos.y).toInt();
+    r = l + 1;
+    t = b + 1;
+    lr = pos.x - l.toFloat();
+    bt = pos.y - b.toFloat();
+    !l = Math.clamp(l, 0, this.width - 1);
+    !r = Math.clamp(r, 0, this.width - 1);
+    !b = Math.clamp(b, 0, this.height - 1);
+    !t = Math.clamp(t, 0, this.height - 1);
+    Array::fillBy(this.colors, idx -> {
+      fmix(
+        fmix(this.elem(l, b, idx), this.elem(r, b, idx), lr),
+        fmix(this.elem(l, t, idx), this.elem(r, t, idx), lr),
+        bt,
+      )
+    });
+  }
+
+  readonly fun toImage[T: Float](flipY: Bool = false): Ui.Image {
+    toPix = (x, y) ->
+      Ui.Pix::fromArray(
+        this.get(x, if (flipY) this.height - 1 - y else y).map(
+          pixelFloatToByte,
+        ),
+      );
+    Ui.Image::make(this.width, this.height, toPix)
+  }
+
+  readonly private fun offset(x: Int, y: Int): Int {
+    this.colors * (this.width * y + x)
+  }
+}
+
+value class Intersection(
+  /// X coordinate.
+  x: Float,
+  /// Normalized Y direction of the oriented edge at the point of intersection.
+  direction: Int,
+  optContour: ?Int = None(),
+)
+
+const cubicSearchStarts: Int = 4;
+const cubicSearchSteps: Int = 4;
+const egdeLengthPrecision: Int = 4;
+
+// Threshold of the dot product of adjacent edge directions to be considered convergent.
+const cornerDotEpsilon: Float = 0.000001;
+// The proportional amount by which a curve's control point will be adjusted to eliminate convergent corners.
+const deconvergenceFactor: Float = 0.000001;
+const distanceDeltaFactor: Float = 1.001;
+
+const maxRecolorSteps: Int = 16;
+const edgeDistancePrecision: Int = 16;
+const defaultAngleThreshold: Int = 3;
+const protectionRadiusTolerance: Float = 1.001;
+const artifactTEpsilon: Float = 0.01;
+const precisionEpsilon: Float = 0.00001;
+
+module end;

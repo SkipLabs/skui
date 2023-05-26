@@ -1,0 +1,394 @@
+module MTSDF;
+
+const classifierFlagCandidate: Int = 0x01;
+const classifierFlagArtifact: Int = 0x02;
+
+base mutable class ArtifactClassifier(span: Float, protectedFlag: Bool) {
+  //
+  overridable mutable fun evaluate(_t: Float, _m: Float, flags: Int): Bool {
+    flags.and(2) != 0
+  }
+
+  readonly fun rangeTest(
+    at: Float,
+    bt: Float,
+    xt: Float,
+    am: Float,
+    bm: Float,
+    xm: Float,
+  ): Int {
+    // For protected texels, only consider inversion artifacts (interpolated median has different sign than boundaries). For the rest, it is sufficient that the interpolated median is outside its boundaries.
+    if (
+      (am > 0.5 && bm > 0.5 && xm <= 0.5) ||
+      (am < 0.5 && bm < 0.5 && xm >= 0.5) ||
+      (!this.protectedFlag && fmedian(am, bm, xm) != xm)
+    ) {
+      axSpan = (xt - at) * this.span;
+      bxSpan = (bt - xt) * this.span;
+      // Check if the interpolated median's value is in the expected range based on its distance (span) from boundaries a, b.
+      if (
+        !(xm >= am - axSpan &&
+          xm <= am + axSpan &&
+          xm >= bm - bxSpan &&
+          xm <= bm + bxSpan)
+      ) {
+        classifierFlagCandidate.or(classifierFlagArtifact)
+      } else {
+        classifierFlagCandidate
+      };
+    } else {
+      0
+    }
+  }
+}
+
+mutable class BasicArtifactClassifier extends ArtifactClassifier {}
+
+mutable class ShapeDistanceClassifier(
+  checker: mutable ShapeDistanceChecker,
+  direction: Vector2,
+) extends ArtifactClassifier {
+  //
+  mutable fun evaluate(t: Float, _m: Float, flags: Int): Bool {
+    if (flags.and(classifierFlagCandidate) == classifierFlagCandidate) {
+      // Skip expensive distance evaluation if the point has already been classified as an artifact by the base classifier.
+      if (flags.and(classifierFlagArtifact) == classifierFlagArtifact) {
+        true;
+      } else {
+        tVector = this.direction.mult(t);
+        sdfCoord = this.checker.sdfCoord + tVector;
+        // Compute the color that would be currently interpolated at the artifact candidate's position.
+        oldMSD = this.checker.sdf.interpolate(sdfCoord);
+        // Compute the color that would be interpolated at the artifact candidate's position if error correction was applied on the current texel.
+        aWeight = (1.0 - Math.abs(tVector.x)) * (1.0 - Math.abs(tVector.y));
+        aPSD = fmedian(
+          this.checker.msd(0),
+          this.checker.msd(1),
+          this.checker.msd(2),
+        );
+        newMSD = Array::fillBy(3, idx ->
+          oldMSD[idx] + aWeight * (aPSD - this.checker.msd(idx))
+        );
+        // Compute the evaluated distance (interpolated median) before and after error correction, as well as the exact shape distance.
+        oldPSD = fmedian(oldMSD[0], oldMSD[1], oldMSD[2]);
+        newPSD = fmedian(newMSD[0], newMSD[1], newMSD[2]);
+        distance = this.checker.distanceFinder.distance(
+          (this.checker.shapeCoord + tVector * this.checker.texelSize),
+        ) as SingleDistance _;
+        refPSD = this.checker.invRange * distance.value + 0.5;
+        // Compare the differences of the exact distance and the before and after distances.
+        this.checker.minImproveRatio * Math.abs(newPSD - refPSD) <
+          Math.abs(oldPSD - refPSD);
+      }
+    } else {
+      false
+    }
+  }
+}
+
+mutable class ShapeDistanceChecker(
+  sdf: readonly BitmapRef<Float>,
+  invRange: Float,
+  minImproveRatio: Float,
+  distanceFinder: mutable ShapeDistanceFinder,
+  texelSize: Vector2,
+  mutable msd: Int -> Float = _v -> 0.0,
+  mutable protectedFlag: Bool = false,
+  mutable shapeCoord: Vector2 = Vector2(0.0, 0.0),
+  mutable sdfCoord: Vector2 = Vector2(0.0, 0.0),
+) {
+  //
+  static fun make(
+    sdf: readonly BitmapRef<Float>,
+    shape: Shape,
+    projection: Projection,
+    invRange: Float,
+    minImproveRatio: Float,
+    mode: Mode,
+    overlapping: Bool,
+  ): mutable ShapeDistanceChecker {
+    mutable ShapeDistanceChecker(
+      sdf,
+      invRange,
+      minImproveRatio,
+      ShapeDistanceFinder::make(
+        shape,
+        if (overlapping) OverlappingSelectors::make(shape, mode) else {
+          SimpleSelectors::make(shape, mode)
+        },
+      ),
+      projection.unscaleVector(Vector2(1.0, 1.0)),
+    )
+  }
+
+  mutable fun classifier(
+    direction: Vector2,
+    span: Float,
+  ): mutable ArtifactClassifier {
+    mutable ShapeDistanceClassifier(this, direction, span, this.protectedFlag)
+  }
+}
+
+/// Determines if the interpolated median xm is an artifact.
+fun isArtifact(
+  isProtected: Bool,
+  axSpan: Float,
+  bxSpan: Float,
+  am: Float,
+  bm: Float,
+  xm: Float,
+): Bool {
+  // For protected texels, only report an artifact if it would cause fill inversion (change between positive and negative distance).
+  (!isProtected ||
+    (am > 0.5 && bm > 0.5 && xm <= 0.5) ||
+    (am < 0.5 && bm < 0.5 && xm >= 0.5)) &&
+    // This is an artifact if the interpolated median is outside the range of possible values based on its distance from a, b.
+    !(xm >= am - axSpan &&
+      xm <= am + axSpan &&
+      xm >= bm - bxSpan &&
+      xm <= bm + bxSpan);
+}
+
+mutable class ShapeDistanceFinder private (
+  shape: Shape,
+  selectors: mutable Selectors,
+  caches: mutable Array<EdgeCache>,
+) {
+  //
+  static fun make(
+    shape: Shape,
+    selectors: mutable Selectors,
+    withCache: Bool = true,
+  ): mutable ShapeDistanceFinder {
+    mutable ShapeDistanceFinder(
+      shape,
+      selectors,
+      if (withCache) {
+        Array::mfill(shape.edgeCount(), EdgeCache())
+      } else {
+        Array::mfill(0, EdgeCache())
+      },
+    )
+  }
+
+  mutable fun distance(origin: Vector2): Distance {
+    this.selectors.reset(origin);
+    count = 0;
+    this.shape.contours.eachWithIndex((idx, contour) -> {
+      if (!contour.edges.isEmpty()) {
+        selector = this.selectors.getSelector(idx);
+        prevEdge = contour.edges
+          .maybeGet(contour.edges.size() - 2)
+          .default(contour.edges.first());
+        curEdge = contour.edges.last();
+        contour.edges.each(nextEdge -> {
+          curCache = this.caches.maybeGet(count).default(EdgeCache());
+          cache = selector.addEdge(curCache, prevEdge, curEdge, nextEdge);
+          if (count < this.caches.size()) {
+            this.caches.set(count, cache);
+          };
+          !prevEdge = curEdge;
+          !curEdge = nextEdge;
+          !count = count + 1;
+        });
+      };
+    });
+    this.selectors.distance()
+  }
+}
+
+fun hasLinearArtifact(
+  classifier: mutable ArtifactClassifier,
+  am: Float,
+  a: Int -> Float,
+  b: Int -> Float,
+): Bool {
+  bm = fmedian(b(0), b(1), b(2));
+  (Math.abs(am - 0.5) >= Math.abs(bm - 0.5) && // Out of the pair, only report artifacts for the texel further from the edge to minimize side effects.
+    (hasLinearArtifactInner( // Check points where each pair of color channels meets.
+      classifier,
+      am,
+      bm,
+      a,
+      b,
+      a(1) - a(0),
+      b(1) - b(0),
+    ) ||
+      hasLinearArtifactInner(
+        classifier,
+        am,
+        bm,
+        a,
+        b,
+        a(2) - a(1),
+        b(2) - b(1),
+      ) ||
+      hasLinearArtifactInner(
+        classifier,
+        am,
+        bm,
+        a,
+        b,
+        a(0) - a(2),
+        b(0) - b(2),
+      )));
+}
+
+fun hasDiagonalArtifact(
+  classifier: mutable ArtifactClassifier,
+  am: Float,
+  a: Int -> Float,
+  b: Int -> Float,
+  c: Int -> Float,
+  d: Int -> Float,
+): Bool {
+  dm = fmedian(d(0), d(1), d(2));
+  // Out of the pair, only report artifacts for the texel further from the edge to minimize side effects.
+  if (Math.abs(am - 0.5) >= Math.abs(dm - 0.5)) {
+    abc = Array[a(0) - b(0) - c(0), a(1) - b(1) - c(1), a(2) - b(2) - c(2)];
+    // Compute the linear terms for bilinear interpolation.
+    l = Array[-a(0) - abc[0], -a(1) - abc[1], -a(2) - abc[2]];
+    // Compute the quadratic terms for bilinear interpolation.
+    q = Array[d(0) + abc[0], d(1) + abc[1], d(2) + abc[2]];
+    // Compute interpolation ratios tEx (0 < tEx[i] < 1) for the local extremes of each color channel (the derivative 2*q[i]*tEx[i]+l[i] == 0).
+    tEx = Array[-0.5 * l[0] / q[0], -0.5 * l[1] / q[1], -0.5 * l[2] / q[2]];
+    // Check points where each pair of color channels meets.
+    hasDiagonalArtifactInner(
+      classifier,
+      am,
+      dm,
+      a,
+      l,
+      q,
+      a(1) - a(0),
+      b(1) - b(0) + c(1) - c(0),
+      d(1) - d(0),
+      tEx[0],
+      tEx[1],
+    ) ||
+      hasDiagonalArtifactInner(
+        classifier,
+        am,
+        dm,
+        a,
+        l,
+        q,
+        a(2) - a(1),
+        b(2) - b(1) + c(2) - c(1),
+        d(2) - d(1),
+        tEx[1],
+        tEx[2],
+      ) ||
+      hasDiagonalArtifactInner(
+        classifier,
+        am,
+        dm,
+        a,
+        l,
+        q,
+        a(0) - a(2),
+        b(0) - b(2) + c(0) - c(2),
+        d(0) - d(2),
+        tEx[2],
+        tEx[0],
+      )
+  } else {
+    false
+  }
+}
+
+fun hasLinearArtifactInner(
+  classifier: mutable ArtifactClassifier,
+  am: Float,
+  bm: Float,
+  a: Int -> Float,
+  b: Int -> Float,
+  dA: Float,
+  dB: Float,
+): Bool {
+  // Find interpolation ratio t (0 < t < 1) where two color channels are equal (mix(dA, dB, t) == 0).
+  t = dA / (dA - dB);
+  if (t > artifactTEpsilon && t < 1.0 - artifactTEpsilon) {
+    // Interpolate median at t and let the classifier decide if its value indicates an artifact.
+    xm = fmedian(fmix(a(0), b(0), t), fmix(a(1), b(1), t), fmix(a(2), b(2), t));
+    classifier.evaluate(t, xm, classifier.rangeTest(0.0, 1.0, t, am, bm, xm));
+  } else {
+    false
+  }
+}
+
+fun interpolatedMedian(
+  a: Int -> Float,
+  l: Array<Float>,
+  q: Array<Float>,
+  t: Float,
+): Float {
+  fmedian(
+    t * (t * q[0] + l[0]) + a(0),
+    t * (t * q[1] + l[1]) + a(1),
+    t * (t * q[2] + l[2]) + a(2),
+  )
+}
+
+fun hasDiagonalArtifactInner(
+  classifier: mutable ArtifactClassifier,
+  am: Float,
+  dm: Float,
+  a: Int -> Float,
+  l: Array<Float>,
+  q: Array<Float>,
+  dA: Float,
+  dBC: Float,
+  dD: Float,
+  tEx0: Float,
+  tEx1: Float,
+): Bool {
+  // Find interpolation ratios t (0 < t[i] < 1) where two color channels are equal.
+  solutions = solveQuadratic(dD - dBC + dA, dBC - dA - dA, dA);
+  for (solution in solutions) {
+    if (solution > artifactTEpsilon && solution < 1.0 - artifactTEpsilon) {
+      // Interpolate median xm at t.
+      xm = interpolatedMedian(a, l, q, solution);
+      // Determine if xm deviates too much from medians of a, d.
+      rangeFlags = classifier.rangeTest(0.0, 1.0, solution, am, dm, xm);
+      // Additionally, check xm against the interpolated medians at the local extremes tEx0, tEx1.
+      tEnd = Array::mfill(2, 0.0);
+      em = Array::mfill(2, 0.0);
+      // tEx0
+      if (tEx0 > 0.0 && tEx0 < 1.0) {
+        tEnd.set(0, 0.0);
+        tEnd.set(1, 1.0);
+        em.set(0, am);
+        em.set(1, dm);
+        tEnd.set(if (tEx0 > solution) 1 else 0, tEx0);
+        em.set(
+          if (tEx0 > solution) 1 else 0,
+          interpolatedMedian(a, l, q, tEx0),
+        );
+        !rangeFlags = rangeFlags.or(
+          classifier.rangeTest(tEnd[0], tEnd[1], solution, am, dm, xm),
+        );
+      };
+      // tEx1
+      if (tEx1 > 0.0 && tEx1 < 1.0) {
+        tEnd.set(0, 0.0);
+        tEnd.set(1, 1.0);
+        em.set(0, am);
+        em.set(1, dm);
+        tEnd.set(if (tEx1 > solution) 1 else 0, tEx1);
+        em.set(
+          if (tEx1 > solution) 1 else 0,
+          interpolatedMedian(a, l, q, tEx1),
+        );
+        !rangeFlags = rangeFlags.or(
+          classifier.rangeTest(tEnd[0], tEnd[1], solution, am, dm, xm),
+        );
+      };
+      if (classifier.evaluate(solution, xm, rangeFlags)) break true;
+    }
+  } else {
+    false
+  }
+}
+
+module end;

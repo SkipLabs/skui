@@ -1,0 +1,254 @@
+module MTSDF;
+
+const largeValue: Float = 1e240;
+
+fun deconvergeEdge(segment: EdgeSegment, start: Bool): EdgeSegment {
+  !segment = segment match {
+  | quad @ QuadraticSegment _ -> quad.convertToCubic()
+  | _ -> segment
+  };
+  segment match {
+  | cub @ CubicSegment _ -> cub.deconverge(start, deconvergenceFactor)
+  | _ -> segment
+  }
+}
+
+class Shape(contours: Array<Contour>, inverseYAxis: Bool) uses Equality {
+  //
+  static fun fromPath(path: Shape.Path, inverseYAxis: Bool = false): Shape {
+    conv = offset ~> Vector2(offset.dx, offset.dy);
+    first = Vector2(0.0, 0.0);
+    last = first;
+    contours = mutable Vector<Contour>[];
+    contour = mutable Vector<EdgeSegment>[];
+    path.elements.each(e ->
+      e match {
+      | Shape.MoveTo(pt) ->
+        !first = conv(pt);
+        !last = first
+      | Shape.ClosePath() ->
+        if (first != last) {
+          contour.push(LinearSegment{start => last, end => first});
+        };
+        if (!contour.isEmpty()) {
+          contours.push(Contour(contour.toArray()));
+        };
+        contour.clear()
+      | Shape.LineTo(oEnd) ->
+        end = conv(oEnd);
+        contour.push(LinearSegment{start => last, end});
+        !last = end
+      | Shape.QuadCurveTo(oEnd, oControl) ->
+        end = conv(oEnd);
+        control = conv(oControl);
+        contour.push(QuadraticSegment{start => last, control, end});
+        !last = end
+      | Shape.CubicCurveTo(oEnd, firstControl, secondControl) ->
+        end = conv(oEnd);
+        fControl = conv(firstControl);
+        sControl = conv(secondControl);
+        contour.push(CubicSegment{start => last, fControl, sControl, end});
+        !last = end
+      }
+    );
+    if (!contour.isEmpty()) {
+      if (first != last) {
+        contour.push(LinearSegment{start => last, end => first});
+      };
+      contours.push(Contour(contour.toArray()));
+    };
+    Shape(contours.toArray(), inverseYAxis)
+  }
+
+  /// Performs basic checks to determine if the object represents a valid shape.
+  fun validate(): Bool {
+    for (contour in this.contours) {
+      if (!contour.edges.isEmpty()) {
+        corner = contour.edges.last().point(1.0);
+        for (edge in contour.edges) {
+          if (edge.point(0.0) != corner) {
+            return false;
+          };
+          !corner = edge.point(1.0)
+        }
+      }
+    };
+    true;
+  }
+
+  /// Normalizes the shape geometry for distance field generation.
+  fun normalize(): Shape {
+    Shape(
+      this.contours.map(contour -> {
+        if (contour.edges.size() == 1) {
+          Contour(contour.edges[0].splitInThirds())
+        } else if (!contour.edges.isEmpty()) {
+          edges = contour.edges.clone();
+          prevIndex = edges.size() - 1;
+          for (i in Range(0, edges.size())) {
+            prevDir = edges[prevIndex].direction(1.0).normalize();
+            curDir = edges[i].direction(0.0).normalize();
+            dotProduct = prevDir.dotProduct(curDir);
+            if (dotProduct < cornerDotEpsilon - 1.0) {
+              edges.set(prevIndex, deconvergeEdge(edges[prevIndex], false));
+              edges.set(i, deconvergeEdge(edges[i], true));
+            };
+            !prevIndex = i;
+          };
+          Contour(unsafe_chill_trust_me(edges))
+        } else {
+          contour
+        }
+      }),
+      this.inverseYAxis,
+    )
+  }
+
+  /// Adjusts the bounding box to fit the shape.
+  fun bound(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+  ): (Float, Float, Float, Float) {
+    this.contours.each(c -> (!l, !b, !r, !t) = c.bound(l, b, r, t));
+    (l, b, r, t)
+  }
+
+  /// Adjusts the bounding box to fit the shape border's mitered corners.
+  fun boundMiters(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+    border: Float,
+    miterLimit: Float,
+    polarity: Int,
+  ): (Float, Float, Float, Float) {
+    this.contours.each(c ->
+      (!l, !b, !r, !t) = c.boundMiters(l, b, r, t, border, miterLimit, polarity)
+    );
+    (l, b, r, t)
+  }
+
+  /// Computes the minimum bounding box that fits the shape, optionally with a (mitered) border.
+  fun getBounds(
+    border: Float = 0.0,
+    miterLimit: Float = 0.0,
+    polarity: Int = 0,
+  ): (Float, Float, Float, Float) {
+    l = largeValue;
+    b = largeValue;
+    r = -largeValue;
+    t = -largeValue;
+    (!l, !b, !r, !t) = this.bound(l, b, r, t);
+    if (border > 0.0) {
+      !l = l - border;
+      !b = l - border;
+      !r = r + border;
+      !t = t + border;
+      if (miterLimit > 0.0) {
+        (!l, !b, !r, !t) = this.boundMiters(
+          l,
+          b,
+          r,
+          t,
+          border,
+          miterLimit,
+          polarity,
+        )
+      };
+    };
+    (l, b, r, t)
+  }
+
+  /// Returns the total number of edge segments
+  fun edgeCount(): Int {
+    this.contours.reduce((acc, val) -> acc + val.edges.size(), 0)
+  }
+
+  /// Outputs the scanline that intersects the shape at y.
+  fun scanline(y: Float): mutable Scanline {
+    intersections = mutable Vector<Intersection>[];
+    this.contours.each(contour ->
+      contour.edges.each(edge ->
+        edge.scanlineIntersections(y).each(intersections.push)
+      )
+    );
+    Scanline::make(intersections.toArray())
+  }
+
+  /// Assumes its contours are unoriented (even-odd fill rule). Attempts to orient them to conform to the non-zero winding rule.
+  fun orientContours(): Shape {
+    ratio = 0.5 * (Math.sqrt(5.0) - 1.0); // an irrational number to minimize chance of intersecting a corner or other point of interest
+    orientations = Array::mfill(this.contours.size(), 0);
+    intersections = mutable Vector<Intersection>[];
+    for (i in Range(0, this.contours.size())) {
+      contour = this.contours[i];
+      if (orientations[i] == 0 && !contour.edges.isEmpty()) {
+        // Find an Y that crosses the contour
+        y0 = contour.edges.first().point(0.0).y;
+        y1 = y0;
+        for (edge in contour.edges) {
+          !y1 = edge.point(1.0).y;
+          if (y0 != y1) {
+            break void;
+          }
+        };
+        if (y0 == y1) {
+          for (edge in contour.edges) {
+            !y1 = edge.point(ratio).y;
+            if (y0 != y1) {
+              break void;
+            }
+          };
+        };
+        y = fmix(y0, y1, ratio);
+        // Scanline through whole shape at Y
+        this.contours.eachWithIndex((idx, co) ->
+          co.edges.each(edge ->
+            edge.scanlineIntersections(y).each(int -> {
+              !int.optContour = Some(idx);
+              intersections.push(int);
+            })
+          )
+        );
+        intersections.sortWith(compareIntersections);
+        // Disqualify multiple intersections
+        for (j in Range(1, intersections.size())) {
+          int = intersections[j];
+          pIn = intersections[j - 1];
+          if (int.x == pIn.x) {
+            !int.direction = 0;
+            !pIn.direction = 0;
+            intersections.set(j, int);
+            intersections.set(j - 1, pIn);
+          }
+        };
+        // Inspect scanline and deduce orientations of intersected contours
+        for (j in Range(1, intersections.size())) {
+          pIn = intersections[j];
+          if (pIn.direction != 0) {
+            cIdx = pIn.optContour.fromSome();
+            cur = orientations[cIdx];
+            orientations.set(
+              cIdx,
+              cur + 2 * (j.and(1).xor(if (pIn.direction > 0) 1 else 0)) - 1,
+            )
+          }
+        };
+        intersections.clear();
+      }
+    };
+
+    // Reverse contours that have the opposite orientation
+    Shape(
+      this.contours.mapWithIndex((idx, contour) ->
+        if (orientations[idx] < 0) contour.reverse() else contour
+      ),
+      this.inverseYAxis,
+    )
+  }
+}
+
+module end;

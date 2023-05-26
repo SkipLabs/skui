@@ -1,0 +1,879 @@
+module MTSDF;
+
+fun mix(v1: Vector2, v2: Vector2, weight: Float): Vector2 {
+  v1.mult(1.0 - weight) + v2.mult(weight)
+}
+
+fun fmix(v1: Float, v2: Float, weight: Float): Float {
+  v1 * (1.0 - weight) + v2 * weight
+}
+
+fun nonZeroSign(v: Float): Float {
+  (2.0 * if (v > 0.0) 1.0 else 0.0) - 1.0
+}
+
+fun sign(v: Float): Int {
+  (if (0.0 < v) 1 else 0) - (if (v < 0.0) 1 else 0);
+}
+
+fun fmedian(a: Float, b: Float, c: Float): Float {
+  Math.max(Math.min(a, b), Math.min(Math.max(a, b), c));
+}
+
+fun pointBounds(
+  p: Vector2,
+  l: Float,
+  b: Float,
+  r: Float,
+  t: Float,
+): (Float, Float, Float, Float) {
+  if (p.x < l) !l = p.x;
+  if (p.y < b) !b = p.y;
+  if (p.x > r) !r = p.x;
+  if (p.y > t) !t = p.y;
+  (l, b, r, t)
+}
+
+base class EdgeSegment{
+  color: EdgeColor = EdgeColor(EdgeColor::white),
+} uses Equality, Show {
+  /// Returns the point on the edge specified by the parameter (between 0 and 1).
+  fun point(param: Float): Vector2;
+
+  /// Returns the direction the edge has at the point specified by the parameter.
+  fun direction(param: Float): Vector2;
+
+  /// Returns the change of direction (second derivative) at the point specified by the parameter.
+  fun directionChange(param: Float): Vector2;
+
+  /// Returns the minimum signed distance between origin and the edge.
+  fun signedDistance(origin: Vector2): (Float, SignedDistance);
+
+  /// Outputs a list of (at most three) intersections (their X coordinates) with an infinite horizontal scanline at y and returns how many there are.
+  fun scanlineIntersections(y: Float): Array<Intersection>;
+
+  /// Adjusts the bounding box to fit the edge segment.
+  fun bound(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+  ): (Float, Float, Float, Float);
+
+  /// Reverses the edge (swaps its start point and end point).
+  fun reverse(): this;
+
+  /// Moves the start point of the edge segment.
+  fun moveStartPoint(to: Vector2): this;
+
+  /// Moves the end point of the edge segment.
+  fun moveEndPoint(to: Vector2): this;
+
+  /// Splits the edge segments into thirds which together represent the original edge.
+  fun splitInThirds(): Array<EdgeSegment>;
+
+  /// Converts a previously retrieved signed distance from origin to pseudo-distance.
+  fun distanceToPseudoDistance(
+    distance: SignedDistance,
+    origin: Vector2,
+    param: Float,
+    precision: Float = precisionEpsilon,
+  ): SignedDistance {
+    if (param < 0.0) {
+      dir = this.direction(0.0).normalize();
+      aq = origin - this.point(0.0);
+      ts = aq.dotProduct(dir);
+      if (ts < 0.0) {
+        pseudoDistance = aq.crossProduct(dir);
+        if (
+          Math.lowerOrEquals(
+            Math.abs(pseudoDistance),
+            Math.abs(distance.distance),
+            precision,
+          )
+        ) {
+          return SignedDistance(pseudoDistance, 0.0)
+        }
+      }
+    } else if (param > 1.0) {
+      dir = this.direction(1.0).normalize();
+      bq = origin - this.point(1.0);
+      ts = bq.dotProduct(dir);
+      if (ts > 0.0) {
+        pseudoDistance = bq.crossProduct(dir);
+        if (
+          Math.lowerOrEquals(
+            Math.abs(pseudoDistance),
+            Math.abs(distance.distance),
+            precision,
+          )
+        ) {
+          return SignedDistance(pseudoDistance, 0.0)
+        }
+      }
+    };
+    distance
+  }
+
+  fun hasRed(): Bool {
+    this.color.hasRed()
+  }
+
+  fun hasGreen(): Bool {
+    this.color.hasGreen()
+  }
+
+  fun hasBlue(): Bool {
+    this.color.hasBlue()
+  }
+}
+
+fun line(
+  start: Vector2,
+  end: Vector2,
+  color: Int = EdgeColor::white,
+): EdgeSegment {
+  LinearSegment{start, end, color => EdgeColor(color)}
+}
+
+class LinearSegment{start: Vector2, end: Vector2} extends EdgeSegment {
+  //
+  fun point(param: Float): Vector2 {
+    mix(this.start, this.end, param)
+  }
+
+  fun direction(_param: Float): Vector2 {
+    this.end - this.start;
+  }
+
+  fun directionChange(_param: Float): Vector2 {
+    Vector2(0.0, 0.0)
+  }
+
+  fun length(): Float {
+    (this.end - this.start).length()
+  }
+
+  fun signedDistance(origin: Vector2): (Float, SignedDistance) {
+    aq = origin - this.start;
+    ab = this.end - this.start;
+    param = aq.dotProduct(ab) / ab.dotProduct(ab);
+    eq = (if (param > 0.5) this.end else this.start) - origin;
+    endpointDistance = eq.length();
+    if (param > 0.0 && param < 1.0) {
+      orthoDistance = ab.orthonormal(false).dotProduct(aq);
+      if (Math.abs(orthoDistance) < endpointDistance) {
+        return (param, SignedDistance(orthoDistance, 0.0))
+      };
+    };
+    (
+      param,
+      SignedDistance(
+        nonZeroSign(aq.crossProduct(ab)) * endpointDistance,
+        Math.abs(ab.normalize().dotProduct(eq.normalize())),
+      ),
+    );
+  }
+
+  fun scanlineIntersections(y: Float): Array<Intersection> {
+    if (
+      (y >= this.start.y && y < this.end.y) ||
+      (y >= this.end.y && y < this.start.y)
+    ) {
+      param = (y - this.start.y) / (this.end.y - this.start.y);
+      return Array[
+        Intersection(
+          fmix(this.start.x, this.end.x, param),
+          sign(this.end.y - this.start.y),
+        ),
+      ]
+    };
+    Array[]
+  }
+
+  fun bound(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+  ): (Float, Float, Float, Float) {
+    (!l, !b, !r, !t) = pointBounds(this.start, l, b, r, t);
+    pointBounds(this.end, l, b, r, t)
+  }
+
+  fun reverse(): this {
+    static{start => this.end, end => this.start, color => this.color}
+  }
+
+  fun moveStartPoint(to: Vector2): this {
+    !this.start = to;
+    this;
+  }
+
+  fun moveEndPoint(to: Vector2): this {
+    !this.end = to;
+    this;
+  }
+
+  fun splitInThirds(): Array<EdgeSegment> {
+    Array[
+      static{
+        start => this.start,
+        end => this.point(1.0 / 3.0),
+        color => this.color,
+      },
+      static{
+        start => this.point(1.0 / 3.0),
+        end => this.point(2.0 / 3.0),
+        color => this.color,
+      },
+      static{
+        start => this.point(2.0 / 3.0),
+        end => this.end,
+        color => this.color,
+      },
+    ]
+  }
+
+  fun toString(): String {
+    `L[${this.color.value}] ${this.start} => ${this.end}`
+  }
+}
+
+fun quad(
+  start: Vector2,
+  control: Vector2,
+  end: Vector2,
+  color: Int = EdgeColor::white,
+): EdgeSegment {
+  QuadraticSegment{start, control, end, color => EdgeColor(color)}
+}
+
+class QuadraticSegment{
+  start: Vector2,
+  control: Vector2,
+  end: Vector2,
+} extends EdgeSegment {
+  //
+  fun point(param: Float): Vector2 {
+    mix(
+      mix(this.start, this.control, param),
+      mix(this.control, this.end, param),
+      param,
+    )
+  }
+
+  fun direction(param: Float): Vector2 {
+    v1 = this.control - this.start;
+    v2 = this.end - this.control;
+    tangent = mix(v1, v2, param);
+    if (tangent.x == 0.0 && tangent.y == 0.0) {
+      this.end - this.start;
+    } else {
+      tangent
+    };
+  }
+
+  fun directionChange(_param: Float): Vector2 {
+    (this.end - this.control) - (this.control - this.start)
+  }
+
+  fun length(): Float {
+    ab = this.control - this.start;
+    br = this.end - this.control - ab;
+    abab = ab.dotProduct(ab);
+    abbr = ab.dotProduct(br);
+    brbr = br.dotProduct(br);
+    abLen = Math.sqrt(abab);
+    brLen = Math.sqrt(brbr);
+    crs = ab.crossProduct(br);
+    h = Math.sqrt(abab + abbr + abbr + brbr);
+    (brLen * ((abbr + brbr) * h - abbr * abLen) +
+      crs *
+        crs *
+        Math.log((brLen * h + abbr + brbr) / (brLen * abLen + abbr))) /
+      (brbr * brLen);
+  }
+
+  fun signedDistance(origin: Vector2): (Float, SignedDistance) {
+    qa = this.start - origin;
+    ab = this.control - this.start;
+    br = this.end - this.control - ab;
+    a = br.dotProduct(br);
+    b = 3.0 * ab.dotProduct(br);
+    c = 2.0 * ab.dotProduct(ab) + qa.dotProduct(br);
+    d = qa.dotProduct(ab);
+    solutions = solveCubic(a, b, c, d);
+    epDir = this.direction(0.0);
+    minDistance = nonZeroSign(epDir.crossProduct(qa)) * qa.length(); // distance from A
+    param = -qa.dotProduct(epDir) / epDir.dotProduct(epDir);
+    !epDir = this.direction(1.0);
+    distance = (this.end - origin).length(); // distance from B
+    if (distance < Math.abs(minDistance)) {
+      !minDistance =
+        nonZeroSign(epDir.crossProduct(this.end - origin)) * distance;
+      !param =
+        (origin - this.control).dotProduct(epDir) / epDir.dotProduct(epDir);
+    };
+    for (v in solutions) {
+      if (v > 0.0 && v < 1.0) {
+        qe = qa + ab.mult(2.0 * v) + br.mult(v * v);
+        dist = qe.length();
+        if (dist <= Math.abs(minDistance)) {
+          !minDistance = nonZeroSign((ab + br.mult(v)).crossProduct(qe)) * dist;
+          !param = v;
+        }
+      }
+    };
+    if (param >= 0.0 && param <= 1.0) {
+      (param, SignedDistance(minDistance, 0.0))
+    } else if (param < 0.5) {
+      (
+        param,
+        SignedDistance(
+          minDistance,
+          Math.abs(this.direction(0.0).normalize().dotProduct(qa.normalize())),
+        ),
+      )
+    } else {
+      (
+        param,
+        SignedDistance(
+          minDistance,
+          Math.abs(
+            this.direction(1.0)
+              .normalize()
+              .dotProduct((this.end - origin).normalize()),
+          ),
+        ),
+      )
+    }
+  }
+
+  fun scanlineIntersections(y: Float): Array<Intersection> {
+    xs = mutable Array[0.0, 0.0, 0.0];
+    dys = mutable Array[0, 0, 0];
+    total = 0;
+    nextDY = if (y > this.start.y) 1 else -1;
+    xs.set(total, this.start.x);
+    if (this.start.y == y) {
+      if (
+        this.start.y < this.control.y ||
+        (this.start.y == this.control.y && this.start.y < this.end.y)
+      ) {
+        dys.set(total, 1);
+        !total = total + 1;
+      } else {
+        !nextDY = 1;
+      }
+    };
+    ab = this.control - this.start;
+    br = this.end - this.control - ab;
+    solutions = solveQuadratic(br.y, 2.0 * ab.y, this.start.y - y);
+    // Sort solutions
+    if (solutions.size() >= 2 && solutions[0] > solutions[1]) {
+      s0 = solutions[0];
+      s1 = solutions[1];
+      !solutions = solutions.mapWithIndex((idx, v) ->
+        if (idx == 0) s1 else if (idx == 1) s0 else v
+      );
+    };
+    i = 0;
+    while (i < solutions.size() && total < 2) {
+      v = solutions[i];
+      if (v >= 0.0 && v <= 1.0) {
+        xs.set(total, this.start.x + 2.0 * v * ab.x + v * v * br.x);
+        if (nextDY.toFloat() * (ab.y + v * br.y) >= 0.0) {
+          dys.set(total, nextDY);
+          !total = total + 1;
+          !nextDY = -nextDY;
+        }
+      };
+      !i = i + 1;
+    };
+    if (this.end.y == y) {
+      if (nextDY > 0 && total > 0) {
+        !total = total - 1;
+        !nextDY = -1;
+      };
+      if (
+        (this.end.y < this.control.y ||
+          (this.end.y == this.control.y && this.end.y < this.start.y)) &&
+        total < 2
+      ) {
+        xs.set(total, this.end.x);
+        if (nextDY < 0) {
+          dys.set(total, -1);
+          !total = total + 1;
+          !nextDY = 1;
+        }
+      }
+    };
+    if (nextDY != (if (y >= this.end.y) 1 else -1)) {
+      if (total > 0) {
+        !total = total - 1;
+      } else {
+        if (Math.abs(this.end.y - y) < Math.abs(this.start.y - y)) {
+          xs.set(total, this.end.x)
+        };
+        dys.set(total, nextDY);
+        !total = total + 1;
+      }
+    };
+    xs.slice(0, total).mapWithIndex((idx, x) -> Intersection(x, dys[idx]));
+  }
+
+  fun bound(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+  ): (Float, Float, Float, Float) {
+    (!l, !b, !r, !t) = pointBounds(this.start, l, b, r, t);
+    (!l, !b, !r, !t) = pointBounds(this.end, l, b, r, t);
+    bot = (this.control - this.start) - (this.end - this.control);
+    if (bot.x != 0.0) {
+      param = (this.control.x - this.start.x) / bot.x;
+      if (param > 0.0 && param < 1.0) {
+        (!l, !b, !r, !t) = pointBounds(this.point(param), l, b, r, t)
+      };
+    };
+    if (bot.y != 0.0) {
+      param = (this.control.y - this.start.y) / bot.y;
+      if (param > 0.0 && param < 1.0) {
+        (!l, !b, !r, !t) = pointBounds(this.point(param), l, b, r, t)
+      };
+    };
+    (l, b, r, t)
+  }
+
+  fun reverse(): this {
+    static{
+      start => this.end,
+      control => this.control,
+      end => this.start,
+      color => this.color,
+    }
+  }
+
+  fun moveStartPoint(to: Vector2): this {
+    origSDir = this.start - this.control;
+    origControl = this.control;
+    !this.control =
+      this.control +
+      (this.end - this.control).mult(
+        origSDir.crossProduct(to - this.start) /
+          origSDir.crossProduct(this.end - this.control),
+      );
+    !this.start = to;
+    if (origSDir.dotProduct(this.start - this.control) < 0.0) {
+      !this.control = origControl
+    };
+    this
+  }
+
+  fun moveEndPoint(to: Vector2): this {
+    origEDir = this.end - this.control;
+    origControl = this.control;
+    !this.control =
+      this.control +
+      (this.start - this.control).mult(
+        origEDir.crossProduct(to - this.end) /
+          origEDir.crossProduct(this.start - this.control),
+      );
+    !this.end = to;
+    if (origEDir.dotProduct(this.end - this.control) < 0.0) {
+      !this.control = origControl
+    };
+    this
+  }
+
+  fun splitInThirds(): Array<EdgeSegment> {
+    Array[
+      static{
+        start => this.start,
+        control => mix(this.start, this.control, 1.0 / 3.0),
+        end => this.point(1.0 / 3.0),
+        color => this.color,
+      },
+      static{
+        start => this.point(1.0 / 3.0),
+        control => mix(
+          mix(this.start, this.control, 5.0 / 9.0),
+          mix(this.control, this.end, 4.0 / 9.0),
+          0.5,
+        ),
+        end => this.point(2.0 / 3.0),
+        color => this.color,
+      },
+      static{
+        start => this.point(2.0 / 3.0),
+        control => mix(this.control, this.end, 2.0 / 3.0),
+        end => this.end,
+        color => this.color,
+      },
+    ]
+  }
+
+  fun convertToCubic(): CubicSegment {
+    CubicSegment{
+      start => this.start,
+      fControl => mix(this.start, this.control, 2.0 / 3.0),
+      sControl => mix(this.control, this.end, 1.0 / 3.0),
+      end => this.end,
+      color => this.color,
+    };
+  }
+
+  fun toString(): String {
+    `Q[${this.color.value}] ${this.start} via ${this.control} => ${this.end}`
+  }
+}
+
+class CubicSegment{
+  start: Vector2,
+  fControl: Vector2,
+  sControl: Vector2,
+  end: Vector2,
+} extends EdgeSegment {
+  //
+  fun point(param: Float): Vector2 {
+    vControl = mix(this.fControl, this.sControl, param);
+    mix(
+      mix(mix(this.start, this.fControl, param), vControl, param),
+      mix(vControl, mix(this.sControl, this.end, param), param),
+      param,
+    );
+  }
+
+  fun direction(param: Float): Vector2 {
+    tangent = mix(
+      mix(this.fControl - this.start, this.sControl - this.fControl, param),
+      mix(this.sControl - this.fControl, this.end - this.sControl, param),
+      param,
+    );
+    if (tangent.x == 0.0 && tangent.y == 0.0) {
+      if (param == 0.0) return this.sControl - this.start;
+      if (param == 1.0) return this.end - this.fControl;
+    };
+    tangent
+  }
+
+  fun directionChange(param: Float): Vector2 {
+    mix(
+      (this.sControl - this.fControl) - (this.fControl - this.start),
+      (this.end - this.sControl) - (this.sControl - this.fControl),
+      param,
+    );
+  }
+
+  fun signedDistance(origin: Vector2): (Float, SignedDistance) {
+    qa = this.start - origin;
+    ab = this.fControl - this.start;
+    br = this.sControl - this.fControl - ab;
+    asv = (this.end - this.sControl) - (this.sControl - this.fControl) - br;
+
+    epDir = this.direction(0.0);
+    minDistance = nonZeroSign(epDir.crossProduct(qa)) * qa.length(); // distance from A
+    param = -qa.dotProduct(epDir) / epDir.dotProduct(epDir);
+    !epDir = this.direction(1.0);
+    distance = (this.end - origin).length(); // distance from B
+    if (distance < Math.abs(minDistance)) {
+      !minDistance =
+        nonZeroSign(epDir.crossProduct(this.end - origin)) * distance;
+      !param =
+        (epDir - (this.end - origin)).dotProduct(epDir) /
+        epDir.dotProduct(epDir);
+    };
+    // Iterative minimum distance search
+    for (i in Range(0, cubicSearchStarts)) {
+      t = i.toFloat() / cubicSearchStarts.toFloat();
+      qe = qa + ab.mult(3.0 * t) + br.mult(3.0 * t * t) + asv.mult(t * t * t);
+      for (_step in Range(0, cubicSearchSteps)) {
+        // Improve t
+        d1 = ab.mult(3.0) + br.mult(6.0 * t) + asv.mult(3.0 * t * t);
+        d2 = br.mult(6.0) + asv.mult(6.0 * t);
+        !t = t - qe.dotProduct(d1) / (d1.dotProduct(d1) + qe.dotProduct(d2));
+        if (t <= 0.0 || t >= 1.0) break void;
+        !qe =
+          qa +
+          ab.mult(3.0 * t) +
+          br.mult(3.0 * t * t) +
+          asv.mult(t * t * t);
+        dist = qe.length();
+        if (dist < Math.abs(minDistance)) {
+          !minDistance = nonZeroSign(d1.crossProduct(qe)) * dist;
+          !param = t;
+        }
+      }
+    };
+
+    if (param >= 0.0 && param <= 1.0) {
+      (param, SignedDistance(minDistance, 0.0))
+    } else if (param < 0.5) {
+      (
+        param,
+        SignedDistance(
+          minDistance,
+          Math.abs(this.direction(0.0).normalize().dotProduct(qa.normalize())),
+        ),
+      )
+    } else {
+      (
+        param,
+        SignedDistance(
+          minDistance,
+          Math.abs(
+            this.direction(1.0)
+              .normalize()
+              .dotProduct((this.end - origin).normalize()),
+          ),
+        ),
+      )
+    }
+  }
+
+  fun scanlineIntersections(y: Float): Array<Intersection> {
+    total = 0;
+    xs = mutable Array[0.0, 0.0, 0.0];
+    dys = mutable Array[0, 0, 0];
+    nextDY = if (y > this.start.y) 1 else -1;
+    xs.set(total, this.start.x);
+    if (this.start.y == y) {
+      if (
+        this.start.y < this.fControl.y ||
+        (this.start.y == this.fControl.y &&
+          (this.start.y < this.sControl.y ||
+            (this.start.y == this.sControl.y && this.start.y < this.end.y)))
+      ) {
+        dys.set(total, 1);
+        !total = total + 1;
+      } else {
+        !nextDY = 1;
+      }
+    };
+    ab = this.fControl - this.start;
+    br = this.sControl - this.fControl - ab;
+    asv = (this.end - this.sControl) - (this.sControl - this.fControl) - br;
+    solutions = solveCubic(asv.y, 3.0 * br.y, 3.0 * ab.y, this.start.y - y);
+    // Sort solutions
+    check01 = () ->
+      if (solutions.size() >= 2 && solutions[0] > solutions[1]) {
+        s0 = solutions[0];
+        s1 = solutions[1];
+        !solutions = solutions.mapWithIndex((idx, v) ->
+          if (idx == 0) s1 else if (idx == 1) s0 else v
+        );
+      };
+    check12 = () ->
+      if (solutions.size() >= 3 && solutions[1] > solutions[2]) {
+        s1 = solutions[1];
+        s2 = solutions[2];
+        !solutions = solutions.mapWithIndex((idx, v) ->
+          if (idx == 1) s2 else if (idx == 2) s1 else v
+        );
+        true
+      } else {
+        false
+      };
+    check01();
+    if (check12()) {
+      check01()
+    };
+    i = 0;
+    while (i < solutions.size() && total < 3) {
+      v = solutions[i];
+      if (v >= 0.0 && v <= 1.0) {
+        xs.set(
+          total,
+          this.start.x +
+            3.0 * v * ab.x +
+            3.0 * v * v * br.x +
+            v * v * v * asv.x,
+        );
+        if (nextDY.toFloat() * (ab.y + 2.0 * v * br.y + v * v * asv.y) >= 0.0) {
+          dys.set(total, nextDY);
+          !total = total + 1;
+          !nextDY = -nextDY;
+        }
+      };
+      !i = i + 1;
+    };
+    if (this.end.y == y) {
+      if (nextDY > 0 && total > 0) {
+        !total = total - 1;
+        !nextDY = -1;
+      };
+      if (
+        (this.end.y < this.sControl.y ||
+          (this.end.y == this.sControl.y &&
+            (this.end.y < this.fControl.y ||
+              (this.end.y == this.fControl.y && this.end.y < this.start.y)))) &&
+        total < 3
+      ) {
+        xs.set(total, this.end.x);
+        if (nextDY < 0) {
+          dys.set(total, -1);
+          !total = total + 1;
+          !nextDY = 1;
+        }
+      }
+    };
+    if (nextDY != (if (y >= this.end.y) 1 else -1)) {
+      if (total > 0) {
+        !total = total - 1;
+      } else {
+        if (Math.abs(this.end.y - y) < Math.abs(this.start.y - y)) {
+          xs.set(total, this.end.x)
+        };
+        dys.set(total, nextDY);
+        !total = total + 1;
+      }
+    };
+    xs.slice(0, total).mapWithIndex((idx, x) -> Intersection(x, dys[idx]));
+  }
+
+  fun bound(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+  ): (Float, Float, Float, Float) {
+    (!l, !b, !r, !t) = pointBounds(this.start, l, b, r, t);
+    (!l, !b, !r, !t) = pointBounds(this.end, l, b, r, t);
+
+    a0 = this.fControl - this.start;
+    a1 = (this.sControl - this.fControl - a0).mult(2.0);
+    a2 =
+      this.end -
+      this.sControl.mult(3.0) +
+      this.fControl.mult(3.0) -
+      this.start;
+    solutions = solveQuadratic(a2.x, a1.x, a0.x);
+    for (param in solutions) {
+      if (param > 0.0 && param < 1.0) {
+        (!l, !b, !r, !t) = pointBounds(this.point(param), l, b, r, t)
+      };
+    };
+    !solutions = solveQuadratic(a2.y, a1.y, a0.y);
+    for (param in solutions) {
+      if (param > 0.0 && param < 1.0) {
+        (!l, !b, !r, !t) = pointBounds(this.point(param), l, b, r, t)
+      };
+    };
+    (l, b, r, t)
+  }
+
+  fun reverse(): this {
+    static{
+      start => this.end,
+      fControl => this.sControl,
+      sControl => this.fControl,
+      end => this.start,
+      color => this.color,
+    }
+  }
+
+  fun moveStartPoint(to: Vector2): this {
+    !this.fControl = this.fControl + to - this.start;
+    !this.start = to;
+    this
+  }
+
+  fun moveEndPoint(to: Vector2): this {
+    !this.sControl = this.sControl + to - this.end;
+    !this.end = to;
+    this
+  }
+
+  fun splitInThirds(): Array<EdgeSegment> {
+    Array[
+      static{
+        start => this.start,
+        fControl => if (this.start == this.fControl) this.start else {
+          mix(this.start, this.fControl, 1.0 / 3.0)
+        },
+        sControl => mix(
+          mix(this.start, this.fControl, 1.0 / 3.0),
+          mix(this.fControl, this.sControl, 1.0 / 3.0),
+          1.0 / 3.0,
+        ),
+        end => this.point(1.0 / 3.0),
+        color => this.color,
+      },
+      static{
+        start => this.point(1.0 / 3.0),
+        fControl => mix(
+          mix(
+            mix(this.start, this.fControl, 1.0 / 3.0),
+            mix(this.fControl, this.sControl, 1.0 / 3.0),
+            1.0 / 3.0,
+          ),
+          mix(
+            mix(this.fControl, this.sControl, 1.0 / 3.0),
+            mix(this.sControl, this.end, 1.0 / 3.0),
+            1.0 / 3.0,
+          ),
+          2.0 / 3.0,
+        ),
+        sControl => mix(
+          mix(
+            mix(this.start, this.fControl, 2.0 / 3.0),
+            mix(this.fControl, this.sControl, 2.0 / 3.0),
+            2.0 / 3.0,
+          ),
+          mix(
+            mix(this.fControl, this.sControl, 2.0 / 3.0),
+            mix(this.sControl, this.end, 2.0 / 3.0),
+            2.0 / 3.0,
+          ),
+          1.0 / 3.0,
+        ),
+        end => this.point(2.0 / 3.0),
+        color => this.color,
+      },
+      static{
+        start => this.point(2.0 / 3.0),
+        fControl => mix(
+          mix(this.fControl, this.sControl, 2.0 / 3.0),
+          mix(this.sControl, this.end, 2.0 / 3.0),
+          2.0 / 3.0,
+        ),
+        sControl => if (this.sControl == this.end) this.end else {
+          mix(this.sControl, this.end, 2.0 / 3.0)
+        },
+        end => this.end,
+        color => this.color,
+      },
+    ]
+  }
+
+  fun deconverge(start: Bool, amount: Float): this {
+    param = if (start) 0.0 else 1.0;
+    dir = this.direction(param);
+    normal = dir.orthonormal();
+    h = (this.directionChange(param) - dir).dotProduct(normal);
+    if (start) {
+      !this.fControl =
+        this.fControl +
+        (dir + normal.mult(sign(h).toFloat() * Math.sqrt(Math.abs(h)))).mult(
+          amount,
+        )
+    } else {
+      !this.sControl =
+        this.sControl -
+        (dir - normal.mult(sign(h).toFloat() * Math.sqrt(Math.abs(h)))).mult(
+          amount,
+        )
+    };
+    this
+  }
+
+  fun toString(): String {
+    `C[${this.color.value}] ${this.start} via ${this.fControl} and ${
+      this.sControl
+    } => ${this.end}`
+  }
+}
+
+module end;

@@ -1,0 +1,696 @@
+module MTSDF;
+
+/** Assigns colors to edges of the shape in accordance to the multi-channel distance field technique.
+ *  May split some edges if necessary.
+ *  angleThreshold specifies the maximum angle (in radians) to be considered a corner, for example 3 (~172 degrees).
+ *  Values below 1/2 PI will be treated as the external angle.
+ */
+fun edgeColoringSimple(
+  shape: Shape,
+  angleThreshold: Float,
+  seed: Int = 0,
+): Shape {
+  white = EdgeColor(EdgeColor::white);
+  crossThreshold = Math.sin(angleThreshold);
+  corners = mutable Vector<Int>[];
+  Shape(
+    shape.contours.map(contour -> {
+      // Identify corners
+      corners.clear();
+      edges = contour.edges;
+      if (!edges.isEmpty()) {
+        identifyCorners(edges, crossThreshold, corners.push);
+      };
+      // Smooth contour
+      if (corners.isEmpty()) {
+        !edges = edges.map(e -> e with {color => white})
+      } else if (corners.size() == 1) { // "Teardrop" case
+        (!edges, !seed) = teardrop(edges, corners[0], seed);
+      } else { // Multiple corners
+        cornerCount = corners.size();
+        spline = 0;
+        start = corners[0];
+        m = edges.size();
+        (color, !seed) = switchColor(white, seed);
+        initialColor = color;
+        mEdges = edges.clone();
+        for (i in Range(0, m)) {
+          index = (start + i) % m;
+          if (spline + 1 < cornerCount && corners[spline + 1] == index) {
+            !spline = spline + 1;
+            (!color, !seed) = switchColor(
+              color,
+              seed,
+              EdgeColor(
+                (if (spline == cornerCount - 1) 1 else 0) * initialColor.value,
+              ),
+            );
+          };
+          e = mEdges.get(index);
+          mEdges.set(index, e with {color});
+        };
+        !edges = unsafe_chill_trust_me(mEdges)
+      };
+      contour with {edges}
+    }),
+    shape.inverseYAxis,
+  )
+}
+
+/** The alternative "ink trap" coloring strategy is designed for better results with typefaces
+ *  that use ink traps as a design feature. It guarantees that even if all edges that are shorter than
+ *  both their neighboring edges are removed, the coloring remains consistent with the established rules.
+ */
+fun edgeColoringInkTrap(
+  shape: Shape,
+  angleThreshold: Float,
+  seed: Int = 0,
+): Shape {
+  white = EdgeColor(EdgeColor::white);
+  crossThreshold = Math.sin(angleThreshold);
+  corners = mutable Vector<EdgeColoringInkTrapCorner>[];
+  Shape(
+    shape.contours.map(contour -> {
+      // Identify corners
+      splineLength = 0.0;
+      corners.clear();
+      edges = contour.edges;
+      if (!edges.isEmpty()) {
+        identifyCorners(
+          edges,
+          crossThreshold,
+          idx -> {
+            corners.push(
+              EdgeColoringInkTrapCorner(
+                idx,
+                splineLength,
+                false,
+                EdgeColor(EdgeColor::black),
+              ),
+            );
+            !splineLength = 0.0;
+          },
+          edge -> !splineLength = splineLength + estimateEdgeLength(edge),
+        );
+      };
+      // Smooth contour
+      if (corners.isEmpty()) {
+        !edges = edges.map(e -> e with {color => white})
+      } else if (corners.size() == 1) { // "Teardrop" case
+        (!edges, !seed) = teardrop(edges, corners[0].index, seed);
+      } else { // Multiple corners;
+        cornerCount = corners.size();
+        majorCornerCount = cornerCount;
+        if (cornerCount > 3) {
+          corner0 = corners.get(0);
+          corners.set(
+            0,
+            corner0 with {
+              prevEdgeLengthEstimate => corner0.prevEdgeLengthEstimate +
+                splineLength,
+            },
+          );
+          for (i in Range(0, cornerCount)) {
+            if (
+              corners[i].prevEdgeLengthEstimate >
+                corners[(i + 1) % cornerCount].prevEdgeLengthEstimate &&
+              corners[(i + 1) % cornerCount].prevEdgeLengthEstimate <
+                corners[(i + 2) % cornerCount].prevEdgeLengthEstimate
+            ) {
+              corner = corners[i];
+              corners.set(i, corner with {minor => true});
+              !majorCornerCount = majorCornerCount - 1;
+            }
+          }
+        };
+        color = EdgeColor(EdgeColor::white);
+        initialColor = EdgeColor(EdgeColor::black);
+        for (i in Range(0, cornerCount)) {
+          if (!corners[i].minor) {
+            !majorCornerCount = majorCornerCount - 1;
+            (!color, !seed) = switchColor(
+              color,
+              seed,
+              EdgeColor(
+                (if (majorCornerCount != 0) 1 else 0) * initialColor.value,
+              ),
+            );
+            corner = corners[i];
+            corners.set(i, corner with {color});
+            if (initialColor.isBlack()) !initialColor = color;
+          }
+        };
+        for (i in Range(0, cornerCount)) {
+          if (corners[i].minor) {
+            nextColor = corners[(i + 1) % cornerCount].color;
+            corner = corners[i];
+            corners.set(
+              i,
+              corner with {
+                color => EdgeColor(
+                  color.value.and(nextColor.value).xor(EdgeColor::white),
+                ),
+              },
+            );
+          } else {
+            !color = corners[i].color;
+          }
+        };
+        spline = 0;
+        start = corners[0].index;
+        !color = corners[0].color;
+        m = edges.size();
+        mEdges = edges.clone();
+        for (i in Range(0, m)) {
+          index = (start + i) % m;
+          if (spline + 1 < cornerCount && corners[spline + 1].index == index) {
+            !spline = spline + 1;
+            !color = corners[spline].color;
+          };
+          mEdges.set(index, mEdges.get(index) with {color})
+        };
+        !edges = unsafe_chill_trust_me(mEdges)
+      };
+      contour with {edges}
+    }),
+    shape.inverseYAxis,
+  )
+}
+
+base class Link {
+  children =
+  | Ref(EdgeSegment)
+  | Index(Int)
+}
+
+class Indexed(row: Int, col: Int, value: Float)
+
+/** The alternative coloring by distance tries to use different colors for edges that are close together.
+ *  This should theoretically be the best strategy on average. However, since it needs to compute the distance
+ *  between all pairs of edges, and perform a graph optimization task, it is much slower than the rest.
+ */
+// EDGE COLORING BY DISTANCE - EXPERIMENTAL IMPLEMENTATION - WORK IN PROGRESS
+
+fun edgeColoringByDistance(
+  shape: Shape,
+  angleThreshold: Float,
+  seed: Int = 0,
+): Shape {
+  tmp = mutable Vector<Vector<Link>>[];
+  white = EdgeColor(EdgeColor::white);
+  edgeSegments = mutable Vector<EdgeSegment>[];
+  splineStarts = mutable Vector<Int>[];
+  crossThreshold = Math.sin(angleThreshold);
+  corners = mutable Vector<Int>[];
+  shape.contours.each(contour -> {
+    edges = contour.edges;
+    tmpContour = mutable Vector<Link>[];
+    add = edge -> {
+      tmpContour.push(Index(edgeSegments.size()));
+      edgeSegments.push(edge);
+    };
+    if (!edges.isEmpty()) {
+      // Identify corners
+      corners.clear();
+      identifyCorners(edges, crossThreshold, corners.push);
+    };
+    splineStarts.push(edgeSegments.size());
+    // Smooth contour
+    if (corners.isEmpty()) {
+      edges.each(add);
+    } else if (corners.size() == 1) { // "Teardrop" case
+      corner = corners[0];
+      if (edges.size() >= 3) {
+        mEdges = Array<Link>::mfillBy(edges.size(), idx ->
+          Ref(edges[idx] with {color => white})
+        );
+        m = edges.size();
+        for (i in Range(0, m)) {
+          if (i == m / 2) splineStarts.push(edgeSegments.size());
+          idx = (corner + i) % m;
+          edge = edges.get(idx);
+          cId =
+            (3.0 +
+              2.875 * i.toFloat() / (m - 1).toFloat() -
+              1.4375 +
+              0.5).toInt() - 3;
+          if (cId != 0) {
+            mEdges.set(idx, Index(edgeSegments.size()));
+            edgeSegments.push(edge)
+          }
+        };
+        mEdges.each(tmpContour.push);
+      } else if (edges.size() >= 1) {
+        // Less than three edge segments for three colors => edges must be split
+        segments = Array<?EdgeSegment>::mfill(6, None());
+        fSplit = edges.first().splitInThirds();
+        segments.set(3 * corner, Some(fSplit[0]));
+        segments.set(3 * corner + 1, Some(fSplit[1]));
+        segments.set(3 * corner + 2, Some(fSplit[2]));
+        if (edges.size() >= 2) {
+          sSplit = edges[1].splitInThirds();
+          segments.set(3 - 3 * corner, Some(sSplit[0]));
+          segments.set(4 - 3 * corner, Some(sSplit[1]));
+          segments.set(5 - 3 * corner, Some(sSplit[2]));
+          segments[0].each(add);
+          segments[1].each(add);
+          segments[2].each(e -> tmpContour.push(Ref(e with {color => white})));
+          segments[3].each(e -> tmpContour.push(Ref(e with {color => white})));
+          splineStarts.push(edgeSegments.size());
+          segments[4].each(add);
+          segments[5].each(add);
+        } else {
+          index = 0;
+          while (segments[index].isNone()) {
+            !index = index + 1;
+          };
+          segments[index].each(add);
+          segments[index + 1].each(e ->
+            tmpContour.push(Ref(e with {color => white}))
+          );
+          splineStarts.push(edgeSegments.size());
+          segments[index + 1].each(add);
+        };
+      } else {
+        edges.each(add)
+      }
+    } else {
+      // Multiple corners
+      cornerCount = corners.size();
+      spline = 0;
+      start = corners[0];
+      m = edges.size();
+      mEdges = Array<Link>::mfillBy(edges.size(), idx ->
+        Ref(edges[idx] with {color => white})
+      );
+      for (i in Range(0, m)) {
+        idx = (start + i) % m;
+        if (spline + 1 < cornerCount && corners[spline + 1] == idx) {
+          splineStarts.push(edgeSegments.size());
+          !spline = spline + 1;
+        };
+        mEdges.set(idx, Index(edgeSegments.size()));
+        edgeSegments.push(edges[idx])
+      };
+      mEdges.each(tmpContour.push);
+    };
+    tmp.push(unsafe_chill_trust_me(tmpContour));
+  });
+  splineStarts.push(edgeSegments.size());
+  splineCount = splineStarts.size() - 1;
+  if (splineCount <= 0) {
+    return shape
+  };
+  distanceMatrixStorage = Array::fill(
+    splineCount,
+    Array::mfill(splineCount, 0.0),
+  );
+  graphEdgeDistances = Vector<Indexed>::mcreate(
+    splineCount * (splineCount - 1) / 2,
+  );
+  for (i in Range(0, splineCount)) {
+    distanceMatrixStorage[i].set(i, -1.0);
+    for (j in Range(i + 1, splineCount)) {
+      dist = splineToSplineDistance(
+        edgeSegments,
+        splineStarts[i],
+        splineStarts[i + 1],
+        splineStarts[j],
+        splineStarts[j + 1],
+        edgeDistancePrecision,
+      );
+      distanceMatrixStorage[i].set(j, dist);
+      distanceMatrixStorage[j].set(i, dist);
+      graphEdgeDistances.push(Indexed(i, j, dist));
+    }
+  };
+  graphEdgeCount = graphEdgeDistances.size();
+  graphEdgeDistances.sortFor(i ~> i.value);
+  edgeMatrixStorage = Array::fill(splineCount, Array::mfill(splineCount, 0));
+  nextEdge = 0;
+  while (
+    nextEdge < graphEdgeCount &&
+    graphEdgeDistances[nextEdge].value != 0.0
+  ) {
+    elem = graphEdgeDistances[nextEdge];
+    edgeMatrixStorage[elem.row].set(elem.col, 1);
+    edgeMatrixStorage[elem.col].set(elem.row, 1);
+    !nextEdge = nextEdge + 1;
+  };
+  coloring = Array::mfill(splineCount, 0);
+  buffer = Array::mfill(splineCount, 0);
+  colorSecondDegreeGraph(coloring, edgeMatrixStorage, splineCount, seed);
+  while (nextEdge < graphEdgeCount) {
+    elem = graphEdgeDistances[nextEdge];
+    _ = tryAddEdge(
+      coloring,
+      edgeMatrixStorage,
+      splineCount,
+      elem.row,
+      elem.col,
+      buffer,
+    );
+    !nextEdge = nextEdge + 1;
+  };
+  colors = Array[EdgeColor::yellow, EdgeColor::cyan, EdgeColor::magenta];
+  spline = -1;
+  colorized = edgeSegments.mapWithIndex((idx, edge) -> {
+    if (splineStarts[spline + 1] == idx) {
+      !spline = spline + 1;
+    };
+    edge with {color => EdgeColor(colors[coloring[spline]])}
+  });
+  Shape(
+    tmp
+      .map(tmpContour ->
+        Contour(
+          tmpContour
+            .map(link ->
+              link match {
+              | Ref(edge) -> edge
+              | Index(idx) -> colorized[idx]
+              }
+            )
+            .toArray(),
+        )
+      )
+      .toArray(),
+    shape.inverseYAxis,
+  );
+}
+
+fun identifyCorners(
+  edges: Array<EdgeSegment>,
+  crossThreshold: Float,
+  addCorner: Int -> void,
+  update: EdgeSegment -> void = _e -> void,
+): void {
+  prevDirection = edges.last().direction(1.0);
+  edges.eachWithIndex((idx, edge) -> {
+    if (
+      isCorner(
+        prevDirection.normalize(),
+        edge.direction(0.0).normalize(),
+        crossThreshold,
+      )
+    ) addCorner(idx);
+    update(edge);
+    !prevDirection = edge.direction(1.0);
+  });
+}
+
+fun edgeToEdgeDistance(a: EdgeSegment, b: EdgeSegment, precision: Int): Float {
+  if (
+    a.point(0.0) == b.point(0.0) ||
+    a.point(0.0) == b.point(1.0) ||
+    a.point(1.0) == b.point(0.0) ||
+    a.point(1.0) == b.point(1.0)
+  ) return 0.0;
+  iFac = 1.0 / precision.toFloat();
+  minDistance = (b.point(0.0) - a.point(0.0)).length();
+  for (i in Range(0, precision)) {
+    t = iFac * i.toFloat();
+    (_, sd) = a.signedDistance(b.point(t));
+    !minDistance = Math.min(minDistance, Math.abs(sd.distance));
+  };
+  for (i in Range(0, precision)) {
+    t = iFac * i.toFloat();
+    (_, sd) = b.signedDistance(a.point(t));
+    !minDistance = Math.min(minDistance, Math.abs(sd.distance));
+  };
+  minDistance;
+}
+
+fun splineToSplineDistance(
+  edgeSegments: readonly Vector<EdgeSegment>,
+  aStart: Int,
+  aEnd: Int,
+  bStart: Int,
+  bEnd: Int,
+  precision: Int,
+): Float {
+  minDistance = Float::inf;
+  for (ai in Range(aStart, aEnd)) {
+    for (bi in Range(bStart, bEnd)) {
+      d = edgeToEdgeDistance(edgeSegments[ai], edgeSegments[bi], precision);
+      !minDistance = Math.min(minDistance, d);
+      if (minDistance == 0.0) {
+        return minDistance;
+      }
+    }
+  };
+  minDistance
+}
+
+fun colorSecondDegreeGraph(
+  coloring: mutable Array<Int>,
+  edgeMatrix: Array<readonly Array<Int>>,
+  vertexCount: Int,
+  seed: Int,
+): void {
+  for (i in Range(0, vertexCount)) {
+    possibleColors = 7;
+    for (j in Range(0, i)) {
+      if (edgeMatrix[i][j] != 0) {
+        !possibleColors = possibleColors.and(1.shl(coloring[j]).not())
+      };
+    };
+    color = 0;
+    possibleColors match {
+    | 1 -> !color = 0
+    | 2 -> !color = 1
+    | 3 ->
+      !color = seed.and(1);
+      !seed = seed.shr(1)
+    | 4 -> !color = 2
+    | 5 ->
+      !color = (seed + 1).and(1).shl(1);
+      !seed = seed.shr(1)
+    | 6 ->
+      !color = seed.and(1) + 1;
+      !seed = seed.shr(1)
+    | 7 ->
+      !color = (seed + 1) % 3;
+      !seed = seed / 3
+    | _ -> void
+    };
+    coloring.set(i, color);
+  };
+}
+
+fun vertexPossibleColors(
+  coloring: readonly Array<Int>,
+  edgeVector: readonly Array<Int>,
+  vertexCount: Int,
+): Int {
+  usedColors = 0;
+  for (i in Range(0, vertexCount)) {
+    if (edgeVector[i] != 0) !usedColors = usedColors.or(1.shl(coloring[i]));
+  };
+  7.and(usedColors.not());
+}
+
+fun uncolorSameNeighbors(
+  uncolored: mutable Vector<Int>,
+  coloring: mutable Array<Int>,
+  edgeMatrix: Array<readonly Array<Int>>,
+  vertex: Int,
+  vertexCount: Int,
+): void {
+  for (i in Range(vertex + 1, vertexCount)) {
+    if (edgeMatrix[vertex][i] != 0 && coloring[i] == coloring[vertex]) {
+      coloring.set(i, -1);
+      uncolored.push(i);
+    }
+  };
+  for (i in Range(0, vertex)) {
+    if (edgeMatrix[vertex][i] != 0 && coloring[i] == coloring[vertex]) {
+      coloring.set(i, -1);
+      uncolored.push(i);
+    }
+  };
+}
+
+const firstPossibleColors: Array<Int> = Array[-1, 0, 1, 0, 2, 2, 1, 0];
+
+fun tryAddEdge(
+  coloring: mutable Array<Int>,
+  edgeMatrix: Array<mutable Array<Int>>,
+  vertexCount: Int,
+  vertexA: Int,
+  vertexB: Int,
+  buffer: mutable Array<Int>,
+): Bool {
+  edgeMatrix[vertexA].set(vertexB, 1);
+  edgeMatrix[vertexB].set(vertexA, 1);
+  if (coloring[vertexA] != coloring[vertexB]) return true;
+  bPossibleColors = vertexPossibleColors(
+    coloring,
+    edgeMatrix[vertexB],
+    vertexCount,
+  );
+  if (bPossibleColors != 0) {
+    coloring.set(vertexB, firstPossibleColors[bPossibleColors]);
+    return true;
+  };
+  coloring.eachWithIndex(buffer.set);
+  uncolored = mutable Vector<Int>[];
+  buffer.set(vertexB, firstPossibleColors[7.and(1.shl(buffer[vertexA]).not())]);
+  uncolorSameNeighbors(uncolored, buffer, edgeMatrix, vertexB, vertexCount);
+  step = 0;
+  while (!uncolored.isEmpty() && step < maxRecolorSteps) {
+    i = uncolored.pop();
+    possibleColors = vertexPossibleColors(buffer, edgeMatrix[i], vertexCount);
+    if (possibleColors != 0) {
+      buffer.set(i, firstPossibleColors[possibleColors]);
+      continue;
+    } else {
+      loop {
+        buffer.set(i, step % 3);
+        !step = step + 1;
+        if (edgeMatrix[i][vertexA] != 0 && buffer[i] == buffer[vertexA]) {
+          break void;
+        }
+      };
+      uncolorSameNeighbors(uncolored, buffer, edgeMatrix, i, vertexCount);
+    }
+  };
+  if (!uncolored.isEmpty()) {
+    edgeMatrix[vertexA].set(vertexB, 0);
+    edgeMatrix[vertexB].set(vertexA, 0);
+    false;
+  } else {
+    buffer.eachWithIndex(coloring.set);
+    true
+  }
+}
+
+fun teardrop(
+  edges: Array<EdgeSegment>,
+  corner: Int,
+  seed: Int,
+): (Array<EdgeSegment>, Int) {
+  white = EdgeColor(EdgeColor::white);
+  (color0, !seed) = switchColor(white, seed);
+  color1 = white;
+  (color2, !seed) = switchColor(color0, seed);
+  (
+    if (edges.size() >= 3) {
+      mEdges = edges.clone();
+      m = edges.size();
+      for (i in Range(0, m)) {
+        idx = (corner + i) % m;
+        edge = mEdges.get(idx);
+        cId =
+          (3.0 +
+            2.875 * i.toFloat() / (m - 1).toFloat() -
+            1.4375 +
+            0.5).toInt() - 3;
+        mEdges.set(
+          idx,
+          edge with {
+            color => cId match {
+            | -1 -> color0
+            | 0 -> color1
+            | 1 -> color2
+            | _ -> invariant_violation("Invalid color index")
+            },
+          },
+        )
+      };
+      unsafe_chill_trust_me(mEdges)
+    } else if (edges.size() >= 1) {
+      // Less than three edge segments for three colors => edges must be split
+      segments = Array<?EdgeSegment>::mfill(6, None());
+      fSplit = edges.first().splitInThirds();
+      segments.set(3 * corner, Some(fSplit[0]));
+      segments.set(3 * corner + 1, Some(fSplit[1]));
+      segments.set(3 * corner + 2, Some(fSplit[2]));
+      (if (edges.size() >= 2) {
+        sSplit = edges[1].splitInThirds();
+        segments.set(3 - 3 * corner, Some(sSplit[0]));
+        segments.set(4 - 3 * corner, Some(sSplit[1]));
+        segments.set(5 - 3 * corner, Some(sSplit[2]));
+        segments.mapWithIndex((idx, optE) ->
+          optE.map(e ->
+            if (idx == 0 || idx == 1) {
+              e with {color => color0}
+            } else if (idx == 2 || idx == 3) {
+              e with {color => color1}
+            } else {
+              e with {color => color2}
+            }
+          )
+        )
+      } else {
+        c = 0;
+        segments.map(optE ->
+          optE.map(e -> {
+            ne = if (c == 0) {
+              e with {color => color0}
+            } else if (c == 1) {
+              e with {color => color1}
+            } else {
+              e with {color => color2}
+            };
+            !c = (c + 1) % 3;
+            ne
+          })
+        )
+      })
+        .filter(optE -> optE.isSome())
+        .map(optE -> optE.fromSome())
+    } else {
+      edges
+    },
+    seed,
+  )
+}
+
+value class EdgeColoringInkTrapCorner(
+  index: Int,
+  prevEdgeLengthEstimate: Float,
+  minor: Bool,
+  color: EdgeColor,
+)
+
+fun isCorner(aDir: Vector2, bDir: Vector2, crossThreshold: Float): Bool {
+  aDir.dotProduct(bDir) <= 0.0 ||
+    Math.abs(aDir.crossProduct(bDir)) > crossThreshold;
+}
+
+fun estimateEdgeLength(edge: EdgeSegment): Float {
+  len = 0.0;
+  prev = edge.point(0.0);
+  for (i in Range(0, egdeLengthPrecision)) {
+    cur = edge.point((i + 1).toFloat() / egdeLengthPrecision.toFloat());
+    !len = len + (cur - prev).length();
+    !prev = cur;
+  };
+  len;
+}
+
+fun switchColor(
+  color: EdgeColor,
+  seed: Int,
+  banned: EdgeColor = EdgeColor(EdgeColor::black),
+): (EdgeColor, Int) {
+  combined = color.and(banned);
+  if (combined.isRed() || combined.isGreen() || combined.isBlue()) {
+    (EdgeColor(combined.value.xor(EdgeColor::white)), seed)
+  } else if (color.isBlack() || color.isWhite()) {
+    (
+      (seed % 3) match {
+      | 0 -> EdgeColor(EdgeColor::cyan)
+      | 1 -> EdgeColor(EdgeColor::magenta)
+      | _ -> EdgeColor(EdgeColor::yellow)
+      },
+      seed / 3,
+    )
+  } else {
+    shifted = color.value.shl(1 + (seed.and(1)));
+    (EdgeColor((shifted.or(shifted.shr(3)).and(EdgeColor::white))), seed.shr(1))
+  }
+}
+
+module end;

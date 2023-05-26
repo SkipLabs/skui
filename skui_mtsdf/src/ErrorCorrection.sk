@@ -1,0 +1,508 @@
+module MTSDF;
+
+const errorFlag: Int = 1;
+const protectedFlag: Int = 2;
+
+mutable class ErrorCorrection(
+  stencil: mutable BitmapRef<UInt8>,
+  projection: Projection,
+  invRange: Float,
+  mutable minDeviationRatio: Float,
+  mutable minImproveRatio: Float,
+) {
+  static fun make(
+    stencil: mutable BitmapRef<UInt8>,
+    projection: Projection,
+    range: Float,
+  ): mutable ErrorCorrection {
+    mutable ErrorCorrection(
+      stencil,
+      projection,
+      1.0 / range,
+      defaultMinDeviationRatio,
+      defaultMinImproveRatio,
+    )
+  }
+
+  mutable fun protectCorners(shape: Shape): void {
+    shape.contours.each(contour -> {
+      if (contour.edges.isEmpty()) return void;
+      prevEdge = contour.edges.last();
+      contour.edges.each(edge -> {
+        commonColor = prevEdge.color.and(edge.color);
+        if (commonColor.and((commonColor.sub(1))).value == 0) {
+          p = this.projection.project(edge.point(0.0));
+          if (shape.inverseYAxis) !p.y = this.stencil.height.toFloat() - p.y;
+          l = Math.floor(p.x - 0.5).toInt();
+          b = Math.floor(p.y - 0.5).toInt();
+          r = l + 1;
+          t = b + 1;
+          // Check that the positions are within bounds.
+          if (
+            l < this.stencil.width &&
+            b < this.stencil.height &&
+            r >= 0 &&
+            t >= 0
+          ) {
+            if (l >= 0 && b >= 0) {
+              this.stencil.updateOne(l, b, v ~>
+                UInt8::truncate(v.or(protectedFlag))
+              )
+            };
+            if (r < this.stencil.width && b >= 0) {
+              this.stencil.updateOne(r, b, v ~>
+                UInt8::truncate(v.or(protectedFlag))
+              )
+            };
+            if (l >= 0 && t < this.stencil.height) {
+              this.stencil.updateOne(l, t, v ~>
+                UInt8::truncate(v.or(protectedFlag))
+              )
+            };
+            if (r < this.stencil.width && t < this.stencil.height) {
+              this.stencil.updateOne(r, t, v ~>
+                UInt8::truncate(v.or(protectedFlag))
+              )
+            }
+          }
+        };
+        !prevEdge = edge;
+      })
+    });
+  }
+
+  mutable fun protectEdges(sdf: mutable BitmapRef<Float>): void {
+    // Horizontal texel pairs
+    radius =
+      protectionRadiusTolerance *
+      this.projection.unscaleVector(Vector2(this.invRange, 0.0)).length();
+    for (y in Range(0, sdf.height)) {
+      for (x in Range(0, sdf.width - 1)) {
+        left = idx -> sdf.elem(x, y, idx);
+        right = idx -> sdf.elem(x + 1, y, idx);
+        lm = fmedian(left(0), left(1), left(2));
+        rm = fmedian(right(0), right(1), right(2));
+        if (Math.abs(lm - 0.5) + Math.abs(rm - 0.5) < radius) {
+          mask = edgeBetweenTexels(left, right);
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x, y, conv),
+            left,
+            lm,
+            mask,
+          );
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x + 1, y, conv),
+            right,
+            rm,
+            mask,
+          );
+        };
+      }
+    };
+    // Vertical texel pairs
+    !radius =
+      protectionRadiusTolerance *
+      this.projection.unscaleVector(Vector2(0.0, this.invRange)).length();
+    for (y in Range(0, sdf.height - 1)) {
+      for (x in Range(0, sdf.width)) {
+        bottom = idx -> sdf.elem(x, y, idx);
+        top = idx -> sdf.elem(x, y + 1, idx);
+        bm = fmedian(bottom(0), bottom(1), bottom(2));
+        tm = fmedian(top(0), top(1), top(2));
+        if (Math.abs(bm - 0.5) + Math.abs(tm - 0.5) < radius) {
+          mask = edgeBetweenTexels(bottom, top);
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x, y, conv),
+            bottom,
+            bm,
+            mask,
+          );
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x, y + 1, conv),
+            top,
+            tm,
+            mask,
+          );
+        }
+      }
+    };
+    // Diagonal texel pairs
+    !radius =
+      protectionRadiusTolerance *
+      this.projection.unscaleVector(
+        Vector2(this.invRange, this.invRange),
+      ).length();
+
+    for (y in Range(0, sdf.height - 1)) {
+      for (x in Range(0, sdf.width - 1)) {
+        lb = idx -> sdf.elem(x, y, idx);
+        rb = idx -> sdf.elem(x + 1, y, idx);
+        lt = idx -> sdf.elem(x, y + 1, idx);
+        rt = idx -> sdf.elem(x + 1, y + 1, idx);
+        mlb = fmedian(lb(0), lb(1), lb(2));
+        mrb = fmedian(rb(0), rb(1), rb(2));
+        mlt = fmedian(lt(0), lt(1), lt(2));
+        mrt = fmedian(rt(0), rt(1), rt(2));
+        if (Math.abs(mlb - 0.5) + Math.abs(mrt - 0.5) < radius) {
+          mask = edgeBetweenTexels(lb, rt);
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x, y, conv),
+            lb,
+            mlb,
+            mask,
+          );
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x + 1, y + 1, conv),
+            rt,
+            mrt,
+            mask,
+          );
+        };
+        if (Math.abs(mrb - 0.5) + Math.abs(mlt - 0.5) < radius) {
+          mask = edgeBetweenTexels(rb, lt);
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x + 1, y, conv),
+            rb,
+            mrb,
+            mask,
+          );
+          protectExtremeChannels(
+            conv -> this.stencil.updateOne(x, y + 1, conv),
+            lt,
+            mlt,
+            mask,
+          );
+        }
+      }
+    };
+  }
+
+  mutable fun protectAll(): void {
+    this.stencil.updateAll(v ~> UInt8::truncate(v.or(protectedFlag)))
+  }
+
+  mutable fun findErrors(sdf: readonly BitmapRef<Float>): void {
+    // Compute the expected deltas between values of horizontally, vertically, and diagonally adjacent texels.
+    hSpan =
+      this.minDeviationRatio *
+      this.projection.unscaleVector(Vector2(this.invRange, 0.0)).length();
+    vSpan =
+      this.minDeviationRatio *
+      this.projection.unscaleVector(Vector2(0.0, this.invRange)).length();
+    dSpan =
+      this.minDeviationRatio *
+      this.projection.unscaleVector(
+        Vector2(this.invRange, this.invRange),
+      ).length();
+    // Inspect all texels.
+    for (y in Range(0, sdf.height)) {
+      for (x in Range(0, sdf.width)) {
+        get = idx -> sdf.elem(x, y, idx);
+        cm = fmedian(get(0), get(1), get(2));
+        protectedFlag =
+          this.stencil.elem(x, y, 0).and(protectedFlag) == protectedFlag;
+        // Mark current texel c with the error flag if an artifact occurs when it's interpolated with any of its 8 neighbors.
+        computeError: UInt8 -> UInt8 = v ->
+          MTSDF.computeError(
+            sdf,
+            x,
+            y,
+            cm,
+            get,
+            v,
+            _p -> mutable BasicArtifactClassifier(hSpan, protectedFlag),
+            _p -> mutable BasicArtifactClassifier(vSpan, protectedFlag),
+            _p -> mutable BasicArtifactClassifier(dSpan, protectedFlag),
+          );
+        this.stencil.updateOne(x, y, v -> computeError(v));
+      }
+    }
+  }
+
+  mutable fun findShapeErrors(
+    sdf: readonly BitmapRef<Float>,
+    shape: Shape,
+    mode: Mode,
+    overlapping: Bool,
+  ): void {
+    // Compute the expected deltas between values of horizontally, vertically, and diagonally adjacent texels.
+    hSpan =
+      this.minDeviationRatio *
+      this.projection.unscaleVector(Vector2(this.invRange, 0.0)).length();
+    vSpan =
+      this.minDeviationRatio *
+      this.projection.unscaleVector(Vector2(0.0, this.invRange)).length();
+    dSpan =
+      this.minDeviationRatio *
+      this.projection.unscaleVector(
+        Vector2(this.invRange, this.invRange),
+      ).length();
+    shapeDistanceChecker = ShapeDistanceChecker::make(
+      sdf,
+      shape,
+      this.projection,
+      this.invRange,
+      this.minImproveRatio,
+      mode,
+      overlapping,
+    );
+    rightToLeft = false;
+    for (y in Range(0, sdf.height)) {
+      row = if (shape.inverseYAxis) sdf.height - y - 1 else y;
+      for (col in Range(0, sdf.width)) {
+        x = if (rightToLeft) sdf.width - col - 1 else col;
+        stencil = this.stencil.elem(x, row, 0);
+        if (stencil.and(errorFlag) != errorFlag) {
+          c = idx -> sdf.elem(x, row, idx);
+          vec = Vector2(x.toFloat() + 0.5, y.toFloat() + 0.5);
+          shapeDistanceChecker.!shapeCoord = this.projection.unproject(vec);
+          shapeDistanceChecker.!sdfCoord = vec;
+          shapeDistanceChecker.!msd = c;
+          shapeDistanceChecker.!protectedFlag =
+            stencil.and(protectedFlag) == protectedFlag;
+          cm = fmedian(c(0), c(1), c(2));
+          // Mark current texel c with the error flag if an artifact occurs when it's interpolated with any of its 8 neighbors.
+          computeError: UInt8 -> UInt8 = v ->
+            MTSDF.computeError(
+              sdf,
+              x,
+              y,
+              cm,
+              c,
+              v,
+              p -> shapeDistanceChecker.classifier(p, hSpan),
+              p -> shapeDistanceChecker.classifier(p, vSpan),
+              p -> shapeDistanceChecker.classifier(p, dSpan),
+            );
+          this.stencil.updateOne(x, y, v -> computeError(v));
+        }
+      }
+    };
+  }
+
+  mutable fun apply(sdf: mutable BitmapRef<Float>): void {
+    for (y in Range(0, sdf.height)) {
+      for (x in Range(0, sdf.width)) {
+        mask = this.stencil.elem(x, y, 0);
+        if (mask.and(errorFlag) == errorFlag) {
+          // Set all color channels to the median.
+          m = fmedian(sdf.elem(x, y, 0), sdf.elem(x, y, 1), sdf.elem(x, y, 2));
+          sdf.set(x, y, Array[m, m, m]);
+        }
+      }
+    }
+  }
+}
+
+fun computeError(
+  sdf: readonly BitmapRef<Float>,
+  x: Int,
+  y: Int,
+  cm: Float,
+  get: Int -> Float,
+  v: UInt8,
+  hArtifactSupplier: Vector2 -> mutable ArtifactClassifier,
+  vArtifactSupplier: Vector2 -> mutable ArtifactClassifier,
+  dArtifactSupplier: Vector2 -> mutable ArtifactClassifier,
+): UInt8 {
+  optL = if (x > 0) {
+    Some(idx -> sdf.elem(x - 1, y, idx))
+  } else {
+    None()
+  };
+  optB = if (y > 0) {
+    Some(idx -> sdf.elem(x, y - 1, idx))
+  } else {
+    None()
+  };
+  optR = if (x < sdf.width - 1) {
+    Some(idx -> sdf.elem(x + 1, y, idx))
+  } else {
+    None()
+  };
+  optT = if (y < sdf.height - 1) {
+    Some(idx -> sdf.elem(x, y + 1, idx))
+  } else {
+    None()
+  };
+  hasArtifact1 = optL
+    .map(l ->
+      hasLinearArtifact(hArtifactSupplier(Vector2(-1.0, 0.0)), cm, get, l)
+    )
+    .default(false);
+  hasArtifact2 = optB
+    .map(b ->
+      hasLinearArtifact(vArtifactSupplier(Vector2(0.0, 1.0)), cm, get, b)
+    )
+    .default(false);
+  hasArtifact3 = optR
+    .map(r ->
+      hasLinearArtifact(hArtifactSupplier(Vector2(1.0, 0.0)), cm, get, r)
+    )
+    .default(false);
+  hasArtifact4 = optT
+    .map(t ->
+      hasLinearArtifact(vArtifactSupplier(Vector2(0.0, 1.0)), cm, get, t)
+    )
+    .default(false);
+  hasArtifact5 = optL
+    .flatMap(l ->
+      optB.map(b ->
+        hasDiagonalArtifact(
+          dArtifactSupplier(Vector2(-1.0, -1.0)),
+          cm,
+          get,
+          l,
+          b,
+          idx -> sdf.elem(x - 1, y - 1, idx),
+        )
+      )
+    )
+    .default(false);
+  hasArtifact6 = optR
+    .flatMap(r ->
+      optB.map(b ->
+        hasDiagonalArtifact(
+          dArtifactSupplier(Vector2(1.0, -1.0)),
+          cm,
+          get,
+          r,
+          b,
+          idx -> sdf.elem(x + 1, y - 1, idx),
+        )
+      )
+    )
+    .default(false);
+  hasArtifact7 = optL
+    .flatMap(l ->
+      optT.map(t ->
+        hasDiagonalArtifact(
+          dArtifactSupplier(Vector2(-1.0, 1.0)),
+          cm,
+          get,
+          l,
+          t,
+          idx -> sdf.elem(x - 1, y + 1, idx),
+        )
+      )
+    )
+    .default(false);
+  hasArtifact8 = optR
+    .flatMap(r ->
+      optT.map(t ->
+        hasDiagonalArtifact(
+          dArtifactSupplier(Vector2(1.0, 1.0)),
+          cm,
+          get,
+          r,
+          t,
+          idx -> sdf.elem(x + 1, y + 1, idx),
+        )
+      )
+    )
+    .default(false);
+  if (
+    hasArtifact1 ||
+    hasArtifact2 ||
+    hasArtifact3 ||
+    hasArtifact4 ||
+    hasArtifact5 ||
+    hasArtifact6 ||
+    hasArtifact7 ||
+    hasArtifact8
+  ) {
+    UInt8::truncate(v.or(errorFlag))
+  } else {
+    v
+  }
+}
+
+/// Determines if the channel contributes to an edge between the two texels a, b.
+fun edgeBetweenTexelsChannel(
+  a: Int -> Float,
+  b: Int -> Float,
+  channel: Int,
+): Bool {
+  // Find interpolation ratio t (0 < t < 1) where an edge is expected (mix(a[channel], b[channel], t) == 0.5).
+  t = (a(channel) - 0.5) / (a(channel) - b(channel));
+  if (t > 0.0 && t < 1.0) {
+    // Interpolate channel values at t.
+    c = Array[fmix(a(0), b(0), t), fmix(a(1), b(1), t), fmix(a(2), b(2), t)];
+    // This is only an edge if the zero-distance channel is the median.
+    fmedian(c[0], c[1], c[2]) == c[channel];
+  } else {
+    false;
+  }
+}
+
+/// Returns a bit mask of which channels contribute to an edge between the two texels a, b.
+fun edgeBetweenTexels(a: Int -> Float, b: Int -> Float): Int {
+  (if (edgeBetweenTexelsChannel(a, b, 0)) EdgeColor::red else 0) +
+    (if (edgeBetweenTexelsChannel(a, b, 1)) EdgeColor::green else 0) +
+    if (edgeBetweenTexelsChannel(a, b, 2)) EdgeColor::blue else 0;
+}
+
+/// Marks texel as protected if one of its non-median channels is present in the channel mask.
+fun protectExtremeChannels(
+  apply: (UInt8 ~> UInt8) -> void,
+  msd: Int -> Float,
+  m: Float,
+  mask: Int,
+): void {
+  if (
+    (mask.and(EdgeColor::red) != 0 && msd(0) != m) ||
+    (mask.and(EdgeColor::green) != 0 && msd(1) != m) ||
+    (mask.and(EdgeColor::blue) != 0 && msd(2) != m)
+  ) apply(v ~> UInt8::truncate(v.or(protectedFlag)));
+}
+
+fun msdfErrorCorrection(
+  sdf: mutable BitmapRef<Float>,
+  shape: Shape,
+  projection: Projection,
+  range: Float,
+  config: Configuration,
+  mode: Mode,
+): void {
+  if (config.errorCorrection.errorMode == Disabled()) return void;
+  buffer = BitmapRef::make(1, sdf.width, sdf.height, UInt8::truncate(0));
+  ec = mutable ErrorCorrection(
+    buffer,
+    projection,
+    1.0 / range,
+    config.errorCorrection.minDeviationRatio,
+    config.errorCorrection.minImproveRatio,
+  );
+  config.errorCorrection.errorMode match {
+  | Disabled()
+  | Indiscriminate() ->
+    void
+  | EdgePriotity() ->
+    ec.protectCorners(shape);
+    ec.protectEdges(sdf)
+  | EdgeOnly() -> ec.protectAll()
+  };
+  if (
+    config.errorCorrection.distanceMode == DoNotCheck() ||
+    (config.errorCorrection.distanceMode == DistanceAtEdge() &&
+      config.errorCorrection.errorMode != EdgeOnly())
+  ) {
+    ec.findErrors(sdf);
+    if (config.errorCorrection.distanceMode == DistanceAtEdge()) {
+      ec.protectAll()
+    };
+  };
+  if (
+    config.errorCorrection.distanceMode == AlwaysCheck() ||
+    config.errorCorrection.distanceMode == DistanceAtEdge()
+  ) {
+    if (config.overlapSupport) {
+      ec.findShapeErrors(sdf, shape, mode, true);
+    } else {
+      ec.findShapeErrors(sdf, shape, mode, false);
+    }
+  };
+  ec.apply(sdf);
+}
+
+module end;

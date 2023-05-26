@@ -1,0 +1,89 @@
+module MTSDF;
+
+fun shoelace(a: Vector2, b: Vector2): Float {
+  (b.x - a.x) * (a.y + b.y)
+}
+
+class Contour(edges: Array<EdgeSegment>) uses Equality {
+  //
+  fun bound(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+  ): (Float, Float, Float, Float) {
+    this.edges.each(e -> (!l, !b, !r, !t) = e.bound(l, b, r, t));
+    (l, b, r, t)
+  }
+
+  fun boundMiters(
+    l: Float,
+    b: Float,
+    r: Float,
+    t: Float,
+    border: Float,
+    miterLimit: Float,
+    polarity: Int,
+  ): (Float, Float, Float, Float) {
+    if (!this.edges.isEmpty()) {
+      prevDir = this.edges.last().direction(1.0).normalize(true);
+      this.edges.each(edge -> {
+        dir = Vector2(0.0, 0.0) - edge.direction(0.0).normalize(true);
+        dot = prevDir.crossProduct(dir);
+        if (polarity.toFloat() * dot >= 0.0) {
+          miterLength = miterLimit;
+          q = 0.5 * (1.0 - dot);
+          if (q > 0.0) !miterLength = Math.min(1.0 / Math.sqrt(q), miterLimit);
+          miter =
+            edge.point(0.0) +
+            (prevDir + dir).normalize(true).mult(border * miterLength);
+          (!l, !b, !r, !t) = pointBounds(miter, l, b, r, t);
+        };
+        !prevDir = edge.direction(1.0).normalize(true);
+      })
+    };
+    (l, b, r, t)
+  }
+
+  fun winding(): Int {
+    if (this.edges.isEmpty()) {
+      0
+    } else {
+      total = 0.0;
+      if (this.edges.size() == 1) {
+        edge = this.edges[0];
+        a = edge.point(0.0);
+        b = edge.point(1.0 / 3.0);
+        c = edge.point(2.0 / 3.0);
+        !total = total + shoelace(a, b);
+        !total = total + shoelace(b, c);
+        !total = total + shoelace(c, a);
+      } else if (this.edges.size() == 2) {
+        edge0 = this.edges[0];
+        edge1 = this.edges[1];
+        a = edge0.point(0.0);
+        b = edge0.point(0.5);
+        c = edge1.point(0.0);
+        d = edge1.point(0.5);
+        !total = total + shoelace(a, b);
+        !total = total + shoelace(b, c);
+        !total = total + shoelace(c, d);
+        !total = total + shoelace(d, a);
+      } else {
+        prev = this.edges.last().point(0.0);
+        this.edges.each(edge -> {
+          cur = edge.point(0.0);
+          !total = total + shoelace(prev, cur);
+          !prev = cur;
+        })
+      };
+      sign(total)
+    };
+  }
+
+  fun reverse(): Contour {
+    Contour(this.edges.reversed().map(e -> e.reverse()))
+  }
+}
+
+module end;

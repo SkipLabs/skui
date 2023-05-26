@@ -1,0 +1,261 @@
+module SKUIMTSDFTest;
+
+@test
+fun font(): void {
+  Font().run()
+}
+
+const tolerance: Float = 0.0003;
+
+class Result{
+  normalized: MTSDF.Shape,
+  colorized: MTSDF.Shape,
+  projection: MTSDF.Projection,
+  range: Float,
+  scanlines: Array<Bool>,
+  msdfBitmap: Array<Float>,
+  msdfBitmapScanlined: Array<Float>,
+  protectCorners: Array<UInt8>,
+  protectEdges: Array<UInt8>,
+  findErrors: Array<UInt8>,
+  msdfBitmapCorrected: Array<Float>,
+  image: Array<UInt8>,
+}
+
+class FontCase{
+  char: Char,
+  shape: MTSDF.Shape,
+  expected: Result,
+  width: Int = 64,
+  height: Int = 64,
+  rangeMode: MTSDF.RangeMode = MTSDF.Px(8.0),
+  orientation: MTSDF.Orientation = MTSDF.Keep(),
+  fillRule: MTSDF.FillRule = MTSDF.NoneZero(),
+  scanlinePass: Bool = true,
+  angleThreshold: Float = MTSDF.defaultAngleThreshold.toFloat(),
+  coloringSeed: Int = 0,
+  config: MTSDF.Configuration = MTSDF.Configuration{},
+  edgeColoring: (
+    MTSDF.Shape,
+    Float,
+    Int,
+  ) ~> MTSDF.Shape = MTSDF.edgeColoringSimple,
+} extends Case {
+  fun exec(_idx: Int): void {
+    shape = this.shape.normalize();
+    expectEquals(
+      shape,
+      this.expected.normalized,
+      Some(`normalize[${this.char}]`),
+    );
+    !shape = this.edgeColoring(shape, this.angleThreshold, this.coloringSeed);
+    expectEquals(
+      shape,
+      this.expected.colorized,
+      Some(`coloring[${this.char}]`),
+    );
+    (translate, scale, _, _) = MTSDF.autoFrame(
+      shape,
+      this.rangeMode,
+      this.height,
+      Some(this.width),
+    );
+    projection = MTSDF.Projection(scale, translate);
+    expectLikes(
+      projection,
+      this.expected.projection,
+      Some(`projection[${this.char}]`),
+      0.0001,
+    );
+    range = this.rangeMode.range(scale);
+    expectLikes(
+      range,
+      this.expected.range,
+      Some(`range[${this.char}]`),
+      0.00002,
+    );
+    sdf = MTSDF.BitmapRef::make(3, this.width, this.height, 0.0);
+    MTSDF.generateDistanceField(
+      sdf,
+      shape,
+      projection,
+      range,
+      MTSDF.Multi(),
+      this.config.overlapSupport,
+    );
+    expectLikes(
+      Checker(sdf.data.chill(), this.width),
+      Checker(this.expected.msdfBitmap, this.width),
+      Some(`MultiSDF[${this.char}]`),
+      tolerance,
+      v ~> v.toString(),
+    );
+    scanlines = Array::mfill(sdf.width * sdf.height, false);
+    sl = 0;
+    for (y in Range(0, sdf.height)) {
+      scanline = shape.scanline(projection.unprojectY(y.toFloat() + 0.5));
+      for (x in Range(0, sdf.width)) {
+        filled = scanline.filled(
+          projection.unprojectX(x.toFloat() + 0.5),
+          this.fillRule,
+        );
+        scanlines.set(sl, filled);
+        !sl = sl + 1;
+      }
+    };
+    expectEquals(
+      scanlines.chill(),
+      this.expected.scanlines,
+      Some(`scanlines[${this.char}]`),
+    );
+    MTSDF.multiDistanceSignCorrection(sdf, shape, projection, this.fillRule);
+    expectLikes(
+      Checker(sdf.data.chill(), this.width),
+      Checker(this.expected.msdfBitmapScanlined, this.width),
+      Some(`multiDistanceSignCorrection[${this.char}]`),
+      tolerance,
+      v ~> v.toString(),
+    );
+    postConfig = this.config.doNotCheckDistance();
+    buffer = MTSDF.BitmapRef::make(
+      1,
+      sdf.width,
+      sdf.height,
+      UInt8::truncate(0),
+    );
+    ec = mutable MTSDF.ErrorCorrection(
+      buffer,
+      projection,
+      1.0 / range,
+      postConfig.errorCorrection.minDeviationRatio,
+      postConfig.errorCorrection.minImproveRatio,
+    );
+    ec.protectCorners(shape);
+    expectEquals(
+      buffer.data.chill(),
+      this.expected.protectCorners,
+      Some(`protectCorners[${this.char}]`),
+      v ~> toString(v, this.width),
+    );
+    ec.protectEdges(sdf);
+    expectEquals(
+      buffer.data.chill(),
+      this.expected.protectEdges,
+      Some(`protectEdges[${this.char}]`),
+      v ~> toString(v, this.width),
+    );
+    ec.findErrors(sdf);
+    expectEquals(
+      buffer.data.chill(),
+      this.expected.findErrors,
+      Some(`findErrors[${this.char}]`),
+      v ~> toString(v, this.width),
+    );
+    ec.apply(sdf);
+    expectLikes(
+      Checker(sdf.data.chill(), this.width),
+      Checker(this.expected.msdfBitmapCorrected, this.width),
+      Some(`msdfErrorCorrection[${this.char}]`),
+      tolerance,
+      v ~> v.toString(),
+    );
+    image = sdf.toImage();
+    like = SKUIMTSDFTest.checkImage(image, this.expected.image, 3);
+    if (save && SkargoVersion.kTarget != "wasm32-unknown-unknown" && like) {
+      _ = image.save(`results/mtsdf/font/char_${this.char.code()}.png`)
+    };
+    if (!like) {
+      throw SKTest.ExpectationError(
+        `expected equivalent [image[${this.char}]]`,
+        toString(this.expected.image, this.width),
+        Utils.toString(image.data),
+      )
+    }
+  }
+}
+
+class Font() {
+  //
+  fun run(): void {
+    this.cases().eachWithIndex((idx, case) -> case.exec(idx))
+  }
+
+  protected fun cases(): Array<Case> {
+    Array[
+      FontCase{
+        char => Char::fromCode(65),
+        shape => SKUIMTSDFTest65.shape,
+        scanlinePass => SKUIMTSDFTest65.scanlinePass,
+        expected => SKUIMTSDFTest65.result,
+      },
+      FontCase{
+        char => Char::fromCode(66),
+        shape => SKUIMTSDFTest66.shape,
+        scanlinePass => SKUIMTSDFTest66.scanlinePass,
+        expected => SKUIMTSDFTest66.result,
+      },
+      FontCase{
+        char => Char::fromCode(67),
+        shape => SKUIMTSDFTest67.shape,
+        scanlinePass => SKUIMTSDFTest67.scanlinePass,
+        expected => SKUIMTSDFTest67.result,
+      },
+      FontCase{
+        char => Char::fromCode(68),
+        shape => SKUIMTSDFTest68.shape,
+        scanlinePass => SKUIMTSDFTest68.scanlinePass,
+        expected => SKUIMTSDFTest68.result,
+      },
+      FontCase{
+        char => Char::fromCode(69),
+        shape => SKUIMTSDFTest69.shape,
+        scanlinePass => SKUIMTSDFTest69.scanlinePass,
+        expected => SKUIMTSDFTest69.result,
+      },
+      FontCase{
+        char => Char::fromCode(70),
+        shape => SKUIMTSDFTest70.shape,
+        scanlinePass => SKUIMTSDFTest70.scanlinePass,
+        expected => SKUIMTSDFTest70.result,
+      },
+      FontCase{
+        char => Char::fromCode(97),
+        shape => SKUIMTSDFTest97.shape,
+        scanlinePass => SKUIMTSDFTest97.scanlinePass,
+        expected => SKUIMTSDFTest97.result,
+      },
+      FontCase{
+        char => Char::fromCode(33),
+        shape => SKUIMTSDFTest33.shape,
+        scanlinePass => SKUIMTSDFTest33.scanlinePass,
+        expected => SKUIMTSDFTest33.result,
+      },
+      FontCase{
+        char => Char::fromCode(38),
+        shape => SKUIMTSDFTest38.shape,
+        scanlinePass => SKUIMTSDFTest38.scanlinePass,
+        expected => SKUIMTSDFTest38.result,
+      },
+      FontCase{
+        char => Char::fromCode(64),
+        shape => SKUIMTSDFTest64.shape,
+        scanlinePass => SKUIMTSDFTest64.scanlinePass,
+        expected => SKUIMTSDFTest64.result,
+      },
+      FontCase{
+        char => Char::fromCode(233),
+        shape => SKUIMTSDFTest233.shape,
+        scanlinePass => SKUIMTSDFTest233.scanlinePass,
+        expected => SKUIMTSDFTest233.result,
+      },
+      FontCase{
+        char => Char::fromCode(97),
+        shape => SKUIMTSDFTestI97.shape,
+        scanlinePass => SKUIMTSDFTestI97.scanlinePass,
+        expected => SKUIMTSDFTestI97.result,
+      },
+    ]
+  }
+}
+
+module end;

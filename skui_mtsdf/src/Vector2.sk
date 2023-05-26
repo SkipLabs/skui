@@ -1,0 +1,132 @@
+module MTSDF;
+
+class Vector2(x: Float, y: Float) uses Orderable, Show, Equivalent {
+  //
+  fun compare(other: Vector2): Order {
+    comp = this.x.compare(other.x);
+    if (comp == EQ()) {
+      this.y.compare(other.y)
+    } else {
+      comp
+    }
+  }
+
+  fun like(other: Vector2, precision: Float = precisionEpsilon): Bool {
+    Math.like(this.x, other.x, precision) &&
+      Math.like(this.y, other.y, precision)
+  }
+
+  fun length(): Float {
+    Math.sqrt(this.x * this.x + this.y * this.y)
+  }
+
+  fun direction(): Float {
+    Math.atan2(this.x, this.y)
+  }
+
+  fun normalize(allowZero: Bool = false): this {
+    len = this.length();
+    if (Math.like(len, 0.0)) {
+      Vector2(0.0, if (allowZero) 0.0 else 1.0)
+    } else {
+      Vector2(this.x / len, this.y / len)
+    }
+  }
+
+  fun orthogonal(polarity: Bool): this {
+    if (polarity) {
+      Vector2(-this.y, this.x)
+    } else {
+      Vector2(this.y, -this.x)
+    }
+  }
+
+  fun orthonormal(polarity: Bool = false, allowZero: Bool = false): this {
+    len = this.length();
+    if (Math.like(len, 0.0)) {
+      y = if (allowZero) 0.0 else 1.0;
+      if (polarity) Vector2(0.0, y) else Vector2(0.0, -y)
+    } else if (polarity) {
+      Vector2(-this.y / len, this.x / len)
+    } else {
+      Vector2(this.y / len, -this.x / len)
+    }
+  }
+
+  fun project(vector: Vector2, positive: Bool): this {
+    n = this.normalize(true);
+    t = vector.dotProduct(n);
+    if (positive && Math.lowerOrEquals(t, 0.0)) {
+      Vector2(0.0, 0.0)
+    } else {
+      n.mult(t)
+    }
+  }
+
+  fun mult(value: Float): Vector2 {
+    Vector2(this.x * value, this.y * value)
+  }
+
+  fun div(value: Float): Vector2 {
+    Vector2(this.x / value, this.y / value)
+  }
+
+  fun add(value: Float): Vector2 {
+    Vector2(this.x + value, this.y + value)
+  }
+
+  fun sub(value: Float): Vector2 {
+    Vector2(this.x - value, this.y - value)
+  }
+
+  fun dotProduct(other: Vector2): Float {
+    this.x * other.x + this.y * other.y
+  }
+
+  fun crossProduct(other: Vector2): Float {
+    this.x * other.y - this.y * other.x
+  }
+
+  fun *(other: Vector2): Vector2 {
+    Vector2(this.x * other.x, this.y * other.y)
+  }
+
+  fun -(other: Vector2): Vector2 {
+    Vector2(this.x - other.x, this.y - other.y)
+  }
+
+  fun +(other: Vector2): Vector2 {
+    Vector2(this.x + other.x, this.y + other.y)
+  }
+
+  fun neg(): Vector2 {
+    Vector2(-this.x, -this.y)
+  }
+
+  fun /(other: Vector2): Vector2 {
+    Vector2(this.x / other.x, this.y / other.y)
+  }
+
+  fun inv(): Vector2 {
+    Vector2(1.0 / this.x, 1.0 / this.y)
+  }
+
+  fun middle(): Vector2 {
+    s = (this.x + this.y) / 2.0;
+    Vector2(s, s);
+  }
+
+  fun toOffset(): Geometry.Offset {
+    Geometry.Offset(this.x, this.y)
+  }
+
+  fun toSize(): Geometry.Size {
+    Geometry.Size(this.x, this.y)
+  }
+
+  fun toString(): String {
+    `(${this.x}, ${this.y})`
+  }
+}
+
+module end;

@@ -6,7 +6,7 @@ auto-remove-state = true
 test-harness = "SKUIFontTest.main"
 
 [dependencies]
-skui_common = { "path" = "skui_common" }
+skui_common = {}
 
 #[[bin]]
 #name = "skuifont"

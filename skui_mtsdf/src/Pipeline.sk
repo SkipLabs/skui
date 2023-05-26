@@ -1,0 +1,430 @@
+module MTSDF;
+
+const pxRange: Int = 16;
+
+base class Preprocess uses Equality {
+  children =
+  | NoPreprocess()
+  | WindingPreprocess()
+}
+
+base class ErrorMode uses Equality {
+  children =
+  /// Skips error correction pass.
+  | Disabled()
+  /// Corrects all discontinuities of the distance field regardless if edges are adversely affected.
+  | Indiscriminate()
+  /// Corrects artifacts at edges and other discontinuous distances only if it does not affect edges or corners.
+  | EdgePriotity()
+  /// Configuration of whether to use an algorithm that computes the exact shape distance at the positions of suspected artifacts. This algorithm can be much slower.
+  | EdgeOnly()
+}
+
+base class DistanceMode uses Equality {
+  children =
+  | DoNotCheck()
+  | DistanceAtEdge()
+  | AlwaysCheck()
+}
+
+base class RangeMode(value: Float) uses Equality {
+  children =
+  | Unit()
+  | Px()
+
+  fun range(scale: Vector2): Float
+  | Unit(range) -> range
+  | Px(pxRange) -> pxRange / Math.min(scale.x, scale.y)
+
+  fun pxRange(scale: Vector2): Float
+  | Unit(range) -> range * Math.min(scale.x, scale.y)
+  | Px(pxRange) -> pxRange
+}
+
+base class Orientation uses Equality {
+  children =
+  | Keep()
+  | Reverse()
+  | Guess()
+}
+
+/// The default value of minDeviationRatio.
+const defaultMinDeviationRatio: Float = 1.11111111111111111;
+/// The default value of minImproveRatio.
+const defaultMinImproveRatio: Float = 1.11111111111111111;
+
+class ErrorConfiguration{
+  /// Mode of operation.
+  errorMode: ErrorMode = EdgePriotity(),
+  /// Configuration of whether to use an algorithm that computes the exact shape distance at the positions of suspected artifacts.
+  /// This algorithm can be much slower.
+  distanceMode: DistanceMode = DistanceAtEdge(),
+  /// The minimum ratio between the actual and maximum expected distance delta to be considered an error.
+  minDeviationRatio: Float = defaultMinDeviationRatio,
+  /// The minimum ratio between the pre-correction distance error and the post-correction distance error. Has no effect for DO_NOT_CHECK_DISTANCE.
+  minImproveRatio: Float = defaultMinImproveRatio,
+} {
+  fun doNotCheckDistance(): ErrorConfiguration {
+    !this.distanceMode = DoNotCheck();
+    this;
+  }
+}
+
+/// The configuration of the distance field generator algorithm.
+class Configuration{
+  /// Specifies whether to use the version of the algorithm that supports overlapping contours with the same winding. May be set to false to improve performance when no such contours are present.
+  overlapSupport: Bool = true,
+  /// Configuration of the error correction pass.
+  errorCorrection: ErrorConfiguration = ErrorConfiguration{},
+} {
+  fun doNotCheckDistance(): Configuration {
+    !this.errorCorrection = this.errorCorrection.doNotCheckDistance();
+    this;
+  }
+}
+
+const tolerance: Float = 0.0003;
+
+fun toMSDF{
+  char: Char,
+  shape: Shape,
+  pxRange: Int = MTSDF.pxRange,
+  fillRule: FillRule = NoneZero(),
+  angleThreshold: Float = defaultAngleThreshold.toFloat(),
+  coloringSeed: Int = 0,
+  edgeColoring: (Shape, Float, Int) ~> Shape = edgeColoringSimple,
+}: (Ui.Image, (Geometry.Rect, Float) ~> Geometry.Rect) {
+  !shape = shape.normalize();
+  !shape = edgeColoring(shape, angleThreshold, coloringSeed);
+  (translate, _, width, height) = check(shape, pxRange);
+  projection = Projection(Vector2(1.0, 1.0), translate);
+  range = Px(pxRange.toFloat()).range(projection.scale);
+  sdf = MTSDF.BitmapRef::make(3, width, height, 0.0);
+  MTSDF.generateDistanceField(
+    sdf,
+    shape,
+    projection,
+    range,
+    MTSDF.Multi(),
+    true, //overlapSupport
+  );
+  MTSDF.multiDistanceSignCorrection(sdf, shape, projection, fillRule);
+  buffer = MTSDF.BitmapRef::make(1, sdf.width, sdf.height, UInt8::truncate(0));
+  ec = mutable MTSDF.ErrorCorrection(
+    buffer,
+    projection,
+    1.0 / range,
+    defaultMinDeviationRatio,
+    defaultMinImproveRatio,
+  );
+  ec.protectCorners(shape);
+  ec.protectEdges(sdf);
+  ec.findErrors(sdf);
+  ec.apply(sdf);
+  image = sdf.toImage(false);
+  sdfISize = Vector2(width.toFloat(), height.toFloat());
+  (
+    image,
+    (bounds, scale) ~> {
+      iSize = sdfISize.mult(scale);
+      iTranslate = projection.translate.mult(scale);
+      Geometry.Rect::fromOffsetSize(
+        bounds.topLeft() - iTranslate.toOffset(),
+        iSize.toSize(),
+      );
+    },
+  )
+}
+
+fun compute{
+  shape: Shape,
+  mode: Mode = Multi(),
+  preprocess: Preprocess = NoPreprocess(),
+  fillRule: FillRule = NoneZero(),
+  width: Int = 64,
+  height: Int = 64,
+  autoFrame: Bool = false,
+  rangeMode: RangeMode = Px(2.0),
+  angleThreshold: Int = defaultAngleThreshold,
+  yFlip: Bool = false,
+  estimateError: Bool = false,
+  skipColoring: Bool = false,
+  orientation: Orientation = Keep(),
+  coloringSeed: Int = 0,
+  edgeColoring: (Shape, Float, Int) ~> Shape = edgeColoringSimple,
+  explicitErrorCorrectionMode: Bool = false,
+  generatorConfig: Configuration = Configuration{},
+  scanlinePass: Bool = true,
+}: Ui.Image {
+  invariant(shape.validate(), "The geometry of the loaded shape is invalid.");
+  preprocess match {
+  | NoPreprocess() -> void
+  | WindingPreprocess() -> !shape = shape.orientContours()
+  };
+  !shape = shape.normalize();
+  if (yFlip) !shape.inverseYAxis = !shape.inverseYAxis;
+  bounds = if (autoFrame || orientation == Guess()) {
+    shape.getBounds()
+  } else {
+    (0.0, 0.0, 0.0, 0.0)
+  };
+  // Auto-frame
+  (translate, scale, _, _) = if (autoFrame) {
+    MTSDF.autoFrame(shape, rangeMode, height, Some(width))
+  } else {
+    (Vector2(0.0, 0.0), Vector2(1.0, 1.0), Vector2(0.0, 0.0), width)
+  };
+  projection = Projection(scale, translate);
+  range = rangeMode.range(scale);
+  sdf = mode match {
+  | Single()
+  | Pseudo() ->
+    BitmapRef::make(1, width, height, 0.0)
+  | Multi() -> BitmapRef::make(3, width, height, 0.0)
+  | MultiAndTrue() -> BitmapRef::make(4, width, height, 0.0)
+  };
+  postConfig = generatorConfig;
+  if (scanlinePass) {
+    !generatorConfig.errorCorrection.errorMode = Disabled();
+    !postConfig.errorCorrection.distanceMode = DoNotCheck();
+  };
+  mode match {
+  | Single()
+  | Pseudo() ->
+    generateDistanceField(
+      sdf,
+      shape,
+      projection,
+      range,
+      mode,
+      generatorConfig.overlapSupport,
+    )
+  | Multi()
+  | MultiAndTrue() ->
+    if (!skipColoring) {
+      !shape = edgeColoring(shape, angleThreshold.toFloat(), coloringSeed)
+    };
+    generateDistanceField(
+      sdf,
+      shape,
+      projection,
+      range,
+      mode,
+      generatorConfig.overlapSupport,
+    );
+    msdfErrorCorrection(sdf, shape, projection, range, generatorConfig, mode)
+  };
+  (l, b, r, t) = bounds;
+  if (orientation == Guess()) {
+    // Get sign of signed distance outside bounds
+    p = Vector2(l - (r - l) - 1.0, b - (t - b) - 1.0);
+    shapeDistanceFinder = ShapeDistanceFinder::make(
+      shape,
+      if (generatorConfig.overlapSupport) {
+        OverlappingSelectors::make(shape, mode)
+      } else {
+        SimpleSelectors::make(shape, mode)
+      },
+      false,
+    );
+    distance = shapeDistanceFinder.distance(p).resolve();
+    !orientation = if (distance <= 0.0) Keep() else Reverse();
+  };
+  if (orientation == Reverse()) {
+    sdf.data.eachWithIndex((idx, v) -> sdf.data.set(idx, 1.0 - v))
+  };
+  if (scanlinePass) {
+    mode match {
+    | Single()
+    | Pseudo() ->
+      distanceSignCorrection(sdf, shape, projection, fillRule)
+    | Multi()
+    | MultiAndTrue() ->
+      multiDistanceSignCorrection(sdf, shape, projection, fillRule);
+      msdfErrorCorrection(sdf, shape, projection, range, postConfig, mode)
+    };
+  };
+  sdf.toImage(true)
+}
+
+class MDC(
+  minDistance: SignedDistance = SignedDistance::new(),
+  optNearEdge: ?EdgeSegment = None(),
+  nearParam: Float = 0.0,
+) {
+  //
+  fun check(p: Vector2): MDC {
+    minDistance = this.minDistance;
+    this.optNearEdge.each(edge ->
+      !minDistance = edge.distanceToPseudoDistance(
+        minDistance,
+        p,
+        this.nearParam,
+      )
+    );
+    !this.minDistance = minDistance;
+    this;
+  }
+}
+
+fun sdf(
+  sdf: mutable BitmapRef<Float>,
+  shape: Shape,
+  projection: Projection,
+  range: Float,
+  configuration: Configuration,
+): void {
+  generateDistanceField(
+    sdf,
+    shape,
+    projection,
+    range,
+    Single(),
+    configuration.overlapSupport,
+  )
+}
+
+fun generateDistanceField(
+  sdf: mutable BitmapRef<Float>,
+  shape: Shape,
+  projection: Projection,
+  range: Float,
+  mode: Mode,
+  overlapping: Bool,
+): void {
+  distanceFinder = ShapeDistanceFinder::make(
+    shape,
+    if (overlapping) OverlappingSelectors::make(shape, mode) else {
+      SimpleSelectors::make(shape, mode)
+    },
+  );
+  rightToLeft = false;
+  for (y in Range(0, sdf.height)) {
+    row = if (shape.inverseYAxis) sdf.height - y - 1 else y;
+    for (col in Range(0, sdf.width)) {
+      x = if (rightToLeft) sdf.width - col - 1 else col;
+      p = projection.unproject(Vector2(x.toFloat() + 0.5, y.toFloat() + 0.5));
+      distance = distanceFinder.distance(p);
+      sdf.set(x, row, distance.compute(range))
+    };
+    !rightToLeft = !rightToLeft;
+  }
+}
+
+fun pixelFloatToByte(x: Float): UInt8 {
+  UInt8::truncate(Math.clamp(256.0 * x, 0.0, 255.0).toInt());
+}
+
+fun pixelByteToFloat(x: UInt8): Float {
+  1.0 / 255.0 * x.toFloat();
+}
+
+fun size(bounds: (Float, Float, Float, Float)): Geometry.Size {
+  (l, b, r, t) = bounds;
+  Geometry.Size(r - l, t - b)
+}
+
+fun autoFrame(
+  shape: Shape,
+  rangeMode: RangeMode,
+  height: Int,
+  optWidth: ?Int = None(),
+  adjust: Bool = true,
+): (Vector2, Vector2, Vector2, Int) {
+  (l, b, r, t) = shape.getBounds();
+  invariant(l < r && b < t, "Invalid Shape bound.");
+  m = 0.5;
+  width = optWidth match {
+  | Some(w) -> w
+  | _ ->
+    dims = Vector2(r - l, t - b);
+    rangeMode match {
+    | Unit _ -> Math.ceil(dims.x * height.toFloat() / dims.y).toInt()
+    | Px(pxRange) ->
+      space = (2.0 * m * pxRange);
+      sy = (height.toFloat() - space) / dims.y;
+      Math.ceil(dims.x * sy + space).toInt()
+    }
+  };
+  frame = Vector2(width.toFloat(), height.toFloat());
+  rangeMode match {
+  | Unit(range) ->
+    v = m * range;
+    (!l, !b, !r, !t) = (l - v, b - v, r + v, t + v)
+  | Px(pxRange) -> !frame = frame.sub(2.0 * m * pxRange)
+  };
+  invariant(
+    frame.x > 0.0 && frame.y > 0.0,
+    "Cannot fit the specified pixel range.",
+  );
+  dims = Vector2(r - l, t - b);
+  (translate, scale) = if (dims.x * frame.y < dims.y * frame.x) {
+    avgScale = frame.y / dims.y;
+    (
+      if (adjust) {
+        Vector2(0.5 * (frame.x / frame.y * dims.y - dims.x) - l, -b)
+      } else {
+        Vector2(0.0, 0.0)
+      },
+      Vector2(avgScale, avgScale),
+    )
+  } else {
+    avgScale = frame.x / dims.x;
+    (
+      if (adjust) {
+        Vector2(-l, 0.5 * (frame.y / frame.x * dims.x - dims.y) - b)
+      } else {
+        Vector2(0.0, 0.0)
+      },
+      Vector2(avgScale, avgScale),
+    );
+  };
+  rangeMode match {
+  | Px(pxRange) -> !translate = translate + scale.inv().mult(m * pxRange)
+  | Unit _ -> void
+  };
+  (translate, scale, dims, width)
+}
+
+fun forHeight(
+  shape: Shape,
+  pxRange: Float,
+  height: Int,
+  optWidth: ?Int = None(),
+): (Projection, Vector2, Int) {
+  (vTranslate, vScale, dims, width) = autoFrame(
+    shape,
+    Px(pxRange),
+    height,
+    optWidth,
+    false,
+  );
+  (Projection(vScale, vTranslate), dims, width)
+}
+
+// Uses 2D coordinates (bottom > top)
+fun check(shape: Shape, pxRange: Int): (Vector2, Vector2, Int, Int) {
+  (l, t, r, b) = shape.getBounds();
+  dx = 0.0;
+  if (l < 0.0) {
+    !dx = Math.ceil(-l);
+    !l = l + dx;
+    !r = r + dx;
+  };
+  dy = 0.0;
+  if (t < 0.0) {
+    !dy = Math.ceil(-t);
+    !t = t + dy;
+    !b = b + dy;
+  };
+  shapeW = Math.ceil(r).toInt();
+  shapeH = Math.ceil(b).toInt();
+  width = shapeW + pxRange;
+  height = shapeH + pxRange;
+  midRange = (pxRange.toFloat() / 2.0);
+  !dx = dx + midRange;
+  !dy = dy + midRange;
+  (Vector2(dx, dy), Vector2(r - l, b - t), width, height)
+}
+
+module end;

@@ -1,0 +1,125 @@
+module MTSDF;
+
+mutable class Scanline(
+  intersections: Array<Intersection>,
+  mutable lastIndex: Int,
+) {
+  /// Returns the number of intersections left of x.
+  mutable fun countIntersections(x: Float): Int {
+    this.moveTo(x) + 1;
+  }
+  /// Returns the total sign of intersections left of x.
+  mutable fun sumIntersections(x: Float): Int {
+    index = this.moveTo(x);
+    if (index >= 0) this.intersections[index].direction else 0
+  }
+
+  /// Decides whether the scanline is filled at x based on fill rule.
+  mutable fun filled(x: Float, fillRule: FillRule): Bool {
+    interpretFillRule(this.sumIntersections(x), fillRule)
+  }
+
+  readonly fun chill(): Scanline {
+    Scanline(this.intersections, this.lastIndex)
+  }
+
+  static fun make(intersections: Array<Intersection>): mutable Scanline {
+    sorted = intersections.sortedWith(compareIntersections);
+    totalDirection = 0;
+    mutable static(
+      sorted.map(i -> {
+        !totalDirection = totalDirection + i.direction;
+        !i.direction = totalDirection;
+        i
+      }),
+      0,
+    )
+  }
+
+  private mutable fun moveTo(x: Float): Int {
+    if (this.intersections.isEmpty()) return -1;
+    index = this.lastIndex;
+    if (x < this.intersections[index].x) {
+      loop {
+        if (index == 0) {
+          this.!lastIndex = 0;
+          return -1;
+        };
+        !index = index - 1;
+        if (x < this.intersections[index].x) {
+          break void;
+        }
+      }
+    } else {
+      while (
+        index < this.intersections.size() - 1 &&
+        x >= this.intersections[index + 1].x
+      ) !index = index + 1;
+    };
+    this.!lastIndex = index;
+    index;
+  }
+}
+
+fun compareIntersections(a: Intersection, b: Intersection): Order {
+  s = sign(a.x - b.x);
+  if (s < 0) LT() else if (s > 0) GT() else EQ()
+}
+
+fun interpretFillRule(intersections: Int, fillRule: FillRule): Bool {
+  fillRule match {
+  | NoneZero() -> intersections != 0
+  | EvenOdd() -> intersections.and(1) != 0
+  | Positive() -> intersections > 0
+  | Negative() -> intersections < 0
+  }
+}
+
+fun overlap(
+  a: Scanline,
+  b: Scanline,
+  xFrom: Float,
+  xTo: Float,
+  fillRule: FillRule,
+): Float {
+  total = 0.0;
+  aInside = false;
+  bInside = false;
+  ai = 0;
+  bi = 0;
+  ax = if (!a.intersections.isEmpty()) a.intersections[ai].x else xTo;
+  bx = if (!b.intersections.isEmpty()) b.intersections[bi].x else xTo;
+  while (ax < xFrom || bx < xFrom) {
+    xNext = Math.min(ax, bx);
+    if (ax == xNext && ai < a.intersections.size()) {
+      !aInside = interpretFillRule(a.intersections[ai].direction, fillRule);
+      !ai = ai + 1;
+      !ax = if (ai < a.intersections.size()) a.intersections[ai].x else xTo;
+    };
+    if (bx == xNext && bi < b.intersections.size()) {
+      !bInside = interpretFillRule(b.intersections[bi].direction, fillRule);
+      !bi = bi + 1;
+      !bx = if (bi < b.intersections.size()) b.intersections[bi].x else xTo;
+    }
+  };
+  x = xFrom;
+  while (ax < xTo || bx < xTo) {
+    xNext = Math.min(ax, bx);
+    if (aInside == bInside) !total = total + xNext - x;
+    if (ax == xNext && ai < a.intersections.size()) {
+      !aInside = interpretFillRule(a.intersections[ai].direction, fillRule);
+      !ai = ai + 1;
+      !ax = if (ai < a.intersections.size()) a.intersections[ai].x else xTo;
+    };
+    if (bx == xNext && bi < b.intersections.size()) {
+      !bInside = interpretFillRule(b.intersections[bi].direction, fillRule);
+      !bi = bi + 1;
+      !bx = if (bi < b.intersections.size()) b.intersections[bi].x else xTo;
+    };
+    !x = xNext;
+  };
+  if (aInside == bInside) !total = total + xTo - x;
+  total;
+}
+
+module end;

@@ -1,0 +1,122 @@
+module MTSDF;
+
+fun rasterize(
+  sdf: mutable BitmapRef<Float>,
+  shape: Shape,
+  projection: Projection,
+  fillRule: FillRule,
+): void {
+  for (y in Range(0, sdf.height)) {
+    row = if (shape.inverseYAxis) sdf.height - y - 1 else y;
+    scanline = shape.scanline(projection.unprojectY(y.toFloat() + 0.5));
+    for (x in Range(0, sdf.width)) {
+      filled = scanline.filled(
+        projection.unprojectX(x.toFloat() + 0.5),
+        fillRule,
+      );
+      sdf.set(x, row, Array[if (filled) 1.0 else 0.0]);
+    }
+  }
+}
+
+fun distanceSignCorrection(
+  sdf: mutable BitmapRef<Float>,
+  shape: Shape,
+  projection: Projection,
+  fillRule: FillRule,
+): void {
+  for (y in Range(0, sdf.height)) {
+    row = if (shape.inverseYAxis) sdf.height - y - 1 else y;
+    scanline = shape.scanline(projection.unprojectY(y.toFloat() + 0.5));
+    for (x in Range(0, sdf.width)) {
+      filled = scanline.filled(
+        projection.unprojectX(x.toFloat() + 0.5),
+        fillRule,
+      );
+      sdf.updateOne(x, row, sd -> if ((sd > 0.5) != filled) 1.0 - sd else sd);
+    }
+  }
+}
+
+fun multiDistanceSignCorrection(
+  sdf: mutable BitmapRef<Float>,
+  shape: Shape,
+  projection: Projection,
+  fillRule: FillRule,
+): void {
+  invariant(sdf.colors >= 3, "Must be multiple color bitmap");
+  w = sdf.width;
+  h = sdf.height;
+  if (w <= 0 || h <= 0) {
+    return void;
+  };
+  hasAmbiguity = false;
+  matchMap = Vector<?Bool>::mcreate(w * h);
+  tmp = 0;
+  for (y in Range(0, h)) {
+    row = if (shape.inverseYAxis) sdf.height - y - 1 else y;
+    scanline = shape.scanline(projection.unprojectY(y.toFloat() + 0.5));
+    for (x in Range(0, w)) {
+      filled = scanline.filled(
+        projection.unprojectX(x.toFloat() + 0.5),
+        fillRule,
+      );
+      msd = idx -> sdf.elem(x, row, idx);
+      msd0 = msd(0);
+      msd1 = msd(1);
+      msd2 = msd(2);
+      sd = fmedian(msd0, msd1, msd2);
+      matchValue = if (sd == 0.5) {
+        !hasAmbiguity = true;
+        None()
+      } else if ((sd > 0.5) != filled) {
+        sdf.set(x, row, Array[1.0 - msd0, 1.0 - msd1, 1.0 - msd2]);
+        Some(false);
+      } else {
+        Some(true)
+      };
+      matchMap.push(matchValue);
+      if (sdf.colors > 3) {
+        sdf.updateOne(
+          x,
+          row,
+          msd -> if ((msd > 0.5) != filled) 1.0 - msd else msd,
+          3,
+        );
+      };
+      !tmp = tmp + sdf.colors;
+    }
+  };
+  // This step is necessary to avoid artifacts when whole shape is inverted
+  if (hasAmbiguity) {
+    index = 0;
+    for (y in Range(0, h)) {
+      row = if (shape.inverseYAxis) sdf.height - y - 1 else y;
+      for (x in Range(0, w)) {
+        if (matchMap[index].isNone()) {
+          toAdd = idx ->
+            matchMap[idx] match {
+            | Some(true) -> 1
+            | Some(false) -> -1
+            | None() -> 0
+            };
+          neighborMatch = 0;
+          update = idx -> !neighborMatch = neighborMatch + toAdd(idx);
+          if (x > 0) update(index - 1);
+          if (x < w - 1) update(index + 1);
+          if (y > 0) update(index - w);
+          if (y < h - 1) update(index + w);
+          if (neighborMatch < 0) {
+            msd0 = sdf.elem(x, row, 0);
+            msd1 = sdf.elem(x, row, 1);
+            msd2 = sdf.elem(x, row, 2);
+            sdf.set(x, row, Array[1.0 - msd0, 1.0 - msd1, 1.0 - msd2]);
+          }
+        };
+        !index = index + 1;
+      }
+    }
+  }
+}
+
+module end;

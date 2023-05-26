@@ -1,0 +1,66 @@
+module SKUIMTSDFTestTmpl;
+
+/*
+Q\[([0-9])\] \(([^)]+)\) \[\(([^)]+)\)\] => \(([^)]+)\)
+  -> MTSDF.quad(MTSDF.Vector2($2),MTSDF.Vector2($3),MTSDF.Vector2($4),$1)
+L\[([0-9])\] \(([^)]+)\) => \(([^)]+)\)
+  -> MTSDF.line(MTSDF.Vector2($2),MTSDF.Vector2($3),$1)
+
+*/
+
+const shape: MTSDF.Shape = MTSDF.Shape(
+  Array[MTSDF.Contour(Array[]), MTSDF.Contour(Array[])],
+  false,
+);
+
+const colorized: MTSDF.Shape = MTSDF.Shape(
+  Array[MTSDF.Contour(Array[]), MTSDF.Contour(Array[])],
+  false,
+);
+
+const outputDistanceShift: Float = 0.0;
+const rangePx: Int = 8;
+const orientation: MTSDF.Orientation = MTSDF.Keep();
+const fillRule: MTSDF.FillRule = MTSDF.NoneZero();
+const scanlinePass: Bool = true;
+
+/// RESULTS
+
+const projection: MTSDF.Projection = MTSDF.Projection(
+  MTSDF.Vector2(2.46154, 2.46154),
+  MTSDF.Vector2(2.55469, 1.625),
+);
+const range: Float = 3.25;
+
+const msdfBitmap: Array<Float> = Array[];
+
+const scanlines: Array<Bool> = Array[];
+
+const msdfBitmapScanlined: Array<Float> = Array[];
+
+const protectCorners: Array<UInt8> = Array[].map(UInt8::truncate);
+
+const protectEdges: Array<UInt8> = Array[].map(UInt8::truncate);
+
+const findErrors: Array<UInt8> = Array[].map(UInt8::truncate);
+
+const msdfBitmapCorrected: Array<Float> = Array[];
+
+const image: Array<UInt8> = Array[].map(UInt8::truncate);
+
+const result: SKUIMTSDFTest.Result = SKUIMTSDFTest.Result{
+  normalized => shape,
+  colorized => colorized,
+  projection => projection,
+  range => range,
+  scanlines => scanlines,
+  msdfBitmap => msdfBitmap,
+  msdfBitmapScanlined => msdfBitmapScanlined,
+  protectCorners => protectCorners,
+  protectEdges => protectEdges,
+  findErrors => findErrors,
+  msdfBitmapCorrected => msdfBitmapCorrected,
+  image => image,
+};
+
+module end;

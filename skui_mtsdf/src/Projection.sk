@@ -1,0 +1,46 @@
+module MTSDF;
+
+class Projection(
+  scale: Vector2,
+  translate: Vector2,
+) uses Orderable, Equivalent {
+  //
+  fun project(coord: Vector2): Vector2 {
+    this.scale * (coord + this.translate)
+  }
+
+  fun unproject(coord: Vector2): Vector2 {
+    coord / this.scale - this.translate
+  }
+
+  fun scaleVector(vector: Vector2): Vector2 {
+    vector * this.scale
+  }
+
+  fun unscaleVector(vector: Vector2): Vector2 {
+    vector / this.scale
+  }
+
+  fun projectX(x: Float): Float {
+    this.scale.x * (x + this.translate.x)
+  }
+
+  fun unprojectX(x: Float): Float {
+    x / this.scale.x - this.translate.x
+  }
+
+  fun projectY(y: Float): Float {
+    this.scale.y * (y + this.translate.y)
+  }
+
+  fun unprojectY(y: Float): Float {
+    y / this.scale.y - this.translate.y
+  }
+
+  fun like(other: Projection, precision: Float = precisionEpsilon): Bool {
+    this.scale.like(other.scale, precision) &&
+      this.translate.like(other.translate, precision)
+  }
+}
+
+module end;
