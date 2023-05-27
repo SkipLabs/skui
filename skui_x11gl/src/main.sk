@@ -1,0 +1,8 @@
+module SkuiX11gl;
+
+fun main(): void {
+  void
+}
+
+module end;
+

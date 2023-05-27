@@ -1,0 +1,10 @@
+[package]
+name = "skui_x11gl"
+version = "0.1.0"
+
+[dependencies]
+skui_opengl = {}
+
+[[bin]]
+name = "skuix11gl"
+main = "SkuiX11gl.main"
