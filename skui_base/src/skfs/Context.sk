@@ -5,7 +5,7 @@ class Random(value: .Random) extends File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Random _ -> x
-    | _ -> invariant_violation("Must be SKFS.Random")
+    | _ -> SKFS.cast_violation("SKFS.Random", obj)
     }
   }
 }
@@ -334,7 +334,7 @@ class RunSequence(id: Int) extends JSONValue, File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ RunSequence _ -> x
-    | _ -> invariant_violation("Must be SKFS.RunSequence")
+    | _ -> SKFS.cast_violation("SKFS.RunSequence", obj)
     }
   }
 

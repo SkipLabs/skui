@@ -1,0 +1,165 @@
+module Geometry;
+
+class ISize(
+  width: Int,
+  height: Int,
+) extends SKFS.File uses Hashable, Orderable {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ ISize _ -> x
+    | _ -> SKFS.cast_violation("Geometry.ISize", obj)
+    }
+  }
+
+  /**
+   * ISize with the given width and height to 0.0
+   */
+  const zero: ISize = ISize(0, 0);
+
+  /**
+   * Creates a square ISize whose width and height are twice the given dimension.
+   * This is a square that contains a circle with the given radius.
+   */
+  static fun fromRadius(radius: Int): ISize {
+    ISize(radius * 2, radius * 2);
+  }
+
+  /**
+   * Creates a square ISize whose width and height are the given dimension.
+   */
+  static fun square(dimension: Int): ISize {
+    ISize(dimension, dimension);
+  }
+
+  /**
+   * A ISize with the width and height swapped.
+   */
+  fun flipped(): ISize {
+    ISize(this.height, this.width);
+  }
+
+  /**
+   * Whether this size encloses a non-zero area.
+   * Negative areas are considered empty.
+   */
+  fun isEmpty(): Bool {
+    this.width <= 0 || this.height <= 0
+  }
+
+  fun diagonal(): Float {
+    this.toSize().diagonal();
+  }
+
+  /**
+   * The greater of the magnitudes of the width and the height.
+   */
+  fun longestSide(): Int {
+    Math.max(this.width, this.height);
+  }
+
+  /**
+   * The lesser of the magnitudes of the width and the height.
+   */
+  fun shortestSide(): Int {
+    Math.min(this.width, this.height);
+  }
+
+  /**
+   * The offset to the intersection of the bottom and left edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun bottomLeft(origin: Point): Point {
+    Point(origin.x, origin.y + this.height);
+  }
+
+  /**
+   * The offset to the intersection of the bottom and right edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun bottomRight(origin: Point): Point {
+    Point(origin.x + this.width, origin.y + this.height);
+  }
+
+  /**
+   * The offset to the intersection of the top and left edges of the rectangle described by the given Offset (which is interpreted as the top-left corner) and this Size.
+   */
+  fun topLeft(origin: Point): Point {
+    origin;
+  }
+
+  /**
+   * The offset to the intersection of the top and right edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun topRight(origin: Point): Point {
+    Point(origin.x + this.width, origin.y);
+  }
+
+  /**
+   * The offset to the intersection of the top and right edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun contains(point: Point): Bool {
+    point.x >= 0 &&
+      point.x < this.width &&
+      point.y >= 0 &&
+      point.y < this.height;
+  }
+
+  fun +(other: ISize): ISize {
+    ISize(this.width + other.width, this.height + other.height);
+  }
+
+  fun -(other: ISize): ISize {
+    ISize(this.width - other.width, this.height - other.height);
+  }
+
+  /**
+   * Returns a Size whose dimensions are the dimensions of the left-hand-side operand (a Size) multiplied by the scalar right-hand-side operand (a double).
+   */
+  fun *(operand: Int): ISize {
+    ISize(this.width * operand, this.height * operand);
+  }
+
+  /**
+   * Returns a Size whose dimensions are the dimensions of the left-hand-side operand (a Size) divided by the scalar right-hand-side operand (a double).
+   */
+  fun /(operand: Int): ISize {
+    ISize(this.width / operand, this.height / operand);
+  }
+
+  fun asPoint(): Geometry.Point {
+    Geometry.Point(this.width, this.height)
+  }
+
+  fun max(size: Geometry.ISize): ISize {
+    ISize(Math.max(this.width, size.width), Math.max(this.height, size.height));
+  }
+
+  fun min(size: Geometry.ISize): ISize {
+    ISize(Math.min(this.width, size.width), Math.min(this.height, size.height));
+  }
+
+  fun vertical(size: Geometry.ISize): ISize {
+    ISize(Math.max(this.width, size.width), this.height + size.height);
+  }
+
+  fun horizontal(size: Geometry.ISize): ISize {
+    ISize(this.width + size.width, Math.max(this.height, size.height));
+  }
+
+  fun area(): Int {
+    this.width * this.height
+  }
+
+  fun distance(): Float {
+    this.toSize().distance()
+  }
+
+  fun toSize(): Size {
+    Size(this.width.toFloat(), this.height.toFloat())
+  }
+
+  fun toEven(): this {
+    ISize(this.width + (this.width % 2), this.height + (this.height % 2))
+  }
+}
+
+module end;

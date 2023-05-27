@@ -1,0 +1,33 @@
+module Ui;
+
+base class Handle extends SKFS.File {
+  fun draw(shift: Ui.Shift, window: Geometry.Rectangle, height: Int): void;
+}
+
+base class Drawable extends SKFS.File uses HasClassName {
+  fun translate(offset: Geometry.Offset): this;
+  fun size(): Geometry.Size;
+}
+
+base class RectangleDrawable(bounds: Geometry.Rect) extends Drawable {
+  fun translate(offset: Geometry.Offset): this {
+    !this.bounds = this.bounds.translate(offset.dx, offset.dy);
+    this
+  }
+
+  fun size(): Geometry.Size {
+    this.bounds.size()
+  }
+}
+
+class DummyDrawable() extends Drawable {
+  fun translate(_offset: Geometry.Offset): this {
+    dummy()
+  }
+
+  fun size(): Geometry.Size {
+    dummy()
+  }
+}
+
+module end;

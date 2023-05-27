@@ -72,13 +72,19 @@ class Format(
   }
 }
 
-base class I18NExceptionBase(message: Text) extends Exception {
+base class I18NExceptionBase extends Exception {
+  fun getTextMessage(): Text;
+
   fun getMessage(): String {
-    this.message.toString();
+    this.getTextMessage().toString();
   }
 }
 
-class I18NException extends I18NExceptionBase {}
+class I18NException(message: Text) extends I18NExceptionBase {
+  fun getTextMessage(): Text {
+    this.message
+  }
+}
 
 base class I18N() uses Hashable, Equality {
   fun getDefaultLocale(): Locale;

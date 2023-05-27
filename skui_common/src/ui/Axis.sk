@@ -1,0 +1,72 @@
+module Ui;
+
+/**
+ * The two cardinal directions in two dimensions.
+ *
+ * The axis is always relative to the current coordinate space. This means, for
+ * example, that a [horizontal] axis might actually be diagonally from top
+ * right to bottom left, due to some local [Transform] applied to the scene.
+ *
+ * See also:
+ *
+ *  * [AxisDirection], which is a directional version of this enum (with values
+ *    light left and right, rather than just horizontal).
+ *  * [Text.Direction], which disambiguates between left-to-right horizontal
+ *    content and right-to-left horizontal content.
+ */
+base class Axis uses Hashable, Equality {
+  /**
+   * Left and right.
+   *
+   * See also:
+   *
+   *  * [TextDirection], which disambiguates between left-to-right horizontal
+   *    content and right-to-left horizontal content.
+   */
+  children =
+  | HorizontalAxis()
+  | VerticalAxis()
+
+  /**
+   * Returns the opposite of the given [Axis].
+   *
+   * Specifically, returns [Axis.horizontal] for [Axis.vertical], and
+   * vice versa.
+   *
+   * See also:
+   *
+   *  * [AxisDirection.flip], which does the same thing for [AxisDirection] values.
+   */
+  fun flip(): Axis {
+    this match {
+    | VerticalAxis() -> HorizontalAxis()
+    | HorizontalAxis() -> VerticalAxis()
+    }
+  }
+
+  fun main(size: Geometry.Size): Float
+  | Ui.HorizontalAxis() -> size.width
+  | Ui.VerticalAxis() -> size.height
+
+  fun cross(size: Geometry.Size): Float
+  | Ui.HorizontalAxis() -> size.height
+  | Ui.VerticalAxis() -> size.width
+
+  fun mainOffset(offset: Geometry.Offset): Float
+  | Ui.HorizontalAxis() -> offset.dx
+  | Ui.VerticalAxis() -> offset.dy
+
+  fun crossOffset(offset: Geometry.Offset): Float
+  | Ui.HorizontalAxis() -> offset.dy
+  | Ui.VerticalAxis() -> offset.dx
+
+  fun size(main: Float, cross: Float): Geometry.Size
+  | Ui.HorizontalAxis() -> Geometry.Size(main, cross)
+  | Ui.VerticalAxis() -> Geometry.Size(cross, main)
+
+  fun offset(main: Float, cross: Float): Geometry.Offset
+  | Ui.HorizontalAxis() -> Geometry.Offset(main, cross)
+  | Ui.VerticalAxis() -> Geometry.Offset(cross, main)
+}
+
+module end;

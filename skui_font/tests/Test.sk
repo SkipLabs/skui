@@ -73,11 +73,21 @@ fun mute<T>(_t: T): void {
 class File(font: TrueType.Font) extends SKFS.File
 
 fun main(): void {
+  pos = SKFS.newObstack();
   resources = mutable Map[];
   #forEachFunction (@resources, #function, #functionName) {
     #function(resources)
   };
-  roResources = unsafe_chill_trust_me(resources);
+
+  //roResources = unsafe_chill_trust_me(resources);
+  roResources = SKFS.destroyObstackWithValue(
+    pos,
+    List.Cons(unsafe_chill_trust_me(resources), List.Nil()),
+  ) match {
+  | List.Cons(x, _) -> x
+  | _ -> invariant_violation("error")
+  };
+  !pos = SKFS.newObstack();
   tests = mutable Map[];
   #forEachFunction (@testr, #function, #functionName) {
     // TODO: Properly handle tests outside of module/suite?
@@ -96,7 +106,14 @@ fun main(): void {
     };
     tests[testSuite].set(testName, #function)
   };
-  SKTest.test_harness(tests)
+  fTests = SKFS.destroyObstackWithValue(
+    pos,
+    List.Cons(unsafe_chill_trust_me(tests), List.Nil()),
+  ) match {
+  | List.Cons(x, _) -> x
+  | _ -> invariant_violation("error")
+  };
+  SKTest.test_harness(fTests);
 }
 
 module end;

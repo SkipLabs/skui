@@ -820,7 +820,7 @@ class .Color private (red: Float, green: Float, blue: Float) extends Paint {
       (this.red, this.green, this.blue, this.alpha).compare(
         (color.red, color.green, color.blue, color.alpha),
       )
-    | _ -> invariant_violation("Must be compared with a .Color")
+    | _ -> SKFS.cast_violation(".Color", other)
     }
   }
 }

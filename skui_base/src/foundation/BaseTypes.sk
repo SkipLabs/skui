@@ -88,7 +88,7 @@ base class Status extends SKFS.File uses Orderable, Hashable {
   static fun forFile(obj: SKFS.File): Status {
     obj match {
     | x @ Status _ -> x
-    | _ -> invariant_violation("Must be Status")
+    | _ -> SKFS.cast_violation("Status", obj)
     }
   }
 }

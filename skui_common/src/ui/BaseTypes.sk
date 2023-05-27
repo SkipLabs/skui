@@ -1,5 +1,7 @@
 module Ui;
 
+const full: UInt8 = UInt8::truncate(255);
+
 class Shift(x: Int, y: Int) uses Hashable, Equality
 
 base class Paint private (alpha: Float = 1.0) uses Hashable, Orderable {
@@ -50,8 +52,6 @@ base class Paint private (alpha: Float = 1.0) uses Hashable, Orderable {
     this.hash().compare(y.hash())
   }
 }
-
-const full: UInt8 = UInt8::truncate(255);
 
 value class Pix(
   red: UInt8,
@@ -153,7 +153,7 @@ class Image(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Image _ -> x
-    | _ -> invariant_violation("Must be Ui.Image")
+    | _ -> SKFS.cast_violation("Ui.Image", obj)
     }
   }
 

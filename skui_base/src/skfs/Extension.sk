@@ -5,7 +5,7 @@ class FloatFile(value: Float) extends File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ FloatFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.FloatFile")
+    | _ -> SKFS.cast_violation("SKFS.FloatFile", obj)
     }
   }
 }
@@ -15,7 +15,7 @@ class CharFile(value: Char) extends File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ CharFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.CharFile")
+    | _ -> SKFS.cast_violation("SKFS.CharFile", obj)
     }
   }
 }
@@ -25,17 +25,7 @@ class Bytes(bytes: Array<UInt8>) extends SKFS.File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Bytes _ -> x
-    | _ -> invariant_violation("Must be SKFS.Bytes")
-    }
-  }
-}
-
-class TextFile(text: Text) extends SKFS.File {
-  //
-  static fun fromFile(obj: SKFS.File): this {
-    obj match {
-    | x @ TextFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.TextFile")
+    | _ -> SKFS.cast_violation("SKFS.Bytes", obj)
     }
   }
 }
@@ -45,7 +35,7 @@ class StringMapFile(value: Map<String, File>) extends File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ StringMapFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.StringMapFile")
+    | _ -> SKFS.cast_violation("SKFS.StringMapFile", obj)
     }
   }
 }
@@ -55,7 +45,7 @@ class RangeFile(value: Range) extends SKFS.File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ RangeFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.RangeFile")
+    | _ -> SKFS.cast_violation("SKFS.RangeFile", obj)
     }
   }
 }
@@ -65,7 +55,7 @@ class ArrayFile(value: Array<File>) extends File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ ArrayFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.ArrayFile")
+    | _ -> SKFS.cast_violation("SKFS.ArrayFile", obj)
     }
   }
 
@@ -108,7 +98,7 @@ class OptFile(value: ?File) extends File {
   static fun fromFile(obj: File): this {
     obj match {
     | x @ OptFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.OptFile")
+    | _ -> SKFS.cast_violation("SKFS.OptFile", obj)
     }
   }
 }

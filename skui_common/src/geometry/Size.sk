@@ -1,0 +1,260 @@
+module Geometry;
+
+/**
+ * Holds a 2D floating-point size.
+ * You can think of this as an Offset from the origin.
+ */
+class Size(
+  /**
+   * The horizontal extent of this size.
+   */
+  width: Float,
+  /**
+   * The vertical extent of this size.
+   */
+  height: Float,
+) extends SKFS.File uses Hashable, Orderable {
+  /**
+   * Size with the given width and height to 0.0
+   */
+  const zero: Size = Size(0.0, 0.0);
+
+  /**
+   * Creates a Size with the given height and an infinite width.
+   */
+  static fun fromHeight(height: Float): Size {
+    Size(Float::inf, height);
+  }
+  /**
+   * Creates a square Size whose width and height are twice the given dimension.
+   * This is a square that contains a circle with the given radius.
+   */
+  static fun fromRadius(radius: Float): Size {
+    Size(radius * 2.0, radius * 2.0);
+  }
+  /**
+   * Creates a Size with the given height and an infinite width.
+   */
+  static fun fromWidth(width: Float): Size {
+    Size(width, Float::inf);
+  }
+  /**
+   * Creates a square Size whose width and height are the given dimension.
+   */
+  static fun square(dimension: Float): Size {
+    Size(dimension, dimension);
+  }
+
+  /**
+   * The aspect ratio of this size.
+   *
+   * This returns the width divided by the height.
+   *
+   * If the width is zero, the result will be zero. If the height is zero (and the width is not), the result will be double.infinity or double.negativeInfinity as determined by the sign of width.
+   */
+  fun aspectRatio(): Float {
+    if (this.height != 0.0) {
+      this.width / this.height;
+    } else if (Math.greater(this.width, 0.0)) {
+      Float::inf
+    } else if (Math.lower(this.width, 0.0)) {
+      -Float::inf
+    } else {
+      0.0;
+    }
+  }
+
+  /**
+   * A Size with the width and height swapped.
+   */
+  fun flipped(): Size {
+    Size(this.height, this.width);
+  }
+
+  /**
+   * Whether this size encloses a non-zero area.
+   * Negative areas are considered empty.
+   */
+  fun isEmpty(): Bool {
+    this.width <= 0.0 || this.height <= 0.0
+  }
+
+  fun diagonal(): Float {
+    Math.sqrt((this.width * this.width) + (this.height * this.height));
+  }
+
+  /**
+   * The greater of the magnitudes of the width and the height.
+   */
+  fun longestSide(): Float {
+    Math.max(Math.abs(this.width), Math.abs(this.height));
+  }
+
+  /**
+   * The lesser of the magnitudes of the width and the height.
+   */
+  fun shortestSide(): Float {
+    Math.min(Math.abs(this.width), Math.abs(this.height));
+  }
+
+  /**
+   * The offset to the center of the bottom edge of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun bottomCenter(origin: Offset): Offset {
+    Offset(origin.dx + this.width / 2.0, origin.dy + this.height);
+  }
+
+  /**
+   * The offset to the intersection of the bottom and left edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun bottomLeft(origin: Offset): Offset {
+    Offset(origin.dx, origin.dy + this.height);
+  }
+
+  /**
+   * The offset to the intersection of the bottom and right edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun bottomRight(origin: Offset): Offset {
+    Offset(origin.dx + this.width, origin.dy + this.height);
+  }
+
+  /**
+   * The offset to the intersection of the bottom and right edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun center(origin: Offset): Offset {
+    Offset(origin.dx + this.width / 2.0, origin.dy + this.height / 2.0);
+  }
+
+  /**
+   * The offset to the center of the left edge of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun centerLeft(origin: Offset): Offset {
+    Offset(origin.dx, origin.dy + this.height / 2.0);
+  }
+
+  /**
+   * The offset to the center of the right edge of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun centerRight(origin: Offset): Offset {
+    Offset(origin.dx + this.width, origin.dy + this.height / 2.0);
+  }
+
+  /**
+   * The offset to the center of the top edge of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun topCenter(origin: Offset): Offset {
+    Offset(origin.dx + this.width / 2.0, origin.dy);
+  }
+
+  /**
+   * The offset to the intersection of the top and left edges of the rectangle described by the given Offset (which is interpreted as the top-left corner) and this Size.
+   */
+  fun topLeft(origin: Offset): Offset {
+    origin;
+  }
+
+  /**
+   * The offset to the intersection of the top and right edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun topRight(origin: Offset): Offset {
+    Offset(origin.dx + this.width, origin.dy);
+  }
+
+  /**
+   * The offset to the intersection of the top and right edges of the rectangle described by the given offset (which is interpreted as the top-left corner) and this size.
+   */
+  fun contains(offset: Offset): Bool {
+    offset.dx >= 0.0 &&
+      offset.dx < this.width &&
+      offset.dy >= 0.0 &&
+      offset.dy < this.height;
+  }
+
+  fun +(other: Size): Size {
+    Size(this.width + other.width, this.height + other.height);
+  }
+
+  fun -(other: Size): Size {
+    Size(this.width - other.width, this.height - other.height);
+  }
+
+  /**
+   * Returns a Size whose dimensions are the dimensions of the left-hand-side operand (a Size) multiplied by the scalar right-hand-side operand (a double).
+   */
+  fun *(operand: Float): Size {
+    Size(this.width * operand, this.height * operand);
+  }
+
+  /**
+   * Returns a Size whose dimensions are the dimensions of the left-hand-side operand (a Size) divided by the scalar right-hand-side operand (a double).
+   */
+  fun /(operand: Float): Size {
+    Size(this.width / operand, this.height / operand);
+  }
+
+  fun toDimension2D(): Geometry.Dimension2D {
+    Geometry.Dimension2D(this.width, this.height)
+  }
+
+  fun toOffset(): Geometry.Offset {
+    Geometry.Offset(this.width, this.height)
+  }
+
+  fun max(size: Geometry.Size): Size {
+    Size(Math.max(this.width, size.width), Math.max(this.height, size.height));
+  }
+
+  fun min(size: Geometry.Size): Size {
+    Size(Math.min(this.width, size.width), Math.min(this.height, size.height));
+  }
+
+  fun vertical(size: Geometry.Size): Size {
+    Size(Math.max(this.width, size.width), this.height + size.height);
+  }
+
+  fun horizontal(size: Geometry.Size): Size {
+    Size(this.width + size.width, Math.max(this.height, size.height));
+  }
+
+  fun floor(): Size {
+    Size(Math.floor(this.width), Math.floor(this.height))
+  }
+
+  fun ceil(): Size {
+    Size(Math.ceil(this.width), Math.ceil(this.height));
+  }
+
+  fun area(): Float {
+    this.width * this.height
+  }
+
+  fun mult(sw: Float, sh: Float): Size {
+    Size(this.width * sw, this.height * sh);
+  }
+
+  fun div(sw: Float, sh: Float): Size {
+    Size(this.width / sw, this.height / sh);
+  }
+
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Size _ -> x
+    | _ -> SKFS.cast_violation("Geometry.Size", obj)
+    }
+  }
+
+  fun distance(): Float {
+    this.diagonal()
+  }
+
+  fun toISize(): ISize {
+    ISize(this.width.toInt(), this.height.toInt())
+  }
+
+  fun iceil(): ISize {
+    this.ceil().toISize();
+  }
+}
+
+module end;

@@ -1,0 +1,101 @@
+module Ui;
+
+base class Blender {
+  fun compute(src: Pix, dst: Pix): Pix;
+}
+
+trait MixingBlender {
+  fun alpha(src: Float, dst: Float): Float;
+  fun pixel(
+    src: Pix,
+    srcAlpha: Float,
+    dst: Pix,
+    dstAlpha: Float,
+    alpha: Float,
+  ): Pix;
+
+  fun compute(src: Pix, dst: Pix): Pix {
+    if (src.alpha == full) {
+      src
+    } else if (src.alpha == UInt8::zero) {
+      dst
+    } else {
+      srcAlpha = src.alpha.toFloat() / 255.0;
+      dstAlpha = dst.alpha.toFloat() / 255.0;
+      alpha = this.alpha(srcAlpha, dstAlpha);
+      if (Math.like(alpha, 0.0)) {
+        Pix::transparent
+      } else {
+        this.pixel(src, srcAlpha, dst, dstAlpha, alpha);
+      }
+    }
+  }
+}
+
+trait UniformBlender extends MixingBlender {
+  protected fun entity(
+    src: UInt8,
+    srcAlpha: Float,
+    dst: UInt8,
+    dstAlpha: Float,
+    alpha: Float,
+  ): UInt8;
+
+  fun pixel(
+    src: Pix,
+    srcAlpha: Float,
+    dst: Pix,
+    dstAlpha: Float,
+    alpha: Float,
+  ): Pix {
+    Pix(
+      this.entity(src.red, srcAlpha, dst.red, dstAlpha, alpha),
+      this.entity(src.green, srcAlpha, dst.green, dstAlpha, alpha),
+      this.entity(src.blue, srcAlpha, dst.blue, dstAlpha, alpha),
+      UInt8::truncate(Math.clamp(Math.round(alpha * 255.0).toInt(), 0, 255)),
+    )
+  }
+}
+
+class OverBlender() extends Blender uses UniformBlender {
+  fun alpha(src: Float, dst: Float): Float {
+    src + (dst * (1.0 - src))
+  }
+
+  protected fun entity(
+    src: UInt8,
+    srcAlpha: Float,
+    dst: UInt8,
+    dstAlpha: Float,
+    alpha: Float,
+  ): UInt8 {
+    UInt8::truncate(
+      (((src.toFloat() * srcAlpha) +
+        dst.toFloat() * dstAlpha * (1.0 - srcAlpha)) / alpha).toInt(),
+    )
+  }
+}
+
+class AddBlender() extends Blender uses UniformBlender {
+  fun alpha(src: Float, dst: Float): Float {
+    src + dst
+  }
+
+  protected fun entity(
+    src: UInt8,
+    srcAlpha: Float,
+    dst: UInt8,
+    dstAlpha: Float,
+    _alpha: Float,
+  ): UInt8 {
+    UInt8::truncate(
+      Math.clamp(
+        (((src.toFloat() * srcAlpha) + (dst.toFloat() * dstAlpha))).toInt(),
+        0,
+        255,
+      ),
+    )
+  }
+}
+
+module end;

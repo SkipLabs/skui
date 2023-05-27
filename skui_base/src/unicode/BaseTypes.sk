@@ -83,4 +83,12 @@ base class ScState {
   | Overflow()
 }
 
+fun isASCII(char: Char): Bool {
+  char.code() <= maxASCII.code()
+}
+
+fun onlyASCII(string: String): String {
+  String::fromChars(string.chars().filter(isASCII).toArray());
+}
+
 module end;

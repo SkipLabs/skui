@@ -63,7 +63,7 @@ class Diff() {
       newChars = dCase.text2.chars().toArray();
       expectEq(Diff.process(oldChars, newChars), dCase.expected);
       expectEq(Diff.patch(oldChars, dCase.expected), newChars)
-    | _ -> invariant_violation("Must be a SKUICommonTest.DiffCase")
+    | _ -> SKFS.cast_violation("SKUICommonTest.DiffCase", testCase)
     }
   }
 

@@ -5,7 +5,7 @@ class File(value: Value) extends SKFS.File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ File _ -> x
-    | _ -> invariant_violation("Must be JSON.File")
+    | _ -> SKFS.cast_violation("JSON.File", obj)
     }
   }
 }

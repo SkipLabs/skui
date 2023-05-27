@@ -1,5 +1,10 @@
 module SKFS;
 
+@always_inline
+fun cast_violation<T:frozen>(name: String, casted: T): _ {
+  invariant_violation(`Cast violation: expected ${name}, got ${Utils.toString(casted)}`)
+}
+
 extension base class BaseName uses HasClassName {
   overridable fun compare(y: BaseName): Order {
     (this, y) match {
@@ -55,10 +60,10 @@ class StrID(value: String) extends BaseName {
     StrID(value)
   }
 
-  fun sameCompare(y: BaseName): Order {
-    y match {
+  fun sameCompare(key: BaseName): Order {
+    key match {
     | StrID(v2) -> this.value.compare(v2)
-    | _ -> invariant_violation("Must be a SKFS.StrID")
+    | _ -> SKFS.cast_violation("SKFS.StrID", key)
     }
   }
 
@@ -69,7 +74,7 @@ class StrID(value: String) extends BaseName {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ StrID _ -> x
-    | _ -> invariant_violation("Must be SKFS.StrID")
+    | _ -> SKFS.cast_violation("SKFS.StrID", obj)
     }
   }
 }
@@ -144,7 +149,7 @@ class Profiles(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Profiles _ -> x
-    | _ -> invariant_violation("Must be SKFS.Profiles")
+    | _ -> SKFS.cast_violation("SKFS.Profiles", obj)
     }
   }
 
@@ -196,7 +201,7 @@ class DummyBaseName() extends BaseName {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ DummyBaseName _ -> x
-    | _ -> invariant_violation("Must be SKFS.DummyBaseName")
+    | _ -> SKFS.cast_violation("SKFS.DummyBaseName", obj)
     }
   }
 }

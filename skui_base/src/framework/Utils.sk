@@ -14,7 +14,7 @@ class StrIDConverter() extends BaseNameConverter<String> {
     key match {
     | sid @ SKFS.StrID _ -> sid.value
     | sid @ SKFS.SID _ -> sid.value
-    | _ -> invariant_violation("Must be a SKFS.SID")
+    | _ -> SKFS.cast_violation("SKFS.SID", key)
     }
   }
 
@@ -35,7 +35,7 @@ class IIDConverter() extends BaseNameConverter<Int> {
   fun fromBaseName(key: SKFS.BaseName): Int {
     key match {
     | iid @ SKFS.IID _ -> iid.value
-    | _ -> invariant_violation("Must be a SKFS.IID")
+    | _ -> SKFS.cast_violation("SKFS.IID", key)
     }
   }
 

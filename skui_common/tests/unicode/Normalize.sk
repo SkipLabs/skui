@@ -119,7 +119,7 @@ class NormalizePosition(
       (pos, got) = this.function(rb, posCase.src);
       expectEq(pos, posCase.position, v ~> `${v}`);
       expectEq(got, posCase.buffer, v ~> `${v}`)
-    | _ -> invariant_violation("Must be a SKUICommonTest.PosCase")
+    | _ -> SKFS.cast_violation("SKUICommonTest.PosCase", testCase)
     };
   }
 

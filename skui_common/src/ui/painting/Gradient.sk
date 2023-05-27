@@ -1,0 +1,226 @@
+module Ui;
+
+class Stop(
+  offset: Float,
+  color: Color = Colors.black(),
+) uses Hashable, Show, Equality {
+  /**
+   * Returns a string representation of this Stop.
+   */
+  fun toString(): String {
+    percent = this.offset * 100.0;
+    `${this.color}  ${percent}%`;
+  }
+}
+
+fun flatColors(stops: Array<Stop>): Array<Float> {
+  vector = Vector<Float>::mcreate(stops.size() * 4);
+  stops.each(stop -> {
+    vector.push(stop.color.red);
+    vector.push(stop.color.green);
+    vector.push(stop.color.blue);
+    vector.push(stop.color.alpha);
+  });
+  vector.toArray();
+}
+
+fun flatOffset(stops: Array<Stop>): Array<Float> {
+  stops.map(stop -> stop.offset)
+}
+
+/**
+ * Creates a new instance of LinearGradient.
+ * @param start the coordinates of the gradient axis start point
+ * @param end the coordinates of the gradient axis end point
+ * @param stops the gradient's color specification
+ */
+class LinearGradient(
+  start: Geometry.Offset,
+  end: Geometry.Offset,
+  stops: Array<Stop>,
+) extends Paint {
+  fun translate(offset: Geometry.Offset): this {
+    !this.start = this.start.translate(offset.dx, offset.dy);
+    !this.end = this.end.translate(offset.dx, offset.dy);
+    this;
+  }
+
+  fun toPainter(priority: Priority = High()): Painter {
+    stops = this.stops.filter(s ->
+      s.offset >= 0.0 && s.offset <= 1.0
+    ).sortedFor(c ~> c.offset);
+    invariant(
+      !this.stops.isEmpty(),
+      "Gradiant must have at list one valid stop",
+    );
+    if (this.stops.size() == 1) {
+      return SolidPainter(stops.first().color);
+    };
+    if (this.end.dy == this.start.dy && this.end.dx == this.start.dx) {
+      return SolidPainter(stops.first().color, priority);
+    };
+    (start, end, !stops) = if (
+      this.start.dy < this.end.dy &&
+      this.start.dx < this.end.dx
+    ) {
+      (this.start, this.end, stops);
+    } else {
+      (
+        this.end,
+        this.start,
+        stops.reversed().map(s -> {
+          !s.offset = (1.0 - s.offset);
+          s;
+        }),
+      );
+    };
+    len = (end - start).distance();
+    last = stops.last();
+    first = stops.first();
+    fstops = stops;
+    LambdaPainter((x, y) ~> {
+      offset = Geometry.Offset(x.toFloat(), y.toFloat());
+      // AH² = CH² + CA² + 2 * CH * CA
+      ac = (offset - start).distance();
+      bc = (offset - end).distance();
+      distance = -((bc * bc) - (ac * ac) - (len * len)) / (2.0 * len);
+      if (distance <= len * first.offset) {
+        return Pixel(first.color, priority);
+      };
+      if (distance >= len * last.offset) {
+        return Pixel(last.color, priority);
+      };
+      t = distance / len;
+      before = first;
+      for (current in fstops) {
+        if (current.offset == t) {
+          return Pixel(current.color, priority);
+        } else if (current.offset < t) {
+          !before = current;
+        } else {
+          tlen = current.offset - before.offset;
+          ct = (t - before.offset) / tlen;
+          return Pixel(before.color.lerpWith(current.color, ct), priority);
+        }
+      };
+      return Pixel(last.color, priority);
+    });
+  }
+
+  /**
+   * Gets whether this Paint is completely opaque.
+   */
+  fun isOpaque(): Bool {
+    !this.stops.any(step -> !step.color.isOpaque());
+  }
+
+  fun withAlpha(alpha: Float): LinearGradient {
+    current = this.alpha;
+    !this.alpha = alpha;
+    !this.stops = this.stops.map(s -> {
+      !s.color = s.color.withAlpha(
+        if (current != 0.0) {
+          s.color.alpha * alpha / current
+        } else {
+          0.0
+        },
+      );
+      s;
+    });
+    this;
+  }
+
+  fun scaleAlpha(factor: Float): LinearGradient {
+    this.withAlpha(this.alpha * factor);
+  }
+}
+
+/**
+ * Creates a new instance of RadialGradient.
+ * @param center the coordinates of the start center point of the gradient's circle
+ * @param radius the raduis start start point of the gradient's circle
+ * @param stops the gradient's color specification
+ */
+class RadialGradient(
+  center: Geometry.Offset,
+  radius: Float,
+  stops: Array<Stop>,
+) extends Paint {
+  fun translate(offset: Geometry.Offset): this {
+    !this.center = this.center.translate(offset.dx, offset.dy);
+    this;
+  }
+
+  fun toPainter(priority: Priority = High()): Painter {
+    stops = this.stops.filter(s ->
+      s.offset >= 0.0 && s.offset <= 1.0
+    ).sortedFor(c ~> c.offset);
+    invariant(
+      !this.stops.isEmpty(),
+      "Gradiant must have at list one valid stop",
+    );
+    if (this.stops.size() == 1) {
+      return SolidPainter(stops.first().color, priority);
+    };
+    radius = Math.abs(this.radius);
+    if (radius <= 1.0) {
+      return SolidPainter(stops.first().color);
+    };
+    last = stops.last();
+    first = stops.first();
+    fstops = stops;
+    LambdaPainter((x, y) ~> {
+      offset = Geometry.Offset(x.toFloat(), y.toFloat());
+      distance = (offset - this.center).distance();
+      if (distance <= radius * first.offset) {
+        return Pixel(first.color, priority);
+      };
+      if (distance >= radius * last.offset) {
+        return Pixel(last.color, priority);
+      };
+      t = distance / radius;
+      before = first;
+      for (current in fstops) {
+        if (current.offset == t) {
+          return Pixel(current.color, priority);
+        } else if (current.offset < t) {
+          !before = current;
+        } else {
+          tlen = current.offset - before.offset;
+          ct = (t - before.offset) / tlen;
+          return Pixel(before.color.lerpWith(current.color, ct), priority);
+        }
+      };
+      return Pixel(last.color, priority);
+    });
+  }
+
+  /**
+   * Gets whether this Paint is completely opaque.
+   */
+  fun isOpaque(): Bool {
+    !this.stops.any(step -> !step.color.isOpaque());
+  }
+
+  fun withAlpha(alpha: Float): RadialGradient {
+    current = this.alpha;
+    !this.alpha = alpha;
+    !this.stops = this.stops.map(s -> {
+      !s.color = s.color.withAlpha(
+        if (current != 0.0) {
+          s.color.alpha * alpha / current
+        } else {
+          0.0
+        },
+      );
+      s;
+    });
+    this;
+  }
+
+  fun scaleAlpha(factor: Float): RadialGradient {
+    this.withAlpha(this.alpha * factor);
+  }
+}
+
+module end;

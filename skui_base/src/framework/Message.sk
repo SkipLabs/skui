@@ -330,7 +330,7 @@ class Message(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Message _ -> x
-    | _ -> invariant_violation("Must be FWKMessage.Message")
+    | _ -> SKFS.cast_violation("FWKMessage.Message", obj)
     }
   }
 
@@ -370,7 +370,7 @@ class Messages(messages: Array<Message>) extends SKFS.File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Messages _ -> x
-    | _ -> invariant_violation("Must be FWKMessage.Messages")
+    | _ -> SKFS.cast_violation("FWKMessage.Messages", obj)
     }
   }
 
@@ -394,7 +394,7 @@ class Target(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Target _ -> x
-    | _ -> invariant_violation("Must be FWKMessage.Target")
+    | _ -> SKFS.cast_violation("FWKMessage.Target", obj)
     }
   }
 
@@ -482,7 +482,7 @@ class Sequence private (
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Sequence _ -> x
-    | _ -> invariant_violation("Must be FWKMessage.Sequence")
+    | _ -> SKFS.cast_violation("FWKMessage.Sequence", obj)
     }
   }
 

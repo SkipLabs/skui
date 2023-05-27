@@ -1,0 +1,15 @@
+module Text;
+
+base class Direction() uses Hashable, Orderable {
+  /**
+   * The text flows from left to right (e.g., English, French).
+   */
+  children =
+  | Ltr()
+  /**
+   * The text flows from right to left (e.g. Arabic, Hebrew).
+   */
+  | Rtl()
+}
+
+module end;

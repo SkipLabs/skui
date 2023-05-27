@@ -5,6 +5,4 @@ format-on-check = true
 auto-remove-state = true
 
 [dependencies]
-prelude = { }
-skfs = { }
 skui_base = { }

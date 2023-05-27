@@ -1,7 +1,7 @@
 [package]
 name = "skui_font"
 version = "0.1.0"
-format-on-checkCheck = true
+format-on-check = true
 auto-remove-state = true
 test-harness = "SKUIFontTest.main"
 

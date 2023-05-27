@@ -1,0 +1,109 @@
+module Ui;
+
+base class AxisDirection() uses Hashable, Orderable {
+  /**
+   * Returns the corresponding [Axis].
+   *
+   * Specifically, returns [Vertical] for [VerticalDirection] and returns [Horizontal] for [HorizontalDirection]
+   */
+  fun toAxis(): Axis {
+    this match {
+    | VerticalDirection() -> VerticalAxis()
+    | HorizontalDirection() -> HorizontalAxis()
+    }
+  }
+  /**
+   * Returns the [AxisDirection] in which reading occurs in the given [Text.Direction].
+   *
+   * Specifically, returns [Left] for [Text.Rtl] and
+   * [Right] for [Text.Ltr].
+   */
+  static fun fromTextDirection(textDirection: Text.Direction): AxisDirection {
+    textDirection match {
+    | Text.Rtl() -> ToLeft()
+    | Text.Ltr() -> ToRight()
+    }
+  }
+
+  /**
+   * Returns the opposite of the given [AxisDirection].
+   *
+   * Specifically, returns [AxisDirection.up] for [AxisDirection.down] (and
+   * vice versa), as well as [AxisDirection.left] for [AxisDirection.right] (and
+   * vice versa).
+   *
+   * See also:
+   *
+   *  * [Axis.flip], which does the same thing for [Axis] values.
+   */
+  fun flip(): AxisDirection {
+    this match {
+    | Up() -> Down()
+    | Down() -> Up()
+    | ToLeft() -> ToRight()
+    | ToRight() -> ToLeft()
+    }
+  }
+  /**
+   * Returns whether traveling along the given axis direction visits coordinates
+   * along that axis in numerically decreasing order.
+   *
+   * Specifically, returns true for [Up] and [Left]
+   * and false for [Down] and [Right].
+   */
+  fun isReversed(): Bool {
+    this match {
+    | Up() -> true
+    | Down() -> false
+    | ToLeft() -> false
+    | ToRight() -> true
+    }
+  }
+}
+
+base class VerticalDirection() extends AxisDirection {
+  children =
+  /**
+   * Boxes should start at the bottom and be stacked vertically towards the top.
+   *
+   * The "start" is at the bottom, the "end" is at the top.
+   */
+  | Up()
+  /**
+   * Boxes should start at the top and be stacked vertically towards the bottom.
+   *
+   * The "start" is at the top, the "end" is at the bottom.
+   */
+  | Down()
+}
+
+base class HorizontalDirection()
+  extends AxisDirection, SKFS.File
+  uses HasClassName {
+  children =
+  /**
+   * Zero is on the left and positive values are to the right of it: ⇉
+   *
+   * Alphabetical content with a [GrowthDirection.forward] would have the A on
+   * the left and the Z on the right. This is the ordinary reading order for a
+   * horizontal set of tabs in an English application, for example.
+   */
+  | ToRight()
+  /**
+   * Zero is to the right and positive values are to the left of it: ⇇
+   *
+   * Alphabetical content with a [GrowthDirection.forward] would have the A at
+   * the right and the Z at the left. This is the ordinary reading order for a
+   * horizontal set of tabs in a Hebrew application, for example.
+   */
+  | ToLeft()
+
+  static fun forFile(obj: SKFS.File): HorizontalDirection {
+    obj match {
+    | x @ HorizontalDirection _ -> x
+    | _ -> invariant_violation("Invalid Ui.HorizontalDirection")
+    }
+  }
+}
+
+module end;

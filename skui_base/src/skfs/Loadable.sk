@@ -47,7 +47,7 @@ module end;
 fun toLoadFailed(e: Exception): SKFS.LoadFailed {
   e match {
   | i18NException @ I18NExceptionBase _ ->
-    SKFS.LoadFailed(Some(i18NException.message))
+    SKFS.LoadFailed(Some(i18NException.getTextMessage()))
   | _ -> SKFS.LoadFailed(Some(!e.getMessage()))
   }
 }

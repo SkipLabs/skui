@@ -1,0 +1,47 @@
+module UiSide;
+
+base class .UiSide() extends SKFS.File uses Hashable, Equality {
+  fun toAxisDirection(): Ui.AxisDirection
+  | Bottom() -> Ui.Down()
+  | Left() -> Ui.ToLeft()
+  | Right() -> Ui.ToRight()
+  | Top() -> Ui.Up()
+
+  fun toCode(): Int
+  | Left() -> 0
+  | Top() -> 1
+  | Right() -> 2
+  | Bottom() -> 3
+
+  static fun fromCode(code: Int): .UiSide {
+    code match {
+    | 1 -> Top()
+    | 2 -> Right()
+    | 3 -> Bottom()
+    | 0
+    | _ ->
+      Left()
+    }
+  }
+
+  static fun forFile(obj: SKFS.File): .UiSide {
+    obj match {
+    | x @ .UiSide _ -> x
+    | _ -> invariant_violation("Invalid .UiSide")
+    }
+  }
+}
+
+base class Vertical() extends .UiSide {
+  children =
+  | Top()
+  | Bottom()
+}
+
+base class Horizontal() extends .UiSide {
+  children =
+  | Left()
+  | Right()
+}
+
+module end;

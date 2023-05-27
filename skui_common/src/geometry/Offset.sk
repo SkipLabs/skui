@@ -143,6 +143,10 @@ class Offset(dx: Float, dy: Float) uses Hashable, Orderable {
     Math.like(this.dx, other.dx, precision) &&
       Math.like(this.dy, other.dy, precision);
   }
+
+  fun divSize(size: Size): Offset {
+    Offset(this.dx / size.width, this.dy / size.height);
+  }
 }
 
 module end;
