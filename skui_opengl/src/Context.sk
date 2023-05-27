@@ -1,0 +1,510 @@
+module GL;
+
+class Ctx(id: UInt32) uses Hashable, HasClassName {
+  // UTILS
+
+  @debug
+  fun enable2DVertex(location: AttributeLocation, buffer: BufferRef): void {
+    this.enableVertexAttributeArray(location);
+    this.bindArrayBuffer(buffer);
+    this.vertexFloatAttributePointer(
+      location,
+      UInt32::truncate(2),
+      false,
+      UInt32::truncate(0),
+    );
+    this.bindArrayBuffer(BufferRef::noBuffer);
+  }
+
+  // TEXTURE
+  fun createTexture(): TextureRef {
+    createTexture(this.id)
+  }
+
+  fun importTexture(id: UInt32): Texture {
+    Texture::import(this, id)
+  }
+
+  fun copyTexture(
+    toCopy: TextureRef,
+    srcX: UInt32,
+    srcY: UInt32,
+    srcWidth: UInt32,
+    srcHeight: UInt32,
+    ref: TextureRef,
+    dstX: UInt32,
+    dstY: UInt32,
+    width: UInt32,
+    height: UInt32,
+    reverted: Bool,
+  ): void {
+    copyTexture(
+      toCopy,
+      srcX,
+      srcY,
+      srcWidth,
+      srcHeight,
+      ref,
+      dstX,
+      dstY,
+      width,
+      height,
+      reverted,
+      this.id,
+    )
+  }
+
+  fun saveTexture(
+    path: String,
+    ref: TextureRef,
+    width: UInt32,
+    height: UInt32,
+  ): Bool {
+    saveTexture(path, ref, width, height, this.id)
+  }
+
+  fun bindTexture2D(texture: TextureRef): void {
+    bindTexture2D(texture, this.id)
+  }
+
+  fun activeTexture(index: UInt32): void {
+    activeTexture(index, this.id)
+  }
+
+  fun deleteTexture(texture: UInt32): void {
+    deleteTexture(texture, this.id)
+  }
+
+  fun setTexture2DMinFilter(value: UInt8): void {
+    setTexture2DMinFilter(value, this.id)
+  }
+
+  fun setTexture2DMagFilter(value: UInt8): void {
+    setTexture2DMagFilter(value, this.id)
+  }
+
+  fun setTexture2DWrapS(value: UInt8): void {
+    setTexture2DWrapS(value, this.id)
+  }
+
+  fun setTexture2DWrapT(value: UInt8): void {
+    setTexture2DWrapT(value, this.id)
+  }
+
+  fun setTexture2DRGBAImage(
+    level: UInt32,
+    width: UInt32,
+    height: UInt32,
+    optData: ?Array<Ui.Pix>,
+  ): void {
+    setTexture2DRGBAImage(level, width, height, optData, this.id)
+  }
+
+  fun setTexture2DRGBASubImage(
+    level: UInt32,
+    x: UInt32,
+    y: UInt32,
+    width: UInt32,
+    height: UInt32,
+    data: Array<Ui.Pix>,
+  ): void {
+    setTexture2DRGBASubImage(level, x, y, width, height, data, this.id)
+  }
+
+  /// SHADER FUNCTIONS
+  fun createVertexShader(): ShaderRef {
+    createVertexShader(this.id)
+  }
+
+  fun createFragmentShader(): ShaderRef {
+    createFragmentShader(this.id)
+  }
+
+  fun shaderSource(shader: ShaderRef, source: String): void {
+    shaderSource(shader, source, this.id)
+  }
+
+  fun compileShader(shader: ShaderRef): void {
+    compileShader(shader, this.id)
+  }
+
+  fun isCompiled(shader: ShaderRef): Bool {
+    isCompiled(shader, this.id)
+  }
+
+  fun deleteShader(shader: UInt32): void {
+    deleteShader(shader, this.id)
+  }
+
+  fun getShaderInfoLog(shader: ShaderRef): String {
+    getShaderInfoLog(shader, this.id)
+  }
+
+  /// PROGRAL FUNCTIONS
+  fun createProgram(): ProgramRef {
+    createProgram(this.id)
+  }
+
+  fun linkProgram(program: ProgramRef): void {
+    linkProgram(program, this.id)
+  }
+
+  fun isToDelete(program: ProgramRef): Bool {
+    isToDelete(program, this.id)
+  }
+
+  fun isLinked(program: ProgramRef): Bool {
+    isLinked(program, this.id)
+  }
+
+  fun isValidated(program: ProgramRef): Bool {
+    isValidated(program, this.id)
+  }
+
+  fun getShaderCount(program: ProgramRef): UInt32 {
+    getShaderCount(program, this.id)
+  }
+
+  fun getAttributesCount(program: ProgramRef): UInt32 {
+    getAttributesCount(program, this.id)
+  }
+
+  fun getUniformCount(program: ProgramRef): UInt32 {
+    getUniformCount(program, this.id)
+  }
+
+  fun attachShader(program: ProgramRef, shader: ShaderRef): void {
+    attachShader(program, shader, this.id)
+  }
+
+  fun detachShader(program: ProgramRef, shader: ShaderRef): void {
+    detachShader(program, shader, this.id)
+  }
+
+  fun getProgramInfoLog(program: ProgramRef): String {
+    getProgramInfoLog(program, this.id)
+  }
+
+  fun useProgram(program: ProgramRef): void {
+    useProgram(program, this.id)
+  }
+
+  fun validateProgram(program: ProgramRef): void {
+    validateProgram(program, this.id)
+  }
+
+  fun deleteProgram(program: UInt32): void {
+    deleteProgram(program, this.id)
+  }
+
+  fun getUniformLocation(program: ProgramRef, index: UInt32): UniformLocation {
+    getUniformLocation(program, index, this.id)
+  }
+
+  fun getAttributeLocation(
+    program: ProgramRef,
+    index: UInt32,
+  ): AttributeLocation {
+    getAttributeLocation(program, index, this.id)
+  }
+
+  /// DRAW FUNCTIONS
+  fun drawPoints(first: UInt32, count: UInt32): void {
+    drawPoints(first, count, this.id)
+  }
+
+  fun drawLineStrip(first: UInt32, count: UInt32): void {
+    drawLineStrip(first, count, this.id)
+  }
+
+  fun drawLineLoop(first: UInt32, count: UInt32): void {
+    drawLineLoop(first, count, this.id)
+  }
+
+  fun drawLines(first: UInt32, count: UInt32): void {
+    drawLines(first, count, this.id)
+  }
+
+  fun drawTriangleStrip(first: UInt32, count: UInt32): void {
+    drawTriangleStrip(first, count, this.id)
+  }
+
+  fun drawTriangleFan(first: UInt32, count: UInt32): void {
+    drawTriangleFan(first, count, this.id)
+  }
+
+  fun drawTriangles(first: UInt32, count: UInt32): void {
+    drawTriangles(first, count, this.id)
+  }
+
+  /// CAPABILITY FUNCTIONS
+  fun enableCullFace(): void {
+    enableCullFace(this.id)
+  }
+
+  fun enableDepthTest(): void {
+    enableDepthTest(this.id)
+  }
+
+  fun enableDither(): void {
+    enableDither(this.id)
+  }
+
+  fun enablePolygonOffsetFill(): void {
+    enablePolygonOffsetFill(this.id)
+  }
+
+  fun enableSampleAlphaToCoverage(): void {
+    enableSampleAlphaToCoverage(this.id)
+  }
+
+  fun enableSampleCoverage(): void {
+    enableSampleCoverage(this.id)
+  }
+
+  fun enableScissorTest(): void {
+    enableScissorTest(this.id)
+  }
+
+  fun enableStencilTest(): void {
+    enableStencilTest(this.id)
+  }
+
+  //VERTEX ARRAY FUNCTIONS
+  fun createVertexArray(): VertexArrayRef {
+    createVertexArray(this.id)
+  }
+
+  fun bindVertexArray(vArray: VertexArrayRef): void {
+    bindVertexArray(vArray, this.id)
+  }
+
+  fun deleteVertexArray(vArray: VertexArrayRef): void {
+    deleteBuffer(vArray.id, this.id)
+  }
+
+  /// BUFFER FUNCTIONS
+  fun createBuffer(): BufferRef {
+    createBuffer(this.id)
+  }
+
+  fun bindArrayBuffer(buffer: BufferRef): void {
+    bindArrayBuffer(buffer, this.id)
+  }
+
+  fun staticDrawData(data: Array<Float>, len: UInt32): void {
+    staticDrawData(data, len, this.id)
+  }
+
+  fun deleteBuffer(buffer: BufferRef): void {
+    deleteBuffer(buffer.id, this.id)
+  }
+
+  /// FRAME BUFFER FUNCTIONS
+  fun bindMainFrameBuffer(): void {
+    bindMainFrameBuffer(this.id)
+  }
+
+  fun bindTextureFrameBuffer(): void {
+    bindTextureFrameBuffer(this.id)
+  }
+
+  fun framebufferTexture2DColor(texture: TextureRef, level: UInt32): void {
+    framebufferTexture2DColor(texture, level, this.id)
+  }
+
+  /// ATTRIBUTES FUNCTIONS
+  fun enableVertexAttributeArray(index: AttributeLocation): void {
+    enableVertexAttributeArray(index, this.id)
+  }
+
+  fun disableVertexAttributeArray(index: AttributeLocation): void {
+    disableVertexAttributeArray(index, this.id)
+  }
+
+  fun vertexFloatAttributePointer(
+    index: AttributeLocation,
+    size: UInt32,
+    normalized: Bool,
+    offset: UInt32,
+  ): void {
+    vertexFloatAttributePointer(index, size, normalized, offset, this.id)
+  }
+
+  /// UNIFORM FUNCTIONS
+  fun uniformMatrix4fv(
+    location: UniformLocation,
+    transpose: Bool,
+    v1: Float,
+    v2: Float,
+    v3: Float,
+    v4: Float,
+    v5: Float,
+    v6: Float,
+    v7: Float,
+    v8: Float,
+    v9: Float,
+    v10: Float,
+    v11: Float,
+    v12: Float,
+    v13: Float,
+    v14: Float,
+    v15: Float,
+    v16: Float,
+  ): void {
+    uniformMatrix4fv(
+      location,
+      transpose,
+      v1,
+      v2,
+      v3,
+      v4,
+      v5,
+      v6,
+      v7,
+      v8,
+      v9,
+      v10,
+      v11,
+      v12,
+      v13,
+      v14,
+      v15,
+      v16,
+      this.id,
+    )
+  }
+
+  fun uniform1i(location: UniformLocation, v0: UInt32): void {
+    uniform1i(location, v0, this.id)
+  }
+
+  fun uniform1f(location: UniformLocation, v0: Float): void {
+    uniform1f(location, v0, this.id)
+  }
+
+  fun uniform2f(location: UniformLocation, v0: Float, v1: Float): void {
+    uniform2f(location, v0, v1, this.id)
+  }
+  fun uniform4f(
+    location: UniformLocation,
+    v0: Float,
+    v1: Float,
+    v2: Float,
+    v3: Float,
+  ): void {
+    uniform4f(location, v0, v1, v2, v3, this.id)
+  }
+
+  fun uniform1fv(
+    location: UniformLocation,
+    count: UInt32,
+    values: Array<Float>,
+  ): void {
+    uniform1fv(location, count, values, this.id)
+  }
+
+  fun uniform3fv(
+    location: UniformLocation,
+    count: UInt32,
+    values: Array<Float>,
+  ): void {
+    uniform3fv(location, count, values, this.id)
+  }
+
+  fun uniform4fv(
+    location: UniformLocation,
+    count: UInt32,
+    values: Array<Float>,
+  ): void {
+    uniform4fv(location, count, values, this.id)
+  }
+
+  /// GENERAL
+
+  fun viewport(x: Int32, y: Int32, width: UInt32, height: UInt32): void {
+    viewport(x, y, width, height, this.id)
+  }
+
+  fun save(): void {
+    save(this.id)
+  }
+
+  fun restore(): void {
+    restore(this.id)
+  }
+
+  fun clearColor(r: Float, g: Float, b: Float, a: Float): void {
+    clearColor(r, g, b, a, this.id)
+  }
+
+  fun clear(): void {
+    clear(this.id)
+  }
+
+  fun flush(): void {
+    flush(this.id)
+  }
+
+  fun enableBlend(): void {
+    enableBlend(this.id)
+  }
+
+  fun disableBlend(): void {
+    disableBlend(this.id)
+  }
+
+  fun srcAlphaBlendSrcColor(): void {
+    srcAlphaBlendSrcColor(this.id)
+  }
+
+  fun srcAlphaBlendOneMinus(): void {
+    srcAlphaBlendOneMinus(this.id)
+  }
+
+  fun srcAlphaBlendOne(): void {
+    srcAlphaBlendOne(this.id)
+  }
+
+  fun oneBlendOneMinus(): void {
+    oneBlendOneMinus(this.id)
+  }
+
+  fun straitAlphaBlending(): void {
+    straitAlphaBlending(this.id)
+  }
+
+  fun uniformMatrix4(
+    location: UniformLocation,
+    transpose: Bool,
+    matrix: Matrix4,
+  ): void {
+    this.uniformMatrix4fv(
+      location,
+      transpose,
+      matrix.matrix[0],
+      matrix.matrix[1],
+      matrix.matrix[2],
+      matrix.matrix[3],
+      matrix.matrix[4],
+      matrix.matrix[5],
+      matrix.matrix[6],
+      matrix.matrix[7],
+      matrix.matrix[8],
+      matrix.matrix[9],
+      matrix.matrix[10],
+      matrix.matrix[11],
+      matrix.matrix[12],
+      matrix.matrix[13],
+      matrix.matrix[14],
+      matrix.matrix[15],
+    );
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    Hashable.combine(h, this.id);
+  }
+}
+
+module end;

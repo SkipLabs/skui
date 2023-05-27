@@ -1,0 +1,276 @@
+module GLProgram;
+
+const solidFramentShader: String = source(
+  Array[
+    "precision highp float;",
+    "uniform vec4 u_color;",
+    "void main() {",
+    "  gl_FragColor = u_color;",
+    "}",
+    "",
+  ],
+);
+
+const rectangleVertexShader: String = source(
+  Array[
+    "attribute vec4 a_position;",
+    "uniform mat4 u_matrix;",
+    "varying vec2 v_position;",
+    "void main() {",
+    "  v_position = a_position.xy;",
+    "  gl_Position = u_matrix * a_position;",
+    "}",
+    "",
+  ],
+);
+
+const roundedRectFragmentShader: String = source(
+  Array[
+    "precision highp float;",
+    "varying vec2 v_position;",
+    "uniform vec2 u_center;",
+    "uniform vec2 u_size;",
+    "uniform vec4 u_color;",
+    "uniform vec4 u_bColor;",
+    "uniform float u_radius;",
+    "uniform float u_smooth;",
+    "uniform float u_thickness;",
+    "float rr_length(vec2 v)",
+    "{",
+    "  return sqrt((v.x * v.x) + (v.y * v.y));",
+    "}",
+    "float rr_dist( vec2 p, vec2 b, float r)",
+    "{",
+    "  return rr_length(max(abs(p)-b+r,0.0))-r;",
+    "}",
+    "void main() {",
+    "  float rrDist = rr_dist(v_position - u_center, u_size, u_radius);",
+    "  float alpha = rrDist;",
+    "  if (u_smooth > 0.0) {",
+    "    alpha = smoothstep(0.0, -u_smooth, rrDist);",
+    "  }",
+    "  if (u_thickness > 0.0) {",
+    "    float rrDist2 = rr_dist(v_position - u_center, u_size - u_thickness, u_radius - (u_thickness / 2.0));",
+    "    float bAlpha = rrDist2;",
+    "    if (u_smooth > 0.0) {",
+    "      bAlpha = smoothstep(0.0, -u_smooth, rrDist2);",
+    "    }",
+    "    gl_FragColor = mix(u_bColor, u_color, bAlpha);",
+    "    gl_FragColor.a *= alpha;",
+    "  } else {",
+    "    gl_FragColor = u_color;",
+    "    gl_FragColor.a *= alpha;",
+    "  }",
+    "}",
+  ],
+);
+
+class SolidParameters(color: .Color) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ SolidParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.SolidParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class SolidShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    solidFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    colorUniform = program.getUniformLocation(uColor);
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+      optColor = parameters match {
+      | sps @ SolidParameters _ -> Some(sps.color)
+      | lgps @ LinearGradientParameters _ ->
+        Some(lgps.linearGradient.stops.first().color)
+      | rgps @ RadialGradientParameters _ ->
+        Some(rgps.radialGradient.stops.first().color)
+      | _ -> None()
+      };
+      optColor.each(color ->
+        ctx.uniform4f(
+          colorUniform,
+          color.red,
+          color.green,
+          color.blue,
+          color.alpha,
+        )
+      )
+    })
+  }
+}
+
+class RectangleParameters(rect: Geometry.Rect) extends AttributeVertexParams {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ RectangleParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.RectangleParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+base class RectangleBaseShader extends VertexShaderBuilder {
+  //
+  fun getSize(): Int;
+
+  fun build(program: GL.Prepared): VertexShader {
+    positionLocation = program.getAttributeLocation(aPosition);
+    // lookup uniforms
+    matrixLocation = program.getUniformLocation(uMatrix);
+    LambdaVertexShader(
+      (parameters, window) ~> {
+        ctx = program.context();
+        rectParams = parameters as RectangleParameters _;
+        rect = rectParams.rect;
+        updateMatrix(ctx, rect, window, matrixLocation);
+        this.getSize();
+      },
+      () ~> void,
+      positionLocation,
+    )
+  }
+}
+
+class RectangleShader() extends RectangleBaseShader {
+  fun source(): String {
+    rectangleVertexShader
+  }
+
+  fun getSize(): Int {
+    6
+  }
+}
+
+class TriangleShader(side: .UiSide) extends RectangleBaseShader {
+  fun source(): String {
+    rectangleVertexShader
+  }
+
+  fun getSize(): Int {
+    3
+  }
+}
+
+class Border(color: .Color = Colors.transparent(), thickness: Int = 0)
+
+class RoundedRectangleParameters(
+  size: Geometry.Size,
+  color: .Color,
+  radius: Int,
+  optBorder: ?Border,
+  smooth: Int,
+) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ RoundedRectangleParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.RoundedRectangleParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class RoundedRectangleShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    roundedRectFragmentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    colorUniform = program.getUniformLocation(uColor);
+    radiusUniform = program.getUniformLocation(uRadius);
+    centerUniform = program.getUniformLocation(uCenter);
+    sizeUniform = program.getUniformLocation(uSize);
+    smoothUniform = program.getUniformLocation(uSmooth);
+    bColorUniform = program.getUniformLocation(uBColor);
+    thicknessUniform = program.getUniformLocation(uThickness);
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+      rrParams = parameters as RoundedRectangleParameters _;
+      size = rrParams.size.width;
+      xFactor = 1.0;
+      yFactor = rrParams.size.height / rrParams.size.width;
+      if (rrParams.size.height > rrParams.size.width) {
+        !size = rrParams.size.height;
+        !xFactor = rrParams.size.width / rrParams.size.height;
+        !yFactor = 1.0;
+      };
+      ctx.uniform2f(sizeUniform, 0.5 * xFactor, 0.5 * yFactor);
+      ctx.uniform2f(centerUniform, 0.5, 0.5);
+      ctx.uniform4f(
+        colorUniform,
+        rrParams.color.red,
+        rrParams.color.green,
+        rrParams.color.blue,
+        rrParams.color.alpha,
+      );
+      ctx.uniform1f(radiusUniform, rrParams.radius.toFloat() / size);
+      smooth = rrParams.smooth.toFloat() / size;
+      ctx.uniform1f(smoothUniform, smooth);
+      border = rrParams.optBorder.default(Border());
+      ctx.uniform4f(
+        bColorUniform,
+        border.color.red,
+        border.color.green,
+        border.color.blue,
+        border.color.alpha,
+      );
+      ctx.uniform1f(thicknessUniform, border.thickness.toFloat() / size);
+    })
+  }
+}
+
+fun updateMatrix(
+  ctx: GL.Ctx,
+  rect: Geometry.Rect,
+  window: Geometry.Size,
+  matrixLocation: GL.UniformLocation,
+): void {
+  // this matrix will convert from pixels to clip space
+  // this matrix will translate our quad to dstX, dstY
+  // this matrix will scale our 1 unit quad
+  // from 1 unit to width, height units
+  matrix = GL.Matrix4::orthographic(
+    0.0,
+    window.width,
+    window.height,
+    0.0,
+    -1.0,
+    1.0,
+  )
+    .translate(rect.left, rect.top, 0.0)
+    .scale(rect.width(), rect.height(), 1.0);
+  // Set the matrix.
+  ctx.uniformMatrix4fv(
+    matrixLocation,
+    false,
+    matrix.matrix[0],
+    matrix.matrix[1],
+    matrix.matrix[2],
+    matrix.matrix[3],
+    matrix.matrix[4],
+    matrix.matrix[5],
+    matrix.matrix[6],
+    matrix.matrix[7],
+    matrix.matrix[8],
+    matrix.matrix[9],
+    matrix.matrix[10],
+    matrix.matrix[11],
+    matrix.matrix[12],
+    matrix.matrix[13],
+    matrix.matrix[14],
+    matrix.matrix[15],
+  );
+}
+
+module end;

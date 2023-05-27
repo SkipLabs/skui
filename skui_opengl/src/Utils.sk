@@ -1,0 +1,219 @@
+module GLShader;
+
+private fun load(
+  gl: GL.Ctx,
+  name: String,
+  source: String,
+  fn: GL.Ctx ~> GL.Shader,
+): GL.Shader {
+  !source = if (!source.startsWith("#version")) {
+    "#version 100\n" + source
+  } else {
+    source
+  };
+  shader = fn(gl);
+  shader.compile(name, source);
+  shader;
+}
+
+fun loadVertex(gl: GL.Ctx, name: String, source: String): GL.Shader {
+  load(gl, name, source, GL.Shader::createVertex)
+}
+
+fun loadFragment(gl: GL.Ctx, name: String, source: String): GL.Shader {
+  load(gl, name, source, GL.Shader::createFragment)
+}
+
+module end;
+
+module GLProgram;
+
+fun source(lines: Array<String>): String {
+  lines.map(line -> Unicode.onlyASCII(line)).join("\n")
+}
+
+fun create(
+  gl: GL.Ctx,
+  vertexes: Array<(String, String)>,
+  fragments: Array<(String, String)>,
+): GL.Prepared {
+  shaders = mutable Vector<GL.Shader>[];
+  vertexes.each(tuple -> {
+    (name, source) = tuple;
+    shaders.push(GLShader.loadVertex(gl, name, source))
+  });
+  fragments.each(tuple -> {
+    (name, source) = tuple;
+    shaders.push(GLShader.loadFragment(gl, name, source))
+  });
+  GL.Prepared::create(gl, shaders.toArray());
+}
+
+module end;
+
+module GLTexture;
+
+class Frame(texture: GL.Texturable, reverted: Bool)
+
+class OneMinus(inner: GL.Texturable) extends GL.Texturable {
+  @debug
+  fun asTexture(gl: GL.Ctx): GL.Texture {
+    gl.save();
+    gl.enableBlend();
+    gl.oneBlendOneMinus();
+    tex = this.inner.asTexture(gl);
+    gl.restore();
+    tex
+  }
+}
+
+fun oneMinusFrame(
+  width: Int,
+  height: Int,
+  fn: GL.Ctx ~> void,
+  color: .Color = Colors.transparent(),
+  mode: UInt8 = GLTexture.nearest,
+): Frame {
+  Frame(OneMinus(AsFrame(fn, color, mode, width, height), width, height), true)
+}
+
+class StraitAlpha(inner: GL.Texturable) extends GL.Texturable {
+  @debug
+  fun asTexture(gl: GL.Ctx): GL.Texture {
+    gl.save();
+    gl.enableBlend();
+    gl.straitAlphaBlending();
+    tex = this.inner.asTexture(gl);
+    gl.restore();
+    tex
+  }
+}
+
+fun straitAlphaFrame(
+  width: Int,
+  height: Int,
+  fn: GL.Ctx ~> void,
+  color: .Color = Colors.transparent(),
+  mode: UInt8 = GLTexture.nearest,
+): Frame {
+  Frame(
+    StraitAlpha(AsFrame(fn, color, mode, width, height), width, height),
+    true,
+  )
+}
+
+class NoBlend(inner: GL.Texturable) extends GL.Texturable {
+  @debug
+  fun asTexture(gl: GL.Ctx): GL.Texture {
+    gl.save();
+    gl.disableBlend();
+    tex = this.inner.asTexture(gl);
+    gl.restore();
+    tex
+  }
+}
+
+fun noBlendFrame(
+  width: Int,
+  height: Int,
+  fn: GL.Ctx ~> void,
+  color: .Color = Colors.transparent(),
+  mode: UInt8 = GLTexture.nearest,
+): Frame {
+  Frame(NoBlend(AsFrame(fn, color, mode, width, height), width, height), true)
+}
+
+class AsFrame(
+  fn: GL.Ctx ~> void,
+  color: .Color,
+  mode: UInt8,
+) extends GL.Texturable {
+  @debug
+  fun asTexture(gl: GL.Ctx): GL.Texture {
+    gl.bindTextureFrameBuffer();
+    tex = GL.Texture::create(gl);
+    tex.bind();
+    gl.setTexture2DRGBAImage(
+      UInt32::truncate(0),
+      UInt32::truncate(this.width),
+      UInt32::truncate(this.height),
+      None(),
+    );
+    gl.setTexture2DMinFilter(this.mode);
+    gl.setTexture2DMagFilter(this.mode);
+    gl.setTexture2DWrapS(GLTexture.clampToEdge);
+    gl.setTexture2DWrapT(GLTexture.clampToEdge);
+    gl.framebufferTexture2DColor(tex.ref, UInt32::truncate(0));
+    tex.unbind();
+    gl.viewport(
+      Int32::truncate(0),
+      Int32::truncate(0),
+      UInt32::truncate(this.width),
+      UInt32::truncate(this.height),
+    );
+    gl.clearColor(
+      this.color.red,
+      this.color.green,
+      this.color.blue,
+      this.color.alpha,
+    );
+    gl.clear();
+    this.fn(gl);
+    tex
+  }
+}
+
+fun frame(
+  width: Int,
+  height: Int,
+  fn: GL.Ctx ~> void,
+  color: .Color = Colors.transparent(),
+  mode: UInt8 = GLTexture.nearest,
+): Frame {
+  Frame(AsFrame(fn, color, mode, width, height), true)
+}
+
+class Image(optData: ?Array<Ui.Pix>, linear: Bool) extends GL.Texturable {
+  @debug
+  fun asTexture(gl: GL.Ctx): GL.Texture {
+    tex = GL.Texture::create(gl);
+    tex.bind();
+    gl.setTexture2DRGBAImage(
+      UInt32::truncate(0),
+      UInt32::truncate(this.width),
+      UInt32::truncate(this.height),
+      this.optData,
+    );
+    gl.setTexture2DMinFilter(
+      if (this.linear) GLTexture.linear else GLTexture.nearest,
+    );
+    gl.setTexture2DMagFilter(
+      if (this.linear) GLTexture.linear else GLTexture.nearest,
+    );
+    gl.setTexture2DWrapS(GLTexture.clampToEdge);
+    gl.setTexture2DWrapT(GLTexture.clampToEdge);
+    tex.unbind();
+    tex
+  }
+}
+
+fun createImage(width: Int, height: Int, optData: ?Array<Ui.Pix>): Frame {
+  Frame(Image(optData, false, width, height), false)
+}
+
+class Texturable(image: Image) {
+  fun getSize(): (UInt32, UInt32) {
+    (UInt32::truncate(this.image.width), UInt32::truncate(this.image.height))
+  }
+
+  fun getTexture(
+    _context: mutable SKFS.Context,
+    _width: UInt32,
+    _height: UInt32,
+    ctx: GL.Ctx,
+  ): ?GL.Texture {
+    Some(this.image.asTexture(ctx))
+  }
+}
+
+module end;

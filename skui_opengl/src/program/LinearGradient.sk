@@ -1,0 +1,116 @@
+module GLProgram;
+
+fun linearGradientFramentShader(stops: Int): String {
+  source(
+    Array[
+      "precision highp float;",
+      `uniform vec4 u_stop_colors[${stops}];`,
+      `uniform float u_stop_offsets[${stops}];`,
+      "uniform vec2 u_start;",
+      "uniform vec2 u_end;",
+      "varying vec2 v_position;",
+      "float getOffset(int index) {",
+      `  for (int i=0; i<${stops}; i++) {`,
+      "    if (i == index) return u_stop_offsets[i];",
+      "  }",
+      `  return u_stop_offsets[${stops - 1}];`,
+      "}",
+      "vec4 getColor(int index) {",
+      `  for (int i=0; i<${stops}; i++) {`,
+      "    if (i == index) return u_stop_colors[i];",
+      "  }",
+      `  return u_stop_colors[${stops - 1}];`,
+      "}",
+      "vec4 getGradientColor(float distance, float len) {",
+      "  float t = distance / len;",
+      "  int before = 0;",
+      `  for(int i=0;i<${stops};++i)`,
+      "  {",
+      "    if (u_stop_offsets[i] == t)",
+      "    {",
+      "      return u_stop_colors[i];",
+      "    }",
+      "    else if (u_stop_offsets[i] < t)",
+      "    {",
+      "      before = i;",
+      "    }",
+      "    else",
+      "    {",
+      "      float bOffset = getOffset(before);",
+      "      vec4 bColor = getColor(before);",
+      "      float tlen = u_stop_offsets[i] - bOffset;",
+      "      float ct = (t - bOffset) / tlen;",
+      "      return mix(bColor, u_stop_colors[i], ct);",
+      "    }",
+      "  }",
+      `  return u_stop_colors[${stops - 1}];`,
+      "}",
+      "void main() {",
+      "  float len = lenght(u_end - u_start);",
+      "  float ac = lenght(v_position - u_start);",
+      "  float bc = lenght(v_position - u_end);",
+      "  float distance = -((bc * bc) - (ac * ac) - (len * len)) / (2.0 * len);",
+      "  if (distance <= len * u_stop_offsets[0])",
+      "  {",
+      "     gl_FragColor = u_stop_colors[0];",
+      "  }",
+      `  else if (distance >= len * u_stop_offsets[${stops - 1}])`,
+      "  {",
+      `     gl_FragColor = u_stop_colors[${stops - 1}];`,
+      "  }",
+      "  else",
+      "  {",
+      "    gl_FragColor = getGradientColor(distance, len);",
+      "  }",
+      "}",
+    ],
+  );
+}
+
+class LinearGradientParameters(
+  rect: Geometry.Rect,
+  linearGradient: Ui.LinearGradient,
+) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ LinearGradientParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.LinearGradientParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class LinearGradientShader(stops: Int) extends FragmentShaderBuilder {
+  fun source(): String {
+    linearGradientFramentShader(this.stops)
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    startLocation = program.getUniformLocation(uStart);
+    endLocation = program.getUniformLocation(uEnd);
+    colorsLocation = program.getUniformLocation(uStopColors);
+    offsetsLocation = program.getUniformLocation(uStopOffsets);
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+      lgps = LinearGradientParameters::fromParams(parameters);
+      invariant(
+        lgps.linearGradient.stops.size() == this.stops,
+        "Invalid stops size",
+      );
+      stopColors = Ui.flatColors(lgps.linearGradient.stops);
+      stopOffsets = Ui.flatOffset(lgps.linearGradient.stops);
+      size = lgps.rect.size();
+      nStart = lgps.linearGradient.start.divSize(size);
+      nEnd = lgps.linearGradient.end.divSize(size);
+      count = UInt32::truncate(this.stops);
+      ctx.uniform4fv(colorsLocation, count, stopColors);
+      ctx.uniform1fv(offsetsLocation, count, stopOffsets);
+      ctx.uniform2f(startLocation, nStart.dx, nStart.dy);
+      ctx.uniform2f(endLocation, nEnd.dx, nEnd.dy);
+    })
+  }
+}
+
+module end;

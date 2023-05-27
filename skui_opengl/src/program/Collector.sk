@@ -1,0 +1,315 @@
+module GLProgram;
+
+type GetBuffer = (mutable SKFS.Context, String) ~> ?Buffer;
+type GetVertexArray = (mutable SKFS.Context, String) ~> ?VertexArray;
+type Builder = GL.Ctx ~> TriangleProgram;
+type GetProgram = (mutable SKFS.Context, String) ~> ?TriangleProgram;
+
+class Supplier(programs: GetProgram) {
+  //
+  fun linearGradientRectangle(
+    context: mutable SKFS.Context,
+    count: Int,
+  ): ?TriangleProgram {
+    this.programs(context, `FWK.LinearGradientRectangleDrawer.${count}`)
+  }
+
+  fun radialGradientRectangle(
+    context: mutable SKFS.Context,
+    count: Int,
+  ): ?TriangleProgram {
+    this.programs(context, `FWK.RadialGradientRectangle.${count}`);
+  }
+
+  fun textureDrawer(
+    context: mutable SKFS.Context,
+    flipped: Bool = false,
+  ): ?TriangleProgram {
+    this.programs(context, `FWK.TextureDrawer.${flipped}`)
+  }
+
+  fun bilinearDrawer(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.BilinearDrawer")
+  }
+
+  fun msdfDrawer(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.MsdfDrawer")
+  }
+
+  fun diskDrawer(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.SolidDiskDrawer")
+  }
+
+  fun ellipseDrawer(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.SolidEllipseDrawer");
+  }
+
+  fun rectangleDrawer(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.SolidRectangleDrawer")
+  }
+
+  fun roundedRectangleDrawer(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.RoundedRectangleDrawer")
+  }
+
+  fun boxShadowDrawer(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.BoxShadowDrawer")
+  }
+
+  fun radialGradientTriangle(
+    context: mutable SKFS.Context,
+    count: Int,
+    side: .UiSide,
+  ): ?TriangleProgram {
+    name = side match {
+    | UiSide.Left() -> "left"
+    | UiSide.Top() -> "top"
+    | UiSide.Right() -> "right"
+    | UiSide.Bottom() -> "bottom"
+    };
+    this.programs(context, `FWK.RadialGradientTriangle.${count}.${name}`)
+  }
+
+  fun linearGradientTriangle(
+    context: mutable SKFS.Context,
+    count: Int,
+    side: .UiSide,
+  ): ?TriangleProgram {
+    name = side match {
+    | UiSide.Left() -> "left"
+    | UiSide.Top() -> "top"
+    | UiSide.Right() -> "right"
+    | UiSide.Bottom() -> "bottom"
+    };
+    this.programs(context, `FWK.LinearGradientTriangle.${count}.${name}`)
+  }
+
+  fun solidTriangle(
+    context: mutable SKFS.Context,
+    side: .UiSide,
+  ): ?TriangleProgram {
+    name = side match {
+    | UiSide.Left() -> "left"
+    | UiSide.Top() -> "top"
+    | UiSide.Right() -> "right"
+    | UiSide.Bottom() -> "bottom"
+    };
+    this.programs(context, `FWK.SolidGradientTriangle.${name}`)
+  }
+
+  fun progress(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.ProgressRectangle");
+  }
+
+  fun loading(context: mutable SKFS.Context): ?TriangleProgram {
+    this.programs(context, "FWK.LoadingRectangle");
+  }
+
+  fun solidVertexes(
+    context: mutable SKFS.Context,
+    normalized: Bool,
+  ): ?TriangleProgram {
+    this.programs(context, `FWK.SolidVertexesDrawer.${normalized}`);
+  }
+}
+
+base class Used(value: String) extends SKFS.File {
+  children =
+  | UBuffer
+  | UArray
+}
+
+mutable class Initializer(
+  programs: mutable Map<String, Builder> = mutable Map[],
+  buffers: mutable Map<String, GL.Ctx ~> Buffer> = mutable Map[],
+  arrays: mutable Map<String, GL.Ctx ~> VertexArray> = mutable Map[],
+) {
+  //
+  mutable fun linearGradientRectangle(count: Int): Used {
+    this.rectangleBase(
+      `FWK.LinearGradientRectangleDrawer.${count}`,
+      LinearGradientShader(count),
+    );
+  }
+
+  mutable fun radialGradientRectangle(count: Int): Used {
+    this.rectangleBase(
+      `FWK.RadialGradientRectangleDrawer.${count}`,
+      RadialGradientShader(count),
+    );
+  }
+
+  mutable fun texture(flipped: Bool = false): Used {
+    id = `FWK.TextureDrawer.${flipped}`;
+    if (this.programs.maybeGet(id).isNone()) {
+      vShader = if (flipped) FlippedShader() else {
+        RectangleShader()
+      };
+      fn = gl ~> triangleProgram(gl, TextureShader(), vShader);
+      this.programs.set(id, fn);
+    };
+    this.rectanglePositionBuffer();
+  }
+
+  mutable fun billinear(): Used {
+    id = "FWK.BilinearDrawer";
+    if (this.programs.maybeGet(id).isNone()) {
+      fn = gl ~> triangleProgram(gl, BilinearFragment(), EsRectangleShader());
+      this.programs.set(id, fn);
+    };
+    this.bilinearVertexArray();
+  }
+
+  mutable fun msdf(): Used {
+    id = "FWK.MsdfDrawer";
+    if (this.programs.maybeGet(id).isNone()) {
+      fn = gl ~> triangleProgram(gl, MsdfFragment(), EsRectangleShader());
+      this.programs.set(id, fn);
+    };
+    this.bilinearVertexArray();
+  }
+
+  mutable fun disk(): Used {
+    this.rectangleBase("FWK.SolidDiskDrawer", DiskShader())
+  }
+
+  mutable fun ellipse(): Used {
+    this.rectangleBase("FWK.SolidEllipseDrawer", EllipseShader())
+  }
+
+  mutable fun rectangle(): Used {
+    this.rectangleBase("FWK.SolidRectangleDrawer", SolidShader())
+  }
+
+  mutable fun roundedRectangle(): Used {
+    this.rectangleBase("FWK.RoundedRectangleDrawer", RoundedRectangleShader())
+  }
+
+  mutable fun boxShadow(): Used {
+    id = "FWK.BoxShadowDrawer";
+    if (this.programs.maybeGet(id).isNone()) {
+      vShader = ShadowVertexShader();
+      fn = gl ~> triangleProgram(gl, ShadowShader(), vShader);
+      this.programs.set(id, fn);
+    };
+    this.rectanglePositionBuffer();
+  }
+
+  mutable fun radialGradientTriangle(count: Int, side: .UiSide): Used {
+    this.triangleBase(
+      `FWK.RadialGradientTriangle.${count}`,
+      side,
+      RadialGradientShader(count),
+    );
+  }
+
+  mutable fun linearGradientTriangle(count: Int, side: .UiSide): Used {
+    this.triangleBase(
+      `FWK.LinearGradientTriangle.${count}`,
+      side,
+      LinearGradientShader(count),
+    );
+  }
+
+  mutable fun solidTriangle(side: .UiSide): Used {
+    this.triangleBase("FWK.SolidGradientTriangle", side, SolidShader());
+  }
+
+  mutable fun progress(): Used {
+    this.rectangleBase("FWK.ProgressRectangle", ProgressShader());
+  }
+
+  mutable fun loading(): Used {
+    this.rectangleBase("FWK.LoadingRectangle", LoadingShader());
+  }
+
+  mutable fun solidVertexes(
+    vertexes: Array<Geometry.Offset>,
+    normalized: Bool,
+  ): Used {
+    bHash = vertexes.hash();
+    bId = `FWK.Vertexes.${bHash}`;
+    if (this.buffers.maybeGet(bId).isNone()) {
+      fn = gl ~> Buffer(vertexesPositionBuffer(gl, vertexes));
+      this.buffers.set(bId, fn)
+    };
+    id = `FWK.SolidVertexesDrawer.${normalized}`;
+    if (this.programs.maybeGet(id).isNone()) {
+      fn = gl ~> triangleProgram(gl, SolidShader(), VertexesShader(normalized));
+      this.programs.set(id, fn);
+    };
+    UBuffer(bId)
+  }
+
+  private mutable fun rectangleBase(
+    id: String,
+    fShader: FragmentShaderBuilder,
+  ): Used {
+    if (this.programs.maybeGet(id).isNone()) {
+      vShader = RectangleShader();
+      fn = gl ~> triangleProgram(gl, fShader, vShader);
+      this.programs.set(id, fn);
+    };
+    this.rectanglePositionBuffer();
+  }
+
+  private mutable fun triangleBase(
+    prefix: String,
+    side: .UiSide,
+    fShader: FragmentShaderBuilder,
+  ): Used {
+    name = side match {
+    | UiSide.Left() -> "left"
+    | UiSide.Top() -> "top"
+    | UiSide.Right() -> "right"
+    | UiSide.Bottom() -> "bottom"
+    };
+    id = `${prefix}.${name}`;
+    if (this.programs.maybeGet(id).isNone()) {
+      vShader = TriangleShader(side);
+      fn = gl ~> triangleProgram(gl, fShader, vShader);
+      this.programs.set(id, fn);
+    };
+    this.trianglePositionBuffer(side);
+  }
+
+  // VertexArray
+
+  mutable fun bilinearVertexArray(): Used {
+    id = "FWK.BilinearVertexArray";
+    if (this.arrays.maybeGet(id).isNone()) {
+      positions = this.rectanglePositionBuffer();
+      fn = gl ~> VertexArray(GL.VertexArray::create(gl), positions.value);
+      this.arrays.set(id, fn)
+    };
+    UArray(id)
+  }
+
+  // Buffers
+
+  mutable fun rectanglePositionBuffer(): Used {
+    id = "FWK.RectanglePositionBuffer";
+    if (this.buffers.maybeGet(id).isNone()) {
+      fn = gl ~> Buffer(rectanglePositionBuffer(gl));
+      this.buffers.set(id, fn)
+    };
+    UBuffer(id)
+  }
+
+  mutable fun trianglePositionBuffer(side: .UiSide): Used {
+    name = side match {
+    | UiSide.Left() -> "left"
+    | UiSide.Top() -> "top"
+    | UiSide.Right() -> "right"
+    | UiSide.Bottom() -> "bottom"
+    };
+    id = `FWK.TrianglePositionBuffer.${name}`;
+    if (this.buffers.maybeGet(id).isNone()) {
+      fn = gl ~> Buffer(trianglePositionBuffer(gl, side));
+      this.buffers.set(id, fn)
+    };
+    UBuffer(id)
+  }
+}
+
+module end;

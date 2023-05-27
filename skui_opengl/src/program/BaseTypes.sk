@@ -1,0 +1,289 @@
+module GLProgram;
+
+base class Data
+
+class Buffer(value: GL.Buffer) extends SKFS.File, Data {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Buffer _ -> x
+    | _ -> SKFS.cast_violation("GLProgram.Buffer", obj)
+    }
+  }
+
+  fun context(): GL.Ctx {
+    this.value.ctx
+  }
+}
+
+class VertexArray(
+  value: GL.VertexArray,
+  positions: String,
+) extends SKFS.File, Data {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ VertexArray _ -> x
+    | _ -> SKFS.cast_violation("GLProgram.VertexArray", obj)
+    }
+  }
+
+  @debug
+  fun init(buffers: String -> Buffer): void {
+    this.value.bind();
+    vertexPosLocation = GL.AttributeLocation::fromInt(0);
+    vertexPosBuffer = buffers(this.positions);
+    this.value.ctx.enable2DVertex(vertexPosLocation, vertexPosBuffer.value.ref);
+    this.value.unbind();
+  }
+
+  fun context(): GL.Ctx {
+    this.value.ctx
+  }
+}
+
+base class Parameters uses HasClassName
+
+base class VertexShaderParams extends Parameters
+base class AttributeVertexParams(positions: Buffer) extends VertexShaderParams
+base class LayoutVertexParams(vArray: VertexArray) extends VertexShaderParams
+class DummyLayoutParams() extends LayoutVertexParams
+
+base class FragmentShader {
+  fun apply(parameter: Parameters): void;
+  fun clean(): void;
+}
+
+class LambdaFragmentShader(
+  applyFun: Parameters ~> void,
+  cleanFun: () ~> void = () ~> void,
+) extends FragmentShader {
+  fun apply(parameter: Parameters): void {
+    this.applyFun(parameter)
+  }
+  fun clean(): void {
+    this.cleanFun()
+  }
+}
+
+base class VertexShader {
+  fun apply(params: VertexShaderParams, window: Geometry.Size): Int;
+  fun clean(params: VertexShaderParams): void;
+}
+
+base class AttributeVertexShader(
+  positionLocation: GL.AttributeLocation,
+) extends VertexShader {
+  @debug
+  fun apply(params: VertexShaderParams, window: Geometry.Size): Int {
+    params match {
+    | attrParams @ AttributeVertexParams _ ->
+      ctx = attrParams.positions.context();
+      ctx.bindArrayBuffer(attrParams.positions.value.ref);
+      ctx.enableVertexAttributeArray(this.positionLocation);
+      ctx.vertexFloatAttributePointer(
+        this.positionLocation,
+        UInt32::truncate(2),
+        false,
+        UInt32::truncate(0),
+      );
+      this.toApply(attrParams, window)
+    | _ -> SKFS.cast_violation("GLProgram.AttributeVertexParams", params)
+    };
+  }
+
+  fun clean(params: VertexShaderParams): void {
+    params match {
+    | attrParams @ AttributeVertexParams _ ->
+      attrParams.positions.value.unbind()
+    | _ -> SKFS.cast_violation("GLProgram.AttributeVertexParams", params)
+    };
+    this.onClean();
+  }
+
+  protected fun onClean(): void;
+  protected fun toApply(
+    params: AttributeVertexParams,
+    window: Geometry.Size,
+  ): Int;
+}
+
+base class LayoutVertexShader() extends VertexShader {
+  @debug
+  fun apply(params: VertexShaderParams, window: Geometry.Size): Int {
+    params match {
+    | lParams @ LayoutVertexParams _ ->
+      lParams.vArray.value.bind();
+      this.toApply(lParams, window)
+    | _ -> SKFS.cast_violation("GLProgram.LayoutVertexParams", params)
+    };
+  }
+
+  fun clean(params: VertexShaderParams): void {
+    params match {
+    | lParams @ LayoutVertexParams _ -> lParams.vArray.value.unbind()
+    | _ -> SKFS.cast_violation("GLProgram.LayoutVertexParams", params)
+    };
+    this.onClean();
+  }
+
+  protected fun onClean(): void;
+  protected fun toApply(params: LayoutVertexParams, window: Geometry.Size): Int;
+}
+
+class LambdaVertexShader(
+  applyFun: (AttributeVertexParams, Geometry.Size) ~> Int,
+  cleanFun: () ~> void,
+) extends AttributeVertexShader {
+  protected fun toApply(
+    parameter: AttributeVertexParams,
+    window: Geometry.Size,
+  ): Int {
+    this.applyFun(parameter, window)
+  }
+
+  protected fun onClean(): void {
+    this.cleanFun()
+  }
+}
+
+class LamLayoutVertexShader(
+  applyFun: (LayoutVertexParams, Geometry.Size) ~> Int,
+  cleanFun: () ~> void,
+) extends LayoutVertexShader {
+  protected fun toApply(
+    parameter: LayoutVertexParams,
+    window: Geometry.Size,
+  ): Int {
+    this.applyFun(parameter, window)
+  }
+
+  protected fun onClean(): void {
+    this.cleanFun()
+  }
+}
+
+class TriangleProgram(
+  program: GL.Prepared,
+  fragmentShader: FragmentShader,
+  vertexShader: VertexShader,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ TriangleProgram _ -> x
+    | _ -> SKFS.cast_violation("GLProgram.TriangleProgram", obj)
+    }
+  }
+
+  fun context(): GL.Ctx {
+    this.program.context()
+  }
+
+  @debug
+  fun run(
+    fragment: Parameters,
+    vertex: VertexShaderParams,
+    window: Geometry.Size,
+  ): void {
+    ctx = this.program.context();
+    this.program.use();
+    this.fragmentShader.apply(fragment);
+    size = this.vertexShader.apply(vertex, window);
+    ctx.drawTriangles(UInt32::truncate(0), UInt32::truncate(size));
+    this.fragmentShader.clean();
+    this.vertexShader.clean(vertex);
+  }
+}
+
+base class FragmentShaderBuilder {
+  fun source(): String;
+  fun build(program: GL.Prepared): FragmentShader;
+}
+
+base class VertexShaderBuilder {
+  fun source(): String;
+  fun build(program: GL.Prepared): VertexShader;
+}
+
+fun triangleProgram(
+  gl: GL.Ctx,
+  fragmentBuilder: FragmentShaderBuilder,
+  vertexBuilder: VertexShaderBuilder,
+): TriangleProgram {
+  vertexShaderSource = vertexBuilder.source();
+  fragmentShaderSource = fragmentBuilder.source();
+  program = GLProgram.create(
+    gl,
+    Array[("vertexShaderSource", vertexShaderSource)],
+    Array[("fragmentShaderSource", fragmentShaderSource)],
+  );
+  vertexShader = vertexBuilder.build(program);
+  fragmentShader = fragmentBuilder.build(program);
+  TriangleProgram(program, fragmentShader, vertexShader)
+}
+
+fun rectanglePositionBuffer(gl: GL.Ctx): GL.Buffer {
+  // Put a unit quad in the buffer
+  GL.Buffer::createFromData(
+    gl,
+    Array[0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+  );
+}
+
+fun bilenearPositionBuffer(gl: GL.Ctx): GL.Buffer {
+  GL.Buffer::createFromData(
+    gl,
+    Array[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0],
+  );
+}
+
+fun bilenearCoordinatesBuffer(gl: GL.Ctx): GL.Buffer {
+  GL.Buffer::createFromData(
+    gl,
+    Array[0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+  );
+}
+
+fun trianglePositionBuffer(gl: GL.Ctx, side: .UiSide): GL.Buffer {
+  side match {
+  | UiSide.Left() ->
+    GL.Buffer::createFromData(gl, Array[0.0, 0.5, 1.0, 0.0, 1.0, 1.0])
+  | UiSide.Top() ->
+    GL.Buffer::createFromData(gl, Array[0.5, 0.0, 1.0, 1.0, 0.0, 1.0])
+  | UiSide.Right() ->
+    GL.Buffer::createFromData(gl, Array[0.0, 0.0, 1.0, 0.5, 0.0, 1.0])
+  | UiSide.Bottom() ->
+    GL.Buffer::createFromData(gl, Array[0.0, 0.0, 1.0, 0.0, 0.5, 1.0])
+  };
+}
+
+const uBox: UInt32 = UInt32::truncate(0);
+const uCenter: UInt32 = UInt32::truncate(1);
+const uColor: UInt32 = UInt32::truncate(2);
+const uColor1: UInt32 = UInt32::truncate(3);
+const uColor2: UInt32 = UInt32::truncate(4);
+const uEnd: UInt32 = UInt32::truncate(5);
+const uMatrix: UInt32 = UInt32::truncate(6);
+const uRadius: UInt32 = UInt32::truncate(7);
+const uSigma: UInt32 = UInt32::truncate(8);
+const uSmooth: UInt32 = UInt32::truncate(9);
+const uStart: UInt32 = UInt32::truncate(10);
+const uStep: UInt32 = UInt32::truncate(11);
+const uTexture: UInt32 = UInt32::truncate(12);
+const uTexture1: UInt32 = UInt32::truncate(13);
+const uTexture2: UInt32 = UInt32::truncate(14);
+const uThickness: UInt32 = UInt32::truncate(15);
+const uStopColors: UInt32 = UInt32::truncate(16);
+const uStopOffsets: UInt32 = UInt32::truncate(17);
+const uProgress: UInt32 = UInt32::truncate(18);
+const uPrecision: UInt32 = UInt32::truncate(19);
+const uSize1: UInt32 = UInt32::truncate(20);
+const uSize2: UInt32 = UInt32::truncate(21);
+const uBColor: UInt32 = UInt32::truncate(22);
+const uSize: UInt32 = UInt32::truncate(23);
+const uPxRange: UInt32 = UInt32::truncate(24);
+
+const aPosition: UInt32 = UInt32::truncate(0);
+
+module end;

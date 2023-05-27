@@ -1,0 +1,79 @@
+module GL;
+
+value class Vector3 private (vector: Array<Float>) {
+  static fun create(): Vector3 {
+    Vector3(Array::fill(3, 0.0))
+  }
+
+  fun +(other: Vector3): Vector3 {
+    Vector3(
+      Array[
+        this.vector[0] + other.vector[0],
+        this.vector[1] + other.vector[1],
+        this.vector[2] + other.vector[2],
+      ],
+    )
+  }
+
+  fun -(other: Vector3): Vector3 {
+    Vector3(
+      Array[
+        this.vector[0] - other.vector[0],
+        this.vector[1] - other.vector[1],
+        this.vector[2] - other.vector[2],
+      ],
+    )
+  }
+
+  fun scale(factor: Float): Vector3 {
+    Vector3(
+      Array[
+        this.vector[0] * factor,
+        this.vector[1] * factor,
+        this.vector[2] * factor,
+      ],
+    )
+  }
+
+  fun length(): Float {
+    Math.sqrt(this.dot(this));
+  }
+
+  fun normalize(): Vector3 {
+    length = this.length();
+    if (length > 0.00001) {
+      Vector3(
+        Array[
+          this.vector[0] / length,
+          this.vector[1] / length,
+          this.vector[2] / length,
+        ],
+      )
+    } else {
+      this
+    }
+  }
+
+  fun cross(other: Vector3): Vector3 {
+    Vector3(
+      Array[
+        this.vector[1] * other.vector[2] - this.vector[2] * other.vector[1],
+        this.vector[2] * other.vector[0] - this.vector[0] * other.vector[2],
+        this.vector[0] * other.vector[1] - this.vector[1] * other.vector[0],
+      ],
+    )
+  }
+
+  fun dot(other: Vector3): Float {
+    this.vector[0] * other.vector[0] +
+      this.vector[1] * other.vector[1] +
+      this.vector[2] * other.vector[2]
+  }
+
+  fun distance(other: Vector3): Float {
+    diff = this - other;
+    Math.sqrt(diff.dot(diff));
+  }
+}
+
+module end;

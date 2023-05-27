@@ -1,0 +1,388 @@
+module GL;
+
+base class Texturable(width: Int, height: Int) {
+  fun asTexture(ctx: Ctx): Texture;
+}
+
+trait Extern {
+  macro fun getId(): UInt32 {
+    this.id
+  }
+}
+
+const limit: Int = 1000;
+
+base class WithExtern<T: Extern> final (
+  ctx: Ctx,
+  ref: T,
+  eptr: SKFS.ExternalPointer,
+) uses HasClassName {
+  protected deferred static fun make(
+    ctx: Ctx,
+    ref: T,
+    delete: UInt32 ~> void,
+  ): this {
+    eId = UInt32::truncate(ref.getId() * limit + ctx.id);
+    static(ctx, ref, SKFS.ExternalPointer::create(eId, delete))
+  }
+
+  protected fun delete(): void;
+}
+
+value class TextureRef(id: UInt32) uses Extern {
+  const noTexture: TextureRef = TextureRef(UInt32::truncate(0));
+}
+
+fun contextElement(id: UInt32): (UInt32, UInt32) {
+  (UInt32::truncate(id % limit), UInt32::truncate(id / limit))
+}
+
+fun ctxDeleteTexture(id: UInt32): void {
+  (ctx, tex) = contextElement(id);
+  deleteTexture(tex, ctx)
+}
+
+class Texture extends WithExtern<TextureRef>, SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Texture _ -> x
+    | _ -> SKFS.cast_violation("GL.Texture", obj)
+    }
+  }
+
+  static fun create(ctx: Ctx): Texture {
+    static::make(ctx, ctx.createTexture(), ctxDeleteTexture);
+  }
+
+  static fun import(ctx: Ctx, id: UInt32): Texture {
+    static::make(ctx, TextureRef(id), ctxDeleteTexture);
+  }
+
+  fun bind(): void {
+    this.ctx.bindTexture2D(this.ref)
+  }
+
+  fun unbind(): void {
+    this.ctx.bindTexture2D(TextureRef::noTexture)
+  }
+
+  fun save(path: String, width: Int, height: Int): Bool {
+    this.ctx.saveTexture(
+      path,
+      this.ref,
+      UInt32::truncate(width),
+      UInt32::truncate(height),
+    )
+  }
+
+  fun copy(
+    toCopy: Texture,
+    srcX: Int,
+    srcY: Int,
+    srcWidth: Int,
+    srcHeight: Int,
+    dstX: Int,
+    dstY: Int,
+    width: Int,
+    height: Int,
+    reverted: Bool,
+  ): void {
+    this.ctx.copyTexture(
+      toCopy.ref,
+      UInt32::truncate(srcX),
+      UInt32::truncate(srcY),
+      UInt32::truncate(srcWidth),
+      UInt32::truncate(srcHeight),
+      this.ref,
+      UInt32::truncate(dstX),
+      UInt32::truncate(dstY),
+      UInt32::truncate(width),
+      UInt32::truncate(height),
+      reverted,
+    )
+  }
+
+  protected fun delete(): void {
+    this.ctx.deleteTexture(this.ref.id)
+  }
+}
+
+value class ShaderRef(id: UInt32) uses Extern {
+  const noShader: ShaderRef = ShaderRef(UInt32::truncate(0));
+}
+
+fun ctxDeleteShader(id: UInt32): void {
+  (ctx, shader) = contextElement(id);
+  deleteShader(shader, ctx)
+}
+
+class Shader extends WithExtern<ShaderRef> {
+  static fun createVertex(ctx: Ctx): Shader {
+    static::create(ctx, false);
+  }
+
+  static fun createFragment(ctx: Ctx): Shader {
+    static::create(ctx, true);
+  }
+
+  static fun create(ctx: Ctx, fragment: Bool): Shader {
+    ref = if (fragment) ctx.createFragmentShader() else {
+      ctx.createVertexShader()
+    };
+    static::make(ctx, ref, ctxDeleteShader);
+  }
+
+  fun compile(name: String, source: String): void {
+    // Load the shader source
+    this.ctx.shaderSource(this.ref, source);
+    // Compile the shader
+    this.ctx.compileShader(this.ref);
+    // Check the compile status
+    if (!this.ctx.isCompiled(this.ref)) {
+      error = this.ctx.getShaderInfoLog(this.ref);
+      this.delete();
+      invariant_violation(`Error compiling shader(${name}): ${error}`);
+    };
+  }
+
+  protected fun delete(): void {
+    this.ctx.deleteShader(this.ref.id)
+  }
+}
+
+value class ProgramRef(id: UInt32) uses Extern {
+  const noProgram: ProgramRef = ProgramRef(UInt32::truncate(0));
+}
+
+fun ctxDeleteProgram(id: UInt32): void {
+  (ctx, program) = contextElement(id);
+  deleteProgram(program, ctx)
+}
+
+class Program extends WithExtern<ProgramRef> {
+  static fun create(ctx: Ctx): Program {
+    static::make(ctx, ctx.createProgram(), ctxDeleteProgram);
+  }
+
+  fun link(): void {
+    this.ctx.linkProgram(this.ref); // Check the link status
+    if (!this.ctx.isLinked(this.ref)) {
+      error = this.ctx.getProgramInfoLog(this.ref);
+      this.delete();
+      invariant_violation(`Error linking program: ${error}`);
+    };
+  }
+
+  protected fun delete(): void {
+    this.ctx.deleteProgram(this.ref.id)
+  }
+
+  fun isValidated(): Bool {
+    this.ctx.isValidated(this.ref);
+  }
+
+  fun getShaderCount(): UInt32 {
+    this.ctx.getShaderCount(this.ref);
+  }
+
+  fun getAttributesCount(): UInt32 {
+    this.ctx.getAttributesCount(this.ref);
+  }
+
+  fun getUniformCount(): UInt32 {
+    this.ctx.getUniformCount(this.ref);
+  }
+
+  fun attach(shader: Shader): void {
+    this.ctx.attachShader(this.ref, shader.ref)
+  }
+
+  fun detach(shader: Shader): void {
+    this.ctx.detachShader(this.ref, shader.ref)
+  }
+
+  fun use(): void {
+    this.ctx.useProgram(this.ref)
+  }
+
+  fun validate(): void {
+    this.ctx.validateProgram(this.ref)
+  }
+
+  fun getUniformLocation(index: UInt32): UniformLocation {
+    this.ctx.getUniformLocation(this.ref, index)
+  }
+
+  fun getAttributeLocation(index: UInt32): AttributeLocation {
+    this.ctx.getAttributeLocation(this.ref, index)
+  }
+}
+
+class Prepared(program: Program, shaders: Array<Shader>) {
+  static fun create(ctx: Ctx, shaders: Array<Shader>): this {
+    program = Program::create(ctx);
+    shaders.each(shader -> program.attach(shader));
+    program.link();
+    static(program, shaders)
+  }
+
+  fun context(): Ctx {
+    this.program.ctx
+  }
+
+  fun use(): void {
+    this.program.use()
+  }
+
+  fun getUniformLocation(index: UInt32): UniformLocation {
+    this.program.getUniformLocation(index)
+  }
+
+  fun getAttributeLocation(index: UInt32): AttributeLocation {
+    this.program.getAttributeLocation(index)
+  }
+}
+
+value class UniformLocation(id: UInt32) {
+  const noUniformLocation: UniformLocation = UniformLocation(
+    UInt32::truncate(0),
+  );
+
+  fun toInt(): Int {
+    this.id.toInt();
+  }
+
+  static fun fromInt(value: Int): this {
+    UniformLocation(UInt32::truncate(value))
+  }
+}
+
+value class AttributeLocation(id: UInt32) {
+  const noAttributeLocation: AttributeLocation = AttributeLocation(
+    UInt32::truncate(0),
+  );
+
+  fun toInt(): Int {
+    this.id.toInt();
+  }
+
+  static fun fromInt(value: Int): this {
+    AttributeLocation(UInt32::truncate(value))
+  }
+}
+
+value class BufferRef(id: UInt32) uses Extern {
+  const noBuffer: BufferRef = BufferRef(UInt32::truncate(0));
+}
+
+fun ctxDeleteBuffer(id: UInt32): void {
+  (ctx, buffer) = contextElement(id);
+  deleteBuffer(buffer, ctx)
+}
+
+class Buffer extends WithExtern<BufferRef> {
+  static fun create(ctx: Ctx): Buffer {
+    static::make(ctx, ctx.createBuffer(), ctxDeleteBuffer);
+  }
+
+  @debug
+  static fun createFromData(ctx: Ctx, data: Array<Float>): Buffer {
+    buffer = static::create(ctx);
+    buffer.bind();
+    buffer.setData(data);
+    buffer.unbind();
+    buffer;
+  }
+
+  fun bind(): void {
+    this.ctx.bindArrayBuffer(this.ref)
+  }
+
+  fun setData(data: Array<Float>): void {
+    this.bind();
+    this.ctx.staticDrawData(data, UInt32::truncate(data.size()));
+    this.unbind();
+  }
+
+  protected fun delete(): void {
+    this.ctx.deleteBuffer(this.ref)
+  }
+
+  fun unbind(): void {
+    this.ctx.bindArrayBuffer(BufferRef::noBuffer)
+  }
+}
+
+value class VertexArrayRef(id: UInt32) uses Extern {
+  const noArray: VertexArrayRef = VertexArrayRef(UInt32::truncate(0));
+}
+
+fun ctxDeleteVertexArray(id: UInt32): void {
+  (ctx, array) = contextElement(id);
+  deleteVertexArray(array, ctx)
+}
+
+class VertexArray extends WithExtern<VertexArrayRef> {
+  //
+  static fun create(ctx: Ctx): VertexArray {
+    static::make(ctx, ctx.createVertexArray(), ctxDeleteVertexArray);
+  }
+
+  fun bind(): void {
+    this.ctx.bindVertexArray(this.ref)
+  }
+
+  protected fun delete(): void {
+    this.ctx.deleteVertexArray(this.ref)
+  }
+
+  fun unbind(): void {
+    this.ctx.bindVertexArray(VertexArrayRef::noArray)
+  }
+}
+
+module end;
+
+module GLTexture;
+
+const linear: UInt8 = UInt8::truncate(0);
+const nearest: UInt8 = UInt8::truncate(1);
+const nearestMipmapNearest: UInt8 = UInt8::truncate(2);
+const linearMipmapNearest: UInt8 = UInt8::truncate(3);
+const nearestMipmapLinear: UInt8 = UInt8::truncate(4);
+const linearMipmapLinear: UInt8 = UInt8::truncate(5);
+const repeat: UInt8 = UInt8::truncate(6);
+const clampToEdge: UInt8 = UInt8::truncate(7);
+const mirroredRepeat: UInt8 = UInt8::truncate(8);
+
+module end;
+
+module GLBuffer;
+
+const array: UInt8 = UInt8::zero;
+const elementArray: UInt8 = UInt8::truncate(1);
+
+module end;
+
+module GLFrameBuffer;
+
+const frameBuffer: UInt8 = UInt8::zero;
+
+module end;
+
+module GLRenderBuffer;
+
+const renderBuffer: UInt8 = UInt8::zero;
+
+module end;
+
+module GLAttribute;
+
+const byte: UInt8 = UInt8::zero;
+const short: UInt8 = UInt8::truncate(1);
+const unsigledByte: UInt8 = UInt8::truncate(2);
+const unsigledShort: UInt8 = UInt8::truncate(3);
+const float: UInt8 = UInt8::truncate(4);
+
+module end;

@@ -1,0 +1,86 @@
+module GLProgram;
+
+class VertexesParameters(
+  rect: Geometry.Rect,
+  shift: Geometry.Offset,
+  size: Int,
+) extends AttributeVertexParams {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ VertexesParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.VertexesParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class VertexesShader(normalized: Bool) extends VertexShaderBuilder {
+  //
+  fun source(): String {
+    rectangleVertexShader
+  }
+
+  fun build(program: GL.Prepared): VertexShader {
+    positionLocation = program.getAttributeLocation(aPosition);
+    // lookup uniforms
+    matrixLocation = program.getUniformLocation(uMatrix);
+    LambdaVertexShader(
+      (parameters, window) ~>
+        displayVertex(
+          program.context(),
+          parameters,
+          window,
+          matrixLocation,
+          this.normalized,
+        ),
+      () ~> void,
+      positionLocation,
+    )
+  }
+}
+
+@debug
+fun displayVertex(
+  gl: GL.Ctx,
+  parameters: VertexShaderParams,
+  window: Geometry.Size,
+  matrixLocation: GL.UniformLocation,
+  normalized: Bool,
+): Int {
+  vParams = parameters as VertexesParameters _;
+  matrix = GL.Matrix4::orthographic(
+    0.0,
+    window.width,
+    window.height,
+    0.0,
+    -1.0,
+    1.0,
+  );
+  !matrix = matrix.translate(vParams.shift.dx, vParams.shift.dy, 0.0);
+  if (normalized) {
+    !matrix = matrix
+      .translate(vParams.rect.left, vParams.rect.top, 0.0)
+      .scale(vParams.rect.width(), vParams.rect.height(), 1.0);
+  };
+  gl.uniformMatrix4(matrixLocation, false, matrix);
+  vParams.size
+}
+
+fun vertexesPositionBuffer(
+  gl: GL.Ctx,
+  vertexes: Array<Geometry.Offset>,
+  shift: Geometry.Offset = Geometry.Offset::zero,
+): GL.Buffer {
+  // Put a unit quad in the buffer
+  positions = mutable Vector<Float>[];
+  vertexes.each(o -> {
+    vertex = o.move(shift);
+    positions.push(vertex.dx);
+    positions.push(vertex.dy);
+  });
+  GL.Buffer::createFromData(gl, positions.toArray());
+}
+
+module end;

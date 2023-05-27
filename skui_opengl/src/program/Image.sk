@@ -1,0 +1,258 @@
+module GLProgram;
+
+const textureFramentShader: String = source(
+  Array[
+    "precision highp float;",
+    "varying vec2 v_position;",
+    "uniform sampler2D u_texture;",
+    "void main() {",
+    "  gl_FragColor = texture2D(u_texture, v_position);",
+    "}",
+    "",
+  ],
+);
+
+const flippedVertexShader: String = source(
+  Array[
+    "attribute vec4 a_position;",
+    "uniform mat4 u_matrix;",
+    "varying vec2 v_position;",
+    "void main() {",
+    "  gl_Position = u_matrix * a_position;",
+    "  v_position = vec2(a_position.x, 1.0 - a_position.y);",
+    "}",
+    "",
+  ],
+);
+
+const esVertexShader: String = source(
+  Array[
+    "#version 300 es",
+    "#define POSITION_LOCATION 0",
+    "",
+    "precision highp float;",
+    "",
+    "uniform mat4 u_matrix;",
+    "",
+    "layout(location = POSITION_LOCATION) in vec2 position;",
+    "",
+    "out vec2 v_position;",
+    "",
+    "void main()",
+    "{",
+    "  v_position = position;",
+    "  gl_Position = u_matrix * vec4(position, 0.0, 1.0);",
+    "}",
+  ],
+);
+
+const texelFramentShader: String = source(
+  Array[
+    "#version 300 es",
+    "precision highp float;",
+    "precision highp int;",
+    "",
+    "uniform sampler2D u_texture;",
+    "",
+    "in vec2 v_position;",
+    "",
+    "out vec4 glColor;",
+    "",
+    "void main()",
+    "{",
+    "  vec2 size = vec2(textureSize(u_texture, 0) - 1);",
+    "  vec2 texcoord = v_position * size;",
+    "  ivec2 coord = ivec2(texcoord);",
+    "",
+    "  vec4 texel00 = texelFetch(u_texture, coord + ivec2(0, 0), 0);",
+    "  vec4 texel10 = texelFetch(u_texture, coord + ivec2(1, 0), 0);",
+    "  vec4 texel11 = texelFetch(u_texture, coord + ivec2(1, 1), 0);",
+    "  vec4 texel01 = texelFetch(u_texture, coord + ivec2(0, 1), 0);",
+    "",
+    "  vec2 sampleCoord = fract(texcoord.xy);",
+    "",
+    "  vec4 texel0 = mix(texel00, texel01, sampleCoord.y);",
+    "  vec4 texel1 = mix(texel10, texel11, sampleCoord.y);",
+    "",
+    "  glColor = mix(texel0, texel1, sampleCoord.x);",
+    "}",
+  ],
+);
+
+const msdfFramentShader: String = source(
+  Array[
+    "#version 300 es",
+    "precision highp float;",
+    "",
+    "uniform sampler2D u_texture;",
+    "uniform vec4 u_color;",
+    "uniform float u_pxRange;",
+    "uniform float u_thickness;",
+    "",
+    "in vec2 v_position;",
+    "",
+    "out vec4 glColor;",
+    "",
+    "float screenPxRange() {",
+    "  ivec2 size = textureSize(u_texture, 0);",
+    "  vec2 unitRange = vec2(u_pxRange)/ vec2(float(size.x), float(size.y));",
+    "  vec2 screenTexSize = vec2(1.0) / fwidth(v_position);",
+    "  return max(0.5*dot(unitRange, screenTexSize), 1.0);",
+    "}",
+    "",
+    "float median(float r, float g, float b) {",
+    "  return max(min(r, g), min(max(r, g), b));",
+    "}",
+    "",
+    "void main() {",
+    "  vec3 msd = texture(u_texture, v_position).rgb + clamp(u_thickness, -0.5, 0.5);",
+    "  float sd = clamp(median(msd.r, msd.g, msd.b), 0.0, 255.0);",
+    "  float screenPxDistance = screenPxRange()*(sd - 0.5);",
+    "  float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);",
+    "  glColor = u_color;",
+    "  glColor.a *= opacity;",
+    "}",
+  ],
+);
+
+class FlippedShader() extends RectangleBaseShader {
+  fun source(): String {
+    flippedVertexShader
+  }
+
+  fun getSize(): Int {
+    6
+  }
+}
+
+class TextureParameters(texture: GL.Texture) extends Parameters {
+  //
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ TextureParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.TextureParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class MsdfParameters(
+  texture: GL.Texture,
+  pxRange: Int,
+  color: .Color,
+  thickness: Float,
+) extends Parameters {
+  //
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ MsdfParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.MsdfParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class BoundsParameters(rect: Geometry.Rect) extends LayoutVertexParams {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ BoundsParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.BoundsParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+base class BoundsBaseShader extends VertexShaderBuilder {
+  //
+  fun getSize(): Int;
+
+  fun build(program: GL.Prepared): VertexShader {
+    // lookup uniforms
+    matrixLocation = program.getUniformLocation(uMatrix);
+    LamLayoutVertexShader(
+      (parameters, window) ~> {
+        ctx = program.context();
+        rectParams = parameters as BoundsParameters _;
+        rect = rectParams.rect;
+        updateMatrix(ctx, rect, window, matrixLocation);
+        this.getSize();
+      },
+      () ~> void,
+    )
+  }
+}
+
+class TextureShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    textureFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    textureLocation = program.getUniformLocation(uTexture);
+    LambdaFragmentShader(parameters ~> {
+      gl = program.context();
+      tps = TextureParameters::fromParams(parameters);
+      activateTexture(gl, 0, tps.texture, textureLocation);
+    });
+  }
+}
+
+class EsRectangleShader() extends BoundsBaseShader {
+  fun source(): String {
+    esVertexShader
+  }
+
+  fun getSize(): Int {
+    6
+  }
+}
+
+class BilinearFragment() extends FragmentShaderBuilder {
+  fun source(): String {
+    texelFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    textureLocation = program.getUniformLocation(uTexture);
+    LambdaFragmentShader(parameters ~> {
+      gl = program.context();
+      tps = TextureParameters::fromParams(parameters);
+      activateTexture(gl, 0, tps.texture, textureLocation);
+    });
+  }
+}
+
+class MsdfFragment() extends FragmentShaderBuilder {
+  fun source(): String {
+    msdfFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    textureUniform = program.getUniformLocation(uTexture);
+    colorUniform = program.getUniformLocation(uColor);
+    pxRangeUniform = program.getUniformLocation(uPxRange);
+    thicknessUniform = program.getUniformLocation(uThickness);
+    LambdaFragmentShader(parameters ~> {
+      gl = program.context();
+      ps = MsdfParameters::fromParams(parameters);
+      activateTexture(gl, 0, ps.texture, textureUniform);
+      gl.uniform4f(
+        colorUniform,
+        ps.color.red,
+        ps.color.green,
+        ps.color.blue,
+        ps.color.alpha,
+      );
+      gl.uniform1f(pxRangeUniform, ps.pxRange.toFloat());
+      gl.uniform1f(thicknessUniform, ps.thickness.toFloat());
+    });
+  }
+}
+
+module end;

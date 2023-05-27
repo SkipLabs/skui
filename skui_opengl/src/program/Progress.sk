@@ -1,0 +1,206 @@
+module GLProgram;
+
+const progressFramentShader: String = source(
+  Array[
+    "precision highp float;",
+    "uniform float u_thickness;",
+    "uniform vec4 u_color1;",
+    "uniform vec4 u_color2;",
+    "uniform float u_smooth;",
+    "uniform float u_progress;",
+    "varying vec2 v_position;",
+    "float draw_circle(vec2 coord, float radius) {",
+    "  return smoothstep(radius, radius - u_smooth, length(coord));",
+    "}",
+    "float sign (vec2 p1, vec2 p2, vec2 p3)",
+    "{",
+    "  return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);",
+    "}",
+    "bool in_triangle (vec2 pt, vec2 v1, vec2 v2, vec2 v3) {",
+    "  float d1 = sign(pt, v1, v2);",
+    "  float d2 = sign(pt, v2, v3);",
+    "  float d3 = sign(pt, v3, v1);",
+    "  bool has_neg = (d1 < 0.0) || (d2 < 0.0) || (d3 < 0.0);",
+    "  bool has_pos = (d1 > 0.0) || (d2 > 0.0) || (d3 > 0.0);",
+    "  return !(has_neg && has_pos);",
+    "}",
+
+    "float draw_arc(vec2 coord) {",
+    "  if (u_progress <= 12.5) {",
+    "    float x = 0.5 + (0.5 * u_progress / 12.5);",
+    "    bool inside = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(0.5, 0.0),",
+    "      vec2(x, 0.0)",
+    "    );",
+    "    return float(inside);",
+    "  }",
+    "  if (u_progress <= 25.0) {",
+    "    bool first = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(0.5, 0.0),",
+    "      vec2(1.0, 0.0)",
+    "    );",
+    "    float y = (0.5 * (u_progress - 12.5) / 12.5);",
+    "    bool second = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(1.0, 0.0),",
+    "      vec2(1.0, y)",
+    "    );",
+    "    return float(first || second);",
+    "  }",
+    "  if (u_progress <= 37.5) {",
+    "    bool first = coord.x >= 0.5 && coord.y <= 0.5;",
+    "    float y = 0.5 + (0.5 * (u_progress - 25.0) / 12.5);",
+    "    bool second = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(1.0, 0.5),",
+    "      vec2(1.0, y)",
+    "    );",
+    "    return float(first || second);",
+    "  }",
+    "  if (u_progress <= 50.0) {",
+    "    bool first = coord.x >= 0.5 && coord.y <= 0.5;",
+    "    float x = 1.0 - (0.5 * (u_progress - 37.5) / 12.5);",
+    "    bool second = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(1.0, 0.5),",
+    "      vec2(1.0, 1.0)",
+    "    );",
+    "    bool third = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(1.0, 1.0),",
+    "      vec2(x, 1.0)",
+    "    );",
+    "    return float(first || second || third);",
+    "  }",
+    "  if (u_progress <= 62.5) {",
+    "    bool first = coord.x >= 0.5;",
+    "    float x = 0.5 - (0.5 * (u_progress - 50.0) / 12.5);",
+    "    bool second = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(0.5, 1.0),",
+    "      vec2(x, 1.0)",
+    "    );",
+    "    return float(first || second);",
+    "  }",
+    "  if (u_progress <= 75.0) {",
+    "    bool first = coord.x >= 0.5;",
+    "    float y = 1.0 - (0.5 * (u_progress - 62.5) / 12.5);",
+    "    bool second = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(0.5, 1.0),",
+    "      vec2(0.0, 1.0)",
+    "    );",
+    "    bool third = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(0.0, 1.0),",
+    "      vec2(0.0, y)",
+    "    );",
+    "    return float(first || second || third);",
+    "  }",
+    "  if (u_progress <= 87.5) {",
+    "    bool first = !(coord.y <= 0.5 && coord.x <= 0.5);",
+    "    float y = 0.5 - (0.5 * (u_progress - 75.0) / 12.5);",
+    "    bool second = in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(0.0, 0.5),",
+    "      vec2(0.0, y)",
+    "    );",
+    "    return float(first || second);",
+    "  }",
+    "  float x = (0.5 * (u_progress -87.5) / 12.5);",
+    "  return float(",
+    "    !in_triangle(",
+    "      coord,",
+    "      vec2(0.5, 0.5),",
+    "      vec2(0.5, 0.0),",
+    "      vec2(x, 0.0)",
+    "    )",
+    "  );",
+    "}",
+    "void main() {",
+    "  vec2 coord = v_position;",
+    "  vec2 offset = vec2(0.5, 0.5);",
+    "  float outer = draw_circle(coord - offset, 0.5);",
+    "  float inner = draw_circle(coord - offset, 0.5 - u_thickness);",
+    "  float arc = draw_arc(coord);",
+    "  gl_FragColor = arc * u_color2 + (1.0 - arc) * u_color1;",
+    "  gl_FragColor.a = (outer - inner);",
+    "}",
+  ],
+);
+
+class ProgressParameters(
+  rect: Geometry.Rect,
+  color1: .Color,
+  color2: .Color,
+  thickness: Float,
+  progress: Float,
+) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ ProgressParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.ProgressParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class ProgressShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    progressFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    color1Uniform = program.getUniformLocation(uColor1);
+    color2Uniform = program.getUniformLocation(uColor2);
+    thicknessUniform = program.getUniformLocation(uThickness);
+    progressUniform = program.getUniformLocation(uProgress);
+    smoothLocation = program.getUniformLocation(uSmooth);
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+      progressParameters = ProgressParameters::fromParams(parameters);
+      rect = progressParameters.rect;
+      color1 = progressParameters.color1;
+      color2 = progressParameters.color2;
+      thickness = progressParameters.thickness;
+      progress = progressParameters.progress;
+      len = rect.size().distance();
+      ctx.uniform4f(
+        color1Uniform,
+        color1.red,
+        color1.green,
+        color1.blue,
+        color1.alpha,
+      );
+      ctx.uniform4f(
+        color2Uniform,
+        color2.red,
+        color2.green,
+        color2.blue,
+        color2.alpha,
+      );
+      ctx.uniform1f(
+        thicknessUniform,
+        thickness / Math.min(rect.width(), rect.height()),
+      );
+      ctx.uniform1f(smoothLocation, 4.2 / len);
+      ctx.uniform1f(progressUniform, Math.clamp(progress, 0.0, 100.0))
+    })
+  }
+}
+
+module end;

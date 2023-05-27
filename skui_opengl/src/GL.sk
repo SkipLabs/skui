@@ -1,0 +1,373 @@
+module GL;
+
+/// TEXTURE FUNCTIONS
+@cpp_extern
+private native fun createTexture(ctx: UInt32): TextureRef;
+
+@cpp_extern
+private native fun copyTexture(
+  toCopy: TextureRef,
+  srcX: UInt32,
+  srcY: UInt32,
+  srcWidth: UInt32,
+  srcHeight: UInt32,
+  ref: TextureRef,
+  dstX: UInt32,
+  dstY: UInt32,
+  width: UInt32,
+  height: UInt32,
+  reverted: Bool,
+  ctx: UInt32,
+): void;
+
+@cpp_extern
+private native fun saveTexture(
+  path: String,
+  ref: TextureRef,
+  width: UInt32,
+  height: UInt32,
+  ctx: UInt32,
+): Bool;
+
+@cpp_extern
+private native fun bindTexture2D(texture: TextureRef, ctx: UInt32): void;
+@cpp_extern
+private native fun activeTexture(index: UInt32, ctx: UInt32): void;
+@cpp_extern
+private native fun deleteTexture(texture: UInt32, ctx: UInt32): void;
+@cpp_extern
+private native fun setTexture2DMinFilter(value: UInt8, ctx: UInt32): void;
+@cpp_extern
+private native fun setTexture2DMagFilter(value: UInt8, ctx: UInt32): void;
+@cpp_extern
+private native fun setTexture2DWrapS(value: UInt8, ctx: UInt32): void;
+@cpp_extern
+private native fun setTexture2DWrapT(value: UInt8, ctx: UInt32): void;
+@cpp_extern
+private native fun setTexture2DRGBAImage(
+  level: UInt32,
+  width: UInt32,
+  height: UInt32,
+  optData: ?Array<Ui.Pix>,
+  ctx: UInt32,
+): void;
+@cpp_extern
+private native fun setTexture2DRGBASubImage(
+  level: UInt32,
+  x: UInt32,
+  y: UInt32,
+  width: UInt32,
+  height: UInt32,
+  data: Array<Ui.Pix>,
+  ctx: UInt32,
+): void;
+
+//native fun isValidTexture(texture: UInt32): Bool;
+
+/// SHADER FUNCTIONS
+@cpp_extern
+private native fun createVertexShader(ctx: UInt32): ShaderRef;
+@cpp_extern
+private native fun createFragmentShader(ctx: UInt32): ShaderRef;
+@cpp_extern
+private native fun shaderSource(
+  shader: ShaderRef,
+  source: String,
+  ctx: UInt32,
+): void;
+@cpp_extern
+private native fun compileShader(shader: ShaderRef, ctx: UInt32): void;
+@cpp_extern
+private native fun isCompiled(shader: ShaderRef, ctx: UInt32): Bool;
+@cpp_extern
+private native fun deleteShader(shader: UInt32, ctx: UInt32): void;
+@cpp_extern
+private native fun getShaderInfoLog(shader: ShaderRef, ctx: UInt32): String;
+
+/// PROGRAL FUNCTIONS
+@cpp_extern
+private native fun createProgram(ctx: UInt32): ProgramRef;
+@cpp_extern
+private native fun linkProgram(program: ProgramRef, ctx: UInt32): void;
+@cpp_extern
+private native fun isToDelete(program: ProgramRef, ctx: UInt32): Bool;
+@cpp_extern
+private native fun isLinked(program: ProgramRef, ctx: UInt32): Bool;
+@cpp_extern
+native fun isValidated(program: ProgramRef, ctx: UInt32): Bool;
+@cpp_extern
+private native fun getShaderCount(program: ProgramRef, ctx: UInt32): UInt32;
+@cpp_extern
+private native fun getAttributesCount(program: ProgramRef, ctx: UInt32): UInt32;
+@cpp_extern
+native fun getUniformCount(program: ProgramRef, ctx: UInt32): UInt32;
+@cpp_extern
+private native fun attachShader(
+  program: ProgramRef,
+  shader: ShaderRef,
+  ctx: UInt32,
+): void;
+@cpp_extern
+private native fun detachShader(
+  program: ProgramRef,
+  shader: ShaderRef,
+  ctx: UInt32,
+): void;
+
+@cpp_extern
+private native fun getProgramInfoLog(program: ProgramRef, ctx: UInt32): String;
+@cpp_extern
+private native fun useProgram(program: ProgramRef, ctx: UInt32): void;
+@cpp_extern
+private native fun validateProgram(program: ProgramRef, ctx: UInt32): void;
+@cpp_extern
+private native fun deleteProgram(program: UInt32, ctx: UInt32): void;
+
+@cpp_extern
+private native fun getUniformLocation(
+  program: ProgramRef,
+  index: UInt32,
+  ctx: UInt32,
+): UniformLocation;
+@cpp_extern
+private native fun getAttributeLocation(
+  program: ProgramRef,
+  index: UInt32,
+  ctx: UInt32,
+): AttributeLocation;
+
+/// DRAW FUNCTIONS
+@cpp_extern
+native fun drawPoints(first: UInt32, count: UInt32, ctx: UInt32): void;
+@cpp_extern
+native fun drawLineStrip(first: UInt32, count: UInt32, ctx: UInt32): void;
+@cpp_extern
+native fun drawLineLoop(first: UInt32, count: UInt32, ctx: UInt32): void;
+@cpp_extern
+native fun drawLines(first: UInt32, count: UInt32, ctx: UInt32): void;
+@cpp_extern
+native fun drawTriangleStrip(first: UInt32, count: UInt32, ctx: UInt32): void;
+@cpp_extern
+native fun drawTriangleFan(first: UInt32, count: UInt32, ctx: UInt32): void;
+@cpp_extern
+native fun drawTriangles(first: UInt32, count: UInt32, ctx: UInt32): void;
+
+/// CAPABILITY FUNCTIONS
+@cpp_extern
+native fun enableCullFace(ctx: UInt32): void;
+@cpp_extern
+native fun enableDepthTest(ctx: UInt32): void;
+@cpp_extern
+native fun enableDither(ctx: UInt32): void;
+@cpp_extern
+native fun enablePolygonOffsetFill(ctx: UInt32): void;
+@cpp_extern
+native fun enableSampleAlphaToCoverage(ctx: UInt32): void;
+@cpp_extern
+native fun enableSampleCoverage(ctx: UInt32): void;
+@cpp_extern
+native fun enableScissorTest(ctx: UInt32): void;
+@cpp_extern
+native fun enableStencilTest(ctx: UInt32): void;
+
+/// VERTEX ARRAY FUNCTIONS
+@cpp_extern
+private native fun createVertexArray(ctx: UInt32): VertexArrayRef;
+@cpp_extern
+private native fun bindVertexArray(array: VertexArrayRef, ctx: UInt32): void;
+@cpp_extern
+private native fun deleteVertexArray(array: UInt32, ctx: UInt32): void;
+
+/// BUFFER FUNCTIONS
+@cpp_extern
+private native fun createBuffer(ctx: UInt32): BufferRef;
+@cpp_extern
+private native fun bindArrayBuffer(buffer: BufferRef, ctx: UInt32): void;
+//native fun isValidBuffer(buffer: UInt32): Bool;
+@cpp_extern
+private native fun staticDrawData(
+  data: Array<Float>,
+  len: UInt32,
+  ctx: UInt32,
+): void;
+@cpp_extern
+private native fun deleteBuffer(buffer: UInt32, ctx: UInt32): void;
+
+/// FRAME BUFFER FUNCTIONS
+@cpp_extern
+native fun bindMainFrameBuffer(ctx: UInt32): void;
+@cpp_extern
+native fun bindTextureFrameBuffer(ctx: UInt32): void;
+
+@cpp_extern
+native fun framebufferTexture2DColor(
+  texture: TextureRef,
+  level: UInt32,
+  ctx: UInt32,
+): void;
+
+/// ATTRIBUTES FUNCTIONS
+@cpp_extern
+native fun enableVertexAttributeArray(
+  index: AttributeLocation,
+  ctx: UInt32,
+): void;
+@cpp_extern
+native fun disableVertexAttributeArray(
+  index: AttributeLocation,
+  ctx: UInt32,
+): void;
+@cpp_extern
+native fun vertexFloatAttributePointer(
+  index: AttributeLocation,
+  size: UInt32,
+  normalized: Bool,
+  offset: UInt32,
+  ctx: UInt32,
+): void;
+
+/// UNIFORM FUNCTIONS
+@cpp_extern
+native fun uniformMatrix4fv(
+  location: UniformLocation,
+  transpose: Bool,
+  v1: Float,
+  v2: Float,
+  v3: Float,
+  v4: Float,
+  v5: Float,
+  v6: Float,
+  v7: Float,
+  v8: Float,
+  v9: Float,
+  v10: Float,
+  v11: Float,
+  v12: Float,
+  v13: Float,
+  v14: Float,
+  v15: Float,
+  v16: Float,
+  ctx: UInt32,
+): void;
+
+@cpp_extern
+native fun uniform1i(location: UniformLocation, v0: UInt32, ctx: UInt32): void;
+@cpp_extern
+native fun uniform1f(location: UniformLocation, v0: Float, ctx: UInt32): void;
+@cpp_extern
+native fun uniform2f(
+  location: UniformLocation,
+  v0: Float,
+  v1: Float,
+  ctx: UInt32,
+): void;
+@cpp_extern
+native fun uniform4f(
+  location: UniformLocation,
+  v0: Float,
+  v1: Float,
+  v2: Float,
+  v3: Float,
+  ctx: UInt32,
+): void;
+
+@cpp_extern
+native fun uniform1fv(
+  location: UniformLocation,
+  count: UInt32,
+  values: Array<Float>,
+  ctx: UInt32,
+): void;
+@cpp_extern
+native fun uniform3fv(
+  location: UniformLocation,
+  count: UInt32,
+  values: Array<Float>,
+  ctx: UInt32,
+): void;
+@cpp_extern
+native fun uniform4fv(
+  location: UniformLocation,
+  count: UInt32,
+  values: Array<Float>,
+  ctx: UInt32,
+): void;
+
+/// GENERAL
+
+@cpp_extern
+native fun viewport(
+  x: Int32,
+  y: Int32,
+  width: UInt32,
+  height: UInt32,
+  ctx: UInt32,
+): void;
+
+@cpp_extern
+native fun save(ctx: UInt32): void;
+@cpp_extern
+native fun restore(ctx: UInt32): void;
+
+@cpp_extern
+native fun clearColor(
+  r: Float,
+  g: Float,
+  b: Float,
+  a: Float,
+  ctx: UInt32,
+): void;
+
+@cpp_extern
+native fun clear(ctx: UInt32): void;
+
+@cpp_extern
+native fun flush(ctx: UInt32): void;
+
+@cpp_extern
+native fun enableBlend(ctx: UInt32): void;
+
+@cpp_extern
+native fun disableBlend(ctx: UInt32): void;
+
+@cpp_extern
+native fun srcAlphaBlendSrcColor(ctx: UInt32): void;
+@cpp_extern
+native fun srcAlphaBlendOneMinus(ctx: UInt32): void;
+@cpp_extern
+native fun srcAlphaBlendOne(ctx: UInt32): void;
+@cpp_extern
+native fun oneBlendOneMinus(ctx: UInt32): void;
+@cpp_extern
+native fun straitAlphaBlending(ctx: UInt32): void;
+
+fun uniformMatrix4(
+  location: UniformLocation,
+  transpose: Bool,
+  matrix: Matrix4,
+  ctx: UInt32,
+): void {
+  uniformMatrix4fv(
+    location,
+    transpose,
+    matrix.matrix[0],
+    matrix.matrix[1],
+    matrix.matrix[2],
+    matrix.matrix[3],
+    matrix.matrix[4],
+    matrix.matrix[5],
+    matrix.matrix[6],
+    matrix.matrix[7],
+    matrix.matrix[8],
+    matrix.matrix[9],
+    matrix.matrix[10],
+    matrix.matrix[11],
+    matrix.matrix[12],
+    matrix.matrix[13],
+    matrix.matrix[14],
+    matrix.matrix[15],
+    ctx,
+  );
+}
+
+module end;

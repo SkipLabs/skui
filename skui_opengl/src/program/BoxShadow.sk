@@ -1,0 +1,129 @@
+module GLProgram;
+
+const shadowFramentShader: String = source(
+  Array[
+    "precision highp float;",
+    "uniform vec4 u_box;",
+    "uniform vec4 u_color;",
+    "uniform float u_sigma;",
+    "varying vec2 vertex;",
+    "// This approximates the error function, needed for the gaussian integral",
+    "vec4 erf(vec4 x) {",
+    "  vec4 s = sign(x), a = abs(x);",
+    "  x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;",
+    "  x *= x;",
+    "  return s - s / (x * x);",
+    "}",
+    "// Return the mask for the shadow of a box from lower to upper",
+    "float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {",
+    "  vec4 query = vec4(point - lower, point - upper);",
+    "  vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));",
+    "  return (integral.z - integral.x) * (integral.w - integral.y);",
+    "}",
+    "void main() {",
+    "  gl_FragColor = u_color;",
+    //"  gl_FragColor.a *= 0.25;",
+    "  gl_FragColor.a *= boxShadow(u_box.xy, u_box.zw, vertex, u_sigma);",
+    "}",
+    "",
+  ],
+);
+
+const shadowVertexShader: String = source(
+  Array[
+    "precision highp float;",
+    "uniform vec4 u_box;",
+    "uniform float u_sigma;",
+    "uniform mat4 u_matrix;",
+    "attribute vec2 a_position;",
+    "varying vec2 vertex;",
+    "void main() {",
+    "  float padding = 3.0 * u_sigma;",
+    "  vertex = mix(u_box.xy - padding, u_box.zw + padding, a_position);",
+    "  gl_Position = u_matrix * vec4(vertex, 0.0, 1.0);",
+    "}",
+    "",
+  ],
+);
+
+class ShadowVertexShader() extends VertexShaderBuilder {
+  fun source(): String {
+    shadowVertexShader
+  }
+
+  fun build(program: GL.Prepared): VertexShader {
+    positionLocation = program.getAttributeLocation(aPosition);
+    // lookup uniforms
+    matrixLocation = program.getUniformLocation(uMatrix);
+    boxShadowBox = program.getUniformLocation(uBox);
+    LambdaVertexShader(
+      (parameters, window) ~> {
+        ctx = program.context();
+        box = RectangleParameters::fromParams(parameters).rect;
+        matrix = GL.Matrix4::orthographic(
+          0.0,
+          window.width,
+          window.height,
+          0.0,
+          -1.0,
+          1.0,
+        );
+        ctx.uniformMatrix4(matrixLocation, false, matrix);
+        ctx.uniform4f(boxShadowBox, box.left, box.top, box.right, box.bottom);
+        6
+      },
+      () ~> void,
+      positionLocation,
+    )
+  }
+}
+
+class ShadowParameters(
+  box: Geometry.Rect,
+  color: .Color,
+  sigma: Float,
+) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ ShadowParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.ShadowParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class ShadowShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    shadowFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    boxShadowBox = program.getUniformLocation(uBox);
+    boxShadowColor = program.getUniformLocation(uColor);
+    boxShadowSigma = program.getUniformLocation(uSigma);
+
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+      sps = ShadowParameters::fromParams(parameters);
+      ctx.uniform4f(
+        boxShadowBox,
+        sps.box.left,
+        sps.box.top,
+        sps.box.right,
+        sps.box.bottom,
+      );
+      ctx.uniform4f(
+        boxShadowColor,
+        sps.color.red,
+        sps.color.green,
+        sps.color.blue,
+        sps.color.alpha,
+      );
+      ctx.uniform1f(boxShadowSigma, sps.sigma);
+    })
+  }
+}
+
+module end;

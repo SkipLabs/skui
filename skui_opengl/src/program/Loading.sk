@@ -1,0 +1,95 @@
+module GLProgram;
+
+const loadingFramentShader: String = source(
+  Array[
+    "precision highp float;",
+    "uniform vec4 u_color1;",
+    "uniform vec4 u_color2;",
+    "uniform int u_step;",
+    "uniform float u_smooth;",
+    "varying vec2 v_position;",
+    "vec2 center1 = vec2(0.5, 0.125);",
+    "vec2 center2 = vec2(0.765, 0.235);",
+    "vec2 center3 = vec2(0.875, 0.5);",
+    "vec2 center4 = vec2(0.765, 0.765);",
+    "vec2 center5 = vec2(0.5, 0.875);",
+    "vec2 center6 = vec2(0.235, 0.765);",
+    "vec2 center7 = vec2(0.125, 0.5);",
+    "vec2 center8 = vec2(0.235, 0.235);",
+    "vec2 draw_circle(vec2 coord, float radius, int step) {",
+    "  float value = smoothstep(radius, radius - u_smooth, length(coord));",
+    "  return vec2(",
+    "    value,",
+    "    float(value > 0.0 && step == u_step)",
+    "  );",
+    "}",
+    "void main() {",
+    "  vec2 coord = v_position;",
+    "  vec2 circle = draw_circle(coord - center1, 0.125, 0) + ",
+    "    draw_circle(coord - center2, 0.125, 1) + ",
+    "    draw_circle(coord - center3, 0.125, 2) + ",
+    "    draw_circle(coord - center4, 0.125, 3) + ",
+    "    draw_circle(coord - center5, 0.125, 4) + ",
+    "    draw_circle(coord - center6, 0.125, 5) + ",
+    "    draw_circle(coord - center7, 0.125, 6) + ",
+    "    draw_circle(coord - center8, 0.125, 7);",
+    "  gl_FragColor = circle.y * u_color2 + (1.0 - circle.y) * u_color1;",
+    "  gl_FragColor.a = circle.x;",
+    "}",
+    "",
+  ],
+);
+
+class LoadingParameters(
+  rect: Geometry.Rect,
+  step: Int,
+  color1: .Color = .Color::new(0.4, 1.0, 0.8, 1.0),
+  color2: .Color = .Color::new(0.2, 0.6, 1.0, 1.0),
+) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ LoadingParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.LoadingParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class LoadingShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    loadingFramentShader;
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    color1Location = program.getUniformLocation(uColor1);
+    color2Location = program.getUniformLocation(uColor2);
+    stepLocation = program.getUniformLocation(uStep);
+    smoothLocation = program.getUniformLocation(uSmooth);
+
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+      lps = LoadingParameters::fromParams(parameters);
+      len = lps.rect.size().distance();
+      ctx.uniform4f(
+        color1Location,
+        lps.color1.red,
+        lps.color1.green,
+        lps.color1.blue,
+        lps.color1.alpha,
+      );
+      ctx.uniform4f(
+        color2Location,
+        lps.color2.red,
+        lps.color2.green,
+        lps.color2.blue,
+        lps.color2.alpha,
+      );
+      ctx.uniform1i(stepLocation, UInt32::truncate(lps.step));
+      ctx.uniform1f(smoothLocation, 4.2 / len);
+    })
+  }
+}
+
+module end;

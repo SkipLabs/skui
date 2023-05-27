@@ -1,0 +1,151 @@
+module GLProgram;
+
+const ellipseFramentShader: String = source(
+  Array[
+    "precision highp float;",
+    "varying vec2 v_position;",
+    "uniform float u_radius;",
+    "uniform float u_precision;",
+    "uniform vec4 u_color;",
+    "float draw_circle(vec2 coord, float radius, float p) {",
+    "  return smoothstep(radius + p, radius - p, length(coord));",
+    "}",
+    "void main() {",
+    "  vec2 coord = v_position;",
+    "  vec2 offset = vec2(0.5, 0.5);",
+    "  float circle = draw_circle(coord - offset, u_radius, u_precision);",
+    "  gl_FragColor = u_color;",
+    "  gl_FragColor.a *= circle;",
+    "}",
+    "",
+  ],
+);
+
+const diskFramentShader: String = source(
+  Array[
+    "precision highp float;",
+    "uniform float u_thickness;",
+    "uniform vec4 u_color;",
+    "uniform float u_radius;",
+    "uniform float u_precision;",
+    "varying vec2 v_position;",
+    "float draw_circle(vec2 coord, float radius, float p) {",
+    "  return smoothstep(radius, radius - p, length(coord));",
+    "}",
+    "void main() {",
+    "  vec2 coord = v_position;",
+    "  vec2 offset = vec2(0.5, 0.5);",
+    "  float outter = draw_circle(coord - offset, u_radius, u_precision);",
+    "  float inner = draw_circle(coord - offset, u_radius - u_thickness, u_precision);",
+    "  gl_FragColor = mix(vec4(0.0, 0.0, 0.0, 0.0), u_color, outter - inner);",
+    "  gl_FragColor.a *= outter;",
+    "}",
+    "",
+  ],
+);
+
+class EllipseParameters(
+  color: .Color,
+  radius: Float,
+  precision: Float,
+) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ EllipseParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.EllipseParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class EllipseShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    ellipseFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    colorUniform = program.getUniformLocation(uColor);
+    radiusUniform = program.getUniformLocation(uRadius);
+    precisionUniform = program.getUniformLocation(uPrecision);
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+
+      (color, radius, precision) = parameters match {
+      | eps @ EllipseParameters _ -> (eps.color, eps.radius, eps.precision)
+      | sps @ SolidParameters _ -> (sps.color, 0.5, 0.0)
+      | lgps @ LinearGradientParameters _ ->
+        (lgps.linearGradient.stops.first().color, 0.5, 0.0)
+      | rgps @ RadialGradientParameters _ ->
+        (rgps.radialGradient.stops.first().color, 0.5, 0.0)
+      | _ ->
+        invariant_violation(
+          `Invalid GLProgram.SolidShader paratemeters: ${parameters.getClassName()}`,
+        )
+      };
+      ctx.uniform4f(
+        colorUniform,
+        color.red,
+        color.green,
+        color.blue,
+        color.alpha,
+      );
+      ctx.uniform1f(radiusUniform, radius);
+      ctx.uniform1f(precisionUniform, precision);
+    })
+  }
+}
+
+class DiskParameters(
+  rect: Geometry.Rect,
+  color: .Color,
+  thickness: Float,
+  radius: Float,
+  precision: Float,
+) extends Parameters {
+  static fun fromParams(obj: Parameters): this {
+    obj match {
+    | x @ DiskParameters _ -> x
+    | _ ->
+      invariant_violation(
+        `Must be GLProgram.DiskParameters got ${obj.getClassName()}`,
+      )
+    }
+  }
+}
+
+class DiskShader() extends FragmentShaderBuilder {
+  fun source(): String {
+    diskFramentShader
+  }
+
+  fun build(program: GL.Prepared): FragmentShader {
+    colorUniform = program.getUniformLocation(uColor);
+    thicknessUniform = program.getUniformLocation(uThickness);
+    radiusUniform = program.getUniformLocation(uRadius);
+    precisionUniform = program.getUniformLocation(uPrecision);
+    LambdaFragmentShader(parameters ~> {
+      ctx = program.context();
+      diskParameters = DiskParameters::fromParams(parameters);
+      rect = diskParameters.rect;
+      color = diskParameters.color;
+      thickness = diskParameters.thickness;
+      ctx.uniform4f(
+        colorUniform,
+        color.red,
+        color.green,
+        color.blue,
+        color.alpha,
+      );
+      ctx.uniform1f(
+        thicknessUniform,
+        thickness / Math.min(rect.width(), rect.height()),
+      );
+      ctx.uniform1f(radiusUniform, diskParameters.radius);
+      ctx.uniform1f(precisionUniform, diskParameters.precision);
+    })
+  }
+}
+
+module end;
