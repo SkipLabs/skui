@@ -211,4 +211,49 @@ fun positionDependentBox{
   };
   Offset(x, y);
 }
+
+fun coefficient(src: Geometry.Offset, dst: Geometry.Offset): ?(Float, Float) {
+  srcX = src.dx;
+  dstX = dst.dx;
+  if (Math.like(srcX, dstX)) {
+    None()
+  } else {
+    srcY = src.dy;
+    dstY = dst.dy;
+    a = (dstY - srcY) / (dstX - srcX);
+    b = dstY - (a * dstX);
+    Some((a, b))
+  }
+}
+
+fun parallelAt(coeff: (Float, Float), distance: Float): (Float, Float) {
+  (a, b) = coeff;
+  if (Math.like(a, 0.0)) {
+    (a, b + distance)
+  } else {
+    diff = Math.sqrt(distance * distance * (a * a + 1.0));
+    (
+      a,
+      if (distance > 0.0) {
+        if (b + diff > b) b + diff else b - diff
+      } else if (b + diff > b) {
+        b - diff
+      } else {
+        b + diff
+      },
+    )
+  }
+}
+
+fun intersection(
+  coeff1: (Float, Float),
+  coeff2: (Float, Float),
+): Geometry.Offset {
+  (a1, b1) = coeff1;
+  (a2, b2) = coeff2;
+  x = (b2 - b1) / (a1 - a2);
+  y = a1 * x + b1;
+  Geometry.Offset(x, y)
+}
+
 module end;

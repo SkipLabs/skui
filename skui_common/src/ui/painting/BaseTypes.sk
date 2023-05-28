@@ -4,6 +4,14 @@ base class Handle extends SKFS.File {
   fun draw(shift: Ui.Shift, window: Geometry.Rectangle, height: Int): void;
 }
 
+class LambdaHandle(
+  fn: (Ui.Shift, Geometry.Rectangle, Int) ~> void,
+) extends Ui.Handle {
+  fun draw(shift: Ui.Shift, window: Geometry.Rectangle, height: Int): void {
+    this.fn(shift, window, height);
+  }
+}
+
 base class Drawable extends SKFS.File uses HasClassName {
   fun translate(offset: Geometry.Offset): this;
   fun size(): Geometry.Size;

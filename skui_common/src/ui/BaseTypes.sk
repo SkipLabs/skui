@@ -1,8 +1,50 @@
 module Ui;
 
+type IUGetter<T> = (mutable SKFS.Context, Bool) ~> T;
+
+fun iUDefault<T: frozen>(t: T): IUGetter<T> {
+  (_ctx, _iu) ~> t
+}
+
+type Getter<T> = mutable SKFS.Context ~> T;
+
+fun default<T: frozen>(t: T): Getter<T> {
+  _ctx ~> t
+}
+
+type GetterOne<T, P> = (mutable SKFS.Context, P) ~> T;
+
+fun defaultOne<T: frozen, P>(t: T): GetterOne<T, P> {
+  (_ctx, _p) ~> t
+}
+
+type GetterTwo<T, P1, P2> = (mutable SKFS.Context, P1, P2) ~> T;
+
+fun defaultTwo<T: frozen, P1, P2>(t: T): GetterTwo<T, P1, P2> {
+  (_, _, _) ~> t
+}
+
+type GetterThree<T, P1, P2, P3> = (mutable SKFS.Context, P1, P2, P3) ~> T;
+
+fun defaultThree<T: frozen, P1, P2, P3>(t: T): GetterThree<T, P1, P2, P3> {
+  (_, _, _, _) ~> t
+}
+
 const full: UInt8 = UInt8::truncate(255);
 
-class Shift(x: Int, y: Int) uses Hashable, Equality
+class Shift(x: Int, y: Int) uses Hashable, Equality, Show {
+  fun toOffset(): Geometry.Offset {
+    Geometry.Offset(this.x.toFloat(), this.y.toFloat())
+  }
+
+  fun toPoint(): Geometry.Point {
+    Geometry.Point(this.x, this.y)
+  }
+
+  fun toString(): String {
+    `(${this.x},${this.y})`
+  }
+}
 
 base class Paint private (alpha: Float = 1.0) uses Hashable, Orderable {
   fun withAlpha(alpha: Float): this;

@@ -1,6 +1,6 @@
 module Geometry;
 
-class Rectangle(min: Point, max: Point) uses Hashable, Orderable {
+class Rectangle(min: Point, max: Point) uses Hashable, Orderable, Show {
   /**
    * Returns the largest rectangle contained by both r and other. If the
    * two rectangles do not overlap then the zero rectangle will be returned.
@@ -119,6 +119,18 @@ class Rectangle(min: Point, max: Point) uses Hashable, Orderable {
 
   fun topLeft(): Point {
     Point(this.left(), this.top())
+  }
+
+  fun size(): Size {
+    Size(this.width().toFloat(), this.height().toFloat())
+  }
+
+  fun shift(shift: Ui.Shift): Rectangle {
+    this.translate(shift.toPoint());
+  }
+
+  fun toString(): String {
+    `[${this.min},${this.max}]`
   }
 }
 

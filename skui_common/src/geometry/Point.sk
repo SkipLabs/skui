@@ -1,6 +1,6 @@
 module Geometry;
 
-class Point(x: Int, y: Int) uses Hashable, Orderable {
+class Point(x: Int, y: Int) uses Hashable, Orderable, Show {
   const zero: Point = Point(0, 0);
   /**
    * Returns the vector this + other.
@@ -48,6 +48,10 @@ class Point(x: Int, y: Int) uses Hashable, Orderable {
 
   fun translate(x: Int, y: Int): Point {
     Point(this.x + x, this.y + y)
+  }
+
+  fun toString(): String {
+    `(${this.x},${this.y})`
   }
 }
 
