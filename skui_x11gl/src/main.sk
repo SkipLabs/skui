@@ -1,8 +1,49 @@
 module SkuiX11gl;
 
 fun main(): void {
-  void
+  args = Cli.Command("skuiargo")
+    .about("Skip UI's GL Shader Viewer")
+    .arg(
+      Cli.BoolArg("version")
+        .short("V")
+        .long("version")
+        .about("Print version info and exit"),
+    )
+    .help()
+    .arg(
+      Cli.StringArg("name")
+        .short("n")
+        .long("name")
+        .about("The name of the shader to show.")
+        .default("rectangle"),
+    )
+    .parseArgs();
+  if (args.getBool("version")) {
+    print_string("skuix11gl " + SkargoVersion.kVersion);
+  } else if (args.getBool("help")) {
+    print_string(Cli.usage(args.cmd, true));
+  } else {
+    run(0, 10, 10, 800, 600, "Skip UI's GL Shader Viewer", 0, 60);
+  }
+}
+
+@cpp_extern
+native fun run(
+  wId: Int,
+  x: Int,
+  y: Int,
+  width: Int,
+  height: Int,
+  title: String,
+  screen: Int,
+  framePerSecond: Int,
+): void;
+
+@cpp_export("SKIP_SkuiX11gl_performFrame")
+fun performFrame(wId: Int, width: Int, height: Int): void {
+  pos = SKFS.newObstack();
+  print_string(`performFrame: ${wId} (${width}, ${height})`);
+  SKFS.destroyObstack(pos);
 }
 
 module end;
-

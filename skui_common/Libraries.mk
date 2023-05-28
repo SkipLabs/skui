@@ -1,4 +1,3 @@
-
 CC				= clang
 CPP				= clang++
 BCLINK		= llvm-link
@@ -8,21 +7,30 @@ BUILDDIR	?= .build/$(VERSION)
 
 
 ifdef DEBUG
-SKNAME	 	?= $(shell basename $(CURDIR))_debug
-OLEVEL	?= -O0
-CFLAG		?= -g $(OLEVEL) -DDEBUG --target=wasm32 -emit-llvm
-CPPFLAG ?= -g -Wno-everything $(OLEVEL) -DDEBUG
+SKSUFFIX ?= _debug
+SKNAME	 ?= $(shell basename $(CURDIR))
+OLEVEL	 ?= -O0
+CFLAG		 ?= -g $(OLEVEL) -DDEBUG --target=wasm32 -emit-llvm
+CPPFLAG  ?= -g -Wno-everything $(OLEVEL) -DDEBUG
 else
-SKNAME	 	?= $(shell basename $(CURDIR))
-OLEVEL	?= -O3
-CFLAG		?= $(OLEVEL) --target=wasm32 -emit-llvm
-CPPFLAG	?= $(OLEVEL)
+SKSUFFIX ?= _release
+SKNAME	 ?= $(shell basename $(CURDIR))
+OLEVEL	 ?= -O3
+CFLAG		 ?= $(OLEVEL) --target=wasm32 -emit-llvm
+CPPFLAG	 ?= $(OLEVEL)
 endif
 
 ifneq ("$(wildcard native)","")
+ifndef SKARGO_INCLUDEDIRS64
+ifneq ("$(wildcard native/includes)","")
+SKARGO_INCLUDEDIRS64:= native/includes
+endif
+endif
+IFILES64  := $(foreach dir,$(SKARGO_INCLUDEDIRS64),$(shell find -L $(dir) -name "*.h"))
 SOURCES64	:= $(shell find -L native -name "*.cpp")
-FILES64		:= $(addprefix $(BUILDDIR)/,$(SOURCES64:.cpp=.o))
-RULE64		:= $(LIBDIR)/lib$(SKNAME)_64.a
+FILES64		:= $(addprefix $(BUILDDIR)/,$(SOURCES64:.cpp=$(SKSUFFIX).o))
+RULE64		:= $(LIBDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
+INC64     := $(foreach dir,$(SKARGO_INCLUDEDIRS64),"-I$(dir)")
 endif
 
 ifneq ("$(wildcard wasm)","")
@@ -33,17 +41,17 @@ endif
 
 default: build
 
-$(BUILDDIR)/native/%.o: native/%.cpp
+$(BUILDDIR)/native/%$(SKSUFFIX).o: native/%.cpp $(IFILES64)
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	$(CPP) $(CPPFLAG) -std=c++17 -o $@ -c $<
+	$(CPP) $(CPPFLAG) -std=c++17 $(INC64) -o $@ -c $<
 
 
-$(BUILDDIR)/lib$(SKNAME)_64.a: $(FILES64)
-	ar rcs $(BUILDDIR)/lib$(SKNAME)_64.a $(FILES64)
+$(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a: $(FILES64)
+	ar rcs $(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a $(FILES64)
 
-$(LIBDIR)/lib$(SKNAME)_64.a: $(BUILDDIR)/lib$(SKNAME)_64.a
+$(LIBDIR)/lib$(SKNAME)_64$(SKSUFFIX).a: $(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	cp $(BUILDDIR)/lib$(SKNAME)_64.a $(LIBDIR)/lib$(SKNAME)_64.a
+	cp $(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a $(LIBDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
 
 $(BUILDDIR)/wasm/%.bc: wasm/%.c
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)

@@ -1,0 +1,5 @@
+-lX11
+-lGLEW
+-lGL
+-lGLU
+-lglut

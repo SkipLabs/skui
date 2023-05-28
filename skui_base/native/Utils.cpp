@@ -24,6 +24,17 @@ namespace fs = std::experimental::filesystem;
 char * workingContext;
 char * mainContext;
 
+void tempName(std::string & tmpName) {
+  fs::path tmpDir = fs::temp_directory_path();
+  fs::path tmpFileName =  tmpDir / "tmp-XXXXXXXXXXX";
+  std::string strFileName = tmpFileName.c_str();
+  char* nameBuff = (char*)malloc(strFileName.size()+1);
+  memcpy(nameBuff, strFileName.c_str(), strFileName.size());
+  mkstemp(nameBuff);
+  tmpName = nameBuff;
+  free(nameBuff);
+}
+
 bool computeHash(const std::string &unhashed, std::string &hashed)
 {
   bool success = false;
@@ -155,7 +166,9 @@ extern "C"
 
   char *SKIP_Utils_md5(char *value, uint32_t size)
   {
-    std::string filename = std::tmpnam(nullptr);
+    std::string filename;
+    tempName(filename);
+    //std::mkstemp
     if(size <= 0) {
       size = SKIP_String_byteSize(value);
     }

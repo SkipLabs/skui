@@ -1,0 +1,229 @@
+
+#include <GL/glew.h>
+#include "GLWManager.h"
+#include "GLUtils.h"
+
+std::string utf8datatype("text/plain; charset=utf-8");
+
+namespace skui
+{
+
+
+  void sendClientMessage(Display *disp, Window window, Atom type, uint32_t param1, uint32_t param2);
+
+  XVisualInfo *GLWindowManager::initializeDisplay(Display *disp, uint32_t screen)
+  {
+
+    // We prefer the more recent glXChooseFBConfig but fall back to glXChooseVisual. They have
+    // slight differences in how attributes are specified.
+    static int constexpr kChooseFBConfigAtt[] = {
+        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+        GLX_DOUBLEBUFFER, True,
+        GLX_STENCIL_SIZE, 8,
+        None};
+    // For some reason glXChooseVisual takes a non-const pointer to the attributes.
+    GLint chooseVisualAtt[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None};
+    XVisualInfo *visualInfo = glXChooseVisual(disp, screen, chooseVisualAtt);
+    if (nullptr == visualInfo)
+    {
+      int n;
+      this->gLXFBConfig = glXChooseFBConfig(disp, screen, kChooseFBConfigAtt, &n);
+      if (n > 0)
+      {
+        visualInfo = glXGetVisualFromFBConfig(disp, *gLXFBConfig);
+      }
+      else
+      {
+        visualInfo = glXChooseVisual(disp, screen, chooseVisualAtt);
+        gLXFBConfig = nullptr;
+      }
+    }
+    if (nullptr == visualInfo)
+    {
+      throw CreateContextException();
+    }
+    this->display = display;
+    this->visualInfo = visualInfo;
+    return visualInfo;
+  }
+
+  Atom GLWindowManager::createContext(Window window)
+  {
+    this->messages = {
+      XInternAtom(this->display, "WM_DELETE_WINDOW", False),
+      XInternAtom(this->display, "PERFORM_ANIMATION_FRAME", False),
+      XInternAtom(this->display, "CLOSE_WINDOW", False),
+    };
+    this->context = glXCreateContext(display, visualInfo, NULL, GL_TRUE);
+    glXMakeCurrent(this->display, window, this->context);
+    this->window = window;
+    GLenum err = glewInit();
+    if (err != GLEW_OK)
+    {
+      throw VersionException(std::string("Failed to initialize GLEW."));
+    }
+    if (!GLEW_VERSION_2_1)
+    {
+      //throw VersionException(std::string("Invalid GLEW version"));
+    }
+    GL_init();
+    return this->messages.fWmDeleteMessage;
+  }
+
+  void GLWindowManager::close()
+  {
+    glXMakeCurrent(this->display, None, NULL);
+    glXDestroyContext(this->display, static_cast<GLXContext>(this->context));
+    if (this->gLXFBConfig)
+    {
+      // XFree(this->gLXFBConfig);
+      this->gLXFBConfig = nullptr;
+    }
+    XUnmapWindow(this->display, this->window);
+    XFlush(this->display);
+    XDestroyWindow(this->display, this->window);
+    this->display = nullptr;
+  }
+
+  void GLWindowManager::onIdle()
+  {
+    GL_checkTextureToDelete();
+  }
+
+  void GLWindowManager::checkClipboard(XSelectionEvent *s)
+  {
+    if (this->eventManager != nullptr)
+    {
+      std::string value;
+      Atom format = XInternAtom(display, "UTF8_STRING", False);
+      if (this->gatherClipboad(value, format))
+      {
+        this->eventManager->paste(this->config.wId, utf8datatype, value);
+      }
+    }
+  }
+
+  void GLWindowManager::resize(uint32_t width, uint32_t height)
+  {
+    if (this->eventManager != nullptr)
+    {
+      this->eventManager->resize(this->config.wId, width, height);
+    }
+  }
+
+  void GLWindowManager::performFrame(uint32_t width, uint32_t height)
+  {
+    if (this->eventManager != nullptr)
+    {
+      glXMakeCurrent(this->display, this->window, this->context);
+      this->eventManager->performFrame(this->config.wId, width, height, [this]() {
+        this->animationFrame.framePerformed();
+      });
+    }
+  }
+
+  void GLWindowManager::requestClose()
+  {
+    if (this->eventManager != nullptr)
+    {
+      this->eventManager->requestClose(this->config.wId);
+    }
+  }
+
+  void GLWindowManager::manageMouseLocation(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy)
+  {
+    if (this->eventManager != nullptr)
+    {
+      this->eventManager->manageMouseLocation(this->config.wId, x, y, sx, sy);
+    }
+  }
+
+  void GLWindowManager::manageMouseButton(uint32_t b, bool pressed)
+  {
+      this->eventManager->manageMouseButton(this->config.wId, b, pressed);
+  }
+
+  void GLWindowManager::manageKeyPressed(uint32_t code, uint32_t sym, const std::string &value)
+  {
+      this->eventManager->manageKeyPressed(this->config.wId, code, sym, value);
+  }
+
+  void GLWindowManager::manageKeyReleased(uint32_t code)
+  {
+      this->eventManager->manageKeyReleased(this->config.wId, code);
+  }
+
+  void GLWindowManager::updateClipboard(XSelectionRequestEvent *s)
+  {
+
+    XSelectionEvent ssev;
+    Atom targets = XInternAtom(display, "TARGETS", False);
+    Atom format = XInternAtom(display, "UTF8_STRING", False);
+    if (s->property != None && s->target == format)
+    {
+      XChangeProperty(display, s->requestor, s->property, format, 8, PropModeReplace, (const unsigned char *)utf8.c_str(), utf8.size());
+      sendSelectionNotify(s, false);
+    }
+    else if (s->property != None && s->target == targets)
+    {
+      XSelectionEvent ssev;
+      Atom supported[] = {targets, format};
+      XChangeProperty(
+          display,
+          s->requestor,
+          s->property,
+          targets,
+          32,
+          PropModeReplace,
+          (unsigned char *)(&supported),
+          sizeof(supported));
+      sendSelectionNotify(s, false);
+    }
+    else
+    {
+#ifdef DEBUG
+      char *an;
+      an = XGetAtomName(display, s->target);
+      printf("Denying request of type '%s'\n", an);
+      if (an)
+        XFree(an);
+#endif
+      sendSelectionNotify(s, true);
+    }
+  }
+
+  void GLWindowManager::requestClipboard(const std::string &mimeType, const std::string &content)
+  {
+    if (mimeType == "text/plain; charset=utf-8")
+    {
+      utf8 = content;
+      Atom clipboard = XInternAtom(display, "CLIPBOARD", False);
+      XSetSelectionOwner(display, clipboard, window, CurrentTime);
+    }
+  }
+
+  void GLWindowManager::initiliazed(XIC xic, std::function<void(Display *disp, Window fWindow)> expose)
+  {
+    this->xic = xic;
+    this->animationFrame.start([this, expose]()
+                               { expose(this->display, this->window); },
+                               this->config.framePerSecond);
+  }
+
+
+  bool GLWindowManager::manageCustomEvent(XClientMessageEvent xclient) {
+    if ((Atom)xclient.data.l[0] == this->messages.fWmDeleteMessage)
+    {
+      this->requestClose();
+    }
+    else if (xclient.message_type == this->messages.fCloseMessage)
+    {
+      return true;
+    }
+    return false;
+  }
+  
+  void GLWindowManager::sendCloseRequest() {
+    sendClientMessage(this->display, this->window,  this->messages.fCloseMessage, 0, 0);
+  }
+}

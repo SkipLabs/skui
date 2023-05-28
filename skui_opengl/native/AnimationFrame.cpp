@@ -3,12 +3,16 @@
 #include <thread>
 #include <chrono>
 #include <math.h>
-#include  <algorithm>
+#include <algorithm>
 
-void SKUiAnimationFrame::start(std::function<void()> function, int framePerSecond) {
+namespace skui
+{
+  void AnimationFrame::start(std::function<void()> function, int framePerSecond)
+  {
     this->cancel = false;
     int64_t interval = (int64_t)floor(1000.0 / framePerSecond);
-    std::thread t([=]() {
+    std::thread t([=]()
+                  {
         while(true) {
             if(this->cancel) return;
             std::this_thread::sleep_for(std::chrono::milliseconds(interval));
@@ -19,17 +23,19 @@ void SKUiAnimationFrame::start(std::function<void()> function, int framePerSecon
             } else {
               this->dropped++;
             }
-        }
-    });
+        } });
     t.detach();
-}
+  }
 
-void SKUiAnimationFrame::stop() {
+  void AnimationFrame::stop()
+  {
     this->cancel = true;
-}
+  }
 
-void SKUiAnimationFrame::framePerformed() {
+  void AnimationFrame::framePerformed()
+  {
     this->animationRequested = false;
     this->maxDropped = std::max(this->maxDropped, this->dropped);
     this->dropped = 0;
+  }
 }

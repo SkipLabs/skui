@@ -1,20 +1,18 @@
 
 #include <GL/glew.h>
+#include "GLUtils.h"
 #include <algorithm>
 #include <string.h>
-#include <map>
-#include <vector>
 #include <string>
 #include <iostream>
 #include <stack>
 #include <set>
-#include <thread>
+#include <vector>
 #include <functional>
 #include <fstream>
 #include <iomanip>
-#include <experimental/filesystem>
 
-namespace fs = std::experimental::filesystem;
+
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 #define TXT(from, to) std::string to(from, SKIP_String_byteSize(from))
 #define NOT_MANAGED_IMAGE_FORMAT 1
@@ -199,36 +197,8 @@ void GL_checkTextureToDelete()
   }
 }
 
-class VersionException : public std::exception
+void GL_init()
 {
-public:
-    VersionException(const std::string& msg) : m_msg(msg)
-    {
-    }
-
-   ~VersionException()
-   {
-   }
-
-   virtual const char* what() const throw () 
-   {
-        return m_msg.c_str();
-   }
-
-   const std::string m_msg;
-};
-
-void GL_check()
-{
-  GLenum err = glewInit();
-  if (err != GLEW_OK)
-  {
-    throw VersionException(std::string("Failed to initialize GLEW."));
-  }
-  if (!GLEW_VERSION_2_1)
-  {
-    //throw VersionException(std::string("Invalid GLEW version"));
-  }
   gState.texture = true;
   glEnable(GL_TEXTURE_2D);
   gState.blend = true;
@@ -242,24 +212,9 @@ void GL_check()
 extern "C"
 {
 
-  extern uint32_t SKIP_getStringsSize(void *source);
   extern uint32_t SKIP_String_byteSize(const char *str);
   extern char *sk_string_create(const char *buffer, uint32_t size);
   extern double SKIP_getFloatAt(void *data, uint32_t index);
-  extern void SKIP_FWK_drawFrame(uint32_t width, uint32_t height, uint32_t time);
-  extern void SKIP_GL_init();
-  extern void SKIP_FWK_execute(uint32_t wId, std::function<void()> fun);
-  extern void checkScopePath(std::string strScope, fs::path &fsScopePath);
-  extern void *SKIP_FWK_createPixArray(uint32_t size);
-  extern void SKIP_FWK_setPix(void *pixArray, uint32_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-  extern void SKIP_FWK_imgFailure(char *path, uint32_t code, char *target);
-  extern void SKIP_FWK_imgSuccess(char *path, void *pixArray, uint32_t width, uint32_t height, char *target);
-  extern void SKIP_FWK_throwInvalidImage(char *path);
-  extern void *SKIP_FWK_createImage(void *pixArray, uint32_t width, uint32_t height);
-  extern uint32_t SKIP_getBytesSize(void *pixArray);
-  extern char *SKIP_Base64_decode(char *base64);
-  extern void SKIP_IO_writeLoadable(char *path, char *key, void *optFile, void *optError);
-  extern void *SKIP_text(char *text, char *category);
 
   uint32_t SKIP_GL_createTexture(uint32_t ctx)
   {
@@ -632,14 +587,6 @@ extern "C"
     glClearColor((GLclampf)r, (GLclampf)g, (GLclampf)b, (GLclampf)a);
   }
 
-  void GL_drawFrame(uint32_t width, uint32_t height, uint32_t time)
-  {
-    gState.viewport = Viewport{0, 0, width, height};
-    gState.color = Color{1, 1, 1, 1};
-    SKIP_FWK_drawFrame(width, height, time);
-    glFlush();
-  }
-
   void SKIP_GL_framebufferTexture2DColor(uint32_t texture, uint32_t level, uint32_t ctx)
   {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, level);
@@ -720,159 +667,6 @@ extern "C"
     gStates.pop();
   }
 
-  bool checkImage(std::string path, uint32_t &width, uint32_t &height)
-  {
-    std::stringstream command;
-    command << "convert ";
-    command << std::quoted(path);
-    command << " -print \"%wx%h\" /dev/null";
-    auto fp = popen(command.str().c_str(), "r");
-    if (fp != nullptr)
-    {
-      char buf[1024];
-      std::stringstream res;
-      while (fgets(buf, 1024, fp))
-      {
-        res << buf;
-      }
-      auto status = pclose(fp);
-      if (status == 0)
-      {
-        std::string info = res.str();
-        trim(info);
-        sscanf(info.c_str(), "%dx%d", &width, &height);
-        return true;
-      }
-      else
-      {
-        return false;
-      }
-    };
-    return false;
-  }
-
-  bool convertToBin(std::string path, char *buffer, int size)
-  {
-    std::stringstream command;
-    command << "convert ";
-    command << std::quoted(path);
-    command << " RGBA:-";
-    std::string strCommand = command.str();
-    auto fp = popen(strCommand.c_str(), "r");
-    if (fp != nullptr)
-    {
-      auto count = fread(buffer, 1, size, fp);
-      auto status = pclose(fp);
-      return status == 0 && count == size;
-    };
-    return false;
-  }
-
-  bool convertFromBin(fs::path &fromPath, fs::path &toPath, uint32_t width, uint32_t height, uint32_t depth)
-  {
-    std::stringstream command;
-    command << "convert -size ";
-    command << width;
-    command << "x";
-    command << height;
-    command << " -depth ";
-    command << depth;
-    command << " ";
-    command << " RGBA:";
-    command << std::quoted(fromPath.string());
-    command << " ";
-    command << std::quoted(toPath.string());
-    std::string strCommand = command.str();
-    // std::cout << strCommand << std::endl;
-    auto fp = popen(strCommand.c_str(), "r");
-    if (fp != nullptr)
-    {
-      auto status = pclose(fp);
-      return status == 0;
-    };
-    return false;
-  }
-
-  bool resizeBin(
-      std::string &fromPath,
-      uint32_t srcWidth,
-      uint32_t srcHeight,
-      uint32_t width,
-      uint32_t height,
-      char *buffer,
-      int size)
-  {
-    std::stringstream command;
-    command << "convert -size ";
-    command << srcWidth;
-    command << "x";
-    command << srcHeight;
-    command << " -depth 8";
-    command << " RGBA:";
-    command << std::quoted(fromPath);
-    command << " -resize ";
-    command << width;
-    command << "x";
-    command << height;
-    command << "! RGBA:-";
-    std::string strCommand = command.str();
-    auto fp = popen(strCommand.c_str(), "r");
-    if (fp != nullptr)
-    {
-      auto count = fread(buffer, 1, size, fp);
-      auto status = pclose(fp);
-      return status == 0 && count == size;
-    };
-    return false;
-  }
-
-  void SKIP_FWK_loadImage(uint32_t wId, char *scope, char *path, char *target, uint32_t ctx)
-  {
-    TXT(path, strPath);
-    TXT(scope, strScope);
-    TXT(target, strTarget);
-    std::thread t([wId, strScope, strPath, strTarget, ctx]()
-                  {
-      std::string type;
-      fs::path fsScopePath;
-      checkScopePath(strScope, fsScopePath);
-      fs::path fspath = fsScopePath / strPath;
-      uint32_t width, height, result;
-      if (!checkImage(fspath.string(), width, height)) {
-        result = NOT_MANAGED_IMAGE_FORMAT;
-      } else {
-        int size = width * height * 4;
-        char * buffer = new char[size + 1];
-        if (!convertToBin(fspath.string(), buffer, size)) {
-          result = UNABLE_TO_LOAD_IMAGE;
-        } else {
-          std::vector<uint8_t> vector(&buffer[0], &buffer[size]);
-          SKIP_FWK_execute(wId, [strPath, strTarget, vector, width, height, ctx]()
-          {
-            auto skPath = sk_string_create(strPath.c_str(), strPath.size());
-            auto skTarget = sk_string_create(strTarget.c_str(), strTarget.size());
-            auto arraySize = width * height;
-            auto pixArray = SKIP_FWK_createPixArray(arraySize);
-            for (int i = 0; i < arraySize * 4; i += 4) {
-              SKIP_FWK_setPix(pixArray, i / 4, vector[i], vector[i + 1], vector[i + 2], vector[i + 3]);
-            }
-            SKIP_FWK_imgSuccess(skPath, pixArray, width, height, skTarget);
-          });
-          result = 0;
-        }
-        delete[] buffer;
-      };
-      if (result != 0) {
-        SKIP_FWK_execute(wId, [strPath, strTarget, result]()
-        {
-          auto skPath = sk_string_create(strPath.c_str(), strPath.size());
-          auto skTarget = sk_string_create(strTarget.c_str(), strTarget.size());
-          SKIP_FWK_imgFailure(skPath, result, skTarget);
-        });
-      } });
-    t.detach();
-  }
-
   bool SKIP_GL_saveTexture(char *path, uint32_t texture, uint32_t width, uint32_t height, uint32_t ctx)
   {
     TXT(path, strPath);
@@ -882,36 +676,6 @@ extern "C"
     auto res = saveImage(strPath, (const char *)pixels, width, height);
     glBindTexture(GL_TEXTURE_2D, 0);
     return res;
-  }
-
-  uint32_t createTexture(uint32_t width, uint32_t height, uint32_t ctx, void *buffer)
-  {
-    auto size = width * height * 4;
-    GLuint target = SKIP_GL_createTexture(ctx);
-    glBindTexture(GL_TEXTURE_2D, target);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    kept.insert(target);
-    return target;
-  }
-
-  void fillTexture(uint32_t id, void *buffer, uint32_t width, uint32_t height, uint32_t ctx)
-  {
-    glBindTexture(GL_TEXTURE_2D, id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-    glBindTexture(GL_TEXTURE_2D, 0);
-  }
-
-  void releaseTexture(uint32_t id)
-  {
-    auto it = kept.find(id);
-    if (it != kept.end())
-    {
-      kept.erase(it);
-    }
-    GL_deleteTexture(id);
   }
 
   uint32_t SKIP_GL_cloneTexture(uint32_t texture, uint32_t width, uint32_t height, uint32_t ctx)
