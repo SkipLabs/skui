@@ -1,0 +1,157 @@
+module UiDrawable;
+
+class SolidTriangle(color: .Color, side: .UiSide) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.solidTriangle(this.side);
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.solidTriangle(context, this.side).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~>
+        drawer.run(
+          GLProgram.SolidParameters(this.color),
+          GLProgram.RectangleParameters(
+            this.bounds.shift(shift.toOffset()),
+            buffer,
+          ),
+          window.size(),
+        )
+      )
+    )
+  }
+}
+
+class LinearGradientTriangle(
+  linearGradient: Ui.LinearGradient,
+  side: .UiSide,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    count = this.linearGradient.stops.size();
+    initializer.linearGradientTriangle(count, this.side);
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    count = this.linearGradient.stops.size();
+    supplier.linearGradientTriangle(context, count, this.side).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        rect = this.bounds.shift(shift.toOffset());
+        drawer.run(
+          GLProgram.LinearGradientParameters(this.bounds, this.linearGradient),
+          GLProgram.RectangleParameters(rect, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class RadialGradientTriangle(
+  radialGradient: Ui.RadialGradient,
+  side: .UiSide,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    count = this.radialGradient.stops.size();
+    initializer.radialGradientTriangle(count, this.side);
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    count = this.radialGradient.stops.size();
+    supplier.radialGradientTriangle(context, count, this.side).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        rect = this.bounds.shift(shift.toOffset());
+        drawer.run(
+          GLProgram.RadialGradientParameters(rect, this.radialGradient),
+          GLProgram.RectangleParameters(rect, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+fun triangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  paint: Ui.Paint,
+  side: .UiSide,
+): Ui.Drawable {
+  paint match {
+  | color @ .Color _ ->
+    SolidTriangle(color, side, Geometry.Rect::fromOffsetSize(offset, size))
+  | linearGradient @ Ui.LinearGradient _ ->
+    stops = linearGradient.stops
+      .filter(s -> s.offset >= 0.0 && s.offset <= 1.0)
+      .sortedFor(c ~> c.offset);
+    invariant(!stops.isEmpty(), "Gradiant must have at list one valid stop");
+    if (
+      stops.size() == 1 ||
+      (linearGradient.end.dy == linearGradient.start.dy &&
+        linearGradient.end.dx == linearGradient.start.dx)
+    ) {
+      SolidTriangle(
+        stops.first().color,
+        side,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    } else {
+      LinearGradientTriangle(
+        linearGradient,
+        side,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    }
+  | radialGradient @ Ui.RadialGradient _ ->
+    stops = radialGradient.stops
+      .filter(s -> s.offset >= 0.0 && s.offset <= 1.0)
+      .sortedFor(c ~> c.offset);
+    invariant(!stops.isEmpty(), "Gradiant must have at list one valid stop");
+    radius = Math.abs(radialGradient.radius);
+    if (stops.size() == 1 || radius <= 1.0) {
+      SolidTriangle(
+        stops.first().color,
+        side,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    } else {
+      RadialGradientTriangle(
+        radialGradient,
+        side,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    }
+  | _ -> invariant_violation(`Not managed paint: ${Utils.toString(paint)}`)
+  }
+}
+
+fun pushTriangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  paint: Ui.Paint,
+  side: .UiSide,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  drawables.push(triangle(offset, size, paint, side));
+}
+
+module end;

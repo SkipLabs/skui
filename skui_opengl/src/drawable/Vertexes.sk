@@ -1,0 +1,198 @@
+module UiDrawable;
+
+class SolidVertexesDrawer(
+  fn: (Geometry.Rect, .Color, Geometry.Size, GL.Buffer, Int) ~> void,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ SolidVertexesDrawer _ -> x
+    | _ -> invariant_violation("Must be Ui.SolidVertexesDrawer")
+    }
+  }
+}
+
+class SolidVertexes(
+  vertexes: Array<Geometry.Offset>,
+  color: .Color,
+  normalized: Bool,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.solidVertexes(this.vertexes, this.normalized);
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.solidVertexes(context, this.normalized).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        drawer.run(
+          GLProgram.SolidParameters(this.color),
+          GLProgram.VertexesParameters(
+            this.bounds.shift(shift.toOffset()),
+            shift.toOffset(),
+            this.vertexes.size(),
+            buffer,
+          ),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+fun pushVertexes(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  paint: Ui.Paint,
+  vertexes: Array<Geometry.Offset>,
+  normalized: Bool,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  paint match {
+  | color @ .Color _ ->
+    drawables.push(
+      SolidVertexes(
+        vertexes,
+        color,
+        normalized,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      ),
+    )
+  | _ -> invariant_violation("Not implemented; only Color Fill managed")
+  }
+}
+
+fun diagonal(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  fromTopLeft: Bool,
+  thickness: Float,
+  color: .Color,
+): Ui.Drawable {
+  vertexes = if (fromTopLeft) {
+    downRight = offset.translate(size.width, size.height);
+    coeffAB = Geometry.coefficient(offset, downRight);
+    parAB = Geometry.parallelAt(coeffAB.fromSome(), thickness);
+    (top, bottom) = if (thickness > 0.0) {
+      ty = offset.dx * parAB.i0 + parAB.i1;
+      bx = (downRight.dy - parAB.i1) / parAB.i0;
+      (offset with {dy => ty}, downRight with {dx => bx})
+    } else {
+      tx = (offset.dy - parAB.i1) / parAB.i0;
+      by = downRight.dx * parAB.i0 + parAB.i1;
+      (offset with {dx => tx}, downRight with {dy => by})
+    };
+    Array[offset, top, downRight, downRight, top, bottom]
+  } else {
+    downLeft = offset.translateY(size.height);
+    topRight = offset.translateX(size.width);
+    coeffAB = Geometry.coefficient(downLeft, topRight);
+    parAB = Geometry.parallelAt(coeffAB.fromSome(), thickness);
+    (top, bottom) = if (thickness > 0.0) {
+      ty = topRight.dx * parAB.i0 + parAB.i1;
+      bx = (downLeft.dy - parAB.i1) / parAB.i0;
+      (topRight with {dy => ty}, downLeft with {dx => bx})
+    } else {
+      tx = (topRight.dy - parAB.i1) / parAB.i0;
+      by = downLeft.dx * parAB.i0 + parAB.i1;
+      (topRight with {dx => tx}, downLeft with {dy => by})
+    };
+    Array[topRight, top, downLeft, downLeft, top, bottom]
+  };
+  SolidVertexes(
+    vertexes,
+    color,
+    false,
+    Geometry.Rect::fromOffsetSize(offset, size),
+  )
+}
+
+fun pushDiagonal(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  fromTopLeft: Bool,
+  thickness: Float,
+  color: .Color,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  drawables.push(diagonal(offset, size, fromTopLeft, thickness, color));
+}
+
+fun pushCrux(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  thickness: Float,
+  color: .Color,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  ct = thickness / 2.0;
+  UiDrawable.pushDiagonal(offset, size, true, -ct, color, drawables);
+  UiDrawable.pushDiagonal(offset, size, true, ct, color, drawables);
+  UiDrawable.pushDiagonal(offset, size, false, -ct, color, drawables);
+  UiDrawable.pushDiagonal(offset, size, false, ct, color, drawables);
+}
+
+fun parallelepiped(
+  a: Geometry.Offset,
+  b: Geometry.Offset,
+  c: Geometry.Offset,
+  d: Geometry.Offset,
+  color: .Color,
+): Ui.Drawable {
+  min = a.min(b).min(c).min(d);
+  max = a.max(b).max(c).max(d);
+  SolidVertexes(
+    Array[a, b, c, a, c, d],
+    color,
+    false,
+    Geometry.Rect(min.dx, min.dy, max.dx, max.dy),
+  )
+}
+
+fun pushParallelepiped(
+  a: Geometry.Offset,
+  b: Geometry.Offset,
+  c: Geometry.Offset,
+  d: Geometry.Offset,
+  color: .Color,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  drawables.push(parallelepiped(a, b, c, d, color));
+}
+
+fun parallel(
+  a: Geometry.Offset,
+  b: Geometry.Offset,
+  thickness: Float,
+  color: .Color,
+): Ui.Drawable {
+  coeffAB = Geometry.coefficient(a, b);
+  coeffCD = Geometry.parallelAt(coeffAB.fromSome(), thickness);
+  cy = b.dx * coeffCD.i0 + coeffCD.i1;
+  dy = a.dx * coeffCD.i0 + coeffCD.i1;
+  parallelepiped(
+    a,
+    b,
+    Geometry.Offset(b.dx, cy),
+    Geometry.Offset(a.dx, dy),
+    color,
+  )
+}
+
+fun pushParallel(
+  a: Geometry.Offset,
+  b: Geometry.Offset,
+  thickness: Float,
+  color: .Color,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  drawables.push(parallel(a, b, thickness, color));
+}
+
+module end;

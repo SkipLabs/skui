@@ -1,0 +1,111 @@
+module UiDrawable;
+
+class SolidEllipse(color: .Color, radius: Float) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.ellipse();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.ellipseDrawer(context).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        size = this.bounds.size();
+        side = Math.max(size.width, size.height);
+        smooth = Math.min(2.0, side / 16.0);
+        precision = smooth / side;
+        drawer.run(
+          GLProgram.EllipseParameters(this.color, this.radius, precision),
+          GLProgram.RectangleParameters(
+            this.bounds.shift(shift.toOffset()),
+            buffer,
+          ),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class SolidDisk(
+  color: .Color,
+  thickness: Float,
+  radius: Float,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.disk();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.diskDrawer(context).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        rect = this.bounds.shift(shift.toOffset());
+        size = this.bounds.size();
+        side = Math.max(size.width, size.height);
+        smooth = Math.min(2.0, side / 16.0);
+        precision = smooth / side;
+        drawer.run(
+          GLProgram.DiskParameters(
+            rect,
+            this.color,
+            this.thickness,
+            this.radius,
+            precision,
+          ),
+          GLProgram.RectangleParameters(rect, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+fun pushEllipse(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  paint: Ui.Paint,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  paint match {
+  | color @ .Color _ ->
+    drawables.push(
+      SolidEllipse(color, 0.5, Geometry.Rect::fromOffsetSize(offset, size)),
+    )
+  | _ -> invariant_violation("Not implemented; only Color Fill managed")
+  }
+}
+
+fun pushDisk(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  paint: Ui.Paint,
+  thickness: Float,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  paint match {
+  | color @ .Color _ ->
+    drawables.push(
+      SolidDisk(
+        color,
+        thickness,
+        0.5,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      ),
+    )
+  | _ -> invariant_violation("Not implemented; only Color Fill managed")
+  }
+}
+
+module end;

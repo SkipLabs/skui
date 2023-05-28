@@ -1,0 +1,75 @@
+module UiDrawable;
+
+class Loading(
+  color1: .Color,
+  color2: .Color,
+  step: Int,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.loading();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.loading(context).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        rect = this.bounds.shift(shift.toOffset());
+        drawer.run(
+          GLProgram.LoadingParameters(
+            rect,
+            this.step,
+            this.color1,
+            this.color2,
+          ),
+          GLProgram.RectangleParameters(rect, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class Progress(
+  progress: Float,
+  color1: .Color,
+  color2: .Color,
+  thickness: Float,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.progress();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.progress(context).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        rect = this.bounds.shift(shift.toOffset());
+        drawer.run(
+          GLProgram.ProgressParameters(
+            rect,
+            this.color1,
+            this.color2,
+            this.thickness,
+            this.progress,
+          ),
+          GLProgram.RectangleParameters(rect, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+module end;

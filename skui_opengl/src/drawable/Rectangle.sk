@@ -1,0 +1,445 @@
+module UiDrawable;
+
+const withViewports: Bool = true;
+
+class SolidRectangle(color: .Color) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.rectangle();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.rectangleDrawer(context).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        drawer.run(
+          GLProgram.SolidParameters(this.color),
+          GLProgram.RectangleParameters(
+            this.bounds.shift(shift.toOffset()),
+            buffer,
+          ),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class LinearGradientRectangle(
+  linearGradient: Ui.LinearGradient,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    count = this.linearGradient.stops.size();
+    initializer.linearGradientRectangle(count);
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    count = this.linearGradient.stops.size();
+    supplier.linearGradientRectangle(context, count).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        rect = this.bounds.shift(shift.toOffset());
+        drawer.run(
+          GLProgram.LinearGradientParameters(this.bounds, this.linearGradient),
+          GLProgram.RectangleParameters(rect, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class RadialGradientRectangle(
+  radialGradient: Ui.RadialGradient,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    count = this.radialGradient.stops.size();
+    initializer.radialGradientRectangle(count);
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    count = this.radialGradient.stops.size();
+    supplier.radialGradientRectangle(context, count).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        rect = this.bounds.shift(shift.toOffset());
+        drawer.run(
+          GLProgram.RadialGradientParameters(rect, this.radialGradient),
+          GLProgram.RectangleParameters(rect, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class RoundedRectangle(
+  color: .Color,
+  radius: Int,
+  smooth: Int,
+  optBorder: ?(.Color, Int),
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.roundedRectangle();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.roundedRectangleDrawer(context).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        offset = this.bounds.topLeft();
+        bsize = this.bounds.size();
+        (size, xMove, yMove) = if (bsize.height > bsize.width) {
+          (bsize.height, (bsize.width - bsize.height) / 2.0, 0.0);
+        } else if (bsize.height < bsize.width) {
+          (bsize.width, 0.0, (bsize.height - bsize.width) / 2.0);
+        } else {
+          (bsize.width, 0.0, 0.0);
+        };
+        bounds = Geometry.Rect::fromOffsetSize(
+          offset.translate(xMove, yMove),
+          Geometry.Size::square(size),
+        );
+        drawer.run(
+          GLProgram.RoundedRectangleParameters(
+            this.bounds.size(),
+            this.color,
+            this.radius,
+            this.optBorder.map(b -> GLProgram.Border(b.i0, b.i1)),
+            this.smooth,
+          ),
+          GLProgram.RectangleParameters(bounds.shift(shift.toOffset()), buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class BoxShadow(sigma: Float, color: .Color) extends Ui.RectangleDrawable {
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.boxShadow();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.boxShadowDrawer(context).map(drawer ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        box = this.bounds.shift(shift.toOffset());
+        drawer.run(
+          GLProgram.ShadowParameters(box, this.color, this.sigma),
+          GLProgram.RectangleParameters(box, buffer),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class Texture(
+  texture: GL.Texturable,
+  flipped: Bool,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.texture();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.textureDrawer(context, this.flipped).map(program ->
+      Ui.LambdaHandle((shift, window, _height) ~> {
+        program.run(
+          GLProgram.TextureParameters(this.texture.asTexture(gl)),
+          GLProgram.RectangleParameters(
+            this.bounds.shift(shift.toOffset()),
+            buffer,
+          ),
+          window.size(),
+        )
+      })
+    )
+  }
+}
+
+class Image(image: Ui.Image) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.texture();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.textureDrawer(context).map(program ->
+      imageHandle(program, gl, this.bounds, this.image, buffer)
+    )
+  }
+}
+
+class BuiltImage(
+  builder: mutable SKFS.Context ~> Ui.Image,
+) extends Ui.RectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.texture();
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    buffer = data as GLProgram.Buffer _;
+    supplier.textureDrawer(context).map(program -> {
+      image = this.builder(context);
+      imageHandle(program, gl, this.bounds, image, buffer);
+    })
+  }
+}
+
+fun imageHandle(
+  program: GLProgram.TriangleProgram,
+  gl: GL.Ctx,
+  bounds: Geometry.Rect,
+  image: Ui.Image,
+  buffer: GLProgram.Buffer,
+): Ui.Handle {
+  texture = GLTexture.createImage(image.width, image.height, Some(image.data));
+  tex = texture.texture.asTexture(gl);
+  Ui.LambdaHandle((shift, window, height) ~> {
+    topLeft = window.toRect().topLeft();
+    rectWindow = window.toRect();
+    absolute = bounds.shift(topLeft).shift(shift.toOffset());
+    if (!absolute.overlaps(rectWindow)) {
+      return void
+    };
+    if (withViewports) {
+      vp = absolute.toRectangle();
+      visible = vp.intersect(window);
+      vShift = visible.min - vp.min;
+      top = height - visible.height() - visible.top();
+      rect = Geometry.Rect::fromOffsetSize(vShift.toOffset(), absolute.size());
+      gl.save();
+      gl.viewport(
+        Int32::truncate(visible.min.x),
+        Int32::truncate(top),
+        UInt32::truncate(visible.width()),
+        UInt32::truncate(visible.height()),
+      );
+      program.run(
+        GLProgram.TextureParameters(tex),
+        GLProgram.RectangleParameters(rect, buffer),
+        visible.size(),
+      );
+      gl.restore();
+    } else {
+      program.run(
+        GLProgram.TextureParameters(tex),
+        GLProgram.RectangleParameters(bounds.shift(shift.toOffset()), buffer),
+        window.size(),
+      )
+    }
+  });
+}
+
+fun rectangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  paint: Ui.Paint,
+): Ui.Drawable {
+  paint match {
+  | color @ .Color _ ->
+    SolidRectangle(color, Geometry.Rect::fromOffsetSize(offset, size))
+  | linearGradient @ Ui.LinearGradient _ ->
+    stops = linearGradient.stops
+      .filter(s -> s.offset >= 0.0 && s.offset <= 1.0)
+      .sortedFor(c ~> c.offset);
+    invariant(!stops.isEmpty(), "Gradiant must have at list one valid stop");
+    if (
+      stops.size() == 1 ||
+      (linearGradient.end.dy == linearGradient.start.dy &&
+        linearGradient.end.dx == linearGradient.start.dx)
+    ) {
+      SolidRectangle(
+        stops.first().color,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    } else {
+      LinearGradientRectangle(
+        linearGradient,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    }
+  | radialGradient @ Ui.RadialGradient _ ->
+    stops = radialGradient.stops
+      .filter(s -> s.offset >= 0.0 && s.offset <= 1.0)
+      .sortedFor(c ~> c.offset);
+    invariant(!stops.isEmpty(), "Gradiant must have at list one valid stop");
+    radius = Math.abs(radialGradient.radius);
+    if (stops.size() == 1 || radius <= 1.0) {
+      SolidRectangle(
+        stops.first().color,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    } else {
+      RadialGradientRectangle(
+        radialGradient,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    }
+  | _ -> invariant_violation(`Not managed paint: ${Utils.toString(paint)}`)
+  }
+}
+
+fun pushRectangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  paint: Ui.Paint,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  drawables.push(rectangle(offset, size, paint));
+}
+
+fun pushStrokeRectangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  thickness: Float,
+  paint: Ui.Paint,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  pushRectangle(offset, Geometry.Size(size.width, thickness), paint, drawables);
+  UiDrawable.pushRectangle(
+    offset.translate(size.width - thickness, thickness),
+    Geometry.Size(thickness, size.height - (2.0 * thickness)),
+    paint,
+    drawables,
+  );
+  UiDrawable.pushRectangle(
+    offset.translateY(size.height - thickness),
+    Geometry.Size(size.width, thickness),
+    paint,
+    drawables,
+  );
+  UiDrawable.pushRectangle(
+    offset.translateY(thickness),
+    Geometry.Size(thickness, size.height - (2.0 * thickness)),
+    paint,
+    drawables,
+  );
+}
+
+fun strokeRectangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  thickness: Float,
+  paint: Ui.Paint,
+): Array<Ui.Drawable> {
+  Array[
+    rectangle(offset, Geometry.Size(size.width, thickness), paint),
+    rectangle(
+      offset.translate(size.width - thickness, thickness),
+      Geometry.Size(thickness, size.height - (2.0 * thickness)),
+      paint,
+    ),
+    rectangle(
+      offset.translateY(size.height - thickness),
+      Geometry.Size(size.width, thickness),
+      paint,
+    ),
+    rectangle(
+      offset.translateY(thickness),
+      Geometry.Size(thickness, size.height - (2.0 * thickness)),
+      paint,
+    ),
+  ]
+}
+
+fun roundedRectangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  color: .Color,
+  radius: Float,
+  smooth: Int = 2,
+  optBorder: ?(.Color, Int) = None(),
+): Array<Ui.Drawable> {
+  Array[
+    RoundedRectangle(
+      color,
+      radius.toInt(),
+      smooth,
+      optBorder,
+      Geometry.Rect::fromOffsetSize(offset, size),
+    ),
+  ]
+}
+
+fun pushRoundedRectangle(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  color: .Color,
+  radius: Float,
+  drawables: mutable Vector<Ui.Drawable>,
+  smooth: Int = 2,
+  optBorder: ?(.Color, Int) = None(),
+): void {
+  roundedRectangle(offset, size, color, radius, smooth, optBorder).each(
+    drawables.push,
+  )
+}
+
+fun pushBoxShadow(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  sigma: Float,
+  paint: Ui.Paint,
+  drawables: mutable Vector<Ui.Drawable>,
+): void {
+  paint match {
+  | color @ .Color _ ->
+    drawables.push(
+      BoxShadow(sigma, color, Geometry.Rect::fromOffsetSize(offset, size)),
+    )
+  | _ -> invariant_violation("Not implemented; only Color Fill managed")
+  }
+}
+
+module end;
