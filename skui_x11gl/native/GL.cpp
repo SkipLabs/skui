@@ -1,25 +1,7 @@
-#include <GL/glx.h>
-#include <X11/Xlib.h>
-#include <exception>
+#include <GLBuilder.h>
 
-class CreateContextException : public std::exception
+XVisualInfo *SKUiGLWindowBuilder::initializeDisplay(Display *disp)
 {
-public:
-    CreateContextException()
-    {
-    }
-
-   ~CreateContextException()
-   {
-   }
-
-   virtual const char* what() const throw () 
-   {
-        return "Unable to create Display context";
-   }
-};
-
-XVisualInfo* initializeDisplay(Display * disp, void*& info) {
   // We prefer the more recent glXChooseFBConfig but fall back to glXChooseVisual. They have
   // slight differences in how attributes are specified.
   static int constexpr kChooseFBConfigAtt[] = {
@@ -29,13 +11,12 @@ XVisualInfo* initializeDisplay(Display * disp, void*& info) {
       None};
   // For some reason glXChooseVisual takes a non-const pointer to the attributes.
   GLint chooseVisualAtt[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None};
-  XVisualInfo* visualInfo = glXChooseVisual(disp, DefaultScreen(disp), chooseVisualAtt);
-  GLXFBConfig * gLXFBConfig = nullptr;
+  XVisualInfo *visualInfo = glXChooseVisual(disp, DefaultScreen(disp), chooseVisualAtt);
   if (nullptr == visualInfo)
   {
     int n;
     auto screen = DefaultScreen(disp);
-    gLXFBConfig = glXChooseFBConfig(disp, screen, kChooseFBConfigAtt, &n);
+    this->gLXFBConfig = glXChooseFBConfig(disp, screen, kChooseFBConfigAtt, &n);
     if (n > 0)
     {
       visualInfo = glXGetVisualFromFBConfig(disp, *gLXFBConfig);
@@ -46,35 +27,29 @@ XVisualInfo* initializeDisplay(Display * disp, void*& info) {
       gLXFBConfig = nullptr;
     }
   }
-  if (nullptr == visualInfo) {
+  if (nullptr == visualInfo)
+  {
     throw CreateContextException();
   }
-  info = gLXFBConfig;
   return visualInfo;
-} 
+}
 
 void GL_check();
-void GL_checkTextureToDelete();
 
-void* createContext(Window fWindow, Display * disp, XVisualInfo* visualInfo) {
-  GLXContext context  = glXCreateContext(disp, visualInfo, NULL, GL_TRUE);
-  glXMakeCurrent(disp, fWindow, context);
+void SKUiGLWindowBuilder::createContext(Window fWindow, Display *disp, XVisualInfo *visualInfo)
+{
+  this->context = glXCreateContext(disp, visualInfo, NULL, GL_TRUE);
+  glXMakeCurrent(disp, fWindow, this->context);
   GL_check();
-  return context;
 }
 
-
-void closeContext(Display * disp, void* extContext, void* extVisualInfo) {
+void SKUiGLWindowBuilder::closeContext(Display *disp)
+{
   glXMakeCurrent(disp, None, NULL);
-  glXDestroyContext(disp, static_cast<GLXContext>(extContext));
-  if (extVisualInfo)
+  glXDestroyContext(disp, static_cast<GLXContext>(this->context));
+  if (this->gLXFBConfig)
   {
-    //XFree(extVisualInfo);
+    // XFree(this->gLXFBConfig);
+    this->gLXFBConfig = nullptr;
   }
 }
-
-void onIdle() {
-  GL_checkTextureToDelete();
-}
-
-//glXSwapBuffers(display, win);

@@ -3,13 +3,14 @@
 
 #include <functional>
 
-class Timer {
-    bool cancel = false;
+class Timer
+{
+  bool cancel = false;
 
-    public:
-        void setTimeout(std::function<void()> function, int delay);
-        void setInterval(std::function<void()> function, int interval);
-        void stop();
+public:
+  void setTimeout(std::function<void()> function, int delay);
+  void setInterval(std::function<void()> function, int interval);
+  void stop();
 };
 
 #endif

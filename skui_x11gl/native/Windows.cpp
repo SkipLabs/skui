@@ -1,9 +1,10 @@
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
+
+#include "AnimationFrame.h"
+#include "Manager.h"
+#include "Builder.h"
 #include <iostream>
 #include <cassert>
 #include <cstring>
-#include <functional>
 #include <unistd.h>
 #include <atomic>
 #include <chrono>
@@ -13,8 +14,6 @@
 #include <math.h>
 #include <map>
 #include <memory>
-#include "AnimationFrame.h"
-#include "Manager.h"
 
 struct XlibWindowInfo final
 {
@@ -23,7 +22,6 @@ struct XlibWindowInfo final
     int          fWidth;
     int          fHeight;
     XVisualInfo* fVisualInfo;
-    void* fExtContext;
 };
 
 
@@ -93,10 +91,9 @@ struct XWindow final
   Atom fPerformAnimationFrame;
   Atom fCloseMessage;
   XVisualInfo* fVisualInfo;
-  void* fExtVisualInfo;
-  void* fExtContext;
+  SKUiWindowBuilder* fBuilder;
   
-  XWindow() : fDisplay(-1), fVisualInfo(nullptr), fExtContext(nullptr), fExtVisualInfo(nullptr)
+  XWindow() : fDisplay(-1), fVisualInfo(nullptr), fBuilder(nullptr)
   {
   }
 };
@@ -197,26 +194,17 @@ bool createWindow(uint64_t wId, uint64_t dId)
   return true;
 }
 
-XVisualInfo* initializeDisplay(Display * disp, void* & info);
-void* createContext(Window fWindow, Display * disp, XVisualInfo* visualInfo);
-void closeContext(Display * disp, void* extContext, void* extVisualInfo);
-void checkVersion();
-void windowInitialized(uint32_t wId);
+void sendExposeMessage(Display *disp, Window fWindow);
 
-void initWindow(
-  uint64_t wId,
-  uint64_t initialX,
-  uint64_t initialY,
-  uint64_t initialWidth,
-  uint64_t initialHeight,
-  u_int32_t framePreSecond
-)
+void initWindow(SKUiWindowBuilder& builder)
 {
+  auto config = builder.configuration();
+  auto wId = config.wId;
   auto disp = display(wId);
   // Attempt to create a window that supports GL
   assert(nullptr == gWindows[wId].fVisualInfo);
-  void* info = nullptr;
-  gWindows[wId].fVisualInfo = initializeDisplay(disp, info);
+  gWindows[wId].fBuilder = &builder;
+  gWindows[wId].fVisualInfo = builder.initializeDisplay(disp);
   Colormap colorMap = XCreateColormap(disp,
                                     RootWindow(disp, gWindows[wId].fVisualInfo->screen),
                                     gWindows[wId].fVisualInfo->visual,
@@ -226,8 +214,8 @@ void initWindow(
   swa.event_mask = kEventMask;
   gWindows[wId].fWindow = XCreateWindow(disp,
                                       RootWindow(disp, gWindows[wId].fVisualInfo->screen),
-                                      initialX, initialY,
-                                      initialWidth, initialHeight,
+                                      config.x, config.y,
+                                      config.width, config.height,
                                       0, // border width
                                       gWindows[wId].fVisualInfo->depth,
                                       InputOutput,
@@ -237,18 +225,18 @@ void initWindow(
   if (!gWindows[wId].fWindow) {
     throw WindowException("Unable to create window");
   }
-  gWindows[wId].fExtContext = createContext(gWindows[wId].fWindow, disp, gWindows[wId].fVisualInfo);
+  builder.createContext(gWindows[wId].fWindow, disp, gWindows[wId].fVisualInfo);
   // set up to catch window delete message
   gWindows[wId].fWmDeleteMessage = XInternAtom(disp, "WM_DELETE_WINDOW", False);
   gWindows[wId].fPerformAnimationFrame = XInternAtom(disp, "PERFORM_ANIMATION_FRAME", False);
   gWindows[wId].fCloseMessage = XInternAtom(disp, "CLOSE_WINDOW", False);
   XSetWMProtocols(disp, gWindows[wId].fWindow, &gWindows[wId].fWmDeleteMessage, 1);
-  windowInitialized(wId);
+  builder.initiliazed();
   gAnimationFrames[wId].start(
     [disp, wId]() {
       sendExposeMessage(disp, gWindows[wId].fWindow);
     },
-    framePreSecond
+    config.framePreSecond
   );
 }
 
@@ -264,7 +252,6 @@ void attachWindow(uint64_t wId)
   XlibWindowInfo winInfo;
   winInfo.fDisplay = disp;
   winInfo.fWindow = gWindows[wId].fWindow;
-  winInfo.fExtContext= gWindows[wId].fExtContext;
   winInfo.fVisualInfo = gWindows[wId].fVisualInfo;
 
   XWindowAttributes attrs;
@@ -307,9 +294,8 @@ void closeWindow(uint64_t wId)
   auto disp = display(wId);
   if (disp)
   {
-    closeContext(disp, gWindows[wId].fExtContext, gWindows[wId].fExtVisualInfo);
-    gWindows[wId].fExtContext = nullptr;
-    gWindows[wId].fExtVisualInfo = nullptr;
+    gWindows[wId].fBuilder->closeContext(disp);
+    gWindows[wId].fBuilder = nullptr;
     XUnmapWindow(disp, wId);
     XFlush(disp);
     detachWindow(wId);

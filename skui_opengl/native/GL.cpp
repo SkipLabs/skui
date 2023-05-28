@@ -178,7 +178,16 @@ void displayBlendState() {
 
 bool saveImage(std::string &strPath, const char *data, uint32_t width, uint32_t height);
 
-
+void GL_deleteTexture(uint32_t ident)
+{
+  auto it = kept.find(ident);
+  if (it != kept.end())
+  {
+    return;
+  }
+  GLuint tex = ident;
+  glDeleteTextures(1, &tex);
+}
 
 void GL_checkTextureToDelete()
 {
@@ -228,7 +237,6 @@ void GL_check()
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
   gState.color = Color{1.0, 1.0, 1.0, 1.0};
   glClearColor(1.0, 1.0, 1.0, 1.0);
-  SKIP_GL_init();
 }
 
 extern "C"
@@ -258,17 +266,6 @@ extern "C"
     GLuint tex = 0;
     glGenTextures(1, &tex);
     return tex;
-  }
-
-  void GL_deleteTexture(uint32_t ident)
-  {
-    auto it = kept.find(ident);
-    if (it != kept.end())
-    {
-      return;
-    }
-    GLuint tex = ident;
-    glDeleteTextures(1, &tex);
   }
 
   void SKIP_GL_deleteTexture(uint32_t ident, uint32_t ctx)
