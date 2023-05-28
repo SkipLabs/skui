@@ -42,8 +42,17 @@ native fun run(
 @cpp_export("SKIP_SkuiX11gl_performFrame")
 fun performFrame(wId: Int, width: Int, height: Int): void {
   pos = SKFS.newObstack();
-  print_string(`performFrame: ${wId} (${width}, ${height})`);
+  ctx = GL.Ctx(UInt32::truncate(wId));
+  ctx.bindMainFrameBuffer();
+  ctx.enableBlend();
+  ctx.straitAlphaBlending();
+  ctx.viewport(int32(0), int32(0), uint32(width), uint32(height));
+  ctx.clearColor(1.0, 1.0, 1.0, 1.0);
+  ctx.clear();
+
+  ctx.flush();
   SKFS.destroyObstack(pos);
 }
+
 
 module end;

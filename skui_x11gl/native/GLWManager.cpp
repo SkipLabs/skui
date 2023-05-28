@@ -8,7 +8,6 @@ std::string utf8datatype("text/plain; charset=utf-8");
 namespace skui
 {
 
-
   void sendClientMessage(Display *disp, Window window, Atom type, uint32_t param1, uint32_t param2);
 
   XVisualInfo *GLWindowManager::initializeDisplay(Display *disp, uint32_t screen)
@@ -42,7 +41,7 @@ namespace skui
     {
       throw CreateContextException();
     }
-    this->display = display;
+    this->display = disp;
     this->visualInfo = visualInfo;
     return visualInfo;
   }
@@ -50,9 +49,9 @@ namespace skui
   Atom GLWindowManager::createContext(Window window)
   {
     this->messages = {
-      XInternAtom(this->display, "WM_DELETE_WINDOW", False),
-      XInternAtom(this->display, "PERFORM_ANIMATION_FRAME", False),
-      XInternAtom(this->display, "CLOSE_WINDOW", False),
+        XInternAtom(this->display, "WM_DELETE_WINDOW", False),
+        XInternAtom(this->display, "PERFORM_ANIMATION_FRAME", False),
+        XInternAtom(this->display, "CLOSE_WINDOW", False),
     };
     this->context = glXCreateContext(display, visualInfo, NULL, GL_TRUE);
     glXMakeCurrent(this->display, window, this->context);
@@ -64,7 +63,7 @@ namespace skui
     }
     if (!GLEW_VERSION_2_1)
     {
-      //throw VersionException(std::string("Invalid GLEW version"));
+      // throw VersionException(std::string("Invalid GLEW version"));
     }
     GL_init();
     return this->messages.fWmDeleteMessage;
@@ -111,14 +110,19 @@ namespace skui
     }
   }
 
-  void GLWindowManager::performFrame(uint32_t width, uint32_t height)
+  void GLWindowManager::performFrame()
   {
     if (this->eventManager != nullptr)
     {
+      XWindowAttributes gwa;
+      XGetWindowAttributes(this->display, this->window, &gwa);
       glXMakeCurrent(this->display, this->window, this->context);
-      this->eventManager->performFrame(this->config.wId, width, height, [this]() {
+      this->eventManager->performFrame(
+        this->config.wId, gwa.width,
+        gwa.height, 
+        [this](){
         this->animationFrame.framePerformed();
-      });
+        glXSwapBuffers(this->display, this->window); });
     }
   }
 
@@ -140,17 +144,17 @@ namespace skui
 
   void GLWindowManager::manageMouseButton(uint32_t b, bool pressed)
   {
-      this->eventManager->manageMouseButton(this->config.wId, b, pressed);
+    this->eventManager->manageMouseButton(this->config.wId, b, pressed);
   }
 
   void GLWindowManager::manageKeyPressed(uint32_t code, uint32_t sym, const std::string &value)
   {
-      this->eventManager->manageKeyPressed(this->config.wId, code, sym, value);
+    this->eventManager->manageKeyPressed(this->config.wId, code, sym, value);
   }
 
   void GLWindowManager::manageKeyReleased(uint32_t code)
   {
-      this->eventManager->manageKeyReleased(this->config.wId, code);
+    this->eventManager->manageKeyReleased(this->config.wId, code);
   }
 
   void GLWindowManager::updateClipboard(XSelectionRequestEvent *s)
@@ -210,8 +214,8 @@ namespace skui
                                this->config.framePerSecond);
   }
 
-
-  bool GLWindowManager::manageCustomEvent(XClientMessageEvent xclient) {
+  bool GLWindowManager::manageCustomEvent(XClientMessageEvent xclient)
+  {
     if ((Atom)xclient.data.l[0] == this->messages.fWmDeleteMessage)
     {
       this->requestClose();
@@ -222,8 +226,9 @@ namespace skui
     }
     return false;
   }
-  
-  void GLWindowManager::sendCloseRequest() {
-    sendClientMessage(this->display, this->window,  this->messages.fCloseMessage, 0, 0);
+
+  void GLWindowManager::sendCloseRequest()
+  {
+    sendClientMessage(this->display, this->window, this->messages.fCloseMessage, 0, 0);
   }
 }

@@ -38,7 +38,7 @@ namespace skui
     virtual void updateClipboard(XSelectionRequestEvent *s) = 0;
     virtual void requestClipboard(const std::string &mimeType, const std::string &content) = 0;
     virtual void resize(uint32_t width, uint32_t height) = 0;
-    virtual void performFrame(uint32_t width, uint32_t height) = 0;
+    virtual void performFrame() = 0;
     virtual void manageMouseLocation(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) = 0;
     virtual void manageMouseButton(uint32_t b, bool pressed) = 0;
     virtual void manageKeyPressed(uint32_t code, uint32_t sym, const std::string &value) = 0;

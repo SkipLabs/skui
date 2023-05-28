@@ -96,12 +96,8 @@ namespace skui
     KeyCode srccode = 0;
     char buf[20];
     Status status = 0;
-    double start;
     bool is_retriggered;
-    char *keyValue, *nObstack;
     MouseLocation location;
-    XWindowAttributes gwa;
-    Window win, owner;
     XSelectionRequestEvent *sev;
     bool closed = false;
 
@@ -134,8 +130,7 @@ namespace skui
         switch (event.type)
         {
         case Expose:
-          XGetWindowAttributes(display, win, &gwa);
-          wManager->performFrame(gwa.width, gwa.height);
+          wManager->performFrame();
           break;
         case ConfigureNotify:
           wManager->resize(event.xconfigurerequest.width, event.xconfigurerequest.height);

@@ -23,6 +23,7 @@ public:
     SKIP_SkuiX11gl_performFrame(wId, width, height);
     onDone();
   }
+  
   void requestClose(uint32_t wId)  {
     supplier.sendCloseMessage(wId);
   }
