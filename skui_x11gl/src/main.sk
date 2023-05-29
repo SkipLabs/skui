@@ -1,7 +1,21 @@
 module SkuiX11gl;
 
+class Context(handles: Vector<Ui.Handle>)
+
+class Env(fn: (GL.Ctx, Int, Int) ~> Context)
+
 fun main(): void {
-  args = Cli.Command("skuiargo")
+  available = mutable Vector[];
+  #forEachFunction (@draw, #function, #functionName) {
+    available.push((#functionName.split(".").last(), #function))
+  };
+  perform(available);
+}
+
+fun perform(
+  available: readonly Vector<(String, (GL.Ctx, Int, Int) ~> Context)>,
+): void {
+  command = Cli.Command("skuix11gl")
     .about("Skip UI's GL Shader Viewer")
     .arg(
       Cli.BoolArg("version")
@@ -9,26 +23,32 @@ fun main(): void {
         .long("version")
         .about("Print version info and exit"),
     )
-    .help()
-    .arg(
-      Cli.StringArg("name")
-        .short("n")
-        .long("name")
-        .about("The name of the shader to show.")
-        .default("rectangle"),
+    .help();
+  available.each(v -> {
+    (name, _) = v;
+    !command = command.subcommand(
+      Cli.Command(name).about(`Show ${name} shader example`),
     )
-    .parseArgs();
+  });
+  args = command.parseArgs();
   if (args.getBool("version")) {
     print_string("skuix11gl " + SkargoVersion.kVersion);
-  } else if (args.getBool("help")) {
-    print_string(Cli.usage(args.cmd, true));
   } else {
-    run(0, 10, 10, 800, 600, "Skip UI's GL Shader Viewer", 0, 60);
+    args.maybeGetSubcommand() match {
+    | Some(subcmd) ->
+      available.filter(v -> v.i0 == subcmd).maybeGet(0) match {
+      | Some((_, fn)) ->
+        run(Env(fn), 0, 10, 10, 800, 600, "Skip UI's GL Shader Viewer", 0, 60)
+      | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
+      }
+    | None() -> print_string(Cli.usage(args.cmd, true))
+    }
   }
 }
 
 @cpp_extern
 native fun run(
+  env: Env,
   wId: Int,
   x: Int,
   y: Int,
@@ -39,20 +59,42 @@ native fun run(
   framePerSecond: Int,
 ): void;
 
+fun destroyObstackKeep<T>(pos: SKFS.Obstack, value: T): T {
+  copied = SKFS.destroyObstackWithValue(pos, List.Cons(value, List.Nil()));
+  copied match {
+  | List.Cons(v, _) -> v
+  | _ -> SKFS.cast_violation("List.Cons", "List.Nil")
+  }
+}
+
 @cpp_export("SKIP_SkuiX11gl_performFrame")
-fun performFrame(wId: Int, width: Int, height: Int): void {
+fun performFrame(
+  env: Env,
+  cid: Int,
+  optContext: ?Context,
+  width: Int,
+  height: Int,
+): Context {
   pos = SKFS.newObstack();
-  ctx = GL.Ctx(UInt32::truncate(wId));
+  ctx = GL.Ctx(UInt32::truncate(cid));
   ctx.bindMainFrameBuffer();
   ctx.enableBlend();
   ctx.straitAlphaBlending();
   ctx.viewport(int32(0), int32(0), uint32(width), uint32(height));
   ctx.clearColor(1.0, 1.0, 1.0, 1.0);
   ctx.clear();
-
+  context = optContext match {
+  | Some(context) -> context
+  | _ -> env.fn(ctx, width, height)
+  };
+  shift = Ui.Shift(0, 0);
+  window = Geometry.Rectangle(
+    Geometry.Point(0, 0),
+    Geometry.Point(width, height),
+  );
+  context.handles.each(a -> a.draw(shift, window, height));
   ctx.flush();
-  SKFS.destroyObstack(pos);
+  destroyObstackKeep(pos, context);
 }
-
 
 module end;

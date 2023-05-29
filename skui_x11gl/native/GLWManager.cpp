@@ -118,9 +118,10 @@ namespace skui
       XGetWindowAttributes(this->display, this->window, &gwa);
       glXMakeCurrent(this->display, this->window, this->context);
       this->eventManager->performFrame(
-        this->config.wId, gwa.width,
-        gwa.height, 
-        [this](){
+        this->userEnviroment, this->config.wId, this->userContext,
+        gwa.width, gwa.height, 
+        [this](void* userContext){
+        this->userContext = userContext;
         this->animationFrame.framePerformed();
         glXSwapBuffers(this->display, this->window); });
     }

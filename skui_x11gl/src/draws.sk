@@ -1,0 +1,58 @@
+module SkuiX11gl;
+
+fun initDrawables(ctx: GL.Ctx, drawables: Vector<GLDrawable>): Context {
+  initializer = mutable GLProgram.Initializer();
+  drawablesUsage = drawables.map(d -> (d, d.prepare(initializer)));
+  programs = initializer.programs.map((_, v) -> v(ctx));
+  buffers = initializer.buffers.map((_, v) -> v(ctx));
+  arrays = initializer.arrays.map((_, v) -> v(ctx));
+  supplier = GLProgram.Supplier(programs.maybeGet);
+  handles = drawablesUsage
+    .map(tuple -> {
+      (drawable, used) = tuple;
+      used match {
+      | GLProgram.UBuffer(bufId) ->
+        buffers.maybeGet(bufId).flatMap(buffer ->
+          drawable.build(ctx, buffer, supplier)
+        )
+      | GLProgram.UArray(arrId) ->
+        arrays.maybeGet(arrId).flatMap(array ->
+          drawable.build(ctx, array, supplier)
+        )
+      }
+    })
+    .filterNone();
+  Context(handles);
+}
+
+@draw
+fun rounded(ctx: GL.Ctx, width: Int, height: Int): Context {
+  initDrawables(
+    ctx,
+    Vector[
+      GLDrawable.roundedRectangle(
+        Geometry.Offset(10.0, 10.0),
+        Geometry.Size(width.toFloat() - 20.0, height.toFloat() - 20.0),
+        .Colors.beige(),
+        height.toFloat() / 10.0,
+        2,
+        Some((.Colors.black(), 5)),
+      ),
+    ],
+  )
+}
+
+@draw
+fun rectangle(ctx: GL.Ctx, width: Int, height: Int): Context {
+  initDrawables(
+    ctx,
+    Vector[
+      GLDrawable.rectangle(
+        Geometry.Offset(10.0, 10.0),
+        Geometry.Size(width.toFloat() - 20.0, height.toFloat() - 20.0),
+        .Colors.firebrick(),
+      ),
+    ],
+  )
+}
+module end;

@@ -44,12 +44,14 @@ namespace skui
     void sendCloseRequest();
 
     GLWindowManager(
+        void* enviroment,
         uint64_t wId,
         uint64_t x, uint64_t y,
         uint64_t width, uint64_t height,
         uint64_t screen, uint64_t framePerSecond,
         EventManager *eventManager)
-        : config{wId, x, y, width, height, screen, framePerSecond}, gLXFBConfig(nullptr), eventManager(eventManager)
+        : userEnviroment(enviroment), config{wId, x, y, width, height, screen, framePerSecond}, 
+          gLXFBConfig(nullptr), eventManager(eventManager), userContext(nullptr)
     {
       display = nullptr;
     };
@@ -67,6 +69,8 @@ namespace skui
     std::string utf8;
     AnimationFrame animationFrame;
     EventManager *eventManager;
+    void* userEnviroment;
+    void* userContext;
   };
 
   class CreateContextException : public std::exception

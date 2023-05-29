@@ -19,7 +19,9 @@ const long kEventMask = ExposureMask | StructureNotifyMask |
                         PointerMotionMask | ButtonPressMask | ButtonReleaseMask |
                         EnterWindowMask | LeaveWindowMask;
 
-
+#ifndef IDLE_TIME
+#define IDLE_TIME 2000
+#endif
 
 namespace skui
 {
@@ -239,7 +241,7 @@ namespace skui
     {
       // Idle main window
       // We are only really "idle" when the timer went off with zero events.
-      usleep(2000);
+      usleep(IDLE_TIME);
     }
     return closed;
   }

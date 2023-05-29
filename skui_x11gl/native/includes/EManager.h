@@ -11,7 +11,11 @@ class EventManager
 {
 public:
   virtual void resize(uint32_t wId, uint32_t width, uint32_t height) = 0;
-  virtual void performFrame(uint32_t wId, uint32_t width, uint32_t height, std::function<void()> onDone) = 0;
+  virtual void performFrame(
+    void* enviroment, uint32_t ctxId, void* userContext,
+    uint32_t width, uint32_t height, 
+    std::function<void(void*)> onDone
+  ) = 0;
   virtual void requestClose(uint32_t wId) = 0;
   virtual void manageMouseLocation(uint32_t wId, uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) = 0;
   virtual void manageMouseButton(uint32_t wId, uint32_t b, bool pressed) = 0;
