@@ -1,4 +1,4 @@
-module UiDrawable;
+module GLDrawable;
 
 class SolidVertexesDrawer(
   fn: (Geometry.Rect, .Color, Geometry.Size, GL.Buffer, Int) ~> void,
@@ -16,7 +16,7 @@ class SolidVertexes(
   vertexes: Array<Geometry.Offset>,
   color: .Color,
   normalized: Bool,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.solidVertexes(this.vertexes, this.normalized);
@@ -73,7 +73,7 @@ fun diagonal(
   fromTopLeft: Bool,
   thickness: Float,
   color: .Color,
-): Ui.Drawable {
+): GLDrawable {
   vertexes = if (fromTopLeft) {
     downRight = offset.translate(size.width, size.height);
     coeffAB = Geometry.coefficient(offset, downRight);
@@ -131,10 +131,10 @@ fun pushCrux(
   drawables: mutable Vector<Ui.Drawable>,
 ): void {
   ct = thickness / 2.0;
-  UiDrawable.pushDiagonal(offset, size, true, -ct, color, drawables);
-  UiDrawable.pushDiagonal(offset, size, true, ct, color, drawables);
-  UiDrawable.pushDiagonal(offset, size, false, -ct, color, drawables);
-  UiDrawable.pushDiagonal(offset, size, false, ct, color, drawables);
+  GLDrawable.pushDiagonal(offset, size, true, -ct, color, drawables);
+  GLDrawable.pushDiagonal(offset, size, true, ct, color, drawables);
+  GLDrawable.pushDiagonal(offset, size, false, -ct, color, drawables);
+  GLDrawable.pushDiagonal(offset, size, false, ct, color, drawables);
 }
 
 fun parallelepiped(
@@ -143,7 +143,7 @@ fun parallelepiped(
   c: Geometry.Offset,
   d: Geometry.Offset,
   color: .Color,
-): Ui.Drawable {
+): GLDrawable {
   min = a.min(b).min(c).min(d);
   max = a.max(b).max(c).max(d);
   SolidVertexes(
@@ -170,7 +170,7 @@ fun parallel(
   b: Geometry.Offset,
   thickness: Float,
   color: .Color,
-): Ui.Drawable {
+): GLDrawable {
   coeffAB = Geometry.coefficient(a, b);
   coeffCD = Geometry.parallelAt(coeffAB.fromSome(), thickness);
   cy = b.dx * coeffCD.i0 + coeffCD.i1;

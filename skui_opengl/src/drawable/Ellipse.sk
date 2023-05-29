@@ -1,6 +1,6 @@
-module UiDrawable;
+module GLDrawable;
 
-class SolidEllipse(color: .Color, radius: Float) extends Ui.RectangleDrawable {
+class SolidEllipse(color: .Color, radius: Float) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.ellipse();
@@ -35,7 +35,7 @@ class SolidDisk(
   color: .Color,
   thickness: Float,
   radius: Float,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.disk();
@@ -93,17 +93,18 @@ fun pushDisk(
   drawables: mutable Vector<Ui.Drawable>,
 ): void {
   paint match {
-  | color @ .Color _ ->
-    drawables.push(
-      SolidDisk(
-        color,
-        thickness,
-        0.5,
-        Geometry.Rect::fromOffsetSize(offset, size),
-      ),
-    )
+  | color @ .Color _ -> drawables.push(disk(offset, size, color, thickness))
   | _ -> invariant_violation("Not implemented; only Color Fill managed")
   }
+}
+
+fun disk(
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  color: .Color,
+  thickness: Float,
+): GLDrawable {
+  SolidDisk(color, thickness, 0.5, Geometry.Rect::fromOffsetSize(offset, size))
 }
 
 module end;

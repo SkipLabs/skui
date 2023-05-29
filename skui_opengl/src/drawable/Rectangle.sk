@@ -1,8 +1,8 @@
-module UiDrawable;
+module GLDrawable;
 
 const withViewports: Bool = true;
 
-class SolidRectangle(color: .Color) extends Ui.RectangleDrawable {
+class SolidRectangle(color: .Color) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.rectangle();
@@ -31,7 +31,7 @@ class SolidRectangle(color: .Color) extends Ui.RectangleDrawable {
 
 class LinearGradientRectangle(
   linearGradient: Ui.LinearGradient,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     count = this.linearGradient.stops.size();
@@ -60,7 +60,7 @@ class LinearGradientRectangle(
 
 class RadialGradientRectangle(
   radialGradient: Ui.RadialGradient,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     count = this.radialGradient.stops.size();
@@ -92,7 +92,7 @@ class RoundedRectangle(
   radius: Int,
   smooth: Int,
   optBorder: ?(.Color, Int),
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.roundedRectangle();
@@ -135,7 +135,7 @@ class RoundedRectangle(
   }
 }
 
-class BoxShadow(sigma: Float, color: .Color) extends Ui.RectangleDrawable {
+class BoxShadow(sigma: Float, color: .Color) extends GLRectangleDrawable {
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.boxShadow();
   }
@@ -162,7 +162,7 @@ class BoxShadow(sigma: Float, color: .Color) extends Ui.RectangleDrawable {
 class Texture(
   texture: GL.Texturable,
   flipped: Bool,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.texture();
@@ -189,7 +189,7 @@ class Texture(
   }
 }
 
-class Image(image: Ui.Image) extends Ui.RectangleDrawable {
+class Image(image: Ui.Image) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.texture();
@@ -207,7 +207,7 @@ class Image(image: Ui.Image) extends Ui.RectangleDrawable {
   }
 }
 
-class BuiltImage(builder: () ~> Ui.Image) extends Ui.RectangleDrawable {
+class BuiltImage(builder: () ~> Ui.Image) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.texture();
@@ -275,7 +275,7 @@ fun rectangle(
   offset: Geometry.Offset,
   size: Geometry.Size,
   paint: Ui.Paint,
-): Ui.Drawable {
+): GLDrawable {
   paint match {
   | color @ .Color _ ->
     SolidRectangle(color, Geometry.Rect::fromOffsetSize(offset, size))
@@ -337,19 +337,19 @@ fun pushStrokeRectangle(
   drawables: mutable Vector<Ui.Drawable>,
 ): void {
   pushRectangle(offset, Geometry.Size(size.width, thickness), paint, drawables);
-  UiDrawable.pushRectangle(
+  GLDrawable.pushRectangle(
     offset.translate(size.width - thickness, thickness),
     Geometry.Size(thickness, size.height - (2.0 * thickness)),
     paint,
     drawables,
   );
-  UiDrawable.pushRectangle(
+  GLDrawable.pushRectangle(
     offset.translateY(size.height - thickness),
     Geometry.Size(size.width, thickness),
     paint,
     drawables,
   );
-  UiDrawable.pushRectangle(
+  GLDrawable.pushRectangle(
     offset.translateY(thickness),
     Geometry.Size(thickness, size.height - (2.0 * thickness)),
     paint,
@@ -390,16 +390,14 @@ fun roundedRectangle(
   radius: Float,
   smooth: Int = 2,
   optBorder: ?(.Color, Int) = None(),
-): Array<Ui.Drawable> {
-  Array[
-    RoundedRectangle(
-      color,
-      radius.toInt(),
-      smooth,
-      optBorder,
-      Geometry.Rect::fromOffsetSize(offset, size),
-    ),
-  ]
+): GLDrawable {
+  RoundedRectangle(
+    color,
+    radius.toInt(),
+    smooth,
+    optBorder,
+    Geometry.Rect::fromOffsetSize(offset, size),
+  )
 }
 
 fun pushRoundedRectangle(
@@ -411,8 +409,8 @@ fun pushRoundedRectangle(
   smooth: Int = 2,
   optBorder: ?(.Color, Int) = None(),
 ): void {
-  roundedRectangle(offset, size, color, radius, smooth, optBorder).each(
-    drawables.push,
+  drawables.push(
+    roundedRectangle(offset, size, color, radius, smooth, optBorder),
   )
 }
 

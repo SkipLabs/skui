@@ -1,10 +1,10 @@
-module UiDrawable;
+module GLDrawable;
 
 class Loading(
   color1: .Color,
   color2: .Color,
   step: Int,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.loading();
@@ -39,7 +39,7 @@ class Progress(
   color1: .Color,
   color2: .Color,
   thickness: Float,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.progress();

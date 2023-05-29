@@ -1,6 +1,6 @@
-module UiDrawable;
+module GLDrawable;
 
-class SolidTriangle(color: .Color, side: .UiSide) extends Ui.RectangleDrawable {
+class SolidTriangle(color: .Color, side: .UiSide) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.solidTriangle(this.side);
@@ -30,7 +30,7 @@ class SolidTriangle(color: .Color, side: .UiSide) extends Ui.RectangleDrawable {
 class LinearGradientTriangle(
   linearGradient: Ui.LinearGradient,
   side: .UiSide,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     count = this.linearGradient.stops.size();
@@ -60,7 +60,7 @@ class LinearGradientTriangle(
 class RadialGradientTriangle(
   radialGradient: Ui.RadialGradient,
   side: .UiSide,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     count = this.radialGradient.stops.size();
@@ -92,7 +92,7 @@ fun triangle(
   size: Geometry.Size,
   paint: Ui.Paint,
   side: .UiSide,
-): Ui.Drawable {
+): GLDrawable {
   paint match {
   | color @ .Color _ ->
     SolidTriangle(color, side, Geometry.Rect::fromOffsetSize(offset, size))

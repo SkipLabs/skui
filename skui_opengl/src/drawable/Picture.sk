@@ -1,4 +1,4 @@
-module UiDrawable;
+module GLDrawable;
 
 base class Resizable {
   fun getTexture(gCtx: GL.Ctx, size: Geometry.ISize): ?GL.Texture;
@@ -11,7 +11,7 @@ class MsdfTex(
   pxRange: Int,
 ) extends SKFS.File
 
-class Bilinear(image: Ui.Image) extends Ui.RectangleDrawable {
+class Bilinear(image: Ui.Image) extends GLRectangleDrawable {
   //
   static fun create(image: Ui.Image, offset: Geometry.Offset): this {
     static(
@@ -54,7 +54,7 @@ class Bilinear(image: Ui.Image) extends Ui.RectangleDrawable {
   }
 }
 
-class BilinearText(tex: Resizable) extends Ui.RectangleDrawable {
+class BilinearText(tex: Resizable) extends GLRectangleDrawable {
   //
   static fun create(
     tex: Resizable,
@@ -95,7 +95,7 @@ class Msdf(
   getter: GL.Ctx ~> ?MsdfTex,
   color: .Color,
   thickness: Float,
-) extends Ui.RectangleDrawable {
+) extends GLRectangleDrawable {
   //
   static fun create(
     optChar: ?Char,

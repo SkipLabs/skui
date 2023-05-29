@@ -1,0 +1,10 @@
+base class GLDrawable extends Ui.Drawable {
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used;
+  fun build(
+    _gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle;
+}
+
+base class GLRectangleDrawable extends Ui.RectangleDrawable, GLDrawable
