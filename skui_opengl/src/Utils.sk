@@ -201,19 +201,4 @@ fun createImage(width: Int, height: Int, optData: ?Array<Ui.Pix>): Frame {
   Frame(Image(optData, false, width, height), false)
 }
 
-class Texturable(image: Image) {
-  fun getSize(): (UInt32, UInt32) {
-    (UInt32::truncate(this.image.width), UInt32::truncate(this.image.height))
-  }
-
-  fun getTexture(
-    _context: mutable SKFS.Context,
-    _width: UInt32,
-    _height: UInt32,
-    ctx: GL.Ctx,
-  ): ?GL.Texture {
-    Some(this.image.asTexture(ctx))
-  }
-}
-
 module end;

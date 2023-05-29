@@ -7,13 +7,12 @@ class SolidTriangle(color: .Color, side: .UiSide) extends Ui.RectangleDrawable {
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.solidTriangle(context, this.side).map(drawer ->
+    supplier.solidTriangle(this.side).map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~>
         drawer.run(
           GLProgram.SolidParameters(this.color),
@@ -39,14 +38,13 @@ class LinearGradientTriangle(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     count = this.linearGradient.stops.size();
-    supplier.linearGradientTriangle(context, count, this.side).map(drawer ->
+    supplier.linearGradientTriangle(count, this.side).map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         rect = this.bounds.shift(shift.toOffset());
         drawer.run(
@@ -70,14 +68,13 @@ class RadialGradientTriangle(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     count = this.radialGradient.stops.size();
-    supplier.radialGradientTriangle(context, count, this.side).map(drawer ->
+    supplier.radialGradientTriangle(count, this.side).map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         rect = this.bounds.shift(shift.toOffset());
         drawer.run(

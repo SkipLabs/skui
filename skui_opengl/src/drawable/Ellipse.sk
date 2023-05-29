@@ -7,13 +7,12 @@ class SolidEllipse(color: .Color, radius: Float) extends Ui.RectangleDrawable {
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.ellipseDrawer(context).map(drawer ->
+    supplier.ellipseDrawer().map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         size = this.bounds.size();
         side = Math.max(size.width, size.height);
@@ -43,13 +42,12 @@ class SolidDisk(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.diskDrawer(context).map(drawer ->
+    supplier.diskDrawer().map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         rect = this.bounds.shift(shift.toOffset());
         size = this.bounds.size();

@@ -9,13 +9,12 @@ class SolidRectangle(color: .Color) extends Ui.RectangleDrawable {
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.rectangleDrawer(context).map(drawer ->
+    supplier.rectangleDrawer().map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         drawer.run(
           GLProgram.SolidParameters(this.color),
@@ -40,14 +39,13 @@ class LinearGradientRectangle(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     count = this.linearGradient.stops.size();
-    supplier.linearGradientRectangle(context, count).map(drawer ->
+    supplier.linearGradientRectangle(count).map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         rect = this.bounds.shift(shift.toOffset());
         drawer.run(
@@ -70,14 +68,13 @@ class RadialGradientRectangle(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     count = this.radialGradient.stops.size();
-    supplier.radialGradientRectangle(context, count).map(drawer ->
+    supplier.radialGradientRectangle(count).map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         rect = this.bounds.shift(shift.toOffset());
         drawer.run(
@@ -102,13 +99,12 @@ class RoundedRectangle(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.roundedRectangleDrawer(context).map(drawer ->
+    supplier.roundedRectangleDrawer().map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         offset = this.bounds.topLeft();
         bsize = this.bounds.size();
@@ -145,13 +141,12 @@ class BoxShadow(sigma: Float, color: .Color) extends Ui.RectangleDrawable {
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.boxShadowDrawer(context).map(drawer ->
+    supplier.boxShadowDrawer().map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         box = this.bounds.shift(shift.toOffset());
         drawer.run(
@@ -174,13 +169,12 @@ class Texture(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.textureDrawer(context, this.flipped).map(program ->
+    supplier.textureDrawer(this.flipped).map(program ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         program.run(
           GLProgram.TextureParameters(this.texture.asTexture(gl)),
@@ -202,35 +196,31 @@ class Image(image: Ui.Image) extends Ui.RectangleDrawable {
   }
 
   fun build(
-    context: mutable SKFS.Context,
     gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.textureDrawer(context).map(program ->
+    supplier.textureDrawer().map(program ->
       imageHandle(program, gl, this.bounds, this.image, buffer)
     )
   }
 }
 
-class BuiltImage(
-  builder: mutable SKFS.Context ~> Ui.Image,
-) extends Ui.RectangleDrawable {
+class BuiltImage(builder: () ~> Ui.Image) extends Ui.RectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
     initializer.texture();
   }
 
   fun build(
-    context: mutable SKFS.Context,
     gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.textureDrawer(context).map(program -> {
-      image = this.builder(context);
+    supplier.textureDrawer().map(program -> {
+      image = this.builder();
       imageHandle(program, gl, this.bounds, image, buffer);
     })
   }

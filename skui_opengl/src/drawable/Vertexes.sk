@@ -23,13 +23,12 @@ class SolidVertexes(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.solidVertexes(context, this.normalized).map(drawer ->
+    supplier.solidVertexes(this.normalized).map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         drawer.run(
           GLProgram.SolidParameters(this.color),

@@ -11,13 +11,12 @@ class Loading(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.loading(context).map(drawer ->
+    supplier.loading().map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         rect = this.bounds.shift(shift.toOffset());
         drawer.run(
@@ -47,13 +46,12 @@ class Progress(
   }
 
   fun build(
-    context: mutable SKFS.Context,
     _gl: GL.Ctx,
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
-    supplier.progress(context).map(drawer ->
+    supplier.progress().map(drawer ->
       Ui.LambdaHandle((shift, window, _height) ~> {
         rect = this.bounds.shift(shift.toOffset());
         drawer.run(
