@@ -27,6 +27,8 @@ export interface Env {
   run: (utils: Utils, exports: object, state: object) => void
 }
 
+export interface Environment {}
+
 export interface Exported {
   SKIP_String_byteSize: (strPtr: ptr) => int;
   SKIP_Obstack_alloc: (size: int) => ptr;
