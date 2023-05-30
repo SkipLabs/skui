@@ -50,6 +50,10 @@ class Point(x: Int, y: Int) uses Hashable, Orderable, Show {
     Point(this.x + x, this.y + y)
   }
 
+  fun toSize(): ISize {
+    ISize(this.x, this.y)
+  }
+
   fun toString(): String {
     `(${this.x},${this.y})`
   }

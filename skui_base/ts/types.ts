@@ -28,6 +28,7 @@ export interface Env {
 }
 
 export interface Environment {}
+export interface Shared {}
 
 export interface Exported {
   SKIP_String_byteSize: (strPtr: ptr) => int;
@@ -50,6 +51,9 @@ export interface Exported {
   SKIP_FWKMessage_manageInternalMessage: (msgId: int) => void;
   SKIP_FWKMessage_manageMessage: (strMsgPointer: ptr) => void;
   SKIP_FWKMessage_messageFailure: (strMsgPointer: ptr) => void;
+  SKIP_createByteArray: (size: int) => ptr;
+  SKIP_setByte: (skArray: ptr, index: int, value: int) => ptr;
+  SKIP_chillByteArray: (skArray: ptr) => ptr;
 }
 
 export function toBeDefined(fn: String) {
@@ -130,6 +134,13 @@ export class Utils {
     }
     return this.exports.sk_string_create(addr, i);
   };
+  exportBytes: (view: Uint8Array) => ptr = (view: Uint8Array) => {
+    var skArray = this.exports.SKIP_createByteArray(view.length);
+    view.forEach(function (item, index) {
+      this.exports.SKIP_setByte(skArray, index, item);
+    });
+    return this.exports.SKIP_chillByteArray(skArray);
+  }
   call = (fnId: ptr) => {
     return this.exports.SKIP_call0(fnId);
   };
@@ -219,7 +230,7 @@ export class Utils {
 }
 
 export interface Links {
-  complete: (utils: Utils, exports: object) => void;
+  complete: (utils: Utils, exports: object) => Shared | null;
 }
 
 export interface ToWasmManager {

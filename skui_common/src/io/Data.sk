@@ -1,0 +1,99 @@
+module IO;
+
+base class Data extends SKFS.File uses HasClassName {
+  children =
+  | Text(data: String)
+  | Binary(data: Array<UInt8>)
+  | Base64(data: String)
+
+  fun toJSON(): JSON.Value
+  | Text(data) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "data" => JSON.String(data),
+      ],
+    )
+  | Binary(data) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "data" => JSON.Array(
+          Vector::createFromItems(data.map(v -> JSON.IntNumber(v.toInt()))),
+        ),
+      ],
+    )
+  | Base64(data) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "data" => JSON.String(data),
+      ],
+    )
+  | ext @ External _ ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "data" => JSON.IntNumber(ext.getId()),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Data {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "SysFS.Text" -> Text(jso.getString("data"))
+    | "SysFS.Binary" ->
+      Binary(
+        jso
+          .getArray("data")
+          .value.map(v -> UInt8::truncate(v.expectInt()))
+          .toArray(),
+      )
+    | "SysFS.Base64" -> Base64(jso.getString("data"))
+    | "SysFS.External" -> External::make(UInt32::truncate(jso.getInt("data")))
+    | _ -> invariant_violation(`Invalid json object ${cl} for SysFS.Data`)
+    }
+  }
+}
+
+class External(private eptr: SKFS.ExternalPointer) extends Data {
+  //
+  static fun make(id: UInt32): this {
+    static(SKFS.ExternalPointer::create(id, deleteExternalData))
+  }
+
+  fun getId(): Int {
+    this.eptr.value.toInt()
+  }
+
+  fun isBinary(): Bool {
+    isExternalBinary(this.eptr.value)
+  }
+
+  fun getBytes(): ?Array<UInt8> {
+    getExternalBytes(this.eptr.value)
+  }
+
+  fun getText(): ?String {
+    getExternalText(this.eptr.value)
+  }
+}
+
+@wasm_extern
+@cpp_extern("SKIP_IO_deleteExternalData")
+private native fun deleteExternalData(actor: UInt32): void;
+
+@wasm_extern
+@cpp_extern("SKIP_IO_isExternalBinary")
+private native fun isExternalBinary(actor: UInt32): Bool;
+
+@wasm_extern
+@cpp_extern("SKIP_IO_getExternalBytes")
+private native fun getExternalBytes(actor: UInt32): ?Array<UInt8>;
+
+@wasm_extern
+@cpp_extern("SKIP_IO_getExternalText")
+private native fun getExternalText(actor: UInt32): ?String;
+
+module end;

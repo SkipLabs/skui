@@ -124,7 +124,7 @@ interface ToWasm {
 }
 
 export class LinksImpl implements Links {
-  complete = (utils: Utils, exports: object) => {}
+  complete = (utils: Utils, exports: object) => null;
 }
 
 class Manager implements ToWasmManager {

@@ -30,6 +30,7 @@ class LinksImpl implements Links {
       }
     };
     this.JS_timeStamp = utils.now;
+    return null;
   }
 }
 

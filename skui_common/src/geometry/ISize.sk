@@ -1,17 +1,6 @@
 module Geometry;
 
-class ISize(
-  width: Int,
-  height: Int,
-) extends SKFS.File uses Hashable, Orderable {
-  //
-  static fun fromFile(obj: SKFS.File): this {
-    obj match {
-    | x @ ISize _ -> x
-    | _ -> SKFS.cast_violation("Geometry.ISize", obj)
-    }
-  }
-
+class ISize(width: Int, height: Int) uses Hashable, Orderable {
   /**
    * ISize with the given width and height to 0.0
    */

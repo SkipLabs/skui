@@ -1,6 +1,14 @@
 module Geometry;
 
 class Rectangle(min: Point, max: Point) uses Hashable, Orderable, Show {
+  static fun fromOffsetSize(offset: Point, size: ISize): Rectangle {
+    Rectangle(offset, Point(offset.x + size.width, offset.y + size.height));
+  }
+
+  static fun zero(): Rectangle {
+    Rectangle(Point(0, 0), Point(0, 0));
+  }
+
   /**
    * Returns the largest rectangle contained by both r and other. If the
    * two rectangles do not overlap then the zero rectangle will be returned.

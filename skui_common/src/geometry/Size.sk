@@ -13,7 +13,7 @@ class Size(
    * The vertical extent of this size.
    */
   height: Float,
-) extends SKFS.File uses Hashable, Orderable {
+) uses Hashable, Orderable {
   /**
    * Size with the given width and height to 0.0
    */
@@ -234,14 +234,6 @@ class Size(
 
   fun div(sw: Float, sh: Float): Size {
     Size(this.width / sw, this.height / sh);
-  }
-
-  //
-  static fun fromFile(obj: SKFS.File): this {
-    obj match {
-    | x @ Size _ -> x
-    | _ -> SKFS.cast_violation("Geometry.Size", obj)
-    }
   }
 
   fun distance(): Float {

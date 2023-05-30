@@ -6,7 +6,7 @@ base class SearchAxis {
   | Y()
 }
 
-class Offset(dx: Float, dy: Float) uses Hashable, Orderable {
+class Offset(dx: Float, dy: Float) uses Hashable, Orderable, Show {
   const zero: Offset = Offset(0.0, 0.0);
 
   fun isZero(): Bool {
@@ -146,6 +146,10 @@ class Offset(dx: Float, dy: Float) uses Hashable, Orderable {
 
   fun divSize(size: Size): Offset {
     Offset(this.dx / size.width, this.dy / size.height);
+  }
+
+  fun toString(): String {
+    `(${this.dx},${this.dy})`
   }
 }
 
