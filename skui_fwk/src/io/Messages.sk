@@ -1,0 +1,45 @@
+module IO;/*
+base class Property {
+fun write(context: mutable SKFS.Context, key: JSONValue, value: Change): void;
+}
+
+class Messages(
+property: Property,
+) extends FWKMessage.Support uses FWKMessage.WithUpdate<Command> {
+//
+static fun fromFile(obj: SKFS.File): this {
+obj match {
+| x @ Messages _ -> x
+| _ -> invariant_violation("Must be IO.Messages")
+}
+}
+
+fun init(_context: mutable SKFS.Context): void {
+void
+}
+
+protected fun convert(message: JSON.Value): Command {
+Command::fromJSON(message)
+}
+
+protected fun convertCmd(command: FWKMessage.Command): Command {
+command as Command _;
+}
+
+protected fun execute(
+context: mutable SKFS.Context,
+_name: String,
+_scope: String,
+command: Command,
+): void {
+command match {
+| Set(key, value) -> this.property.write(context, key, value)
+| SetAll(values) ->
+values.each(v -> this.property.write(context, v.key, v.value))
+};
+}
+}
+*/
+
+
+module end;

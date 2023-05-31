@@ -1,0 +1,21 @@
+module UiProgress;
+
+base class Controller extends Ui.Parameters {
+  fun getProgress(context: mutable SKFS.Context): ?Int;
+}
+
+base class State {
+  fun getIndeterminate(context: mutable SKFS.Context): ?Int;
+  fun emitIndeterminate(context: mutable SKFS.Context, value: Int): void;
+}
+
+base class Storage {
+  fun getName(): String;
+  fun getScope(): String;
+
+  fun setIndeterminate(context: mutable SKFS.Context, optValue: ?Int): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+module end;

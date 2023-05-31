@@ -1,0 +1,80 @@
+module Font;
+
+fun fillInconsolata(
+  p: SortedMap<TypefaceInfo, String>,
+): SortedMap<TypefaceInfo, String> {
+  inconsolata = "Inconsolata";
+  extraLightB64 = Inconsolata.extraLightB64();
+  // Inconsolata thin
+  !p = p.add(TypefaceInfo(inconsolata, Weight::thin, Normal()), extraLightB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::thin, Italic()), extraLightB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::thin, Oblique()), extraLightB64);
+  // Inconsolata extra light
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::extralight, Normal()),
+    extraLightB64,
+  );
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::extralight, Italic()),
+    extraLightB64,
+  );
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::extralight, Oblique()),
+    extraLightB64,
+  );
+  // Inconsolata light
+  lightB64 = Inconsolata.lightB64();
+  !p = p.add(TypefaceInfo(inconsolata, Weight::light, Normal()), lightB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::light, Italic()), lightB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::light, Oblique()), lightB64);
+  // Inconsolata normal
+  regularB64 = Inconsolata.regularB64();
+  !p = p.add(TypefaceInfo(inconsolata, Weight::normal, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::normal, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::normal, Oblique()), regularB64);
+  // Inconsolata medium
+  mediumB64 = Inconsolata.mediumB64();
+  !p = p.add(TypefaceInfo(inconsolata, Weight::medium, Normal()), mediumB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::medium, Italic()), mediumB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::medium, Oblique()), mediumB64);
+  // Inconsolata semi bold
+  semiBoldB64 = Inconsolata.semiBoldB64();
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::semibold, Normal()),
+    semiBoldB64,
+  );
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::semibold, Italic()),
+    semiBoldB64,
+  );
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::semibold, Oblique()),
+    semiBoldB64,
+  );
+  // Inconsolata bold
+  boldB64 = Inconsolata.boldB64();
+  !p = p.add(TypefaceInfo(inconsolata, Weight::bold, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::bold, Italic()), boldB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::bold, Oblique()), boldB64);
+  // Inconsolata extra bold
+  extraBoldB64 = Inconsolata.extraBoldB64();
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::extrabold, Normal()),
+    extraBoldB64,
+  );
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::extrabold, Italic()),
+    extraBoldB64,
+  );
+  !p = p.add(
+    TypefaceInfo(inconsolata, Weight::extrabold, Oblique()),
+    extraBoldB64,
+  );
+  // Inconsolata black
+  blackB64 = Inconsolata.blackB64();
+  !p = p.add(TypefaceInfo(inconsolata, Weight::black, Normal()), blackB64);
+  !p = p.add(TypefaceInfo(inconsolata, Weight::black, Italic()), blackB64);
+  p.add(TypefaceInfo(inconsolata, Weight::black, Oblique()), blackB64);
+}
+
+module end;

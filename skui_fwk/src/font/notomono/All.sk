@@ -1,0 +1,46 @@
+module Font;
+
+fun fillNotoMono(
+  p: SortedMap<TypefaceInfo, String>,
+): SortedMap<TypefaceInfo, String> {
+  notoMono = "NotoMono";
+  regularB64 = NotoMono.regularB64();
+  // NotoMono thin
+  !p = p.add(TypefaceInfo(notoMono, Weight::thin, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::thin, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::thin, Oblique()), regularB64);
+  // NotoMono extra light
+  !p = p.add(TypefaceInfo(notoMono, Weight::extralight, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::extralight, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::extralight, Oblique()), regularB64);
+  // NotoMono light
+  !p = p.add(TypefaceInfo(notoMono, Weight::light, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::light, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::light, Oblique()), regularB64);
+  // NotoMono normal
+  !p = p.add(TypefaceInfo(notoMono, Weight::normal, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::normal, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::normal, Oblique()), regularB64);
+  // NotoMono medium
+  !p = p.add(TypefaceInfo(notoMono, Weight::medium, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::medium, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::medium, Oblique()), regularB64);
+  // NotoMono semi bold
+  !p = p.add(TypefaceInfo(notoMono, Weight::semibold, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::semibold, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::semibold, Oblique()), regularB64);
+  // NotoMono bold
+  !p = p.add(TypefaceInfo(notoMono, Weight::bold, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::bold, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::bold, Oblique()), regularB64);
+  // NotoMono extra bold
+  !p = p.add(TypefaceInfo(notoMono, Weight::extrabold, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::extrabold, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::extrabold, Oblique()), regularB64);
+  // NotoMono black
+  !p = p.add(TypefaceInfo(notoMono, Weight::black, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(notoMono, Weight::black, Italic()), regularB64);
+  p.add(TypefaceInfo(notoMono, Weight::black, Oblique()), regularB64);
+}
+
+module end;

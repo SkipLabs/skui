@@ -1,0 +1,129 @@
+module FWKPointer;
+const systemPointerPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/system/pointer/",
+);
+
+const iHandle: SKFS.IHandle<Pointer> = SKFS.IHandle(
+  SKFS.FileConverter(Pointer::fromFile),
+  systemPointerPath,
+);
+
+const storedId: SKFS.BaseName = SKFS.StrID("stored");
+const mainId: SKFS.BaseName = SKFS.StrID("main");
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetCursor(cursor: Ui.Cursor)
+  | StoreCursor()
+  | ResetCursor()
+
+  fun toJSON(): JSON.Value
+  | SetCursor(cursor) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "code" => JSON.IntNumber(cursor.code()),
+      ],
+    )
+  | StoreCursor()
+  | ResetCursor() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWKPointer.StoreCursor" -> StoreCursor()
+    | "FWKPointer.ResetCursor" -> ResetCursor()
+    | "FWKPointer.SetCursor" ->
+      SetCursor(Ui.Cursor::fromCode(jso.getInt("code")))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for FWKPointer.Command`)
+    }
+  }
+}
+
+class Pointer(pointer: Ui.Pointer = Ui.Pointer()) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Pointer _ -> x
+    | _ -> invariant_violation("Must be FWKPointer.Pointer")
+    }
+  }
+
+  fun isDefault(): Bool {
+    this.pointer.isDefault()
+  }
+}
+
+class Messages()
+  extends FWKMessage.Support
+  uses FWKMessage.WithUpdate<Command> {
+  //
+  fun init(_context: mutable SKFS.Context): void {
+    void
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+
+  protected fun execute(
+    context: mutable SKFS.Context,
+    _name: String,
+    _scope: String,
+    command: Command,
+  ): void {
+    command match {
+    | SetCursor(cursor) -> this.setPointer(context, Pointer(Ui.Pointer(cursor)))
+    | StoreCursor() ->
+      iHandle.write(context, storedId, iHandle.get(context, mainId))
+    | ResetCursor() ->
+      pointer = iHandle.maybeGet(context, storedId).default(Pointer());
+      this.setPointer(context, pointer);
+      iHandle.remove(context, storedId)
+    }
+  }
+
+  private fun setPointer(
+    context: mutable SKFS.Context,
+    pointer: Pointer,
+  ): void {
+    iHandle.write(context, mainId, pointer);
+    FWKEnv.getWindowId(context, true).each(wId ->
+      FWK.applyCursor(wId, UInt32::truncate(pointer.pointer.cursor.code()))
+    );
+  }
+}
+
+fun init(context: mutable SKFS.Context): void {
+  _ = context.makeDir(
+    Pointer::fromFile,
+    systemPointerPath,
+    Array[(mainId, Pointer())],
+  );
+  context.registerMessageSupport("system", "cursor", Messages());
+}
+
+fun emit(context: mutable SKFS.Context, command: Command): void {
+  FWKMessage.emit(context, "system", "cursor", command);
+}
+
+fun setCursor(context: mutable SKFS.Context, cursor: Ui.Cursor): void {
+  emit(context, SetCursor(cursor))
+}
+
+fun resetCursor(context: mutable SKFS.Context): void {
+  emit(context, ResetCursor())
+}
+
+fun storeCursor(context: mutable SKFS.Context): void {
+  emit(context, StoreCursor())
+}
+
+module end;

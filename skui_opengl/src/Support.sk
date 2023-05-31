@@ -1,0 +1,451 @@
+module GL;
+
+const webglPath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/webgl/");
+const webglProgramsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/webgl/programs/",
+);
+
+const webglFilteredProgramsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/webgl/programs/filtered/",
+);
+
+const webglComputedProgramsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/webgl/programs/computed/",
+);
+
+const webglComputedBuffersPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/webgl/buffers/computed/",
+);
+
+const webglComputedArraysPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/webgl/arrays/computed/",
+);
+/*
+trait GLKey {
+  macro fun toString(): String {
+    `${this.webgl}:${this.name}`
+  }
+}
+
+class PrgKey(
+  webgl: Int,
+  name: String,
+  builder: Ui.Builder,
+) extends SKFS.BaseName uses GLKey {
+  //
+  fun toString from GLKey;
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.webgl);
+    Hashable.combine(h, this.name);
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as PrgKey _);
+    sComp = this.webgl.compare(oKey.webgl);
+    if (sComp == EQ()) {
+      this.name.compare(oKey.name);
+    } else {
+      sComp
+    }
+  }
+
+  fun toPrgId(): PrgId {
+    PrgId(this.webgl, this.name)
+  }
+}
+
+class PrgId(webgl: Int, name: String) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.webgl}:${this.name}`
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.webgl);
+    Hashable.combine(h, this.name);
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as PrgId _);
+    sComp = this.webgl.compare(oKey.webgl);
+    if (sComp == EQ()) {
+      this.name.compare(oKey.name);
+    } else {
+      sComp
+    }
+  }
+}
+
+class BufKey(
+  webgl: Int,
+  name: String,
+  builder: Ui.Ctx ~> Ui.Buffer,
+) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.webgl}:${this.name}`
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.webgl);
+    Hashable.combine(h, this.name);
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as BufKey _);
+    sComp = this.webgl.compare(oKey.webgl);
+    if (sComp == EQ()) {
+      this.name.compare(oKey.name);
+    } else {
+      sComp
+    }
+  }
+
+  fun toBufId(): BufId {
+    BufId(this.webgl, this.name)
+  }
+}
+
+class BufId(webgl: Int, name: String) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.webgl}:${this.name}`
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.webgl);
+    Hashable.combine(h, this.name);
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as BufId _);
+    sComp = this.webgl.compare(oKey.webgl);
+    if (sComp == EQ()) {
+      this.name.compare(oKey.name);
+    } else {
+      sComp
+    };
+  }
+}
+
+class ArrayKey(
+  webgl: Int,
+  name: String,
+  builder: Ui.Ctx ~> Ui.VertexArray,
+) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.webgl}:${this.name}`
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.webgl);
+    Hashable.combine(h, this.name);
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as ArrayKey _);
+    sComp = this.webgl.compare(oKey.webgl);
+    if (sComp == EQ()) {
+      this.name.compare(oKey.name);
+    } else {
+      sComp
+    }
+  }
+
+  fun toArrayId(): ArrayId {
+    ArrayId(this.webgl, this.name)
+  }
+}
+
+class ArrayId(webgl: Int, name: String) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.webgl}:${this.name}`
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.webgl);
+    Hashable.combine(h, this.name);
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as ArrayId _);
+    sComp = this.webgl.compare(oKey.webgl);
+    if (sComp == EQ()) {
+      this.name.compare(oKey.name);
+    } else {
+      sComp
+    };
+  }
+}
+
+class BDrawables(
+  value: Array<(Ui.Used, Ui.Drawable)>,
+  viewport: Ui.Path,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ BDrawables _ -> x
+    | _ -> invariant_violation("Must be FWKPipeline.BDrawables")
+    }
+  }
+}
+
+@debug
+fun populateViewport(
+  gl: Ui.Ctx,
+  viewport: Ui.NViewport,
+  handles: Array<Array<Handles>>,
+  height: Int,
+): void {
+  top = height - viewport.window.height() - viewport.window.top();
+  gl.save();
+  gl.enableBlend();
+  gl.srcAlphaBlendOneMinus();
+  gl.viewport(
+    Int32::truncate(viewport.window.left()),
+    Int32::truncate(top),
+    UInt32::truncate(viewport.window.width()),
+    UInt32::truncate(viewport.window.height()),
+  );
+  fOffset = Ui.Shift(viewport.offset.x, viewport.offset.y);
+  fWindow = viewport.window;
+  handles.each(hdls ->
+    hdls.each(v ->
+      v.value.each(handle -> handle.draw(fOffset, fWindow, height))
+    )
+  );
+  gl.flush();
+  gl.restore();
+}
+
+
+webglHdl = context.makeDir(SKFS.IntFile::fromFile, webglPath, Array[]);
+  context.setGlobal(
+    "GL.GetContext",
+    FWK.Ctx(ctx ~>
+      webglHdl.maybeGet(ctx, MainKey()).map(v ->
+        Ui.Ctx(UInt32::truncate(v.value))
+      )
+    ),
+  );
+  wWebglHdl = SKFS.toIHandle(webglHdl);
+  context.setGlobal(
+    "GL.SetContext",
+    FWK.SetCtx((ctx, optValue) ~>
+      wWebglHdl.writeOrRemove(
+        ctx,
+        MainKey(),
+        optValue.map(v -> SKFS.IntFile(v.toInt())),
+      )
+    ),
+  );
+  webglProgramsHdl = nodeDrawablesHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    webglProgramsPath,
+    (context, writer, key, drawables) ~> {
+      webglHdl.maybeGet(context, MainKey()).each(webgl -> {
+        context.getDrawableSupport().each(support) -> {
+          initializer = support.createInitializer();
+          prepared = BDrawables(
+            drawables.value.map(drawable ->
+              (drawable.prepare(initializer), drawable)
+            ),
+            drawables.viewport,
+          );
+          writer.write(key, prepared);
+          initializer.write(writer);
+          initializer.programs.each((k, v) ->
+            writer.write(PrgKey(webgl.value, k, v), key)
+          );
+          initializer.buffers.each((k, v) ->
+            writer.write(BufKey(webgl.value, k, v), key)
+          );
+          initializer.arrays.each((k, v) ->
+            writer.write(ArrayKey(webgl.value, k, v), key)
+          )
+        }
+      })
+    },
+  );
+  webglFilteredProgramsHdl = webglProgramsHdl.contextWriterKeyValues(
+    f ~> f,
+    context,
+    webglFilteredProgramsPath,
+    (_, writer, key, files) ~> {
+      key match {
+      | BufKey _
+      | ArrayKey _
+      | PrgKey _ ->
+        if (!files.isEmpty()) {
+          writer.write(key, SKFS.IntFile(0))
+        }
+      | _ -> files.maybeFirst().each(v -> writer.write(key, v))
+      }
+    },
+  );
+  webglComputedBuffersHdl = webglFilteredProgramsHdl.contextWriterKeyMap(
+    Ui.Buffer::fromFile,
+    context,
+    webglComputedBuffersPath,
+    (_, writer, key, _) ~> {
+      key match {
+      | bk @ BufKey _ ->
+        ctx = Ui.Ctx(UInt32::truncate(bk.webgl));
+        buffer = bk.builder(ctx);
+        bid = bk.toBufId();
+        writer.write(bid, buffer)
+      | _ -> void
+      }
+    },
+  );
+  webglComputedArraysHdl = webglFilteredProgramsHdl.contextWriterKeyMap(
+    Ui.VertexArray::fromFile,
+    context,
+    webglComputedArraysPath,
+    (context, writer, key, _) ~> {
+      key match {
+      | ak @ ArrayKey _ ->
+        ctx = Ui.Ctx(UInt32::truncate(ak.webgl));
+        array = ak.builder(ctx);
+        array.init(bufId ->
+          webglComputedBuffersHdl.get(context, BufId(ak.webgl, bufId))
+        );
+        writer.write(ak.toArrayId(), array)
+      | _ -> void
+      }
+    },
+  );
+  webglComputedProgramsHdl = webglFilteredProgramsHdl.contextWriterKeyMap(
+    Ui.TriangleProgram::fromFile,
+    context,
+    webglComputedProgramsPath,
+    (_, writer, key, _) ~> {
+      key match {
+      | pk @ PrgKey _ ->
+        gl = Ui.Ctx(UInt32::truncate(pk.webgl));
+        writer.write(pk.toPrgId(), pk.builder(gl))
+      | _ -> void
+      }
+    },
+  );
+  nodeHandlesHdl = webglFilteredProgramsHdl.contextWriterKeyMap(
+    Handles::fromFile,
+    context,
+    nodeHandlesPath,
+    (context, writer, key, file) ~> {
+      key match {
+      | kLayer @ KLayer _ ->
+        drawables = BDrawables::fromFile(file);
+        webglHdl.maybeGet(context, MainKey()).each(webgl -> {
+          gl = Ui.Ctx(UInt32::truncate(webgl.value));
+          supplier = Ui.Supplier((ctx, name) ~>
+            webglComputedProgramsHdl.maybeGet(ctx, PrgId(webgl.value, name))
+          );
+          tmp = mutable Vector<Ui.Handle>[];
+          drawables.value.each(drawable ->
+            drawable.i0 match {
+            | Ui.UBuffer(bufId) ->
+              webglComputedBuffersHdl
+                .maybeGet(context, BufId(webgl.value, bufId))
+                .each(buffer ->
+                  drawable.i1
+                    .build(context, gl, buffer, supplier)
+                    .each(tmp.push)
+                )
+            | Ui.UArray(arrId) ->
+              webglComputedArraysHdl
+                .maybeGet(context, ArrayId(webgl.value, arrId))
+                .each(array ->
+                  drawable.i1.build(context, gl, array, supplier).each(tmp.push)
+                )
+            }
+          );
+          if (!tmp.isEmpty()) {
+            writer.write(
+              CtxLayer(webgl.value, kLayer),
+              Handles(tmp.toArray(), drawables.viewport),
+            );
+          }
+        })
+      | _ -> void
+      }
+    },
+  );
+@debug
+fun drawAminationFrame(
+  context: mutable SKFS.Context,
+  width: UInt32,
+  height: UInt32,
+  time: UInt32,
+): void {
+  optVersion = context
+    .getGlobal("FWK.Viewport.Version")
+    .map(SKFS.IntFile::fromFile)
+    .map(f -> f.value);
+  drawTime = time.toInt();
+  if (drawTime == 0) {
+    frame = context
+      .getGlobal("FWK.AnimationFrame")
+      .map(SKFS.IntFile::fromFile)
+      .map(f -> f.value + 1)
+      .default(0);
+    context.setGlobal("FWK.AnimationFrame", SKFS.IntFile(frame));
+    optDrawTick = FWKPipeline.getDrawTick(context);
+    optDrawTick match {
+    | Some(tick) ->
+      if (optVersion.map(v -> tick.value <= v).default(false)) {
+        return void
+      };
+      !drawTime = tick.value
+    | _ -> return void
+    };
+  } else if (time.toInt() <= optVersion.default(0)) {
+    return void
+  };
+  optGetContext = context.getGlobal("GL.GetContext").map(Ctx::fromFile);
+  optGetContext.each(gtctx -> {
+    optGLContext = gtctx.value(context);
+    optGLContext.each(gl -> drawCtxFrame(context, gl, width, height, drawTime))
+  })
+}
+
+@debug
+fun drawCtxFrame(
+  context: mutable SKFS.Context,
+  ctx: Ui.Ctx,
+  width: UInt32,
+  height: UInt32,
+  time: Int,
+): void {
+  ctx.bindMainFrameBuffer();
+  ctx.enableBlend();
+  ctx.straitAlphaBlending();
+  ctx.viewport(Int32::truncate(0), Int32::truncate(0), width, height);
+  ctx.clearColor(1.0, 1.0, 1.0, 1.0);
+  ctx.clear();
+  context.getGlobal("FWK.Viewport.Drawer").map(Drawer::fromFile) match {
+  | Some(drawer) -> drawer.value(ctx, context, width, height)
+  | _ -> FWKPipeline.drawViewports(ctx, context, width, height)
+  };
+  context.setGlobal("FWK.Viewport.Version", SKFS.IntFile(time.toInt()));
+}
+
+@cpp_export("SKIP_getFloatAt")
+fun getFloatAt(array: readonly Array<Float>, index: Int32): Float {
+  array.get(index.toInt());
+}
+
+@cpp_export("SKIP_GL_init")
+fun initGL(): void {
+  void
+}
+*/
+
+
+module end;

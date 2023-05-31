@@ -1,0 +1,266 @@
+module FWK;
+
+extension base class Target extends JSONValue {
+  fun toJSON(): JSON.Value
+  | In()
+  | OnTop()
+  | OnBottom()
+  | OnLeft()
+  | OnRight() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): Target {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWK.In" -> In()
+    | "FWK.OnTop" -> OnTop()
+    | "FWK.OnBottom" -> OnBottom()
+    | "FWK.OnLeft" -> OnLeft()
+    | "FWK.OnRight" -> OnRight()
+    | _ -> invariant_violation(`Invalid json object ${cl} for FWK.Target`)
+    }
+  }
+}
+
+extension class KeyDown uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "symbol" => JSON.String(this.symbol),
+        "tick" => JSON.IntNumber(this.tick.value),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): KeyDown {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWK.KeyDown" ->
+      KeyDown(jso.getString("symbol"), SKFS.Tick(jso.getInt("tick")))
+    | _ -> invariant_violation(`Invalid json object ${cl} for FWK.KeyDown`)
+    }
+  }
+}
+
+extension class MouseDown uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "button" => this.button.toJSON(),
+        "tick" => JSON.IntNumber(this.tick.value),
+        "offset" => this.optOffset.map(offset -> offset.toJSON()).default(
+          JSON.Null(),
+        ),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): MouseDown {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWK.MouseDown" ->
+      MouseDown(
+        Button::fromJSON(jso.get("button")),
+        SKFS.Tick(jso.getInt("tick")),
+        jso.maybeGet("offset").map(Geometry.Offset::fromJSON),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for FWK.MouseDown`)
+    }
+  }
+}
+
+extension base class Repeat uses HasClassName {
+  fun toJSON(): JSON.Value
+  | KeysRepeat(keys, ctrl, shift, alt) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "ctrl" => JSON.Bool(ctrl),
+        "shift" => JSON.Bool(shift),
+        "alt" => JSON.Bool(alt),
+        "keys" => JSON.Array(
+          Vector::createFromItems(keys.map(ds -> ds.toJSON())),
+        ),
+      ],
+    )
+  | MouseRepeat(buttons, ctrl, shift, alt) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "ctrl" => JSON.Bool(ctrl),
+        "shift" => JSON.Bool(shift),
+        "alt" => JSON.Bool(alt),
+        "buttons" => JSON.Array(
+          Vector::createFromItems(buttons.map(ds -> ds.toJSON())),
+        ),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Repeat {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWK.KeysRepeat" ->
+      KeysRepeat(
+        jso.getArray("keys").value.map(KeyDown::fromJSON).toArray(),
+        jso.getBool("ctrl"),
+        jso.getBool("shift"),
+        jso.getBool("alt"),
+      )
+    | "FWK.MouseRepeat" ->
+      MouseRepeat(
+        jso.getArray("buttons").value.map(MouseDown::fromJSON).toArray(),
+        jso.getBool("ctrl"),
+        jso.getBool("shift"),
+        jso.getBool("alt"),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for FWK.Repeat`)
+    }
+  }
+}
+
+extension base class Button uses HasClassName {
+  fun toJSON(): JSON.Value
+  | Primary()
+  | Middle()
+  | Secondary()
+  | WheelUp()
+  | WheelDown() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | Unknown(code) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "code" => JSON.IntNumber(code),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Button {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWK.Primary" -> Primary()
+    | "FWK.Middle" -> Middle()
+    | "FWK.Secondary" -> Secondary()
+    | "FWK.WheelUp" -> WheelUp()
+    | "FWK.WheelDown" -> WheelDown()
+    | "FWK.Unknown" -> Unknown(jso.getInt("code"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for FWK.Button`)
+    }
+  }
+}
+
+module end;
+
+module System;
+
+extension class TimeStamp uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "seconds" => JSON.IntNumber(this.seconds),
+        "microseconds" => JSON.IntNumber(this.microseconds),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): TimeStamp {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "System.TimeStamp" ->
+      TimeStamp(jso.getInt("seconds"), jso.getInt("microseconds"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for System.TimeStamp`)
+    }
+  }
+}
+
+module end;
+
+module UiEvent;
+
+extension class Locks uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "capsLock" => this.optCapsLock.map(capsLock ->
+          capsLock.toJSON()
+        ).default(JSON.Null()),
+        "numLock" => this.optCapsLock.map(numLock -> numLock.toJSON()).default(
+          JSON.Null(),
+        ),
+        "scrollLock" => this.optCapsLock.map(scrollLock ->
+          scrollLock.toJSON()
+        ).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Locks {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiEvent.Locks" ->
+      Locks(
+        jso.maybeGet("capsLock").map(Value::fromJSON),
+        jso.maybeGet("numLock").map(Value::fromJSON),
+        jso.maybeGet("scrollLock").map(Value::fromJSON),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiEvent.Locks`)
+    }
+  }
+}
+
+extension base class Value uses HasClassName {
+  fun toJSON(): JSON.Value
+  | Strict(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.Bool(value),
+      ],
+    )
+  | Toggle() -> JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): Value {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiEvent.Strict" -> Strict(jso.getBool("value"))
+    | "UiEvent.Toggle" -> Toggle()
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiEvent.Value`)
+    }
+  }
+}
+
+extension class Modifier extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "ctrl" => JSON.Bool(this.control),
+        "shift" => JSON.Bool(this.shift),
+        "alt" => JSON.Bool(this.alt),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Modifier {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiEvent.Modifier" ->
+      Modifier(jso.getBool("ctrl"), jso.getBool("shift"), jso.getBool("alt"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiEvent.Modifier`)
+    }
+  }
+}
+
+module end;

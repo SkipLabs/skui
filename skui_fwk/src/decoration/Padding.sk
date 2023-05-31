@@ -1,0 +1,24 @@
+module Ui;
+
+class Padding(padding: Geometry.InsetsGeometry) extends Decoration {
+  static fun all(size: Float): this {
+    Padding(Geometry.Insets::all(size))
+  }
+
+  fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets {
+    Geometry.resolveInsest(this.padding, direction);
+  }
+
+  fun fillDrawables(
+    _context: mutable SKFS.Context,
+    _support: Ui.DrawableSupport,
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _direction: Ui.HorizontalDirection,
+    _drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    void
+  }
+}
+
+module end;

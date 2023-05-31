@@ -1,0 +1,68 @@
+module Geometry;
+
+extension class Offset uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "dx" => JSON.FloatNumber(this.dx),
+        "dy" => JSON.FloatNumber(this.dy),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Offset {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Geometry.Offset" ->
+      Offset(JSON.getFloat("dx", jso), JSON.getFloat("dy", jso))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Geometry.Offset`)
+    }
+  }
+}
+
+extension class Point uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "x" => JSON.IntNumber(this.x),
+        "y" => JSON.IntNumber(this.y),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Point {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Geometry.Point" -> Point(JSON.getInt("x", jso), JSON.getInt("y", jso))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Geometry.Point`)
+    }
+  }
+}
+
+extension class ISize uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "width" => JSON.IntNumber(this.width),
+        "height" => JSON.IntNumber(this.height),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): ISize {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Geometry.ISize" ->
+      ISize(JSON.getInt("width", jso), JSON.getInt("height", jso))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Geometry.ISize`)
+    }
+  }
+}
+
+module end;

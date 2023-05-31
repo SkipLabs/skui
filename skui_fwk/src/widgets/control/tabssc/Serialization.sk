@@ -1,0 +1,101 @@
+module UiTabsSc;
+
+fun toJSON(v: JSONValue): JSON.Value {
+  v.toJSON()
+}
+
+extension base class Command {
+  fun toJSON(): JSON.Value
+  | CancelScrolling(tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | ManageScrolling(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | ManageVisible(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+  | SetScroll(optValue)
+  | SetHover(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | GoTo(value, optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => value.toJSON(),
+        "repeatOn" => optRepeatOn.map(toJSON).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTabsSc.ManageScrolling" ->
+      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "UiTabsSc.ManageVisible" -> ManageVisible(jso.getInt("value"))
+    | "UiTabsSc.CancelScrolling" ->
+      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+    | "UiTabsSc.SetScroll" ->
+      SetScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
+    | "UiTabsSc.SetHover" ->
+      SetHover(
+        jso.maybeGet("value").map(Target::fromJSON).map(t ~> t.asHover()),
+      )
+    | "UiTabsSc.GoTo" ->
+      GoTo(
+        Target::fromJSON(jso.get("value")),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTabsSc.Command`)
+    }
+  }
+}
+
+extension base class Target extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | Before()
+  | After() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | Index(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Target {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTabsSc.Before" -> Before()
+    | "UiTabsSc.After" -> After()
+    | "UiTabsSc.Index" -> Index(jso.getInt("value"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTabsSc.Target`)
+    }
+  }
+}
+
+module end;

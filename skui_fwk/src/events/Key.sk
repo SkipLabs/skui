@@ -1,0 +1,849 @@
+module UiEvent;
+
+base class Value {
+  children =
+  | Strict(value: Bool)
+  | Toggle()
+}
+
+class Locks(optCapsLock: ?Value, optNumLock: ?Value, optScrollLock: ?Value) {}
+
+base class KeyState(tick: SKFS.Tick) uses Equality, HasClassName {
+  fun derive(
+    pressed: Bool,
+    timeStamp: System.TimeStamp,
+    tick: SKFS.Tick,
+  ): KeyState;
+  fun next(): KeyState;
+  fun isDown(tick: SKFS.Tick): Bool {
+    this match {
+    | _d @ KeyDown _ -> true
+    | p @ KeyPressed _ -> p.tick != tick
+    | _ -> false
+    }
+  }
+
+  fun isPressed(tick: SKFS.Tick): Bool {
+    this match {
+    | p @ KeyPressed _ -> p.tick == tick
+    | _ -> false
+    }
+  }
+
+  fun isReleased(tick: SKFS.Tick): Bool {
+    this match {
+    | r @ KeyReleased _ -> r.tick == tick
+    | _ -> false
+    }
+  }
+  fun isUp(tick: SKFS.Tick): Bool {
+    this match {
+    | r @ KeyReleased _ -> r.tick != tick
+    | _u @ KeyUp _ -> true
+    | _ -> false
+    }
+  }
+
+  fun isPressedOrDown(): Bool {
+    this match {
+    | _d @ KeyDown _ -> true
+    | _p @ KeyPressed _ -> true
+    | _ -> false
+    }
+  }
+
+  fun getTimeStamp(): System.TimeStamp;
+}
+
+base class KeyUpBase() extends KeyState {
+  fun derive(
+    pressed: Bool,
+    timeStamp: System.TimeStamp,
+    tick: SKFS.Tick,
+  ): KeyState {
+    if (pressed) {
+      KeyPressed(timeStamp, tick)
+    } else {
+      KeyUp(this.tick)
+    }
+  }
+
+  fun next(): KeyState {
+    KeyUp(this.tick)
+  }
+
+  fun getTimeStamp(): System.TimeStamp {
+    invariant_violation("No available time stamp")
+  }
+}
+
+base class KeyDownBase(timeStamp: System.TimeStamp) extends KeyState {
+  fun derive(
+    pressed: Bool,
+    timeStamp: System.TimeStamp,
+    tick: SKFS.Tick,
+  ): KeyState {
+    if (pressed) {
+      KeyDown(this.timeStamp, this.tick)
+    } else {
+      KeyReleased((timeStamp - this.timeStamp).toSeconds(), tick)
+    }
+  }
+
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "timeStamp" => this.timeStamp.toJSON(),
+      ],
+    )
+  }
+
+  fun getTimeStamp(): System.TimeStamp {
+    this.timeStamp
+  }
+}
+
+class KeyDown() extends KeyDownBase {
+  fun next(): KeyState {
+    this
+  }
+}
+
+class KeyPressed() extends KeyDownBase {
+  fun next(): KeyState {
+    KeyDown(this.timeStamp, this.tick)
+  }
+}
+
+class KeyUp() extends KeyUpBase {
+  fun toJSON(): JSON.Value {
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  }
+}
+
+class KeyReleased(ellapsed: Float) extends KeyUpBase {
+  fun isTyped(): Bool {
+    this.ellapsed < 150.0
+  }
+
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "ellapsed" => JSON.FloatNumber(this.ellapsed),
+      ],
+    )
+  }
+}
+
+class KeyInfo(symbol: String, key: String) {
+  const digit0: String = "Digit0";
+  const digit1: String = "Digit1";
+  const digit2: String = "Digit2";
+  const digit3: String = "Digit3";
+  const digit4: String = "Digit4";
+  const digit5: String = "Digit5";
+  const digit6: String = "Digit6";
+  const digit7: String = "Digit7";
+  const digit8: String = "Digit8";
+  const digit9: String = "Digit9";
+  const insert: String = "Insert";
+  const end: String = "End";
+  const home: String = "Home";
+  const pageUp: String = "PageUp";
+  const pageDown: String = "PageDown";
+  const arrowLeft: String = "ArrowLeft";
+  const arrowRight: String = "ArrowRight";
+  const arrowDown: String = "ArrowDown";
+  const arrowUp: String = "ArrowUp";
+  const delete: String = "Delete";
+  const backspace: String = "Backspace";
+  const space: String = "Space";
+  const enter: String = "Enter";
+  const tab: String = "Tab";
+  const escape: String = "Escape";
+  const f1: String = "F1";
+  const f2: String = "F2";
+  const f3: String = "F3";
+  const f4: String = "F4";
+  const f5: String = "F5";
+  const f6: String = "F6";
+  const f7: String = "F7";
+  const f8: String = "F8";
+  const f9: String = "F9";
+  const f10: String = "F10";
+  const f11: String = "F11";
+  const f12: String = "F12";
+  const f13: String = "F13";
+  const f14: String = "F14";
+  const f15: String = "F15";
+  const f16: String = "F16";
+  const scrollLock: String = "ScrollLock";
+  const capsLock: String = "CapsLock";
+  const numLock: String = "NumLock";
+  const menu: String = "ContextMenu";
+  const bracketLeft: String = "BracketLeft";
+  const bracketRight: String = "BracketRight";
+  const parenthesisLeft: String = "ParenthesisLeft";
+  const parenthesisRight: String = "ParenthesisRight";
+  const at: String = "At";
+  const asciiTilde: String = "AsciiTilde";
+  const asciiCircum: String = "AsciiCircum";
+  const deadCircumflex: String = "dead_Circumflex";
+  const quoteLeft: String = "QuoteLeft";
+  const hashTag: String = "HashTag";
+  const bar: String = "Bar";
+  const backslash: String = "Backslash";
+  const pause: String = "Pause";
+
+  static fun fromCodeAndValue(code: String, optKeyValue: ?String): KeyInfo {
+    //endsWith = c ~> optKeyValue.map(v -> v.endsWith(c)).default(false);
+    code match {
+    | "Tab" -> KeyInfo(KeyInfo::tab, KeyInfo::tab)
+    | "NumpadEnter" | "Enter" -> KeyInfo(KeyInfo::enter, KeyInfo::enter)
+    | "Escape" -> KeyInfo(KeyInfo::escape, KeyInfo::escape)
+    | "Backspace" -> KeyInfo(KeyInfo::backspace, KeyInfo::backspace)
+    | "Delete" -> KeyInfo(KeyInfo::delete, KeyInfo::delete)
+    | "Insert" -> KeyInfo(KeyInfo::delete, KeyInfo::insert)
+    /*| "Digit2" if (optKeyValue == Some("Dead") || endsWith("~")) ->
+      KeyInfo(KeyInfo::asciiTilde, "~")
+    | "Digit3" if (endsWith("#")) -> KeyInfo(KeyInfo::hashTag, "#")
+    | "Digit4" if (endsWith("{")) -> KeyInfo(KeyInfo::bracketLeft, "{")
+    | "Digit5" if (endsWith("[")) -> KeyInfo(KeyInfo::bracketLeft, "[")
+    | "Digit6" if (endsWith("|")) -> KeyInfo(KeyInfo::bar, "|")
+    | "Digit7" if (optKeyValue == Some("Dead") || endsWith("`")) ->
+      KeyInfo(KeyInfo::quoteLeft, "`")
+    | "Digit8" if (endsWith("\\")) -> KeyInfo(KeyInfo::backslash, "\\")
+    | "Digit9" if (endsWith("^")) -> KeyInfo(KeyInfo::asciiTilde, "^")
+    | "Digit0" if (endsWith("@")) -> KeyInfo(KeyInfo::at, "@")
+    | "Minus" if (endsWith("]")) -> KeyInfo(KeyInfo::bracketRight, "]")
+    | "Equal" if (endsWith("}")) -> KeyInfo(KeyInfo::bracketRight, "}")*/
+    | _ -> KeyInfo(code, optKeyValue.default(code))
+    }
+  }
+
+  fun isKey(): Bool {
+    this.symbol.startsWith("Key")
+  }
+
+  fun isDigit(): Bool {
+    this.symbol.startsWith("Digit")
+  }
+
+  fun isTab(): Bool {
+    this.symbol == "Tab"
+  }
+
+  fun isControl(): Bool {
+    this.key.startsWith("Control")
+  }
+
+  fun isShift(): Bool {
+    this.key.startsWith("Shift")
+  }
+
+  fun isMeta(): Bool {
+    this.key.startsWith("Meta")
+  }
+
+  fun isAlt(): Bool {
+    this.symbol.startsWith("Alt")
+  }
+
+  fun isEnter(): Bool {
+    this.symbol.endsWith(static::enter)
+  }
+
+  fun isPause(): Bool {
+    this.symbol.endsWith(static::pause)
+  }
+}
+
+class Key(code: String, info: KeyInfo, state: KeyState) {
+  //
+  fun next(): Key {
+    !this.state = this.state.next();
+    this;
+  }
+
+  fun isDeadCircum(): Bool {
+    this.info.symbol == KeyInfo::deadCircumflex;
+  }
+
+  fun isShiftDown(tick: SKFS.Tick): Bool {
+    this.info.isShift() && this.state.isDown(tick);
+  }
+
+  fun isControlDown(tick: SKFS.Tick): Bool {
+    this.info.isControl() && this.state.isDown(tick);
+  }
+
+  fun isAltDown(tick: SKFS.Tick): Bool {
+    this.info.isAlt() && this.state.isDown(tick);
+  }
+
+  fun isMetaDown(tick: SKFS.Tick): Bool {
+    this.info.isMeta() && this.state.isDown(tick);
+  }
+
+  fun isModified(tick: SKFS.Tick): Bool {
+    this.isShiftDown(tick) ||
+      this.isControlDown(tick) ||
+      this.isAltDown(tick) ||
+      this.isMetaDown(tick)
+  }
+
+  fun getChar(allowTabs: Bool, allowNewLine: Bool): ?Array<Char> {
+    if (this.info.key == "Dead") {
+      return None();
+    };
+    key = this.info.key.chars();
+    if (this.info.isKey() || this.info.isDigit() || this.info.isAlt()) {
+      if (key.size() == 1 || key.size() == 2) {
+        return Some(key.toArray());
+      }
+    } else if (this.info.isTab() && allowTabs) {
+      return Some(Array['\t'])
+    } else if (this.info.isEnter() && allowNewLine) {
+      return Some(Array['\n'])
+    } else if (key.size() == 1) {
+      return Some(Array[key.first()]);
+    };
+    None();
+  }
+
+  fun isTab(): Bool {
+    this.info.isTab();
+  }
+
+  fun isEnter(): Bool {
+    this.info.isEnter();
+  }
+
+  fun isKey(
+    code: String,
+    tick: SKFS.Tick,
+    state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  ): Bool {
+    this.info.symbol == code && state(this.state, tick)
+  }
+
+  fun getTimeStamp(): System.TimeStamp {
+    this.state.getTimeStamp()
+  }
+
+  static fun isKeyState(
+    state: KeyState,
+    tick: SKFS.Tick,
+    optDown: ?Bool,
+  ): Bool {
+    optDown match {
+    | Some(down) ->
+      if (down) {
+        state.isDown(tick)
+      } else {
+        state.isPressed(tick)
+      }
+    | _ -> state.isDown(tick) || state.isPressed(tick)
+    }
+  }
+
+  static fun isKeyDown(state: KeyState, tick: SKFS.Tick): Bool {
+    state.isDown(tick)
+  }
+
+  static fun isKeyPressed(state: KeyState, tick: SKFS.Tick): Bool {
+    state.isPressed(tick)
+  }
+
+  static fun isKeyPressedOrDown(state: KeyState, _tick: SKFS.Tick): Bool {
+    state.isPressedOrDown()
+  }
+
+  static fun isKeyReleased(state: KeyState, tick: SKFS.Tick): Bool {
+    state.isReleased(tick)
+  }
+
+  fun hasChar(char: Char): Bool {
+    if (SkargoVersion.kTarget.startsWith("wasm32")) {
+      key = this.info.key.chars();
+      key.size() == 1 && Unicode.toLower(key.first()) == char;
+    } else {
+      this.info.symbol == `Key${Unicode.toUpper(char)}`;
+    }
+  }
+
+  fun isChar(
+    char: Char,
+    tick: SKFS.Tick,
+    state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  ): Bool {
+    if (SkargoVersion.kTarget.startsWith("wasm32")) {
+      key = this.info.key.chars();
+      key.size() == 1 &&
+        Unicode.toLower(key.first()) == char &&
+        state(this.state, tick)
+    } else {
+      this.isKey(`Key${Unicode.toUpper(char)}`, tick, state)
+    }
+  }
+}
+
+base class Info {
+  children =
+  | Unicode(char: Char)
+  | Diacritic(char: Char)
+  | Letter(char: Char)
+  | Word(chars: Array<Char>)
+}
+
+class KeysFile(
+  keys: Array<Key>,
+  capsLock: Bool,
+  numLock: Bool,
+  insert: Bool,
+  scrollLock: Bool,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ KeysFile _ -> x
+    | _ -> invariant_violation("Must be UiEvent.KeysFile")
+    }
+  }
+
+  fun next(): KeysFile {
+    !this.keys = this.keys.map(key -> key.next()).filter(key ->
+      !key.state.isUp(key.state.tick)
+    );
+    this;
+  }
+
+  fun getTimeStamp(): System.TimeStamp {
+    this.keys.reduce(
+      (acc, key) -> Math.max(acc, key.getTimeStamp()),
+      System.TimeStamp(0, 0),
+    )
+  }
+
+  fun isControlDown(tick: SKFS.Tick): Bool {
+    this.keys.any(key -> key.isControlDown(tick));
+  }
+
+  fun isAltDown(tick: SKFS.Tick): Bool {
+    this.keys.any(key -> key.isAltDown(tick));
+  }
+
+  fun isShiftDown(tick: SKFS.Tick): Bool {
+    this.keys.any(key -> key.isShiftDown(tick));
+  }
+
+  fun getForSymbol(symbol: String): ?Key {
+    for (key in this.keys) {
+      if (key.info.symbol == symbol) {
+        break Some(key)
+      }
+    } else {
+      None()
+    }
+  }
+
+  fun getForChar(char: Char): ?Key {
+    for (key in this.keys) {
+      if (key.hasChar(char)) {
+        break Some(key)
+      }
+    } else {
+      None()
+    }
+  }
+
+  fun getChar(allowTabs: Bool, allowNewLine: Bool, tick: SKFS.Tick): ?Info {
+    if (
+      this.keys.isEmpty() ||
+      (this.isControlDown(tick) && !this.isAltDown(tick))
+    ) {
+      None();
+    } else {
+      last = this.keys.last();
+      if (last.state.isPressed(tick)) {
+        last.getChar(allowTabs, allowNewLine).flatMap(chars ->
+          if (chars.size() == 1) {
+            char = chars[0];
+            if (this.isAltDown(tick) && char == 'n') {
+              !char = '~'
+            };
+            if (this.isAltDown(tick) && Unicode.isNumber(char)) {
+              Some(Unicode(char))
+            } else if (this.isAltDown(tick) && char == 'L') {
+              Some(Letter('|'))
+            } else if (this.isDiacritic(char)) {
+              Some(Diacritic(char))
+            } else if (Unicode.isGraphic(char)) {
+              Some(Letter(char))
+            } else {
+              None()
+            }
+          } else {
+            filtered = chars.filter(Unicode.isGraphic);
+            if (filtered.isEmpty()) {
+              None()
+            } else if (filtered.size() == 1) {
+              Some(Letter(filtered[0]))
+            } else {
+              Some(Word(filtered))
+            }
+          }
+        )
+      } else {
+        None()
+      }
+    }
+  }
+
+  fun isTab(tick: SKFS.Tick, alternative: Bool = false): Bool {
+    tabKeyStroke(false, alternative).test(this, tick)
+  }
+
+  fun isF2(tick: SKFS.Tick): Bool {
+    ModifiedKeyStroke(KeyInfo::f2, Modifier(false, false, false)).test(
+      this,
+      tick,
+    )
+  }
+
+  fun isShiftTab(tick: SKFS.Tick, alternative: Bool = false): Bool {
+    tabKeyStroke(true, alternative).test(this, tick)
+  }
+
+  fun isShiftF2(tick: SKFS.Tick): Bool {
+    ModifiedKeyStroke(KeyInfo::f2, Modifier(false, true, false)).test(
+      this,
+      tick,
+    )
+  }
+
+  fun isMenuPressed(tick: SKFS.Tick): Bool {
+    pureKeyPressed(KeyInfo::menu).test(this, tick)
+  }
+
+  fun isMenuReleased(tick: SKFS.Tick): Bool {
+    pureKeyReleased(KeyInfo::menu).test(this, tick)
+  }
+
+  private fun isDiacritic(char: Char): Bool {
+    (Unicode.isDiacritic(char) &&
+      (char != '^' || this.keys.any(key -> key.isDeadCircum()))) ||
+      char == '~'
+  }
+}
+
+base class KeyStroke {
+  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool;
+  fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat;
+}
+
+fun asRepeats(
+  strokes: Array<KeyStroke>,
+  keys: UiEvent.KeysFile,
+): Array<FWK.Repeat> {
+  strokes
+    .map(stroke -> stroke.asRepeat(keys))
+    .filter(opt -> opt.isSome())
+    .map(opt -> opt.fromSome());
+}
+
+class StrictKeyStroke(
+  code: String,
+  pure: Bool = true,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+) extends KeyStroke {
+  fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat {
+    keys.getForSymbol(this.code).map(key ->
+      FWK.KeysRepeat(
+        Array[FWK.KeyDown(this.code, key.state.tick)],
+        false,
+        false,
+        false,
+      )
+    )
+  }
+
+  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+    if (this.pure) {
+      keyFile.keys.size() == 1 &&
+        keyFile.keys.first().isKey(this.code, tick, this.state);
+    } else {
+      keyFile.keys.any(key -> key.isKey(this.code, tick, this.state));
+    }
+  }
+}
+
+class Modifier(control: Bool, shift: Bool, alt: Bool) {
+  fun test(keyFile: KeysFile, tick: SKFS.Tick): (Bool, Int) {
+    count = 0;
+    valid = true;
+    if (this.control) {
+      !count = count + 1;
+      !valid = this.isControlDown(keyFile, tick);
+    };
+    if (this.shift) {
+      !count = count + 1;
+      !valid = valid && this.isShiftDown(keyFile, tick);
+    };
+    if (this.alt) {
+      !count = count + 1;
+      !valid = valid && this.isAltDown(keyFile, tick);
+    };
+    (valid, count)
+  }
+
+  private fun isControlDown(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+    keyFile.keys.any(key -> key.isControlDown(tick));
+  }
+
+  private fun isShiftDown(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+    keyFile.keys.any(key -> key.isShiftDown(tick));
+  }
+
+  private fun isAltDown(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+    keyFile.keys.any(key -> key.isAltDown(tick));
+  }
+
+  fun hasModification(): Bool {
+    this.control || this.shift || this.alt
+  }
+}
+
+class ModifiedKeyStroke(
+  code: String,
+  modifier: Modifier,
+  pure: Bool = true,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+) extends KeyStroke {
+  fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat {
+    keys.getForSymbol(this.code).map(key ->
+      FWK.KeysRepeat(
+        Array[FWK.KeyDown(this.code, key.state.tick)],
+        this.modifier.control,
+        this.modifier.shift,
+        this.modifier.alt,
+      )
+    )
+  }
+
+  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+    (valid, count) = this.modifier.test(keyFile, tick);
+    !valid = valid && (!this.pure || keyFile.keys.size() == count + 1);
+    valid && keyFile.keys.any(key -> key.isKey(this.code, tick, this.state));
+  }
+}
+
+class CharKeyStroke(
+  char: Char,
+  optModifier: ?Modifier = None(),
+  pure: Bool = true,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+) extends KeyStroke {
+  fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat {
+    keys.getForChar(this.char).map(key ->
+      FWK.KeysRepeat(
+        Array[FWK.KeyDown(key.info.symbol, key.state.tick)],
+        false,
+        false,
+        false,
+      )
+    )
+  }
+
+  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+    (valid, count) = this.optModifier.map(modifier ->
+      modifier.test(keyFile, tick)
+    ).default((true, 0));
+    !valid = valid && (!this.pure || keyFile.keys.size() == count + 1);
+    valid && keyFile.keys.any(key -> key.isChar(this.char, tick, this.state));
+  }
+}
+
+class AltKeyStroke(
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+) extends KeyStroke {
+  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+    keyFile.keys.size() == 1 &&
+      keyFile.keys.any(key -> key.info.isAlt() && this.state(key.state, tick));
+  }
+
+  fun asRepeat(_keys: UiEvent.KeysFile): ?FWK.Repeat {
+    None()
+  }
+}
+
+fun pureKeyPressed(keyInfo: String): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(false, false, false))
+}
+
+fun keyPressed(keyInfo: String): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(false, false, false), false)
+}
+
+fun pureKey(keyInfo: String): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(false, false, false), true, (_, _) ~>
+    true
+  )
+}
+
+fun pureKeyPressedOrDown(keyInfo: String): KeyStroke {
+  ModifiedKeyStroke(
+    keyInfo,
+    Modifier(false, false, false),
+    true,
+    Key::isKeyPressedOrDown,
+  )
+}
+
+fun pureKeyReleased(keyInfo: String): KeyStroke {
+  ModifiedKeyStroke(
+    keyInfo,
+    Modifier(false, false, false),
+    true,
+    Key::isKeyReleased,
+  )
+}
+
+fun enterKeyStroke(alternative: Bool = false): KeyStroke {
+  if (alternative) {
+    ModifiedKeyStroke(KeyInfo::enter, Modifier(true, false, false))
+  } else {
+    ModifiedKeyStroke(KeyInfo::enter, Modifier(false, false, false))
+  }
+}
+
+fun tabKeyStroke(shift: Bool = false, alternative: Bool = false): KeyStroke {
+  if (shift) {
+    if (alternative) {
+      ModifiedKeyStroke(KeyInfo::tab, Modifier(true, true, false))
+    } else {
+      ModifiedKeyStroke(KeyInfo::tab, Modifier(false, true, false))
+    }
+  } else if (alternative) {
+    ModifiedKeyStroke(KeyInfo::tab, Modifier(true, false, false))
+  } else {
+    ModifiedKeyStroke(KeyInfo::tab, Modifier(false, false, false))
+  }
+}
+
+fun exit(): KeyStroke {
+  ModifiedKeyStroke(KeyInfo::f4, Modifier(false, false, true));
+}
+
+fun pause(): KeyStroke {
+  pureKeyPressed(KeyInfo::pause);
+}
+
+fun contextMenu(): KeyStroke {
+  pureKeyPressed(KeyInfo::menu);
+}
+
+fun expose(): KeyStroke {
+  ModifiedKeyStroke(KeyInfo::f5, Modifier(true, false, true));
+}
+
+fun control(
+  keyInfo: String,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(true, false, false), true, state)
+}
+
+fun charKey(
+  char: Char,
+  pure: Bool,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  CharKeyStroke(Unicode.toLower(char), None(), pure, state)
+}
+
+fun controlChar(
+  char: Char,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  CharKeyStroke(
+    Unicode.toLower(char),
+    Some(Modifier(true, false, false)),
+    true,
+    state,
+  )
+}
+
+fun controlShiftChar(
+  char: Char,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  CharKeyStroke(
+    Unicode.toLower(char),
+    Some(Modifier(true, true, false)),
+    true,
+    state,
+  )
+}
+
+fun key(
+  keyInfo: String,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  StrictKeyStroke(keyInfo, true, state)
+}
+
+fun shift(
+  keyInfo: String,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(false, true, false), true, state)
+}
+
+fun controlShift(
+  keyInfo: String,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(true, true, false), true, state)
+}
+
+fun controlAlt(
+  keyInfo: String,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(true, false, true), true, state)
+}
+
+fun alt(
+  keyInfo: String,
+  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+): KeyStroke {
+  ModifiedKeyStroke(keyInfo, Modifier(false, false, true), true, state)
+}
+
+fun altReleased(): KeyStroke {
+  AltKeyStroke(Key::isKeyReleased)
+}
+
+fun checkDiacritical(char: Char): Char {
+  char match {
+  | '\u0060' -> '\u0300'
+  | '\u00b4' -> '\u0301'
+  | '\u005e' -> '\u0302'
+  | '\u223c' | '~' -> '\u0303'
+  | '\u00af' -> '\u0304'
+  | '\u02d8' -> '\u0306'
+  | '\u02d9' -> '\u0307'
+  | '\u00a8' -> '\u0308'
+  | '\u02da' -> '\u030a'
+  | '\u02dd' -> '\u030b'
+  | '\u02c7' -> '\u030c'
+  | '\u00b8' -> '\u0327'
+  | '\u02db' -> '\u0328'
+  | _ -> char
+  };
+}
+
+module end;

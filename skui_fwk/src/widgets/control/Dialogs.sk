@@ -1,0 +1,107 @@
+module Ui;
+
+class Dialogs protected {
+  controller: UiDialogs.Controller,
+  state: UiDialogs.State,
+  private supplier: mutable SKFS.Context ~> Widget,
+} extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
+  //
+  type Params = UiDialogs.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    params: UiDialogs.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiDialog.widgetDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+    );
+    builderHdl = mainHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      UiDialog.widgetDirName(path),
+      (context, writer, key, _file) ~> {
+        writer.write(
+          key,
+          WidgetFile(
+            Stack::createForController(
+              context,
+              path.makeChild("stack"),
+              UiStack.LamController{
+                widgets => UiDialogs.Collection(
+                  params.controller,
+                  params.state,
+                ),
+              },
+            ),
+          ),
+        )
+      },
+    );
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      cache,
+      optConfiguration,
+      supplier => ctx ~> builderHdl.get(ctx, SKFS.IID(0)).widget,
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    builtNode = this.supplier(context).getNode(context, constraints);
+    Node(
+      this,
+      builtNode.size,
+      Array[CNode(builtNode, Geometry.Offset::zero, constraints)],
+    )
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    this.supplier(context).getViewportDefinition(context);
+  }
+
+  fun alert(
+    context: mutable SKFS.Context,
+    text: Text,
+    optTitle: ?Text = None(),
+  ): void {
+    this.state.emitOpen(context, UiDialogs.Alert{text, optTitle})
+  }
+
+  fun confirm(
+    context: mutable SKFS.Context,
+    text: Text,
+    target: FWKMessage.Target,
+    type_: UiDialogs.QType = UiDialogs.YesNo(),
+    optTitle: ?Text = None(),
+    autoClose: Bool = true,
+  ): void {
+    this.state.emitOpen(
+      context,
+      UiDialogs.Question{text, target, type_, optTitle, autoClose},
+    )
+  }
+
+  fun input(
+    context: mutable SKFS.Context,
+    message: Text,
+    target: FWKMessage.Target,
+    optTitle: ?Text = None(),
+    autoClose: Bool = true,
+    settings: UiDialogs.Settings = UiDialogs.Settings{},
+  ): void {
+    this.state.emitOpen(
+      context,
+      UiDialogs.Input{message, target, optTitle, autoClose, settings},
+    )
+  }
+}
+
+module end;

@@ -1,0 +1,87 @@
+module UiScroll;
+
+/**
+ * An enumeration denoting the policy to be used by a scrollable Control in deciding whether to show a scroll bar.
+ */
+base class Policy uses Hashable, Equality {
+  children =
+  /**
+   * Indicates that a scroll bar should always be shown.
+   */
+  | Always()
+  /**
+   * Indicates that a scroll bar should be shown when required.
+   */
+  | AsNeeded()
+  /**
+   * Indicates that a scroll bar should never be shown.
+   */
+  | Never()
+  /**
+   * Indicates that a scroll bar should be hidden.
+   */
+  | Hidden()
+
+  fun toCode(): Int
+  | Always() -> 0
+  | AsNeeded() -> 1
+  | Never() -> 2
+  | Hidden() -> 3
+
+  static fun fromCode(code: Int): Policy {
+    code match {
+    | 0 -> Always()
+    | 2 -> Never()
+    | 3 -> Hidden()
+    | 1
+    | _ ->
+      AsNeeded()
+    }
+  }
+}
+
+base class Controller extends Ui.Parameters {
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getHScroll(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.IntProperty;
+  fun getVScroll(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.IntProperty;
+  fun getVPolicy(context: mutable SKFS.Context): Policy;
+  fun getHPolicy(context: mutable SKFS.Context): Policy;
+  fun isNegative(context: mutable SKFS.Context): Bool;
+  fun getUnit(context: mutable SKFS.Context, isUntracked: Bool = false): Int;
+}
+
+class DrawInfo private () extends Ui.DrawInfo {
+  static fun compute(hScroll: Int, vScroll: Int): this {
+    DrawInfo(Geometry.Point(hScroll, vScroll))
+  }
+}
+
+class Sizes(viewport: Float, view: Float) extends SKFS.File {
+  fun isVisible(): Bool {
+    this.view > this.viewport
+  }
+
+  fun clamp(scroll: Int): Int {
+    Math.clamp(scroll, 0, Math.max((this.view - this.viewport).toInt(), 0))
+  }
+
+  fun max(): Int {
+    Math.max((this.view - this.viewport).toInt(), 0)
+  }
+
+  fun page(): Int {
+    this.viewport.toInt()
+  }
+}
+
+fun widgetDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/scroll/widget/")
+}
+
+module end;

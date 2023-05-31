@@ -1,0 +1,479 @@
+module UiInput;
+
+class Metrics(
+  offset: Float,
+  startOffset: Float,
+  width: Float,
+  widths: Vector<Float>,
+  words: Vector<(Part, Float)>,
+  range: Range,
+  reversed: Vector<Float>,
+  nodeWidth: Float,
+  space: Float,
+  faceId: Font.FaceID,
+  optScroll: ?Scroll = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Metrics _ -> x
+    | _ -> invariant_violation("Must be UiInput.Metrics")
+    }
+  }
+
+  static fun compute(
+    context: mutable SKFS.Context,
+    input: Ui.Input,
+    nodeWidth: Float,
+  ): this {
+    textSupport = context.getTextSupport();
+    isAlignRight = input.controller.isAlignRight(context);
+    textSize = input.state.getSize(context);
+    parts = input.state.getParts(context);
+    faceId = context.getThemeFont(UiTheme.Basic());
+    space = textSupport.getWord(context, " ", faceId).width;
+    textWidth = 0.0;
+    widths = mutable Vector<Float>[];
+    words = parts.value.map(p -> {
+      word = textSupport.getWord(context, p.word, faceId);
+      for (_i in Range(0, p.spaces)) {
+        !textWidth = textWidth + space;
+        widths.push(space);
+      };
+      word.widths.each(widths.push);
+      !textWidth = textWidth + word.width;
+      (p, word.width)
+    });
+    reversed = widths.reversed();
+    optScroll = if (textWidth > nodeWidth.toFloat()) {
+      input.state.getScroll(context);
+    } else {
+      None()
+    };
+    (offset, range, startOffset) = if (
+      isAlignRight ||
+      optScroll.map(s -> s.isRight()).default(false)
+    ) {
+      start = if (isAlignRight) 0 else optScroll.map(s -> s.index).default(0);
+      (offset, range, startOffset) = static::computeOffsetRange(
+        start,
+        reversed,
+        nodeWidth.toFloat(),
+      );
+      (
+        nodeWidth.toFloat() - textWidth + offset,
+        Range(textSize - range.end, textSize - range.start),
+        startOffset,
+      )
+    } else {
+      start = optScroll.map(s -> s.index).default(0);
+      (offset, range, _) = static::computeOffsetRange(
+        start,
+        widths,
+        nodeWidth.toFloat(),
+      );
+      (-offset, range, 0.0)
+    };
+    static(
+      offset,
+      startOffset,
+      textWidth,
+      unsafe_chill_trust_me(widths),
+      words,
+      range,
+      reversed,
+      nodeWidth.toFloat(),
+      space,
+      faceId,
+    )
+  }
+
+  fun checkEnsureVisible(optEV: ?Visible): this {
+    optEV.each(ev -> {
+      textSize = this.widths.size();
+      position = ev match {
+      | Pos(p, _) -> Math.clamp(p, 0, textSize)
+      | Incr(incr, _) ->
+        if (incr > 0) {
+          Math.min(this.range.end + incr, textSize);
+        } else {
+          Math.max(this.range.start + incr, 0);
+        }
+      };
+      if (position > this.range.end) {
+        rPosition = textSize - position;
+        !this.optScroll = Some(Right(rPosition));
+        (toffset, trange, !this.startOffset) = static::computeOffsetRange(
+          rPosition,
+          this.reversed,
+          this.nodeWidth,
+        );
+        !this.offset = this.nodeWidth - this.width + toffset;
+        !this.range = Range(textSize - trange.end, textSize - trange.start);
+      };
+      if (position < this.range.start) {
+        !this.optScroll = Some(Left(position));
+        (toffset, !this.range, _) = static::computeOffsetRange(
+          position,
+          this.widths,
+          this.nodeWidth,
+        );
+        !this.startOffset = 0.0;
+        !this.offset = -toffset;
+      };
+    });
+    this
+  }
+
+  fun isIn(position: Int): Bool {
+    position >= this.range.start && position < this.range.end
+  }
+
+  fun getOffset(position: Int): Float {
+    offset = 0.0;
+    for (idx in Range(0, position)) {
+      !offset = offset + this.widths[idx];
+    };
+    offset;
+  }
+
+  fun getPosition(offset: Float, limit: Bool = true): ?Int {
+    if (offset > 0.0) {
+      Some(
+        if (offset < this.startOffset) {
+          this.range.start - 1;
+        } else {
+          pos = this.range.start;
+          width = this.startOffset;
+          while (
+            pos < this.widths.size() &&
+            width + this.widths[pos] <= offset
+          ) {
+            !width = width + this.widths[pos];
+            !pos = pos + 1;
+          };
+          if (limit) {
+            Math.clamp(pos, this.range.start, this.range.end);
+          } else {
+            pos
+          }
+        },
+      )
+    } else if (!limit) {
+      rPos = (this.widths.size() - this.range.start + 1);
+      width = this.startOffset;
+      while (
+        rPos < this.widths.size() &&
+        width + this.reversed[rPos] <= -offset
+      ) {
+        !width = width + this.reversed[rPos];
+        !rPos = rPos + 1;
+      };
+      Some(Math.max(this.widths.size() - rPos, 0))
+    } else {
+      None()
+    }
+  }
+
+  private static fun computeOffsetRange(
+    start: Int,
+    widths: readonly Vector<Float>,
+    width: Float,
+  ): (Float, Range, Float) {
+    offset = 0.0;
+    for (idx in Range(0, start)) {
+      !offset = offset + widths[idx]
+    };
+    end_ = start;
+    vwidth = 0.0;
+    while (end_ < widths.size() && vwidth + widths[end_] < width) {
+      !vwidth = vwidth + widths[end_];
+      !end_ = end_ + 1;
+    };
+    (offset, Range(start, end_), width - vwidth)
+  }
+}
+
+class MetricsCache(
+  metricsHdl: SKFS.LHandle<Metrics>,
+  nodesHdl: SKFS.LHandle<Ui.Node>,
+) extends Ui.NodeBuffer {
+  //
+  static fun create(path: Ui.Path): this {
+    metricsPath = path.toDirName("/ui/verified/inputs/metrics/");
+    nodesPath = Ui.nodesBufferPath(path);
+    MetricsCache(
+      SKFS.LHandle(Metrics::fromFile, metricsPath),
+      SKFS.LHandle(Ui.Node::fromFile, nodesPath),
+    );
+  }
+
+  fun getMetrics(context: mutable SKFS.Context, width: Float): Metrics {
+    this.metricsHdl.get(context, SKFS.IID((width * 8.0).toInt()))
+  }
+
+  fun getNode(
+    context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    this.nodesHdl.get(context, Ui.KConstraints(constraints))
+  }
+
+  fun init(context: mutable SKFS.Context, widget: Ui.Widget): void {
+    input = widget as Ui.Input _;
+    computedHdl = SKFS.LHandle::lazy(
+      Metrics::fromFile,
+      context,
+      input.path.toDirName("/ui/computed/inputs/metrics/"),
+      (context, _self, key) ~>
+        key match {
+        | SKFS.IID(value) ->
+          Metrics::compute(context, input, value.toFloat() / 8.0)
+        | _ -> invariant_violation(`Invalid metrix key ${key}`)
+        }
+      ,
+    );
+    _ = SKFS.LHandle::lazy(
+      Metrics::fromFile,
+      context,
+      this.metricsHdl.getDirName(),
+      (context, _self, key) ~>
+        computedHdl
+          .get(context, key)
+          .checkEnsureVisible(input.state.getEnsureVisible(context))
+      ,
+    );
+    _ = Ui.nNodesBuffer(context, input, this.nodesHdl.getDirName())
+  }
+}
+
+class OffsetLengths(
+  optClear: ?Geometry.Rect,
+  optShow: ?(Ui.Icon, Geometry.Rect),
+  optIcon: ?(Ui.Icon, Geometry.Rect),
+  optStatusIcon: ?(Ui.Icon, Geometry.Rect, ?Level),
+  optFireIcon: ?(Ui.Icon, Geometry.Rect),
+  optPlaceHolder: ?(String, Geometry.Rect),
+  optLabel: ?(String, Geometry.Offset),
+  optPrefix: ?(String, Geometry.Offset),
+  optSuffix: ?(String, Geometry.Offset),
+  optStatusMessage: ?(String, Geometry.Rect, ?Level),
+  optCounter: ?(String, Geometry.Offset),
+) extends Ui.DrawInfo {
+  //
+  static fun compute(
+    context: mutable SKFS.Context,
+    input: Ui.Input,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    layout: Layout,
+  ): this {
+    optClear: ?Geometry.Rect = None();
+    optShow: ?(Ui.Icon, Geometry.Rect) = None();
+    optIcon: ?(Ui.Icon, Geometry.Rect) = None();
+    optStatusIcon: ?(Ui.Icon, Geometry.Rect, ?Level) = None();
+    optFireIcon: ?(Ui.Icon, Geometry.Rect) = None();
+    optPlaceHolder: ?(String, Geometry.Rect) = None();
+    optStatusMessage: ?(String, Geometry.Rect, ?Level) = None();
+    optLabel: ?(String, Geometry.Offset) = None();
+    optPrefix: ?(String, Geometry.Offset) = None();
+    optSuffix: ?(String, Geometry.Offset) = None();
+    optCounter: ?(String, Geometry.Offset) = None();
+    textSupport = context.getTextSupport();
+    left = vSpace.toFloat();
+    withIcons = size.width >= layout.width;
+    withAnnexes = size.height >= layout.height;
+    withPrefixAndSuffix =
+      size.width - 2.0 * UiInput.vSpace.toFloat() >=
+      layout.textWidth;
+    body = if (withAnnexes) layout.body else size.height;
+    faceId = context.getThemeFont(UiTheme.Basic());
+    focused = context.isFocused(input.path);
+    iconTextGap = context.getThemeThickness(UiTheme.IconTextGap());
+    if (withIcons) {
+      input.controller.getIcon(context, faceId.size).each(icon -> {
+        iSize = icon.size(context);
+        iTop = (body - iSize.height) / 2.0;
+        iOffset = absolute.translate(left.toFloat(), iTop).round();
+        !optIcon = Some((icon, Geometry.Rect::fromOffsetSize(iOffset, iSize)));
+        !left = left + iSize.width + iconTextGap.toFloat();
+      });
+    };
+    count = input.state.getSize(context);
+    top = UiInput.hSpace.toFloat();
+    if (withAnnexes && input.controller.isWithLabel(context)) {
+      (input.controller.getLabel(context).map(context.translate) match {
+      | Some(label) if (!label.isBlank()) -> Some(label)
+      | _ ->
+        if (
+          input.controller.isPlaceholderAsLabel(context) &&
+          focused &&
+          count > 0
+        ) {
+          input.controller.getPlaceHolder(context).map(context.translate)
+        } else {
+          None()
+        }
+      }).each(label -> {
+        !optLabel = Some((label, absolute.translate(left, top)));
+      });
+    };
+    !top = layout.textOffset.toFloat();
+    if (withPrefixAndSuffix) {
+      input.controller.getPrefix(context).map(context.translate).each(prefix -> {
+        !optPrefix = Some((prefix, absolute.translate(left, top)));
+        w = layout.prefix + UiInput.vTextGap.toFloat();
+        !left = left + w;
+      });
+    };
+    right = size.width - UiInput.vSpace.toFloat();
+    if (withIcons) {
+      input.controller.getFireIcon(context, faceId.size).each(icon -> {
+        iSize = icon.size(context);
+        iTop = (body - iSize.height) / 2.0;
+        iOffset = absolute.translate(right - layout.fire, iTop).round();
+        !optFireIcon = Some(
+          (icon, Geometry.Rect::fromOffsetSize(iOffset, iSize)),
+        );
+        !right = right - (layout.fire + iconTextGap.toFloat());
+      });
+      if (
+        input.controller.isWithClear(context) &&
+        input.controller.isEditable(context)
+      ) {
+        clear = layout.clear.toFloat();
+        iTop = (body - clear) / 2.0;
+        offset = absolute.translate(right - clear, iTop);
+        !optClear = Some(
+          Geometry.Rect::fromOffsetSize(offset, Geometry.Size::square(clear)),
+        );
+        !right = right - clear - iconTextGap.toFloat();
+      };
+      input.controller.getKind(context) match {
+      | UiInput.Password() ->
+        context
+          .getThemeIcon(UiTheme.Show(input.state.isShowing(context)))
+          .buildIcon(context, faceId.size)
+          .each(icon -> {
+            iSize = icon.size(context);
+            iTop = (body - iSize.height) / 2.0;
+            iDiff = (layout.hide - iSize.width) / 2.0;
+            iOffset = absolute.translate(right - layout.hide + iDiff, iTop);
+            !optShow = Some(
+              (icon, Geometry.Rect::fromOffsetSize(iOffset, iSize)),
+            );
+            !right = right - (layout.hide + iconTextGap.toFloat());
+          })
+      | _ -> void
+      }
+    };
+    if (withPrefixAndSuffix) {
+      input.controller.getSuffix(context).map(context.translate).each(suffix -> {
+        tOffset = absolute.translate(right - layout.suffix.toFloat(), top);
+        !optSuffix = Some((suffix, tOffset));
+        w = (layout.suffix + UiInput.vTextGap.toFloat());
+        !right = right - w;
+      });
+    };
+    if (count == 0) {
+      input.controller
+        .getPlaceHolder(context)
+        .map(context.translate)
+        .each(placeHolder -> {
+          tOffset = absolute.translate(left, top);
+          !optPlaceHolder = Some(
+            (
+              placeHolder,
+              Geometry.Rect::fromOffsetSize(
+                tOffset,
+                Geometry.Size(right - left, body - top),
+              ),
+            ),
+          );
+        })
+    };
+    if (withAnnexes && input.controller.isWithStatus(context)) {
+      helperFaceId = context.getThemeFont(UiTheme.IHelper());
+      !right = size.width - UiInput.vSpace.toFloat();
+      !top = body + UiInput.vTextGap.toFloat();
+      if (input.controller.isWithCounter(context)) {
+        max = input.controller.getMaxChars(context);
+        counterText = `${count} / ${max}`;
+        tSize = textSupport.getSize(context, counterText, helperFaceId);
+        !optCounter = Some(
+          (
+            counterText,
+            absolute.translate(right, top).translateX(-tSize.width),
+          ),
+        );
+        !right = right - tSize.width;
+      };
+      !left = UiInput.vSpace.toFloat();
+      status = input.state.getStatus(context);
+      (optHText, optHIcon, optHLevel) = status match {
+      | KO(optError, level) ->
+        (
+          Some(optError.default(!"Error occurs")),
+          Some(context.getThemeIcon(UiTheme.Error(level))),
+          Some(level),
+        )
+      | _ -> (None(), None(), None())
+      };
+      optHIcon
+        .flatMap(i -> i.buildIcon(context, helperFaceId.size))
+        .each(icon -> {
+          iSize = icon.size(context);
+          iOffset = absolute.translate(left, top).round();
+          !optStatusIcon = Some(
+            (icon, Geometry.Rect::fromOffsetSize(iOffset, iSize), optHLevel),
+          );
+          !left = left + iSize.width + iconTextGap.toFloat();
+        });
+
+      optHText.map(context.translate).each(helper -> {
+        tOffset = absolute.translate(left, top);
+        !optStatusMessage = Some(
+          (
+            helper,
+            Geometry.Rect::fromOffsetSize(
+              tOffset,
+              Geometry.Size(right - left, size.height - top),
+            ),
+            optHLevel,
+          ),
+        );
+      })
+    };
+    OffsetLengths(
+      optClear,
+      optShow,
+      optIcon,
+      optStatusIcon,
+      optFireIcon,
+      optPlaceHolder,
+      optLabel,
+      optPrefix,
+      optSuffix,
+      optStatusMessage,
+      optCounter,
+    )
+  }
+
+  fun shift(offset: Geometry.Offset): this {
+    OffsetLengths(
+      this.optClear.map(o -> o.shift(offset)),
+      this.optShow.map(i -> (i.i0, i.i1.shift(offset))),
+      this.optIcon.map(i -> (i.i0, i.i1.shift(offset))),
+      this.optStatusIcon.map(i -> (i.i0, i.i1.shift(offset), i.i2)),
+      this.optFireIcon.map(i -> (i.i0, i.i1.shift(offset))),
+      this.optPlaceHolder.map(s -> (s.i0, s.i1.shift(offset))),
+      this.optLabel.map(s -> (s.i0, s.i1 + offset)),
+      this.optPrefix.map(s -> (s.i0, s.i1 + offset)),
+      this.optSuffix.map(s -> (s.i0, s.i1 + offset)),
+      this.optStatusMessage.map(s -> (s.i0, s.i1.shift(offset), s.i2)),
+      this.optCounter.map(s -> (s.i0, s.i1 + offset)),
+    )
+  }
+}
+
+module end;

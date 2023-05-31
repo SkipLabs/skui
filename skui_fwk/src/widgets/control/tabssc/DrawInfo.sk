@@ -1,0 +1,49 @@
+module UiTabsSc;
+
+class DrawInfo private (
+  optScrollBefore: ?Geometry.Rect,
+  optScrollAfter: ?Geometry.Rect,
+) extends Ui.DrawInfo {
+  static fun compute(
+    context: mutable SKFS.Context,
+    scroll: Ui.TabsSc,
+    size: Geometry.Size,
+    metrics: Ui.Metrics,
+  ): this {
+    optEV = scroll.state.getEnsureVisible(context);
+    fMetrics = metrics.checkEnsureVisible(optEV);
+    if (fMetrics.optScroll.isSome()) {
+      scroll.state.emitScroll(context, fMetrics.optScroll)
+    };
+    iOffset = fMetrics.offset.toInt();
+    (offset, sSize, rOffset) = scroll.controller.getDirection(context) match {
+    | Ui.HorizontalAxis() ->
+      (
+        Geometry.Point(iOffset, 0),
+        size with {width => 16.0},
+        Geometry.Offset(size.width - 16.0, 0.0),
+      )
+    | Ui.VerticalAxis() ->
+      (
+        Geometry.Point(0, iOffset),
+        size with {height => 16.0},
+        Geometry.Offset(0.0, size.height - 16.0),
+      )
+    };
+    DrawInfo(
+      if (iOffset < 0) {
+        Some(Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, sSize))
+      } else {
+        None()
+      },
+      if (fMetrics.offset + fMetrics.main > fMetrics.size) {
+        Some(Geometry.Rect::fromOffsetSize(rOffset, sSize))
+      } else {
+        None()
+      },
+      offset,
+    )
+  }
+}
+
+module end;

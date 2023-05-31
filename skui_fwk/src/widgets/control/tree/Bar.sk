@@ -1,0 +1,74 @@
+module UiTree;
+
+class Bar{
+  reference: Ui.Path,
+  state: State,
+} extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
+  fun getNode(
+    _context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
+      Ui.Node(this, constraints.biggest(), Array[])
+    } else {
+      Ui.Node(this, constraints.smallest(), Array[])
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | Ui.MainLayer() ->
+      node.optDrawInfo.map(di ~> di as UiTree.DrawInfo _) match {
+      | Some(drawInfo) -> this.computeMain(context, support, absolute, drawInfo)
+      | _ -> Array[]
+      }
+    | Ui.BackgroundLayer()
+    | Ui.ForegroundLayer() ->
+      Array[]
+    };
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    _nodeSum: Ui.NodeSum,
+    _optUserData: ?Ui.UserData,
+  ): ?Ui.DrawInfo {
+    FWKPipeline.gNodeInfo.maybeGetValue(context, this.reference).flatMap(ni ->
+      ni.info.optDrawInfo
+    )
+  }
+
+  private fun computeMain(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    drawInfo: UiTree.DrawInfo,
+  ): Array<Ui.Drawable> {
+    hover = this.state.isHover(context);
+    drawInfo.optBar
+      .map(bar -> {
+        size = bar.i0.size();
+        color = context
+          .getThemeColor(UiTheme.Regular())
+          .scaleAlpha(if (hover) 0.5 else 0.1);
+        Array[
+          support.roundedRectangle(
+            absolute + bar.i0.topLeft(),
+            size,
+            color,
+            size.width / 2.0,
+          ),
+        ]
+      })
+      .default(Array[])
+  }
+}
+
+module end;

@@ -1,0 +1,51 @@
+module Shape;
+
+extension class Path {
+  fun getAbsoluteBounds(): Geometry.Rect {
+    optMin: ?Geometry.Offset = None();
+    optMax: ?Geometry.Offset = None();
+    checkMin = pt -> !optMin = Some(optMin.map(min -> min.min(pt)).default(pt));
+    checkMax = pt -> !optMax = Some(optMax.map(max -> max.max(pt)).default(pt));
+    check = pt -> {
+      checkMin(pt);
+      checkMax(pt);
+    };
+    checkElement: PathElement -> void = e -> {
+      e match {
+      | MoveTo(pt) -> check(pt)
+      | ClosePath() -> void
+      | LineTo(end) -> check(end)
+      | QuadCurveTo(end, control) ->
+        check(control);
+        check(end)
+      | CubicCurveTo(end, firstControl, secondControl) ->
+        check(firstControl);
+        check(secondControl);
+        check(end)
+      }
+    };
+    this.elements.each(checkElement);
+    min = optMin.default(Geometry.Offset::zero);
+    max = optMax.default(Geometry.Offset::zero);
+    Geometry.Rect(min.dx, min.dy, max.dx, max.dy);
+  }
+
+  fun toDrawable(support: Ui.DrawableSupport, paint: Ui.Paint): ?Ui.Drawable {
+    bounds = this.getAbsoluteBounds();
+    pxRange = 8;
+    (image, conv) = MTSDF.toMSDF{shape => MTSDF.Shape::fromPath(this), pxRange};
+    Some(
+      support.msdf(
+        bounds.topLeft(),
+        bounds.size(),
+        image,
+        conv,
+        pxRange,
+        0.0,
+        paint,
+      ),
+    )
+  }
+}
+
+module end;

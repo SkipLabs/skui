@@ -1,0 +1,203 @@
+module Text;
+
+base class Portion extends SKFS.File uses Hashable, Orderable {
+  children =
+  | Full()
+
+  static fun forFile(obj: SKFS.File): Portion {
+    obj match {
+    | x @ Portion _ -> x
+    | _ -> invariant_violation("Invalid portion")
+    }
+  }
+
+  fun intersection(other: Portion): ?Portion {
+    this match {
+    | Full() -> Some(other)
+    | r1 @ Range _ ->
+      other match {
+      | Full() -> Some(this)
+      | r2 @ Range _ -> r1.rangeIntersection(r2)
+      }
+    }
+  }
+
+  /**
+   * Compute the intersection between this en the including range of ranges
+   * Ranges shall be ordered
+   * returns the computed intersection and the number of ranges intersecting with this
+   **/
+  fun intersectionWidthGroup(ranges: Array<Text.Range>): (Int, ?Range, Int) {
+    this match {
+    | Full() ->
+      including = Text.Token::make(ranges.first().start, ranges.last().end);
+      (0, Some(including), ranges.size())
+    | r @ Range _ ->
+      optStart: ?Int = None();
+      optEnd: ?Int = None();
+      before = 0;
+      count = 0;
+      for (range in ranges) {
+        if (optStart.isNone()) {
+          if (r.start <= range.end) {
+            !optStart = Some(Math.max(r.start, range.start));
+          }
+        };
+        if (optStart.isSome()) {
+          !count = count + 1;
+          if (optEnd.isNone() && r.end <= range.end) {
+            !optEnd = Some(Math.min(r.end, range.end));
+            break void;
+          }
+        } else {
+          !before = before + 1;
+        }
+      };
+      if (optStart.isSome() && optEnd.isSome()) {
+        (
+          before,
+          Some(Text.Token::make(optStart.fromSome(), optEnd.fromSome())),
+          count,
+        )
+      } else {
+        (0, None(), 0)
+      }
+    }
+  }
+
+  fun checkCaret(caret: Int): ?Int {
+    this match {
+    | Full() -> Some(caret)
+    | r @ Range _ ->
+      if (caret >= r.start && caret <= r.end) {
+        Some(caret)
+      } else {
+        None()
+      }
+    }
+  }
+}
+
+base class Range private {start: Int, end: Int} extends Portion uses IntoRange {
+  fun toRange(): .Range {
+    .Range(this.start, this.end)
+  }
+
+  fun rangeIntersection(other: Range): ?Range {
+    start = Math.max(this.start, other.start);
+    end = Math.min(this.end, other.end);
+    if (start < end) {
+      Some(Token::make(start, end))
+    } else {
+      None()
+    }
+  }
+
+  fun isCollapsed(): Bool {
+    this.end == this.start;
+  }
+
+  fun isValid(): Bool {
+    this.end >= 0 && this.start >= 0;
+  }
+
+  fun size(): Int {
+    this.end - this.start;
+  }
+
+  fun slice(start: Int, end: Int): ?Range {
+    this.rangeIntersection(Token::make(this.start + start, this.start + end))
+  }
+}
+
+class Token private {} extends Range {
+  static fun make(start: Int, end: Int): Token {
+    Token{start, end}
+  }
+
+  static fun full(text: String): Token {
+    Token::make(0, text.chars().size())
+  }
+
+  static fun fromRange(range: .Range): Token {
+    Token::make(range.start, range.end)
+  }
+}
+
+fun isNormalized<T: IntoRange>(value: T): Bool {
+  range = value.toRange();
+  range.end >= range.start;
+}
+
+fun charsAfter<T: IntoRange>(chars: Array<Char>, value: T): Array<Char> {
+  if (isNormalized(value)) {
+    chars.drop(value.toRange().end);
+  } else {
+    Array[];
+  }
+}
+
+fun after<T: IntoRange>(text: String, value: T): String {
+  String::fromChars(charsAfter(text.chars().toArray(), value));
+}
+
+fun charsBefore<T: IntoRange>(chars: Array<Char>, value: T): Array<Char> {
+  if (isNormalized(value)) {
+    chars.slice(0, value.toRange().start);
+  } else {
+    Array[];
+  }
+}
+
+fun before<T: IntoRange>(text: String, value: T): String {
+  String::fromChars(charsBefore(text.chars().toArray(), value));
+}
+
+fun charsInside<T: IntoRange>(chars: Array<Char>, value: T): Array<Char> {
+  if (isNormalized(value)) {
+    range = value.toRange();
+    chars.slice(range.start, range.end);
+  } else {
+    Array[];
+  }
+}
+
+fun inside<T: IntoRange>(text: String, value: T): String {
+  String::fromChars(charsInside(text.chars().toArray(), value));
+}
+
+fun charsOutside<T: IntoRange>(chars: Array<Char>, value: T): Array<Char> {
+  replaceChars(chars, Array[], value);
+}
+
+fun replaceChars<T: IntoRange>(
+  text: Array<Char>,
+  toReplace: Array<Char>,
+  value: T,
+): Array<Char> {
+  before = charsBefore(text, value);
+  after = charsAfter(text, value);
+  first = before.size();
+  second = first + toReplace.size();
+  Array::fillBy(second + after.size(), index ~> {
+    if (index < first) {
+      before[index];
+    } else if (index < second) {
+      toReplace[index - first]
+    } else {
+      after[index - second]
+    }
+  });
+}
+
+fun outside<T: IntoRange>(text: String, value: T): String {
+  String::fromChars(charsOutside(text.chars().toArray(), value));
+}
+
+fun replace<T: IntoRange>(text: String, toReplace: String, value: T): String {
+  String::fromChars(
+    replaceChars(text.chars().toArray(), toReplace.chars().toArray(), value),
+  );
+}
+
+module end;

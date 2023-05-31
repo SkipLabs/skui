@@ -1,0 +1,67 @@
+module UiMonospace;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+  | All(value: Vector<Executable>)
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHover(optValue: ?Hover)
+  | SetArmed(value: Bool)
+  | SetMoveSelection(moveSelection: Bool)
+  | SetHScroll(optScroll: ?Ui.Scroll)
+  | SetVScroll(optScroll: ?Ui.Scroll)
+  | CancelScrolling(tick: SKFS.Tick)
+  | SetBlinking(value: Bool)
+  | ToggleHidden(tick: SKFS.Tick)
+  | Multiples(commands: Array<Command>)
+}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | ManageDiacritic(char: Char)
+  | ManageUnicode(optUnicode: ?Int)
+  | ManageHScrolling(value: Int, tick: SKFS.Tick)
+  | ManageVScrolling(value: Int, tick: SKFS.Tick)
+  | ManageHVisible(value: Int)
+  | ManageVVisible(value: Int)
+  | Copy()
+  | Cut()
+  | Save()
+  | Duplicate()
+  | SwitchLine()
+  | Paste(content: FWKClipboard.Content)
+  | Insert(text: String, ignoreSelection: Bool, optPosition: ?Ui.Position)
+  | Upper()
+  | Lower()
+  | ManageText(text: String)
+  | GoToLine(optValue: ?String)
+  | SelectLine(lineIdx: Int)
+  | DnDTarget(optPosition: ?Ui.Position)
+}
+
+base class Repeatable(
+  optRepeatOn: ?FWK.Repeat = None(),
+  count: Int = 1,
+) extends ExecCommand {
+  children =
+  | GoTo(target: Target)
+  | SelectTo(target: Selection)
+  | DeleteTo(target: Target)
+  | Undo()
+  | Redo()
+  | DecrLine()
+  | IncrLine()
+  | Indent()
+  | Outdent()
+  | NewLine()
+
+  fun next(): this {
+    !this.count = this.count + 1;
+    this;
+  }
+}
+
+module end;

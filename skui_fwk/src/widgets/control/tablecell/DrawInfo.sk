@@ -1,0 +1,94 @@
+module UiTableCell;
+
+class DrawInfo private (
+  optLabel: ?(String, Geometry.Rect, Font.FaceID, Text.FixedAlign),
+  optIcon: ?(Ui.Icon, Geometry.Offset, Geometry.Size),
+  optAction: ?(Ui.Icon, Geometry.Offset, Geometry.Size),
+  optBounds: ?Geometry.Rect,
+) extends Ui.DrawInfo {
+  //
+  static fun compute(
+    layout: Layout,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    alignment: Text.FixedAlign,
+  ): this {
+    left = padding;
+    width = size.width - 2.0 * padding;
+    optIcon: ?(Ui.Icon, Geometry.Offset, Geometry.Size) = None();
+    optAction: ?(Ui.Icon, Geometry.Offset, Geometry.Size) = None();
+    optBounds: ?Geometry.Rect = None();
+    height = Math.ceil(size.height) - 2.0 * padding.toFloat();
+    right = offset.dx + size.width - padding;
+    layout.optAction.each(action -> {
+      aTop = Math.round(
+        offset.dy + (size.height - action.i1.height) / 2.0 + actionPadding,
+      );
+      aSize = action.i1 - Geometry.Size::square(2.0 * actionPadding);
+      aLeft = if (layout.optLabel.isSome() || layout.optIcon.isSome()) {
+        aLeft = Math.round(right - action.i1.width + actionPadding);
+        !width = width - action.i1.width - layout.iconTextGap;
+        aLeft
+      } else {
+        Math.round(left + (width - aSize.width) / 2.0);
+      };
+      aOffset = Geometry.Offset(aLeft, aTop);
+      !optAction = Some((action.i0, aOffset, aSize));
+      !optBounds = Some(
+        Geometry.Rect::fromOffsetSize(
+          aOffset - Geometry.Offset(actionPadding, actionPadding),
+          action.i1,
+        ),
+      )
+    });
+    optLabel = layout.optLabel match {
+    | Some(label) ->
+      Some(
+        layout.optIcon match {
+        | Some((icon, iSize)) ->
+          top = offset.dy + padding;
+          iOffset = Geometry.Point(
+            Math.round(left).toInt(),
+            Math.round(top + (height - iSize.height) / 2.0).toInt(),
+          );
+          !optIcon = Some((icon, iOffset.toOffset(), iSize));
+          !width = width - iSize.width - layout.iconTextGap;
+          !left = left + iSize.width + layout.iconTextGap;
+          topLeft = Geometry.Offset(left, top);
+          lSize = Geometry.Size(width, height);
+          (
+            label.i0,
+            Geometry.Rect::fromOffsetSize(topLeft, lSize),
+            label.i2,
+            alignment,
+          )
+        | _ ->
+          top = offset.dy + padding;
+          topLeft = Geometry.Offset(left, top);
+          lSize = Geometry.Size(width, height);
+          (
+            label.i0,
+            Geometry.Rect::fromOffsetSize(topLeft, lSize),
+            label.i2,
+            alignment,
+          )
+        },
+      )
+    | _ ->
+      layout.optIcon match {
+      | Some((icon, iSize)) ->
+        top = offset.dy + padding;
+        iOffset = Geometry.Point(
+          Math.round(left + (width - iSize.width) / 2.0).toInt(),
+          Math.round(top + (height - iSize.height) / 2.0).toInt(),
+        );
+        !optIcon = Some((icon, iOffset.toOffset(), iSize))
+      | _ -> void
+      };
+      None()
+    };
+    static(optLabel, optIcon, optAction, optBounds)
+  }
+}
+
+module end;

@@ -1,0 +1,81 @@
+module UiTab;
+
+base class ForStorage
+  extends FWKMessage.Support
+  uses FWKMessage.WithUpdate<Command> {
+  //
+  fun init(_context: mutable SKFS.Context): void {
+    void
+  }
+
+  protected fun executeForStorage(
+    context: mutable SKFS.Context,
+    storage: Storage,
+    command: Command,
+  ): void {
+    command match {
+    | SetHover(close, hover) -> storage.setHover(context, close, hover)
+    | SetArmed(close, armed) -> storage.setArmed(context, close, armed)
+    | SetTargeted(targeted) -> storage.setTargeted(context, targeted)
+    | Multiple(values) ->
+      values.each(c -> this.executeForStorage(context, storage, c))
+    | SetIndeterminate(value) ->
+      if (value < 0) {
+        storage.setIndeterminate(context, None())
+      } else {
+        storage.setIndeterminate(context, Some(value));
+        FWKMessage.emit(
+          context,
+          storage.getName(),
+          storage.getScope(),
+          SetIndeterminate((value + 1) % 8),
+          false,
+          Some(85),
+        );
+      }
+    }
+  }
+}
+
+class Messages(storage: Storage) extends ForStorage {
+  protected fun execute(
+    context: mutable SKFS.Context,
+    _name: String,
+    _scope: String,
+    command: Command,
+  ): void {
+    this.executeForStorage(context, this.storage, command)
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+}
+
+class AllMessages() extends ForStorage {
+  //
+  protected fun execute(
+    context: mutable SKFS.Context,
+    name: String,
+    scope: String,
+    command: Command,
+  ): void {
+    HStorage::forNameAndScope(context, name, scope).each(storage ->
+      this.executeForStorage(context, storage, command)
+    )
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+}
+
+module end;

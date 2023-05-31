@@ -1,0 +1,293 @@
+module UiDialogs;
+
+fun toJSON(jsv: JSONValue): JSON.Value {
+  jsv.toJSON()
+}
+
+extension base class Command {
+  //
+  fun toJSON(): JSON.Value
+  | Open(kind) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "kind" => kind.toJSON(),
+      ],
+    )
+  | SetVisible(dialogId, visible) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "dialogId" => JSON.IntNumber(dialogId),
+        "visible" => JSON.Bool(visible),
+      ],
+    )
+  | Close(dialogId) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "dialogId" => JSON.IntNumber(dialogId),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDialogs.Open" -> Open(Kind::fromJSON(jso.get("kind")))
+    | "UiDialogs.Close" -> Close(jso.getInt("dialogId"))
+    | "UiDialogs.SetVisible" ->
+      SetVisible(jso.getInt("dialogId"), jso.getBool("visible"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiDialogs.Command`)
+    }
+  }
+}
+
+extension base class Kind extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | Alert{text, optTitle} ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "text" => text.toJSON(),
+        "title" => optTitle.map(title -> title.toJSON()).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Question{text, target, type_, optTitle, autoClose} ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "text" => text.toJSON(),
+        "target" => target.toJSON(),
+        "type" => type_.toJSON(),
+        "title" => optTitle.map(toJSON).default(JSON.Null()),
+        "autoClose" => JSON.Bool(autoClose),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Input{message, target, optTitle, autoClose, settings} ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "message" => message.toJSON(),
+        "target" => target.toJSON(),
+        "settings" => settings.toJSON(),
+        "title" => optTitle.map(toJSON).default(JSON.Null()),
+        "autoClose" => JSON.Bool(autoClose),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Custom(dirName, key) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "dirName" => JSON.String(dirName.toString()),
+        "key" => JSON.String(key),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Kind {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDialogs.Alert" ->
+      Alert{
+        text => Text::fromJSON(jso.get("text")),
+        optTitle => jso.maybeGet("title").map(Text::fromJSON),
+      }
+    | "UiDialogs.Question" ->
+      Question{
+        text => Text::fromJSON(jso.get("text")),
+        target => FWKMessage.Target::fromJSON(jso.get("target")),
+        type_ => QType::fromJSON(jso.get("type")),
+        optTitle => jso.maybeGet("title").map(Text::fromJSON),
+        autoClose => jso.getBool("autoClose"),
+      }
+    | "UiDialogs.Input" ->
+      Input{
+        message => Text::fromJSON(jso.get("message")),
+        target => FWKMessage.Target::fromJSON(jso.get("target")),
+        optTitle => jso.maybeGet("title").map(Text::fromJSON),
+        autoClose => jso.getBool("autoClose"),
+        settings => Settings::fromJSON(jso.get("settings")),
+      }
+    | "UiDialogs.Custom" ->
+      Custom(
+        SKFS.DirName::create(jso.getString("dirName")),
+        jso.getString("key"),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiDialogs.Kind`)
+    }
+  }
+}
+/*
+extension class InputSupplier extends JSONValue {
+  //
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "textVar" => this.optTextVar.map(UiEngine.toJSON).default(JSON.Null()),
+        "positionVar" => this.optPositionVar.map(UiEngine.toJSON).default(
+          JSON.Null(),
+        ),
+        "selectionVar" => this.optSelectionVar.map(UiEngine.toJSON).default(
+          JSON.Null(),
+        ),
+        "statusVar" => this.optStatusVar.map(UiEngine.toJSON).default(
+          JSON.Null(),
+        ),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): InputSupplier {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDialogs.InputSupplier" ->
+      InputSupplier{
+        optTextVar => jso.maybeGet("textVar").map(UiEngine.fromJSON).map(v ~>
+          v as Ui.StringVar _
+        ),
+        optPositionVar => jso
+          .maybeGet("positionVar")
+          .map(UiEngine.fromJSON)
+          .map(v ~> v as Ui.IntVar _),
+        optSelectionVar => jso
+          .maybeGet("rangeVar")
+          .map(UiEngine.fromJSON)
+          .map(v ~> v as Ui.RangeVar _),
+        optStatusVar => jso
+          .maybeGet("statusVar")
+          .map(UiEngine.fromJSON)
+          .map(v ~> v as Ui.StatusVar _),
+      }
+    | _ ->
+      invariant_violation(
+        `Invalid json object ${cl} for UiDialogs.InputSupplier`,
+      )
+    }
+  }
+}
+*/
+
+extension base class QType extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | YesNo(withNeutral)
+  | AcceptDecline(withNeutral)
+  | AgreeDisagree(withNeutral)
+  | ConfirmDismiss(withNeutral) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "withNeutral" => JSON.Bool(withNeutral),
+      ],
+    )
+  | QCustom(confirm, dismiss, optNeutral) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "confirm" => confirm.toJSON(),
+        "dismiss" => dismiss.toJSON(),
+        "neutral" => optNeutral
+          .map(neutral -> neutral.toJSON())
+          .default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+
+  static fun fromJSON(jsv: JSON.Value): QType {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDialogs.YesNo" -> YesNo(jso.getBool("withNeutral"))
+    | "UiDialogs.AcceptDecline" -> AcceptDecline(jso.getBool("withNeutral"))
+    | "UiDialogs.AgreeDisagree" -> AgreeDisagree(jso.getBool("withNeutral"))
+    | "UiDialogs.ConfirmDismiss" -> ConfirmDismiss(jso.getBool("withNeutral"))
+    | "UiDialogs.QCustom" ->
+      QCustom(
+        Text::fromJSON(jso.get("confirm")),
+        Text::fromJSON(jso.get("dismiss")),
+        jso.maybeGet("neutral").map(Text::fromJSON),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiDialogs.Kind`)
+    }
+  }
+}
+
+extension class Settings extends JSONValue {
+  //
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "kind" => this.kind.toJSON(),
+        "maxChars" => JSON.IntNumber(this.maxChars),
+        "visibleChars" => JSON.IntNumber(this.visibleChars),
+        "text" => this.optText.map(toJSON).default(JSON.Null()),
+        "position" => this.optPosition.map(toJSON).default(JSON.Null()),
+        "selection" => this.optSelection.map(toJSON).default(JSON.Null()),
+        "status" => this.optStatus.map(toJSON).default(JSON.Null()),
+        //
+        "prefix" => this.optPrefix.map(toJSON).default(JSON.Null()),
+        "suffix" => this.optSuffix.map(toJSON).default(JSON.Null()),
+        "placeHolder" => this.optPlaceHolder.map(toJSON).default(JSON.Null()),
+        "tooltip" => this.optTooltip.map(toJSON).default(JSON.Null()),
+        "icon" => this.optIcon.map(toJSON).default(JSON.Null()),
+        "disabled" => this.optDisabled.map(toJSON).default(JSON.Null()),
+        "withCounter" => this.optWithCounter.map(toJSON).default(JSON.Null()),
+        "withStatus" => this.optWithStatus.map(toJSON).default(JSON.Null()),
+        "withClear" => this.optWithClear.map(toJSON).default(JSON.Null()),
+        "alignRight" => this.optAlignRight.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Settings {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDialogs.Settings" ->
+      Settings{
+        kind => UiInput.Kind::fromJSON(jso.get("kind")),
+        maxChars => jso.getInt("maxChars"),
+        visibleChars => jso.getInt("visibleChars"),
+        //
+        optText => jso.maybeGet("text"),
+        optPosition => jso.maybeGet("position"),
+        optSelection => jso.maybeGet("selection"),
+        optStatus => jso.maybeGet("status"),
+        //
+        optSuffix => jso.maybeGet("suffix"),
+        optPrefix => jso.maybeGet("prefix"),
+        optPlaceHolder => jso.maybeGet("placeHolder"),
+        optTooltip => jso.maybeGet("tooltip"),
+        optIcon => jso.maybeGet("icon"),
+        optDisabled => jso.maybeGet("disabled"),
+        optWithCounter => jso.maybeGet("withCounter"),
+        optWithStatus => jso.maybeGet("withStatus"),
+        optWithClear => jso.maybeGet("withClear"),
+        optAlignRight => jso.maybeGet("alignRight"),
+      }
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiDialogs.Settings`)
+    }
+  }
+}
+
+fun linkToJSON(
+  className: String,
+  dirName: SKFS.DirName,
+  property: SKFS.StrID,
+): JSON.Value {
+  JSON.Object(
+    Map[
+      "__class" => JSON.String(className),
+      "dirName" => JSON.String(dirName.toString()),
+      "property" => JSON.String(property.toString()),
+    ],
+  )
+}
+
+module end;

@@ -1,0 +1,61 @@
+module FWK;
+
+base class Variables<T> {
+  fun getValue(
+    context: mutable SKFS.Context,
+    key: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): T;
+  fun setValue(
+    context: mutable SKFS.Context,
+    key: SKFS.BaseName,
+    value: T,
+  ): void;
+}
+
+base class Variable<T> {
+  fun getValue(context: mutable SKFS.Context, isUntracked: Bool = false): T;
+  fun setValue(context: mutable SKFS.Context, value: T): void;
+}
+
+class HandleVariable<T: frozen>(
+  handle: SKFS.IHandle<T>,
+  baseName: SKFS.BaseName,
+  default: T,
+  onWrite: mutable SKFS.Context ~> void = _ctx ~> void,
+) extends Variable<T> {
+  fun getValue(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+    if (isUntracked) {
+      this.handle.uMaybeGet(context, this.baseName).default(this.default)
+    } else {
+      this.handle.maybeGet(context, this.baseName).default(this.default)
+    }
+  }
+
+  fun setValue(context: mutable SKFS.Context, value: T): void {
+    this.handle.write(context, this.baseName, value);
+    this.onWrite(context);
+  }
+}
+
+class HandleOptVariable<T: frozen>(
+  handle: SKFS.IHandle<T>,
+  baseName: SKFS.BaseName,
+) extends Variable<?T> {
+  fun getValue(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
+    if (isUntracked) {
+      this.handle.uMaybeGet(context, this.baseName)
+    } else {
+      this.handle.maybeGet(context, this.baseName)
+    }
+  }
+
+  fun setValue(context: mutable SKFS.Context, optValue: ?T): void {
+    optValue match {
+    | Some(value) -> this.handle.write(context, this.baseName, value)
+    | _ -> this.handle.remove(context, this.baseName)
+    }
+  }
+}
+
+module end;

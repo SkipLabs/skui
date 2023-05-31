@@ -1,0 +1,56 @@
+extension base class Level uses HasClassName {
+  fun toJSON(): JSON.Value {
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Level {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Information" -> Information()
+    | "Warning" -> Warning()
+    | "Error" -> Error()
+    | _ -> invariant_violation(`Invalid json object ${cl} for Level`)
+    }
+  }
+}
+
+extension base class Status uses HasClassName {
+  fun toJSON(): JSON.Value
+  | Running(optProgress) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "progress" => optProgress
+          .map(progress -> JSON.IntNumber(progress))
+          .default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | KO(optError, level) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "error" => optError.map(error -> error.toJSON()).default(JSON.Null()),
+        "level" => level.toJSON(),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | OK()
+  | Valid() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): Status {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Running" -> Running(jso.maybeGetInt("progress"))
+    | "OK" -> OK()
+    | "Valid" -> Valid()
+    | "KO" ->
+      KO(
+        jso.maybeGet("error").map(Text::fromJSON),
+        Level::fromJSON(jso.get("level")),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Status`)
+    }
+  }
+}

@@ -1,0 +1,34 @@
+module Ui;
+
+class Background(
+  paint: Paint,
+  padding: Geometry.InsetsGeometry = Geometry.Insets::all(0.0),
+  optRadius: ?Ui.Dim = None(),
+) extends Decoration {
+  fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets {
+    Geometry.resolveInsest(this.padding, direction);
+  }
+
+  fun fillDrawables(
+    _context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    _direction: Ui.HorizontalDirection,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    this.optRadius match {
+    | Some(radius) ->
+      pixels = radius match {
+      | r @ RelativeToSize _ -> r.pixels(size.width, size.height)
+      | f @ FixedSize _ -> f.pixels()
+      };
+      drawables.push(
+        support.roundedRectangle(offset, size, this.paint as .Color _, pixels),
+      )
+    | _ -> drawables.push(support.rectangle(offset, size, this.paint))
+    }
+  }
+}
+
+module end;

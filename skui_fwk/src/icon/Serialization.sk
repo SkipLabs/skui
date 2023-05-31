@@ -1,0 +1,58 @@
+module UiIcon;
+
+extension base class Kind extends JSONValue {
+  fun toJSON(): JSON.Value
+  | KInner()
+  | KTheme()
+  | KImage() ->
+    JSON.Object(.Map["__class" => JSON.String(this.getClassName())])
+  | KCategory(value) ->
+    JSON.Object(
+      .Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.String(value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Kind {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiIcon.KInner" -> KInner()
+    | "UiIcon.KTheme" -> KTheme()
+    | "UiIcon.KImage" -> KImage()
+    | "UiIcon.KCategory" -> KCategory(jso.getString("value"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiIcon.Kind`)
+    }
+  }
+}
+
+extension class Description extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      .Map[
+        "__class" => JSON.String(this.getClassName()),
+        "kind" => this.kind.toJSON(),
+        "name" => JSON.String(this.name),
+        "size" => this.optSize.map(p -> p.toJSON()).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Description {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiIcon.Description" ->
+      Description(
+        Kind::fromJSON(jso.get("kind")),
+        jso.getString("name"),
+        jso.maybeGet("size").map(Ui.Size::fromJSON),
+      )
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiIcon.Description`)
+    }
+  }
+}
+
+module end;

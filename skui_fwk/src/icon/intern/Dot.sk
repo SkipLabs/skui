@@ -1,0 +1,24 @@
+module Icon;
+
+class Dot(width: Int = 16, optPaint: ?Ui.Paint = None()) extends Ui.Icon {
+  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+    Geometry.Size::square(this.width.toFloat());
+  }
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this {
+    static(this.width, this.optPaint, optSize, keepRatio)
+  }
+
+  fun fillDrawables(
+    _context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    drawables.push(support.ellipse(offset, size, paint))
+  }
+}
+
+module end;

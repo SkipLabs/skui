@@ -1,0 +1,28 @@
+module UiEvent;
+
+class TouchPoint(
+  point: Geometry.Offset,
+  screen: Geometry.Offset,
+) uses Hashable, Equality {}
+
+class Touch(points: Array<TouchPoint>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Touch _ -> x
+    | _ -> invariant_violation("Must be UiEvent.Touch")
+    }
+  }
+}
+
+class Size(width: Int, height: Int) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Size _ -> x
+    | _ -> invariant_violation("Must be UiEvent.Size")
+    }
+  }
+}
+
+module end;

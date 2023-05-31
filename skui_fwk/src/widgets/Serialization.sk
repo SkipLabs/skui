@@ -1,0 +1,326 @@
+module Ui;
+
+extension class Path extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "id" => JSON.String(this.id),
+        "parrent" => this.optParent.map(p -> p.toJSON()).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Path {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Path" ->
+      Path(jso.getString("id"), jso.maybeGet("parrent").map(Path::fromJSON))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Path`)
+    }
+  }
+}
+
+extension base class Scroll extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | Start(position)
+  | End(position) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "position" => JSON.IntNumber(position),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Scroll {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Start" -> Start(jso.getInt("position"))
+    | "Ui.End" -> End(jso.getInt("position"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Scroll`)
+    }
+  }
+}
+
+extension base class Visible extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | Pos(value, tick)
+  | Incr(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Visible {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Pos" -> Pos(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "Ui.Incr" -> Incr(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Visible`)
+    }
+  }
+}
+
+extension base class Timed extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | TimedBool(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.Bool(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | TimedString(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.String(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | TimedInt(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | TimedRange(value, tick)
+  | TimedStatus(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => value.toJSON(),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Timed {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.TimedBool" ->
+      TimedBool(jso.getBool("value"), SKFS.Tick(jso.getInt("tick")))
+    | "Ui.TimedString" ->
+      TimedString(jso.getString("value"), SKFS.Tick(jso.getInt("tick")))
+    | "Ui.TimedInt" ->
+      TimedInt(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "Ui.TimedRange" ->
+      TimedRange(
+        Range::fromJSON(jso.get("value")),
+        SKFS.Tick(jso.getInt("tick")),
+      )
+    | "Ui.TimedStatus" ->
+      TimedStatus(
+        Status::fromJSON(jso.get("value")),
+        SKFS.Tick(jso.getInt("tick")),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Timed`)
+    }
+  }
+}
+
+extension base class Drop extends JSONValue {
+  fun toJSON(): JSON.Value
+  | DropBefore()
+  | DropAfter()
+  | DropIn() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): Drop {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.DropBefore" -> DropBefore()
+    | "Ui.DropAfter" -> DropAfter()
+    | "Ui.DropIn" -> DropIn()
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Drop`)
+    }
+  }
+}
+
+extension class Position extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "line" => JSON.IntNumber(this.line),
+        "column" => JSON.IntNumber(this.column),
+        "display" => JSON.Bool(this.display),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Position {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Position" ->
+      Position(jso.getInt("line"), jso.getInt("column"), jso.getBool("display"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Position`)
+    }
+  }
+}
+
+extension class Portion extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "start" => this.start.toJSON(),
+        "end" => this.end.toJSON(),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Portion {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Portion" ->
+      Portion(
+        Ui.Position::fromJSON(jso.get("start")),
+        Ui.Position::fromJSON(jso.get("end")),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Portion`)
+    }
+  }
+}
+
+extension base class EndLine extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | CR()
+  | LF()
+  | CRLF() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): EndLine {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.CR" -> CR()
+    | "Ui.LF" -> LF()
+    | "Ui.CRLF" -> CRLF()
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.EndLine`)
+    }
+  }
+}
+
+extension base class Indentation extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | Space(size)
+  | Tabulation(size) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "size" => JSON.IntNumber(size),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Indentation {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Space" -> Space(jso.getInt("size"))
+    | "Ui.Tabulation" -> Tabulation(jso.getInt("size"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Indentation`)
+    }
+  }
+}
+
+extension base class Separation extends JSONValue {
+  fun toJSON(): JSON.Value
+  | FromStart(value)
+  | FromEnd(value)
+  | Percent(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Separation {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.FromStart" -> FromStart(JSON.getInt("value", jso))
+    | "Ui.FromEnd" -> FromEnd(JSON.getInt("value", jso))
+    | "Ui.Percent" -> Percent(Math.clamp(JSON.getInt("value", jso), 0, 100))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiSplit.Separation`)
+    }
+  }
+}
+
+extension class Size extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "width" => this.width.toJSON(),
+        "height" => this.height.toJSON(),
+        "keepRatio" => JSON.Bool(this.keepRatio),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Size {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Size" ->
+      Size(
+        Ui.Dim::fromJSON(jso.get("width")),
+        Ui.Dim::fromJSON(jso.get("height")),
+        jso.getBool("keepRatio"),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Size`)
+    }
+  }
+}
+
+extension base class Dim extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.FloatNumber(this.value),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Dim {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    value = JSON.getFloat("value", jso);
+    cl match {
+    | "Ui.Px" -> Px(value)
+    | "Ui.Pt" -> Pt(value)
+    | "Ui.Inch" -> Inch(value)
+    | "Ui.Pica" -> Pica(value)
+    | "Ui.Centimeter" -> Centimeter(value)
+    | "Ui.Millimeter" -> Millimeter(value)
+    | "Ui.RWidth" -> RWidth(value)
+    | "Ui.RHeight" -> RHeight(value)
+    | "Ui.RMin" -> RMin(value)
+    | "Ui.RMax" -> RMax(value)
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Dim`)
+    }
+  }
+}
+
+module end;

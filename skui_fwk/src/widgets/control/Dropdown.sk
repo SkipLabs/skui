@@ -1,0 +1,496 @@
+module Ui;
+
+class Dropdown protected {
+  controller: UiDropdown.Controller,
+  state: UiDropdown.State,
+  widgetsHdl: SKFS.EHandle<WidgetFile>,
+} extends StrictWidget uses WithNodeCache {
+  //
+  type Params = UiDropdown.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    params: UiDropdown.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Configuration = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiDropdown.dataDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+    );
+    dataDirName = UiDropdown.dataDirName(path);
+    dataHdl = mainHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      dataDirName,
+      (context, writer, _key, _file) ~> {
+        count = params.state.getNumberOfItems(context);
+        keys = mutable Vector<SKFS.StrID>[];
+        for (idx in Range(0, count)) {
+          item = params.state.getItem(context, idx);
+          writer.write(SKFS.StrID(item.id), item);
+          keys.push(SKFS.StrID(item.id))
+        };
+        writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
+        writer.write(SKFS.KSize(), SKFS.IntFile(count));
+      },
+    );
+    builtDirName = UiDropdown.dataDirName(path.makeChild("built"));
+    builtHdl = dataHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      builtDirName,
+      (context, writer, key, file) ~> {
+        key match {
+        | SKFS.StrID _ ->
+          lineSpacing = context.getThemeThickness(UiTheme.LineSpacing());
+          item = file as UiDropdown.ItemBase _;
+          optPath = params.state.getCurrent(context);
+          cPath = optPath match {
+          | Some(pPath) -> pPath.makeChild(item.id)
+          | _ -> Ui.Path(item.id)
+          };
+          textSupport = context.getTextSupport();
+          tFaceId = context.getThemeFont(UiTheme.Action());
+          sFaceId = context.getThemeFont(UiTheme.Shortcut());
+          str = context.translate(item.text(context));
+          tSize = textSupport.getLinesSize(
+            context,
+            str,
+            None(),
+            tFaceId,
+            _lh -> lineSpacing.toFloat(),
+          );
+          height = tSize.height;
+          text = (str, tSize.width, tFaceId);
+          optIcon = item.icon(context).flatMap(ei ->
+            ei
+              .toIconBuilder()
+              .flatMap(ib -> ib.buildIcon(context, tFaceId.size))
+              .map(i -> {
+                iSize = i.size(context).ceil();
+                !height = Math.max(height, iSize.height);
+                (i, iSize.width)
+              })
+          );
+          optShortcut = item match {
+          | i @ UiDropdown.Item _ ->
+            i.shortcut(context).map(sc -> {
+              scStr = context.translate(sc.toText());
+              size = textSupport.getLinesSize(
+                context,
+                scStr,
+                None(),
+                sFaceId,
+                _lh -> lineSpacing.toFloat(),
+              );
+              !height = Math.max(height, size.height);
+              UiDropdown.Shortcut(size.width, Some((scStr, sFaceId)))
+            })
+          | _m @ UiDropdown.Menu _ ->
+            !height = Math.max(height, UiDropdown.triangle);
+            Some(UiDropdown.Shortcut(UiDropdown.triangle))
+          };
+          writer.write(
+            key,
+            UiDropdown.ItemData(
+              cPath,
+              item,
+              optIcon,
+              text,
+              optShortcut,
+              height,
+            ),
+          )
+        | _ -> writer.write(key, file)
+        }
+      },
+    );
+    settingsHdl = mainHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiDropdown.dataDirName(path.makeChild("settings")),
+      (context, writer, _key, _file) ~> {
+        keys = (builtHdl.get(context, SKFS.KKeys()) as SKFS.Keys _).value;
+        nKeys = mutable Vector<SKFS.BaseName>[];
+        vGap = UiDropdown.vGap.toFloat();
+        if (!keys.isEmpty()) {
+          allowSeparator = false;
+          needSeparator = false;
+          iWidth = 0.0;
+          tWidth = 0.0;
+          sWidth = 0.0;
+          height = 0.0;
+          verified = keys.map(bKey -> {
+            data = builtHdl.get(context, bKey) as UiDropdown.ItemData _;
+            separator = data.item.separator(context);
+            addSeparator =
+              allowSeparator &&
+              (needSeparator || separator.before());
+            data.optIcon.each(i -> !iWidth = Math.max(iWidth, i.i1));
+            !tWidth = Math.max(tWidth, data.text.i1);
+            data.optShortcut.each(s -> !sWidth = Math.max(sWidth, s.width));
+            !height = Math.max(height, data.height);
+            !needSeparator = separator.after();
+            !allowSeparator = true;
+            (data, addSeparator)
+          });
+          hGapNumber = 2;
+          !hGapNumber = if (iWidth > 0.0) hGapNumber + 1 else hGapNumber;
+          !hGapNumber = if (sWidth > 0.0) hGapNumber + 1 else hGapNumber;
+          hGap = hGapNumber * UiDropdown.hGap;
+          itemWidth = iWidth + tWidth + sWidth + hGap.toFloat();
+          width = Math.max(
+            itemWidth,
+            context.getThemeThickness(UiTheme.MinItemWidth()).toFloat(),
+          );
+          size = Geometry.Size(width, height + vGap);
+          verified.eachWithIndex((idx, info) -> {
+            iKey = SKFS.StrID(info.i0.item.id);
+            if (info.i1) {
+              sKey = SKFS.StrID(`separator[${info.i0.item.id}]`);
+              nKeys.push(sKey);
+              writer.write(
+                sKey,
+                UiDropdown.Sep(info.i0.path, Geometry.Size(size.width, vGap)),
+              );
+            };
+            nKeys.push(iKey);
+            writer.write(
+              iKey,
+              info.i0.toSettings(iWidth, tWidth, sWidth, size, idx),
+            )
+          })
+        };
+        writer.write(SKFS.KKeys(), SKFS.Keys(nKeys.toArray()));
+        writer.write(SKFS.KSize(), SKFS.IntFile(nKeys.size()));
+      },
+    );
+    itemWidgets = settingsHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiDropdown.dataDirName(path.makeChild("widgets")),
+      (context, writer, key, file) ~> {
+        key match {
+        | SKFS.StrID _ ->
+          settings = file as UiDropdown.SettingsBase _;
+          writer.write(
+            key,
+            WidgetFile(
+              settings.build(context, path, params.controller, params.state),
+            ),
+          )
+        | _ -> writer.write(key, file)
+        }
+      },
+    );
+    itemsCollection = HandledCollection(itemWidgets);
+    titleKey = SKFS.StrID("title");
+    bodyKey = SKFS.StrID("body");
+    childrenHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiDropdown.widgetsDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[
+        (titleKey, SKFS.IntFile(0)),
+        (bodyKey, SKFS.IntFile(0)),
+      ],
+    );
+    widgetsPath = UiDropdown.widgetsDirName(path);
+    widgetsHdl = childrenHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      widgetsPath,
+      (context, writer, key, _) ~> {
+        subPath = path.makeChild("widgets").makeChild(key.toString());
+        if (key == titleKey && !params.state.isRoot(context)) {
+          backPath = subPath.makeChild("back");
+          button = Ui.Button::create(
+            context,
+            backPath,
+            UiButton.Parameters(
+              UiButton.LamController{
+                icon => (ctx, size) ~>
+                  ctx.getThemeIcon(UiTheme.Back()).buildIcon(ctx, size),
+                kind => _ctx ~> UiButton.Regular(),
+                mode => _ctx ~> UiButton.Icon(),
+                onFire => (ctx, _) ~>
+                  FWKMessage.emitMessage(
+                    ctx,
+                    params.state.gotoMessage(UiDropdown.Backward()),
+                  ),
+              },
+              UiButton.init(context, backPath),
+            ),
+          );
+          widgets = params.state.getTitle(context) match {
+          | Some(title) ->
+            Array[
+              button,
+              Ui.VText::createForController(
+                context,
+                subPath.makeChild("title"),
+                UiText.LamController{
+                  text => _ctx ~> title,
+                  style => ctx ~> {
+                    fill = ctx.getThemeColor(UiTheme.Title());
+                    faceId = ctx.getThemeFont(UiTheme.Title());
+                    Text.Style{
+                      faceId,
+                      fill,
+                      wrapping => Text.NoWrap(),
+                      hAlignment => Text.Center(),
+                    }
+                  },
+                },
+                Some(UiFlex.Configuration{flex => 1}),
+              ),
+            ]
+          | _ -> Array[button]
+          };
+          vertical = Array[
+            Ui.Flex::createForController(
+              context,
+              subPath.makeChild("top"),
+              UiFlex.LamController{
+                widgets => Ui.WidgetsArray(widgets),
+                mainAxisAlignment => _ctx ~> UiFlex.Start(),
+                crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+              },
+            ),
+            UiDropdown.Separator{
+              path => subPath.makeChild("separator"),
+              optSize => None(),
+              optConfiguration,
+              tick => context.tick,
+            },
+          ];
+          writer.write(
+            key,
+            WidgetFile(
+              Flex::createForController(
+                context,
+                subPath,
+                UiFlex.LamController{
+                  direction => _ctx ~> Ui.VerticalAxis(),
+                  widgets => Ui.WidgetsArray(vertical),
+                  mainAxisAlignment => _ctx ~> UiFlex.Start(),
+                  crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                },
+              ),
+            ),
+          )
+        } else if (key == bodyKey) {
+          keys = (builtHdl.get(context, SKFS.KKeys()) as SKFS.Keys _).value;
+          if (!keys.isEmpty()) {
+            writer.write(
+              key,
+              WidgetFile(
+                Flex::create(
+                  context,
+                  subPath,
+                  UiFlex.Parameters{
+                    controller => UiFlex.LamController{
+                      direction => _ctx ~> Ui.VerticalAxis(),
+                      widgets => itemsCollection,
+                      mainAxisAlignment => _ctx ~> UiFlex.Start(),
+                      crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                    },
+                    optFocusManager => Some(
+                      UiDropdown.FocusManager(subPath, params.state),
+                    ),
+                  },
+                ),
+              ),
+            )
+          };
+        }
+      },
+    );
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      widgetsHdl,
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    optTitle = this.widgetsHdl.maybeGet(context, SKFS.StrID("title"));
+    optBody = this.widgetsHdl.maybeGet(context, SKFS.StrID("body"));
+    noConstaints = BoxConstraints::new();
+    (size, childrenArray, optUserData) = if (
+      optTitle.isNone() &&
+      optBody.isNone()
+    ) {
+      (Geometry.Size::zero, Array[], None())
+    } else {
+      width = 0.0;
+      optTitle.each(title -> {
+        tNode = title.widget.getNode(context, noConstaints);
+        !width = tNode.size.width;
+      });
+      optBody.each(body -> {
+        bNode = body.widget.getNode(context, noConstaints);
+        !width = Math.max(bNode.size.width, width);
+      });
+      hGap = UiDropdown.hGap.toFloat();
+      vGap = UiDropdown.vGap.toFloat();
+      hPaddind = hGap * 2.0;
+      !width = constraints.constrainWidth(width + hPaddind);
+      childConstraints = BoxConstraints::tightFor{
+        width => Some(width - hPaddind),
+      };
+      offset = Geometry.Offset(hGap, vGap);
+      vec = mutable Vector<NChild>[];
+      optTitle.each(title -> {
+        tNode = title.widget.getNode(context, childConstraints);
+        vec.push(CNode(tNode, offset, childConstraints));
+        !offset.dy = offset.dy + tNode.size.height;
+      });
+      optBOffset = optBody.map(body -> {
+        bNode = body.widget.getNode(context, childConstraints);
+        bOffset = offset;
+        !offset.dy = offset.dy + bNode.size.height;
+        (bOffset, bNode)
+      });
+      height = constraints.constrainHeight(offset.dy + vGap);
+      optMetrics = optBOffset.flatMap(info -> {
+        (bOffset, bNode) = info;
+        bHeight = height - vGap - bOffset.dy;
+        vec.push(
+          CLink(
+            this.path.makeChild("vp"),
+            Geometry.Rect::fromOffsetSize(
+              bOffset,
+              Geometry.Size(width - hPaddind, bHeight),
+            ),
+            Opaque(),
+            childConstraints,
+          ),
+        );
+        this.computeUserData(context, bNode, Geometry.Size(width, bHeight))
+      });
+      (Geometry.Size(width, height), vec.toArray(), optMetrics)
+    };
+    Node(this, size, childrenArray, _ctx ~> optUserData);
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    _nodeSum: NodeSum,
+    optUserData: ?UserData,
+  ): ?DrawInfo {
+    metrics = optUserData.map(ud ~> ud as Metrics _).fromSome();
+    drawInfo = UiDropdown.DrawInfo::compute(context, this, metrics);
+    Some(drawInfo);
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    this.widgetsHdl.maybeGet(context, SKFS.StrID("body")).map(body ->
+      ViewportDef(
+        this.path.makeChild("vp"),
+        Some(this.path),
+        Some(body.widget),
+        Array[],
+      )
+    )
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | MainLayer()
+    | ForegroundLayer() ->
+      Array[]
+    | BackgroundLayer() ->
+      radius = UiDropdown.hGap.toFloat() / 2.0;
+      themeShadow = Ui.themeShadow(context, absolute, node.size(), radius);
+      themeShadow.concat(
+        Array[
+          support.roundedRectangle(
+            absolute,
+            node.size(),
+            context.getThemeColor(UiTheme.Base()),
+            radius,
+          ),
+        ],
+      )
+    }
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKFS.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((ctx, _offset, _ni) ~>
+      Some(UiDropdown.HoverHandler(this.path, this.state, childGetter(ctx)))
+    )
+  }
+
+  fun checkFocusHandlers(
+    _context: mutable SKFS.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    Ui.wrappedFocusHandlers(
+      handlers,
+      optFocusHandler -> {
+        Some(
+          UiDropdown.FocusHandler{
+            path => this.path,
+            category => "dropdown",
+            optFocusHandler,
+            state => this.state,
+            optCloseMessage => Some(this.controller.getCloseMessage),
+          },
+        )
+      },
+      true,
+    )
+  }
+
+  private fun computeUserData(
+    context: mutable SKFS.Context,
+    node: Node,
+    size: Geometry.Size,
+  ): ?UserData {
+    offset = 0.0;
+    elements = mutable Vector<Elem>[];
+    ids = mutable Vector<Path>[];
+    node.subNodes.each(c -> {
+      subNode = (c as CNode _).node;
+      subNode.widget match {
+      | UiDropdown.ItemView _ ->
+        !offset = 0.0;
+        elements.push(Ui.Elem(offset, subNode.size.height));
+        ids.push(subNode.widget.path)
+      | _ -> !offset = offset + subNode.size.height
+      }
+    });
+    sizes = elements.toArray();
+    Some(
+      Metrics::compute(
+        context,
+        sizes,
+        Metrics::reverse(sizes),
+        size.height,
+        ids.toArray(),
+        this.state.getScroll,
+      ),
+    )
+  }
+}
+
+module end;

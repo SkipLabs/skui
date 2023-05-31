@@ -1,0 +1,290 @@
+module UiScrollBar;
+
+base class Controller {
+  fun getScroll(context: mutable SKFS.Context): Float;
+  fun setScroll(context: mutable SKFS.Context, scroll: Float): void;
+
+  fun getViewSize(context: mutable SKFS.Context): Float;
+  fun isNegative(context: mutable SKFS.Context): Bool;
+  fun hasOpposite(context: mutable SKFS.Context): Bool;
+  fun isFocused(context: mutable SKFS.Context): Bool;
+}
+
+class LamController{
+  scrollGetter: Ui.Getter<Float>,
+  scrollSetter: (mutable SKFS.Context, Float) ~> void,
+  viewSize: Ui.Getter<Float>,
+  negative: Ui.Getter<Bool> = Ui.default(false),
+  opposite: Ui.Getter<Bool> = Ui.default(false),
+  focused: Ui.Getter<Bool> = Ui.default(false),
+} extends Controller {
+  //
+  fun getScroll(context: mutable SKFS.Context): Float {
+    this.scrollGetter(context)
+  }
+
+  fun setScroll(context: mutable SKFS.Context, scroll: Float): void {
+    this.scrollSetter(context, scroll)
+  }
+
+  fun getViewSize(context: mutable SKFS.Context): Float {
+    this.viewSize(context)
+  }
+
+  fun isNegative(context: mutable SKFS.Context): Bool {
+    this.negative(context)
+  }
+
+  fun hasOpposite(context: mutable SKFS.Context): Bool {
+    this.opposite(context)
+  }
+
+  fun isFocused(context: mutable SKFS.Context): Bool {
+    this.focused(context)
+  }
+}
+
+class DrawInfo private (bounds: Geometry.Rect) extends Ui.DrawInfo {
+  //
+  static fun compute(
+    size: Geometry.Size,
+    scroll: Float,
+    viewport: Float,
+  ): this {
+    static(
+      if (size.height > size.width) {
+        // vertical
+        static::axisToBar(
+          size.height,
+          size.width,
+          scroll,
+          viewport,
+          (y, x) ~> Geometry.Offset(x, y),
+          (h, w) ~> Geometry.Size(w, h),
+        )
+      } else {
+        // horizontal
+        static::axisToBar(
+          size.width,
+          size.height,
+          scroll,
+          viewport,
+          (x, y) ~> Geometry.Offset(x, y),
+          (w, h) ~> Geometry.Size(w, h),
+        )
+      },
+    )
+  }
+
+  private static fun axisToBar(
+    size: Float,
+    cross: Float,
+    scroll: Float,
+    viewport: Float,
+    buildOffset: (Float, Float) ~> Geometry.Offset,
+    buildSize: (Float, Float) ~> Geometry.Size,
+  ): Geometry.Rect {
+    computed = Math.max(20.0, (size * size) / viewport);
+    if (computed > size) {
+      !computed = size / 2.0;
+    };
+    begin = scroll * size / viewport;
+    end = Math.min(begin + computed, size);
+    Geometry.Rect::fromOffsetSize(
+      buildOffset(begin, 0.0),
+      buildSize(end - begin, cross),
+    )
+  }
+}
+
+class HoverHandler(path: Ui.Path) extends FWK.HoverHandler {
+  fun getIdentifier(): Ui.Path {
+    this.path
+  }
+
+  fun enter(context: mutable SKFS.Context): void {
+    FWKPointer.setCursor(context, Ui.HandCursor());
+  }
+
+  fun manage(
+    _context: mutable SKFS.Context,
+    _mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    FWK.Result(false);
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    FWKPointer.resetCursor(context);
+  }
+
+  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    None()
+  }
+}
+
+class LockHandler(
+  path: Ui.Path,
+  controller: Controller,
+) extends FWK.LockHandler {
+  //
+  fun update(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+  ): ?FWK.LockHandler {
+    if (!mouse.isPrimaryDown(context.tick)) {
+      None()
+    } else {
+      optNodeInfo = FWKPipeline.maybeGetInfo(context, this.path, true);
+      optNodeInfo.map(nodeInfo -> {
+        wOffset = nodeInfo.info.getWindowOffset(context, true, true);
+        size = nodeInfo.info.size();
+        offset = mouse.offset() - wOffset;
+        viewsize = this.controller.getViewSize(context);
+        scroll = if (size.height > size.width) {
+          vsize = if (this.controller.hasOpposite(context)) {
+            size.height + size.width
+          } else {
+            size.height
+          };
+          scale = vsize / viewsize;
+          pointed = offset.dy / scale;
+          Math.max(
+            Math.min(Math.max(pointed - (vsize / 2.0), 0.0), viewsize - vsize),
+            0.0,
+          );
+        } else {
+          hsize = if (this.controller.hasOpposite(context)) {
+            size.width + size.height
+          } else {
+            size.width
+          };
+          scale = hsize / viewsize;
+          pointed = offset.dx / scale;
+          Math.max(
+            Math.min(Math.max(pointed - (hsize / 2.0), 0.0), viewsize - hsize),
+            0.0,
+          );
+        };
+        this.controller.setScroll(context, scroll);
+        this
+      })
+    }
+  }
+}
+
+module end;
+
+module UiScroll;
+
+class Bar{
+  controller: UiScrollBar.Controller,
+} extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
+  //
+  fun getNode(
+    _context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
+      Ui.Node(this, constraints.biggest(), Array[])
+    } else {
+      Ui.Node(this, constraints.smallest(), Array[])
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | Ui.MainLayer() ->
+      node.optDrawInfo.map(di ~> di as UiScrollBar.DrawInfo _) match {
+      | Some(drawInfo) ->
+        drawables = mutable Vector<Ui.Drawable>[];
+        focused = this.controller.isFocused(context);
+        color = context.getThemeColor(
+          if (focused) UiTheme.Primary() else if (
+            this.controller.isNegative(context)
+          ) UiTheme.Base() else {
+            UiTheme.Regular()
+          },
+        );
+        hover = FWKPipeline.isMouseHover(context, this.path);
+        hoverBar = FWKPipeline.isMouseHover(
+          context,
+          this.path.makeChild("bar"),
+        );
+        if (hover || hoverBar || focused) {
+          drawables.push(
+            support.rectangle(
+              absolute,
+              node.size(),
+              color.scaleAlpha(if (focused) 0.2 else 0.1),
+            ),
+          )
+        };
+        offset = drawInfo.bounds.topLeft();
+        size = drawInfo.bounds.size();
+        drawables.push(
+          support.roundedRectangle(
+            offset.move(absolute),
+            size,
+            color.scaleAlpha(if (hoverBar) 0.5 else if (focused) 0.2 else 0.1),
+            Math.min(size.width, size.height) / 2.0,
+          ),
+        );
+        drawables.toArray()
+      | _ -> Array[]
+      }
+    | Ui.BackgroundLayer()
+    | Ui.ForegroundLayer() ->
+      Array[]
+    };
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    nodeSum: Ui.NodeSum,
+    _optUserData: ?Ui.UserData,
+  ): ?Ui.DrawInfo {
+    scroll = this.controller.getScroll(context);
+    viewport = this.controller.getViewSize(context);
+    Some(UiScrollBar.DrawInfo::compute(nodeSum.size, scroll, viewport))
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Ui.Getter<?FWK.HoverHandler>,
+  ): ?Ui.HoverHandlerGetter {
+    Some((_ctx, offset, ni) ~> {
+      path = ni.optDrawInfo
+        .map(di ~> di as UiScrollBar.DrawInfo _)
+        .map(di ->
+          if (di.bounds.contains(offset)) this.path.makeChild("bar") else {
+            this.path
+          }
+        )
+        .default(this.path);
+      Some(UiScrollBar.HoverHandler(path))
+    })
+  }
+
+  fun getLockHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Ui.Getter<?FWK.LockHandler>,
+  ): ?Ui.LockHandlerGetter {
+    Some((ctx, mouse, _ni) ~> {
+      if (mouse.isPrimaryPressed(ctx.tick)) {
+        Some(UiScrollBar.LockHandler(this.path, this.controller))
+      } else {
+        None()
+      }
+    })
+  }
+}
+
+module end;

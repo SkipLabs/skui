@@ -1,0 +1,345 @@
+module Ui;
+
+class Slider protected {
+  controller: UiSlider.Controller,
+  state: UiSlider.State,
+} extends StrictWidget uses WithNodeCache, NoViewports {
+  //
+  type Params = UiSlider.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    params: UiSlider.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    direction = this.controller.getDirection(context);
+    small = this.controller.isSmall(context);
+    main = (60 + this.controller.getRange(context).size()).toFloat();
+    cross = if (this.controller.isWithLabel(context)) {
+      direction match {
+      | Ui.HorizontalAxis() -> if (small) 50.0 else 70.0
+      | Ui.VerticalAxis() -> if (small) 66.0 else 86.0
+      }
+    } else if (small) {
+      30.0
+    } else {
+      60.0
+    };
+    !main = if (small) main - 30.0 else main;
+    size = constraints.constrain(
+      this.controller.getDirection(context).size(main, cross),
+    );
+    Node(this, size, Array[]);
+  }
+
+  fun getHoverHandler(
+    context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    if (this.controller.isDisabled(context)) {
+      None()
+    } else {
+      Some((_, _, ni) ~> Some(UiSlider.HoverHandler(this, ni)))
+    }
+  }
+
+  fun checkFocusHandlers(
+    context: mutable SKFS.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    if (this.controller.isDisabled(context)) {
+      handlers.chill()
+    } else if (this.controller.isRange(context)) {
+      Vector[
+        UiSlider.FocusHandler{
+          category => "slider",
+          slider => this,
+          thumb => UiSlider.Min(),
+        },
+        UiSlider.FocusHandler{
+          category => "slider",
+          slider => this,
+          thumb => UiSlider.Max(),
+        },
+      ]
+    } else {
+      Vector[
+        UiSlider.FocusHandler{
+          category => "slider",
+          slider => this,
+          thumb => UiSlider.Min(),
+        },
+      ]
+    }
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    nodeSum: NodeSum,
+    _optUserData: ?UserData,
+  ): ?DrawInfo {
+    Some(
+      UiSlider.DrawInfo::compute(
+        context,
+        this,
+        Geometry.Offset::zero,
+        nodeSum.size,
+      ),
+    );
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    di = node.optDrawInfo.map(f ~> f as UiSlider.DrawInfo _).fromSome();
+    drawables = mutable Vector<Ui.Drawable>[];
+    layer match {
+    | MainLayer() ->
+      this.fillMain(context, absolute, node.size(), di, drawables)
+    | BackgroundLayer() ->
+      this.fillBackground(
+        context,
+        support,
+        absolute,
+        node.size(),
+        di,
+        drawables,
+      )
+    | ForegroundLayer() -> void
+    };
+    drawables.toArray()
+  }
+
+  fun getMouseThumb(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    nodeInfo: Ui.NodeInfo,
+    relative: Bool,
+  ): (UiSlider.Thumb, Float) {
+    direction = this.controller.getDirection(context);
+    !offset = if (relative) offset else {
+      offset - nodeInfo.viewport(context, true)
+    };
+    drawInfo = nodeInfo.optDrawInfo
+      .map(f ~> f as UiSlider.DrawInfo _)
+      .fromSome();
+    mainOffset = direction.mainOffset(offset);
+    proportion = drawInfo.computeProportion(mainOffset);
+    !proportion = Math.clamp(proportion, 0.0, 1.0);
+    drawInfo.optEndThumb match {
+    | Some(endThumb) ->
+      middle = direction match {
+      | Ui.HorizontalAxis() -> (endThumb.right + drawInfo.thumb.left) / 2.0
+      | Ui.VerticalAxis() -> (endThumb.bottom + drawInfo.thumb.top) / 2.0
+      };
+      if (mainOffset > middle) {
+        (UiSlider.Max(), proportion)
+      } else {
+        (UiSlider.Min(), proportion)
+      }
+    | _ -> (UiSlider.Min(), proportion)
+    };
+  }
+
+  private fun fillMain(
+    context: mutable SKFS.Context,
+    absolute: Geometry.Offset,
+    _size: Geometry.Size,
+    di: UiSlider.DrawInfo,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    if (this.controller.isDisabled(context)) {
+      return void
+    };
+    di.optThumbLabel.each(info -> {
+      (text, tBounds, _, _) = info;
+      color = context.getThemeColor(UiTheme.TooltipText());
+      faceId = context.getThemeFont(UiTheme.Tooltip());
+      tSize = tBounds.size();
+      context
+        .getTextSupport()
+        .getDrawables(context, text, Text.Display(faceId, color))
+        .each(ds ->
+          ds.each(d -> {
+            dSize = d.size();
+            toMove = (tSize - dSize) / 2.0;
+            drawables.push(d.translate(absolute + toMove.toOffset()))
+          })
+        );
+    })
+  }
+
+  private fun fillBackground(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    _size: Geometry.Size,
+    di: UiSlider.DrawInfo,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    disabled = this.controller.isDisabled(context);
+    primaryColor = context.getThemeColor(
+      if (disabled) UiTheme.Disabled(true) else UiTheme.Primary(),
+    );
+    secondaryColor = primaryColor.scaleAlpha(0.25);
+    di.tracks.each(info -> {
+      (bounds, active, radius) = info;
+      drawables.push(
+        support.roundedRectangle(
+          bounds.shift(absolute).topLeft(),
+          bounds.size(),
+          if (active) primaryColor else secondaryColor,
+          radius,
+        ),
+      )
+    });
+    di.ticks.each(tick -> {
+      (bounds, active) = tick;
+      tSize = bounds.size();
+      drawables.push(
+        support.rectangle(
+          bounds.shift(absolute).topLeft(),
+          tSize,
+          if (active) Colors.white().scaleAlpha(0.5) else primaryColor,
+        ),
+      )
+    });
+    tSize = di.thumb.size();
+    drawables.push(
+      support.roundedRectangle(
+        di.thumb.shift(absolute).topLeft(),
+        tSize,
+        primaryColor,
+        Math.min(tSize.width, tSize.height) / 2.0,
+      ),
+    );
+    di.optEndThumb.each(t -> {
+      ts = t.size();
+      drawables.push(
+        support.roundedRectangle(
+          t.shift(absolute).topLeft(),
+          ts,
+          primaryColor,
+          Math.min(ts.width, ts.height) / 2.0,
+        ),
+      );
+    });
+    optHover = this.state.getHover(context);
+    optFocused = if (context.isFocused(this.path.makeChild("min"))) {
+      Some(UiSlider.Min())
+    } else if (context.isFocused(this.path.makeChild("max"))) {
+      Some(UiSlider.Max())
+    } else {
+      None()
+    };
+    (optMinColor, optMaxColor) = if (disabled) {
+      (None(), None())
+    } else {
+      armed = this.state.isArmed(context);
+      (
+        this.getOverflowColorFor(
+          armed,
+          optHover,
+          optFocused,
+          UiSlider.Min(),
+          primaryColor,
+        ),
+        this.getOverflowColorFor(
+          armed,
+          optHover,
+          optFocused,
+          UiSlider.Max(),
+          primaryColor,
+        ),
+      )
+    };
+    optMinColor.each(color -> {
+      oSize = tSize + Geometry.Size::square(di.overflow * 2.0);
+      drawables.push(
+        support.roundedRectangle(
+          di.thumb
+            .shift(absolute)
+            .topLeft()
+            .translate(-di.overflow, -di.overflow),
+          oSize,
+          color,
+          Math.min(oSize.width, oSize.height) / 2.0,
+        ),
+      );
+    });
+    di.optEndThumb.each(t -> {
+      ts = t.size();
+      optMaxColor.each(color -> {
+        oSize = ts + Geometry.Size::square(di.overflow * 2.0);
+        drawables.push(
+          support.roundedRectangle(
+            t.shift(absolute).topLeft().translate(-di.overflow, -di.overflow),
+            oSize,
+            color,
+            Math.min(oSize.width, oSize.height) / 2.0,
+          ),
+        )
+      })
+    });
+    di.optThumbLabel.each(info -> {
+      (_, tBounds, aBounds, side) = info;
+      color = context.getThemeColor(UiTheme.Tooltip());
+      drawables.push(
+        support.roundedRectangle(
+          tBounds.shift(absolute).topLeft(),
+          tBounds.size(),
+          color,
+          6.0,
+        ),
+      );
+      drawables.push(
+        support.triangle(
+          aBounds.shift(absolute).topLeft(),
+          aBounds.size(),
+          color,
+          side,
+        ),
+      )
+    })
+  }
+
+  private fun getOverflowColorFor(
+    armed: Bool,
+    optHover: ?UiSlider.Thumb,
+    optFocused: ?UiSlider.Thumb,
+    thumb: UiSlider.Thumb,
+    primaryColor: .Color,
+  ): ?.Color {
+    focused = optFocused == Some(thumb);
+    hover = optHover == Some(thumb);
+    if (armed && focused) {
+      Some(primaryColor.scaleAlpha(0.4))
+    } else if (focused || hover) {
+      Some(primaryColor.scaleAlpha(if (focused && hover) 0.3 else 0.2))
+    } else {
+      None()
+    }
+  }
+}
+
+module end;

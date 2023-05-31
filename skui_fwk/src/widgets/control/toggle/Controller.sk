@@ -1,0 +1,53 @@
+module UiToggle;
+
+class LamController{
+  selectedProp: Ui.GetterOne<Ui.BoolProperty, Bool>,
+  indeterminateProp: Ui.GetterOne<?Ui.BoolProperty, Bool> = Ui.defaultOne(
+    None(),
+  ),
+  kind: Ui.GetterOne<Kind, Bool> = Ui.defaultOne(Toggle()),
+  disabled: Ui.GetterOne<Bool, Bool> = Ui.defaultOne(false),
+  text: Ui.Getter<?Text> = Ui.default(None()),
+  icon: Ui.GetterOne<?Ui.Icon, Float> = Ui.defaultOne(None()),
+  tooltip: Ui.Getter<?Text> = Ui.default(None()),
+} extends Controller {
+  //
+  fun getSelectedProp(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.BoolProperty {
+    this.selectedProp(context, isUntracked)
+  }
+
+  fun getIndeterminateProp(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.BoolProperty {
+    this.indeterminateProp(context, isUntracked)
+  }
+
+  fun getKind(context: mutable SKFS.Context, isUntracked: Bool = false): Kind {
+    this.kind(context, isUntracked)
+  }
+
+  fun isDisabled(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.disabled(context, isUntracked)
+  }
+
+  fun getText(context: mutable SKFS.Context): ?Text {
+    this.text(context)
+  }
+
+  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+    this.icon(context, fontSize)
+  }
+
+  fun getTooltip(context: mutable SKFS.Context): ?Text {
+    this.tooltip(context)
+  }
+}
+
+module end;

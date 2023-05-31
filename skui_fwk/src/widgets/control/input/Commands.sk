@@ -1,0 +1,58 @@
+module UiInput;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+  | SetStatus(status: Status, source: Int)
+  | SetText(value: String, source: Int)
+  | SetPosition(value: Int, source: Int)
+  | SetSelection(optValue: ?Range, source: Int)
+  | All(value: Vector<Executable>)
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHover(value: Bool)
+  | SetArmed(value: Bool)
+  | SetShowing(value: Bool)
+  | SetMoveSelection(moveSelection: Bool)
+  | SetScroll(optScroll: ?Scroll)
+  | CancelScrolling(tick: SKFS.Tick)
+  | Reset()
+  | SetBlinking(value: Bool)
+  | ToggleHidden(tick: SKFS.Tick)
+  | Multiples(commands: Array<Command>)
+}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | ManageDiacritic(char: Char)
+  | ManageUnicode(optUnicode: ?Int)
+  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | Copy()
+  | Cut()
+  | Paste(content: FWKClipboard.Content)
+  | Insert(text: String, ignoreSelection: Bool, optPosition: ?Int)
+  | Upper()
+  | Lower()
+  | ManageTarget(optTarget: ?Int, scrolling: Bool)
+}
+
+base class Repeatable(
+  optRepeatOn: ?FWK.Repeat = None(),
+  count: Int = 1,
+) extends ExecCommand {
+  children =
+  | GoTo(target: Target)
+  | SelectTo(target: Target, ensureVisible: Bool = true)
+  | DeleteTo(target: Target)
+  | Undo()
+  | Redo()
+
+  fun next(): this {
+    !this.count = this.count + 1;
+    this;
+  }
+}
+
+module end;

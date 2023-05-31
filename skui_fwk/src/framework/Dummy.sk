@@ -1,0 +1,104 @@
+module FWK;
+
+class DummyFH{} extends FocusHandler {
+  fun getIdentifier(): Ui.Path {
+    dummy()
+  }
+
+  fun fillSources(_path: mutable Set<Ui.Path>): void {
+    dummy()
+  }
+
+  fun getSource(_sources: Set<Ui.Path>): ?Ui.Path {
+    dummy()
+  }
+
+  fun hasSource(_source: Ui.Path): Bool {
+    dummy()
+  }
+
+  fun manage(
+    _context: mutable SKFS.Context,
+    _keys: UiEvent.KeysFile,
+    _source: Ui.Path,
+  ): Bool {
+    dummy()
+  }
+
+  fun isGotoNext(
+    _context: mutable SKFS.Context,
+    _keys: UiEvent.KeysFile,
+    _source: Ui.Path,
+  ): ?Bool {
+    dummy()
+  }
+
+  fun isGotoPrevious(
+    _context: mutable SKFS.Context,
+    _keys: UiEvent.KeysFile,
+    _source: Ui.Path,
+  ): ?Bool {
+    dummy()
+  }
+}
+
+class DummyDH{} extends DragHandler {
+  fun getTransfer(_context: mutable SKFS.Context): Transfer {
+    dummy()
+  }
+
+  fun getDragInfo(_context: mutable SKFS.Context): ?DragInfo {
+    dummy()
+  }
+
+  fun getClipboardContent(
+    _context: mutable SKFS.Context,
+  ): ?FWKClipboard.Content {
+    dummy()
+  }
+
+  fun dropped(
+    _context: mutable SKFS.Context,
+    _optTarget: ?(DropHandler, TransferMode),
+  ): void {
+    dummy()
+  }
+}
+
+class DummyDPH{} extends DropHandler {
+  fun over(
+    _context: mutable SKFS.Context,
+    _mouse: UiEvent.MouseFile,
+    _dragHandler: DragHandler,
+    _transfer: TransferMode,
+  ): ?TransferMode {
+    dummy()
+  }
+
+  fun getIdentifier(): String {
+    dummy()
+  }
+
+  fun exit(_context: mutable SKFS.Context): void {
+    dummy()
+  }
+
+  fun dropped(
+    _context: mutable SKFS.Context,
+    _dragHandler: DragHandler,
+    _transfer: TransferMode,
+  ): void {
+    dummy()
+  }
+}
+
+class DummyLH{} extends LockHandler {
+  fun update(
+    _context: mutable SKFS.Context,
+    _mouse: UiEvent.MouseFile,
+  ): ?LockHandler {
+    dummy()
+  }
+}
+
+module end;

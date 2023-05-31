@@ -1,0 +1,70 @@
+module UiToggle;
+
+base class Kind uses Orderable, Show {
+  children =
+  | Toggle()
+  | Checkbox()
+  | Radio()
+
+  fun toString(): String
+  | Toggle() -> "Toggle"
+  | Checkbox() -> "Checkbox"
+  | Radio() -> "Radio"
+
+  fun toCode(): Int
+  | Toggle() -> 0
+  | Checkbox() -> 1
+  | Radio() -> 2
+
+  static fun fromCode(code: Int): Kind {
+    code match {
+    | 0 -> Toggle()
+    | 2 -> Radio()
+    | 1
+    | _ ->
+      Checkbox()
+    }
+  }
+  static fun all(): Array<Kind> {
+    Array[Toggle(), Checkbox(), Radio()]
+  }
+}
+
+base class Controller {
+  fun getSelectedProp(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.BoolProperty;
+
+  fun getIndeterminateProp(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.BoolProperty;
+
+  fun getKind(context: mutable SKFS.Context, isUntracked: Bool = false): Kind;
+  fun isDisabled(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool;
+  fun getText(context: mutable SKFS.Context): ?Text;
+  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKFS.Context): ?Text;
+}
+
+base class State {
+  fun isArmed(context: mutable SKFS.Context): Bool;
+  fun isHover(context: mutable SKFS.Context): Bool;
+
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun emitHover(context: mutable SKFS.Context, value: Bool): void;
+  fun emitAll(context: mutable SKFS.Context, armed: Bool, hover: Bool): void;
+}
+
+base class Storage {
+  fun setArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun setHover(context: mutable SKFS.Context, value: Bool): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+module end;

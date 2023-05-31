@@ -1,0 +1,263 @@
+module UiTree;
+
+base class SelectionModel extends SKFS.File {
+  fun isAllowMultiple(): Bool;
+
+  fun selectAll(selection: Selection, items: Array<Ui.Path>): Selection;
+
+  fun select(
+    selection: Selection,
+    path: Ui.Path,
+    items: Array<Ui.Path>,
+    toggle: Bool,
+  ): Selection;
+
+  fun selectTo(
+    selection: Selection,
+    path: Ui.Path,
+    items: Array<Ui.Path>,
+    keep: Bool,
+    optIndex: ?Int,
+  ): Selection;
+
+  fun selectItem(
+    selection: Selection,
+    path: Ui.Path,
+    items: Array<Ui.Path>,
+    to: Bool,
+    keep: Bool = false,
+  ): Selection {
+    if (to) {
+      this.selectTo(
+        selection,
+        path,
+        items,
+        keep,
+        selection.optMain.flatMap(c -> items.indexOf(c)),
+      )
+    } else {
+      this.select(selection, path, items, false)
+    }
+  }
+
+  fun selectPrevious(
+    selection: Selection,
+    items: Array<Ui.Path>,
+    to: Bool,
+    keep: Bool = false,
+  ): Selection {
+    this.selectItem(
+      selection,
+      this.getPrevious(selection.optMain, items),
+      items,
+      to,
+      keep,
+    )
+  }
+
+  fun selectNext(
+    selection: Selection,
+    items: Array<Ui.Path>,
+    to: Bool,
+    keep: Bool = false,
+  ): Selection {
+    this.selectItem(
+      selection,
+      this.getNext(selection.optMain, items),
+      items,
+      to,
+      keep,
+    )
+  }
+
+  fun getPrevious(optCurrent: ?Ui.Path, items: Array<Ui.Path>): Ui.Path {
+    last = items.size() - 1;
+    optIndex = optCurrent.flatMap(i -> items.indexOf(i));
+    previous = optIndex.map(index -> index - 1).default(last);
+    if (previous < 0) {
+      !previous = 0
+    };
+    items.get(previous);
+  }
+
+  fun getNext(optCurrent: ?Ui.Path, items: Array<Ui.Path>): Ui.Path {
+    optIndex = optCurrent.flatMap(i -> items.indexOf(i));
+    next = optIndex.map(index -> index + 1).default(0);
+    if (next >= items.size()) {
+      !next = items.size() - 1;
+    };
+    items.get(next);
+  }
+
+  static fun forFile(obj: SKFS.File): SelectionModel {
+    obj match {
+    | x @ SelectionModel _ -> x
+    | _ -> invariant_violation("Invalid UiTree.SelectionModel")
+    }
+  }
+}
+
+class Single() extends SelectionModel {
+  fun isAllowMultiple(): Bool {
+    false
+  }
+
+  fun selectAll(selection: Selection, _items: Array<Ui.Path>): Selection {
+    selection
+  }
+
+  fun select(
+    selection: Selection,
+    path: Ui.Path,
+    items: Array<Ui.Path>,
+    toggle: Bool,
+  ): Selection {
+    if (items.indexOf(path).isSome()) {
+      optIndex = selection.multiple.indexOf(path);
+      select = optIndex.isNone() || toggle;
+      if (select) {
+        Selection(Array[path], Some(path))
+      } else {
+        Selection(Array[], selection.optMain)
+      }
+    } else {
+      selection
+    }
+  }
+
+  fun selectTo(
+    selection: Selection,
+    path: Ui.Path,
+    items: Array<Ui.Path>,
+    _keep: Bool,
+    _optIndex: ?Int,
+  ): Selection {
+    this.select(selection, path, items, false)
+  }
+}
+
+class Multiple() extends SelectionModel {
+  fun isAllowMultiple(): Bool {
+    true
+  }
+
+  fun selectAll(selection: Selection, items: Array<Ui.Path>): Selection {
+    Selection(
+      items,
+      if (selection.optMain.isSome()) {
+        selection.optMain
+      } else {
+        items.maybeGet(0)
+      },
+    )
+  }
+
+  fun select(
+    selection: Selection,
+    path: Ui.Path,
+    items: Array<Ui.Path>,
+    toggle: Bool,
+  ): Selection {
+    if (items.indexOf(path).isSome()) {
+      optIndex = selection.multiple.indexOf(path);
+      multiple = if (toggle) {
+        selection.multiple.filter(i -> i != path)
+      } else {
+        Array[]
+      };
+      if (optIndex.isNone() || !toggle) {
+        Selection(Arrays.add(multiple, path), Some(path))
+      } else {
+        Selection(multiple, selection.optMain)
+      }
+    } else {
+      selection
+    }
+  }
+
+  fun selectTo(
+    selection: Selection,
+    path: Ui.Path,
+    items: Array<Ui.Path>,
+    keep: Bool,
+    optIndex: ?Int,
+  ): Selection {
+    items.indexOf(path) match {
+    | Some(item) ->
+      count = items.size();
+      if (count == 0) {
+        Selection(Array[], selection.optMain)
+      } else {
+        sSet = Set::createFromItems(selection.multiple);
+        selectedItems = items
+          .mapWithIndex((idx, p) -> (idx, p, sSet.contains(p)))
+          .filter(i -> i.i2);
+        if (selectedItems.isEmpty()) {
+          optIndex match {
+          | Some(idx) ->
+            Selection(
+              items.slice(Math.min(idx, item), Math.max(idx, item)),
+              Some(path),
+            )
+          | _ -> Selection(Array[path], Some(path))
+          }
+        } else {
+          firstSelected = selectedItems.first();
+          !firstSelected = optIndex
+            .map(idx ->
+              if (idx < firstSelected.i0) {
+                (idx, items[idx], true)
+              } else {
+                firstSelected
+              }
+            )
+            .default(firstSelected);
+          lastSelected = selectedItems.last();
+          !lastSelected = optIndex
+            .map(idx ->
+              if (idx > lastSelected.i0) {
+                (idx, items[idx], true)
+              } else {
+                lastSelected
+              }
+            )
+            .default(lastSelected);
+          set = mutable Set<Ui.Path>[];
+          selections = mutable Vector<Ui.Path>[];
+          if (keep) {
+            selectedItems.each(i -> {
+              selections.push(i.i1);
+              set.insert(i.i1)
+            });
+          };
+          other = if (item < firstSelected.i0) {
+            if (optIndex == Some(firstSelected.i0)) {
+              lastSelected.i0;
+            } else {
+              firstSelected.i0
+            };
+          } else {
+            if (optIndex == Some(lastSelected.i0)) {
+              firstSelected.i0;
+            } else {
+              lastSelected.i0
+            };
+          };
+          start = Math.min(item, other);
+          end = Math.max(item, other) + 1;
+          for (idx in Range(start, end)) {
+            toAdd = items[idx];
+            if (!set.contains(toAdd)) {
+              selections.push(toAdd);
+              set.insert(toAdd)
+            }
+          };
+          Selection(selections.toArray(), Some(path))
+        };
+      }
+    | _ -> selection
+    }
+  }
+}
+
+module end;

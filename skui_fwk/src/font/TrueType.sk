@@ -1,0 +1,184 @@
+module TrueType;
+
+const msdfFontSize: Float = 45.0;
+
+class File(font: Font) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ File _ -> x
+    | _ -> invariant_violation("Must be TrueType.File")
+    }
+  }
+}
+
+base class State {
+  fun getSources(context: mutable SKFS.Context): ?SKFS.Loadable;
+  fun getFont(context: mutable SKFS.Context, name: String): ?SKFS.Loadable;
+  fun setSources(
+    context: mutable SKFS.Context,
+    sources: Font.FaceSources,
+  ): void;
+  fun setFont(
+    context: mutable SKFS.Context,
+    name: String,
+    ttf: TrueType.File,
+  ): void;
+
+  fun setSourcesError(context: mutable SKFS.Context, optError: ?Text): void;
+
+  fun setFontError(
+    context: mutable SKFS.Context,
+    name: String,
+    optError: ?Text,
+  ): void;
+}
+
+fun createFontSupport(
+  context: mutable SKFS.Context,
+  optBasename: ?SKFS.DirName = None(),
+): Ui.FontSupport {
+  filesProps = fontSupplier(context, optBasename);
+  faceProps = faceSupplier(context, filesProps, optBasename);
+  glyphProps = glyphSupplier(context, faceProps, optBasename);
+  msdfProps = msdfSupplier(context, glyphProps, optBasename);
+  Ui.FontSupport(faceProps, glyphProps, msdfProps);
+}
+
+fun fontSupplier(
+  context: mutable SKFS.Context,
+  optBasename: ?SKFS.DirName = None(),
+): Ui.GetterOne<SKFS.Future<TrueType.File>, Font.TypefaceInfo> {
+  prefed = Font.predefined();
+  typefacePath = SKFS.DirName::check("fonts/ttfs/typefaces/", optBasename);
+  typefaceHdl = SKFS.LHandle::lazy(
+    SKFS.Loadable::forFile,
+    context,
+    typefacePath,
+    (_ctx, _self, key) ~> {
+      key match {
+      | typeface @ Font.TypefaceInfo _ ->
+        prefed.maybeGet(typeface) match {
+        | Some(base64) ->
+          buffer = Base64.decodeString(base64);
+          SKFS.Loaded(TrueType.File(TrueType.parse(buffer)))
+        | None() -> SKFS.LoadFailed(Some(!"Only prefefined fonts are managed."))
+        }
+      | _ -> SKFS.cast_violation("Font.FaceID", key)
+      }
+    },
+    false,
+  );
+  (ctx, typeface) ~>
+    SKFS.LoadableFuture(TrueType.File::fromFile, typefaceHdl.get(ctx, typeface))
+}
+
+fun faceSupplier(
+  context: mutable SKFS.Context,
+  fontSources: Ui.GetterOne<SKFS.Future<TrueType.File>, Font.TypefaceInfo>,
+  optBasename: ?SKFS.DirName = None(),
+): Ui.GetterOne<SKFS.Future<Font.TypeFace>, Font.FaceID> {
+  facePath = SKFS.DirName::check("fonts/ttfs/faces/", optBasename);
+  faceHdl = SKFS.LHandle::lazy(
+    SKFS.Loadable::forFile,
+    context,
+    facePath,
+    (context, _self, key) ~> {
+      key match {
+      | fid @ Font.FaceID _ ->
+        futur = fontSources(context, fid.typeface);
+        futur.load(context, (_, fontFile) ~> {
+          Font.TypeFace(
+            fid.typeface,
+            TrueType.Face::make(
+              fontFile.font,
+              Font.Options{
+                size => fid.size,
+                dpi => fid.dpi,
+                hinting => fid.hinting,
+              },
+            ),
+          )
+        })
+      | _ -> SKFS.cast_violation("Font.FaceID", key)
+      }
+    },
+    false,
+  );
+  (ctx, faceId) ~>
+    SKFS.LoadableFuture(Font.TypeFace::fromFile, faceHdl.get(ctx, faceId))
+}
+
+fun glyphSupplier(
+  context: mutable SKFS.Context,
+  faceSources: Ui.GetterOne<SKFS.Future<Font.TypeFace>, Font.FaceID>,
+  optBasename: ?SKFS.DirName = None(),
+  optPath: ?String = None(),
+): Ui.GetterOne<Font.GlyphFile, Font.GlyphID> {
+  glyphPath = SKFS.DirName::check(
+    optPath.default("fonts/ttfs/glyphs/"),
+    optBasename,
+  );
+  glyphHdl = SKFS.LHandle::lazy(
+    Font.GlyphFile::fromFile,
+    context,
+    glyphPath,
+    (context, _self, key) ~> {
+      key match {
+      | gid @ Font.GlyphID _ ->
+        futur = faceSources(context, gid.fid);
+        futur
+          .maybeGet()
+          .map(typeface -> {
+            face = typeface.face;
+            optGlyph = face.getGlyph(gid.char);
+            if (optGlyph.isNone()) {
+              !optGlyph = face.getGlyph('\ufffd');
+            };
+            if (optGlyph.isNone()) {
+              !optGlyph = face.getGlyph('?');
+            };
+            optGlyph match {
+            | Some(glyph) -> Font.GlyphFile(Some(face), glyph)
+            | _ -> Font.GlyphFile::default(Some(face), gid.fid.size)
+            };
+          })
+          .default(Font.GlyphFile::default(None(), gid.fid.size))
+      | _ -> SKFS.cast_violation("Font.GlyphID", key)
+      }
+    },
+    false,
+  );
+  (ctx, glyphId) ~> glyphHdl.get(ctx, glyphId);
+}
+
+fun msdfSupplier(
+  context: mutable SKFS.Context,
+  glyphProps: Ui.GetterOne<Font.GlyphFile, Font.GlyphID>,
+  optBasename: ?SKFS.DirName = None(),
+): Ui.GetterOne<?Font.Msdf, Font.GlyphID> {
+  msdfPath = SKFS.DirName::check("fonts/ttfs/msdf/", optBasename);
+  msdfHdl = SKFS.LHandle::optLazy(
+    Font.Msdf::fromFile,
+    context,
+    msdfPath,
+    (context, _self, key) ~> {
+      key match {
+      | gid @ Font.GlyphID _ ->
+        glyph = glyphProps(context, gid);
+        glyph.glyph.optPath.map(path -> {
+          info = MTSDF.toMSDF{
+            shape => MTSDF.Shape::fromPath(path),
+            pxRange => gid.pxRange,
+          };
+          Font.Msdf::make(gid.char, info)
+        })
+      | _ -> SKFS.cast_violation("Font.GlyphID", key)
+      }
+    },
+    false,
+  );
+  (ctx, glyphId) ~> msdfHdl.maybeGet(ctx, glyphId);
+}
+
+module end;

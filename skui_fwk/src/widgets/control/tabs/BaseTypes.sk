@@ -1,0 +1,263 @@
+module UiTabs;
+
+fun actionsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/actions/")
+}
+
+fun actionsWidgetsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/actions/widgets/")
+}
+
+fun tabsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/tabs/")
+}
+
+fun tabsWidgetsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/tabs/widgets/")
+}
+
+fun pinnedTabsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/pinned/")
+}
+
+fun pinnedTabsWidgetsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/pinned/widgets/")
+}
+
+fun widgetsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/widgets/")
+}
+
+fun widgetDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/widget/")
+}
+
+class Action(
+  id: String,
+  icon: Ui.IconBuilder,
+  tooltip: ?Text = None(),
+  perform: mutable SKFS.Context ~> void = _ctx ~> void,
+  disabled: Ui.Getter<Bool> = Ui.default(false),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Action _ -> x
+    | _ -> invariant_violation("Must be UiTabs.Action")
+    }
+  }
+
+  fun build(context: mutable SKFS.Context, path: Ui.Path): Ui.Widget {
+    actionPath = path.makeChild("action").makeChild(this.id);
+    button = Ui.Button::create(
+      context,
+      actionPath,
+      UiButton.Parameters(
+        UiButton.LamController{
+          icon => (ctx, size) ~> this.icon.buildIcon(ctx, size),
+          kind => _ctx ~> UiButton.Regular(),
+          mode => _ctx ~> UiButton.Icon(true),
+          onFire => (ctx, _optCount) ~> this.perform(ctx),
+          disabled => this.disabled,
+          tooltip => _ctx ~> this.tooltip,
+        },
+        UiButton.init(context, actionPath),
+      ),
+    );
+    Ui.Decorated::create(
+      context,
+      actionPath.makeChild("padding"),
+      UiDecorated.LamController{
+        decoration => _ctx ~> Ui.Padding(Geometry.Insets::all(4.0)),
+        widget => _ctx ~> Some(button),
+      },
+    )
+  }
+}
+
+class Tab{
+  disabled: Ui.Getter<Bool> = Ui.default(false),
+  closable: Ui.Getter<Bool> = Ui.default(false),
+  text: Ui.Getter<?Text> = Ui.default(None()),
+  discriminant: Ui.Getter<?Text> = Ui.default(None()),
+  tooltip: Ui.Getter<?Text> = Ui.default(None()),
+  icon: Ui.Getter<?Ui.IconBuilder> = Ui.default(None()),
+  iconOnTop: Ui.Getter<Bool> = Ui.default(false),
+  badge: Ui.Getter<?Ui.Badge> = Ui.default(None()),
+  progress: Ui.Getter<?Ui.Progress> = Ui.default(None()),
+  fireMessage: Ui.GetterOne<Array<FWKMessage.Message>, Bool> = Ui.defaultOne(
+    Array[],
+  ),
+} extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Tab _ -> x
+    | _ -> invariant_violation("Must be UiTabs.Tab")
+    }
+  }
+}
+
+base class Kind uses Orderable {
+  children =
+  | Fixed()
+  | Scrollable()
+
+  fun toCode(): Int
+  | Fixed() -> 0
+  | Scrollable() -> 1
+
+  static fun fromCode(code: Int): Kind {
+    code match {
+    | 1 -> Scrollable()
+    | 0
+    | _ ->
+      Fixed()
+    }
+  }
+}
+
+base class Placeholder {
+  children =
+  | Txt(Text)
+  | Custom(Ui.Widget)
+}
+
+class Identified(id: String, controller: UiTab.Controller) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Identified _ -> x
+    | _ -> invariant_violation("Must be UiTabs.Identified")
+    }
+  }
+}
+
+class ClosableInfo(
+  closables: Array<String>,
+  left: Array<String>,
+  right: Array<String>,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ ClosableInfo _ -> x
+    | _ -> invariant_violation("Must be UiTabs.ClosableInfo")
+    }
+  }
+}
+
+base class Controller extends SKFS.UserData {
+  fun getTabs(context: mutable SKFS.Context): Array<String>;
+  fun getTab(context: mutable SKFS.Context, id: String): Tab;
+  fun getActive(context: mutable SKFS.Context): ?Ui.StringProperty;
+
+  fun getKind(context: mutable SKFS.Context): Kind;
+  fun getMode(context: mutable SKFS.Context): UiTab.Mode;
+  fun getSide(context: mutable SKFS.Context): .UiSide;
+  fun getNumberOfActions(context: mutable SKFS.Context): Int;
+  fun getAction(context: mutable SKFS.Context, index: Int): Action;
+  fun getMinWidth(context: mutable SKFS.Context): ?Int;
+  fun getMaxWidth(context: mutable SKFS.Context): ?Int;
+  fun getChangeMessages(
+    context: mutable SKFS.Context,
+    tab: String,
+    selected: Bool,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message>;
+
+  fun getCloseMessages(
+    context: mutable SKFS.Context,
+    tabs: Array<String>,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message>;
+
+  fun getNumberOfTabs(context: mutable SKFS.Context): Int {
+    this.getTabs(context).size()
+  }
+
+  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+    this.getSide(context) match {
+    | UiSide.Top()
+    | UiSide.Bottom() ->
+      Ui.HorizontalAxis()
+    | UiSide.Left()
+    | UiSide.Right() ->
+      Ui.VerticalAxis()
+    }
+  }
+}
+
+base class State {
+  fun getNumberOfPinned(context: mutable SKFS.Context): Int;
+  fun getPinned(context: mutable SKFS.Context, index: Int): Identified;
+
+  fun getNumberOfTabs(context: mutable SKFS.Context): Int;
+  fun getTab(context: mutable SKFS.Context, index: Int): Identified;
+  fun getActive(context: mutable SKFS.Context): ?String;
+  fun getClosableInfo(
+    context: mutable SKFS.Context,
+    optTab: ?String,
+  ): ClosableInfo;
+
+  fun emitPinned(context: mutable SKFS.Context, tab: String, value: Bool): void;
+  fun emitSelected(context: mutable SKFS.Context, optTab: ?String): void;
+  fun pinMessage(tab: String, pinned: Bool): FWKMessage.Message;
+  fun moveMessage(
+    toMove: String,
+    dstTab: String,
+    before: Bool,
+  ): FWKMessage.Message;
+}
+
+base class Storage {
+  fun getName(): String;
+  fun getScope(): String;
+
+  fun isPinned(context: mutable SKFS.Context, tab: String): Bool;
+  fun setSelected(context: mutable SKFS.Context, optTab: ?String): void;
+  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+}
+
+class Parameters(
+  controller: Controller,
+  state: State,
+) extends Ui.Parameters, SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Parameters _ -> x
+    | _ -> invariant_violation("Must be UiTabs.Parameters")
+    }
+  }
+}
+
+class MainCollection(
+  tabs: Ui.Widget,
+  actions: Ui.Getter<Ui.Widget>,
+  direction: Ui.Getter<Ui.Axis>,
+) extends Ui.WidgetsCollection {
+  //
+  fun getSize(_context: mutable SKFS.Context): Int {
+    2
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+    this.direction(context) match {
+    | Ui.HorizontalAxis() ->
+      if (index == 0) {
+        this.tabs
+      } else {
+        this.actions(context)
+      }
+    | Ui.VerticalAxis() ->
+      if (index == 0) {
+        this.actions(context)
+      } else {
+        this.tabs
+      }
+    }
+  }
+}
+
+module end;

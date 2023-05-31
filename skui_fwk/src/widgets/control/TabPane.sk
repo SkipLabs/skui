@@ -1,0 +1,250 @@
+module Ui;
+
+class TabPane protected {
+  controller: UiTabPane.Controller,
+  widgetHdl: SKFS.EHValue<WidgetFile>,
+} extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
+  //
+  type Params = UiTabPane.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    controller: UiTabPane.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Configuration = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiTabPane.itemsDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+    );
+    tabsKey = SKFS.StrID("k0_tabs");
+    contentKey = SKFS.StrID("k2_content");
+    placeHolderKey = SKFS.StrID("k1_placeholder");
+    childrenHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiTabPane.widgetsDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[
+        (tabsKey, SKFS.IntFile(0)),
+        (contentKey, SKFS.IntFile(0)),
+        (placeHolderKey, SKFS.IntFile(0)),
+      ],
+    );
+    builtHdl = mainHdl
+      .contextWriterKeyMap(
+        f ~> f,
+        context,
+        UiTabPane.itemsDirName(path),
+        (context, writer, _key, _file) ~> {
+          tabs = controller.getTabs(context);
+          keys = mutable Vector<SKFS.StrID>[];
+          for (tab in tabs) {
+            id = SKFS.StrID(tab);
+            writer.write(id, SKFS.StringFile(tab));
+            keys.push(id);
+          };
+          writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
+          writer.write(SKFS.KSize(), SKFS.IntFile(keys.size()));
+        },
+      )
+      .contextWriterKeyMap(
+        f ~> f,
+        context,
+        UiTabPane.itemsDirName(path.makeChild("built")),
+        (context, writer, key, file) ~> {
+          key match {
+          | SKFS.KKeys()
+          | SKFS.KSize() ->
+            writer.write(key, file)
+          | _ ->
+            tab = SKFS.StringFile::fromFile(file).value;
+            writer.write(key, controller.getTab(context, tab))
+          };
+        },
+      )
+      .contextWriterKeyMap(
+        f ~> f,
+        context,
+        UiTabPane.itemsDirName(path.makeChild("tabs")),
+        (_context, writer, key, file) ~> {
+          key match {
+          | SKFS.KKeys()
+          | SKFS.KSize() ->
+            writer.write(key, file)
+          | _ ->
+            id = key.toString();
+            tabInfo = UiTabPane.Tab::fromFile(file);
+            // TODO intermediate tables to break dependencies
+            tab = UiTabs.Tab{
+              disabled => ctx ~> controller.isDisabled(ctx, id),
+              closable => ctx ~> controller.isClosable(ctx, id),
+              text => _ctx ~> tabInfo.optText,
+              discriminant => _ctx ~> tabInfo.optDiscriminant,
+              tooltip => _ctx ~> tabInfo.optTooltip,
+              icon => _ctx ~> tabInfo.optIcon,
+              iconOnTop => controller.isIconOnTop,
+              badge => ctx ~> controller.getBadge(ctx, id),
+              progress => ctx ~> controller.getProgress(ctx, id),
+            };
+            writer.write(key, tab)
+          };
+        },
+      );
+    beforeHdl = childrenHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTabPane.widgetsDirName(path.makeChild("before")),
+      (context, writer, key, file) ~> {
+        subPath = path.makeChild("widgets").makeChild(key.toString());
+        if (key == tabsKey) {
+          tabsController = UiTabs.LamController{
+            tabs => controller.getTabs,
+            tab => (ctx, id) ~> {
+              tkey = SKFS.StrID(id);
+              UiTabs.Tab::fromFile(builtHdl.get(ctx, tkey));
+            },
+            numberOfActions => ctx ~> controller.getActions(ctx).size(),
+            actions => (ctx, idx) ~> {
+              controller.getAction(ctx, controller.getActions(ctx)[idx])
+            },
+            active => controller.getActive,
+            kind => controller.getKind,
+            mode => controller.getMode,
+            side => controller.getSide,
+            minWidth => controller.getMinWidth,
+            maxWidth => controller.getMaxWidth,
+            changeMessages => controller.getChangeMessages,
+            closeMessages => controller.getCloseMessages,
+          };
+          writer.write(key, UiTabs.init(context, subPath, tabsController))
+        } else if (key == placeHolderKey) {
+          writer.write(
+            key,
+            WidgetFile(
+              Label::create(
+                context,
+                subPath,
+                UiLabel.LamController{
+                  text => ctx ~> Some(controller.getPlaceHolder(ctx)),
+                  textFont => _ctx ~> UiTheme.PanePlaceHolder(),
+                },
+              ),
+            ),
+          )
+        } else {
+          writer.write(key, file)
+        }
+      },
+    );
+    widgetsHdl = beforeHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      UiTabPane.widgetsDirName(path),
+      (context, writer, key, file) ~> {
+        subPath = path.makeChild("widgets").makeChild(key.toString());
+        if (key == tabsKey) {
+          tabsParams = UiTabs.Parameters::fromFile(file);
+          writer.write(
+            key,
+            WidgetFile(Tabs::create(context, subPath, tabsParams)),
+          )
+        } else if (key == contentKey) {
+          optWidget = beforeHdl
+            .maybeGetProp(context, tabsKey, UiTabs.Parameters::fromFile)
+            .flatMap(tabsParams -> {
+              tabsParams.state.getActive(context) match {
+              | Some(active) ->
+                controller.getWidget(context, active) match {
+                | Some(widget) -> Some(widget)
+                | _ -> None()
+                }
+              | _ ->
+                beforeHdl.maybeGetProp(context, placeHolderKey, f ~>
+                  WidgetFile::fromFile(f).widget
+                )
+              }
+            });
+          widget = optWidget match {
+          | Some(widget) -> widget
+          | _ ->
+            indPath = path.makeChild("widgets").makeChild("indicator");
+            Indicator::create(
+              context,
+              indPath,
+              UiProgress.parameters(
+                context,
+                indPath,
+                UiProgress.LamController{},
+              ),
+            )
+          };
+          writer.write(
+            key,
+            WidgetFile(
+              Configured::create(
+                context,
+                path.makeChild("widgets").makeChild("configured"),
+                UiConfigured.LamController{widget => _ctx ~> widget},
+                Some(UiFlex.Configuration{flex => 1}),
+              ),
+            ),
+          )
+        }
+      },
+    );
+    widgetHdl = mainHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      UiTabPane.widgetDirName(path),
+      (context, writer, key, _) ~> {
+        subPath = path.makeChild("widgets").makeChild("main");
+        (direction, widgets) = controller.getSide(context) match {
+        | UiSide.Left() -> (HorizontalAxis(), Array[tabsKey, contentKey])
+        | UiSide.Top() -> (VerticalAxis(), Array[tabsKey, contentKey])
+        | UiSide.Right() -> (HorizontalAxis(), Array[contentKey, tabsKey])
+        | UiSide.Bottom() -> (VerticalAxis(), Array[contentKey, tabsKey])
+        };
+        writer.write(
+          key,
+          WidgetFile(
+            Flex::createForController(
+              context,
+              subPath,
+              UiFlex.LamController{
+                widgets => UiTabPane.MainCollection(widgetsHdl, widgets),
+                direction => _ctx ~> direction,
+                crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+              },
+            ),
+          ),
+        )
+      },
+    );
+    static{
+      path,
+      controller,
+      optConfiguration,
+      cache,
+      widgetHdl => SKFS.EHValue(widgetHdl, SKFS.IID(0)),
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    widget = this.widgetHdl.get(context).widget;
+    node = widget.getNode(context, constraints);
+    Node(
+      this,
+      node.size,
+      Array[CNode(node, Geometry.Offset::zero, constraints)],
+    );
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    this.widgetHdl.get(context).widget.getViewportDefinition(context);
+  }
+}
+
+module end;

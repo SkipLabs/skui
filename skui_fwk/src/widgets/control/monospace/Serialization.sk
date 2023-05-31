@@ -1,0 +1,356 @@
+module UiMonospace;
+
+fun toJSON(v: JSONValue): JSON.Value {
+  v.toJSON()
+}
+
+extension base class Command {
+  fun toJSON(): JSON.Value
+  | Upper()
+  | Lower()
+  | Copy()
+  | Duplicate()
+  | Save()
+  | SwitchLine()
+  | Cut() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | ToggleHidden(tick)
+  | CancelScrolling(tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | ManageHVisible(value)
+  | ManageVVisible(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+  | ManageHScrolling(value, tick)
+  | ManageVScrolling(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | GoToLine(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue.map(v -> JSON.String(v)).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | SelectLine(lineIdx) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(lineIdx),
+      ],
+    )
+  | Paste(content) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "content" => content.toJSON(),
+      ],
+    )
+  | SetArmed(value)
+  | SetBlinking(value)
+  | SetMoveSelection(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.Bool(value),
+      ],
+    )
+  | SetHScroll(optScroll)
+  | SetVScroll(optScroll) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optScroll.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | ManageUnicode(optUnicode) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "unicode" => optUnicode
+          .map(unicode -> JSON.IntNumber(unicode))
+          .default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Insert(text, ignoreSelection, optPosition) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "text" => JSON.String(text),
+        "ignoreSelection" => JSON.Bool(ignoreSelection),
+        "position" => optPosition.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | DnDTarget(optPosition) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "position" => optPosition.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | ManageDiacritic(char) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "code" => JSON.IntNumber(char.code()),
+      ],
+    )
+  | ManageUnicode(optUnicode) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "unicode" => optUnicode
+          .map(unicode -> JSON.IntNumber(unicode))
+          .default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | ManageText(text) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "text" => JSON.String(text),
+      ],
+    )
+  | Undo(optRepeatOn, count)
+  | Redo(optRepeatOn, count)
+  | DecrLine(optRepeatOn, count)
+  | IncrLine(optRepeatOn, count)
+  | Indent(optRepeatOn, count)
+  | Outdent(optRepeatOn, count)
+  | NewLine(optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "repeatOn" => optRepeatOn.map(toJSON).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Multiples(commands) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "commands" => JSON.arrayToJSON(commands, toJSON),
+      ],
+    )
+  | SetHover(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | SelectTo(target, optRepeatOn, count)
+  | GoTo(target, optRepeatOn, count)
+  | DeleteTo(target, optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "target" => target.toJSON(),
+        "repeatOn" => optRepeatOn.map(toJSON).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiMonospace.Upper" -> Upper()
+    | "UiMonospace.Lower" -> Lower()
+    | "UiMonospace.Cut" -> Cut()
+    | "UiMonospace.Copy" -> Copy()
+    | "UiMonospace.Save" -> Save()
+    | "UiMonospace.Duplicate" -> Duplicate()
+    | "UiMonospace.SwitchLine" -> SwitchLine()
+    | "UiMonospace.ManageHScrolling" ->
+      ManageHScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "UiMonospace.ManageVScrolling" ->
+      ManageVScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "UiMonospace.ManageHVisible" -> ManageHVisible(jso.getInt("value"))
+    | "UiMonospace.ManageVVisible" -> ManageVVisible(jso.getInt("value"))
+    | "UiMonospace.ToggleHidden" -> ToggleHidden(SKFS.Tick(jso.getInt("tick")))
+    | "UiMonospace.CancelScrolling" ->
+      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+    | "UiMonospace.Paste" ->
+      Paste(FWKClipboard.Content::fromJSON(jso.get("content")))
+    | "UiMonospace.SetMoveSelection" -> SetMoveSelection(jso.getBool("value"))
+    | "UiMonospace.SetArmed" -> SetArmed(jso.getBool("value"))
+    | "UiMonospace.SetHover" ->
+      SetHover(jso.maybeGet("value").map(Hover::fromJSON))
+    | "UiMonospace.SetBlinking" -> SetBlinking(jso.getBool("value"))
+    | "UiMonospace.SetHScroll" ->
+      SetHScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
+    | "UiMonospace.SetVScroll" ->
+      SetVScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
+    | "UiMonospace.Insert" ->
+      Insert(
+        jso.getString("text"),
+        jso.getBool("ignoreSelection"),
+        jso.maybeGet("position").map(Ui.Position::fromJSON),
+      )
+    | "UiMonospace.DnDTarget" ->
+      DnDTarget(jso.maybeGet("position").map(Ui.Position::fromJSON))
+    | "UiMonospace.ManageText" -> ManageText(jso.getString("text"))
+    | "UiMonospace.ManageDiacritic" ->
+      ManageDiacritic(Char::fromCode(jso.getInt("code")))
+    | "UiMonospace.ManageUnicode" -> ManageUnicode(jso.maybeGetInt("unicode"))
+    | "UiMonospace.Undo" ->
+      Undo(
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.Redo" ->
+      Redo(
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.DecrLine" ->
+      DecrLine(
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.IncrLine" ->
+      IncrLine(
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.Indent" ->
+      Indent(
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.Outdent" ->
+      Outdent(
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.NewLine" ->
+      NewLine(
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.GoTo" ->
+      GoTo(
+        Selection::fromJSON(jso.get("target")).toTarget(),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.SelectTo" ->
+      SelectTo(
+        Selection::fromJSON(jso.get("target")),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.DeleteTo" ->
+      DeleteTo(
+        Selection::fromJSON(jso.get("target")).toTarget(),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiMonospace.Multiples" ->
+      Multiples(JSON.arrayFromJSON(jso.getArray("commands"), static::fromJSON))
+    | "UiMonospace.GoToLine" -> GoToLine(jso.maybeGetString("value"))
+    | "UiMonospace.SelectLine" -> SelectLine(jso.getInt("value"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiMonospace.Command`)
+    }
+  }
+}
+
+extension base class Hover extends JSONValue {
+  fun toJSON(): JSON.Value
+  | HVBar()
+  | HHBar() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | HLine(line) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "line" => JSON.IntNumber(line),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Hover {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiMonospace.HHBar" -> HHBar()
+    | "UiMonospace.HVBar" -> HVBar()
+    | "UiMonospace.HLine" -> HLine(jso.getInt("line"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiMonospace.Hover`)
+    }
+  }
+}
+
+extension base class Selection extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | TAll() -> JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | TPortion(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => value.toJSON(),
+      ],
+    )
+  | TPos(optPos) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "pos" => optPos.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | TColumn(next)
+  | TLine(next)
+  | TPage(next)
+  | TDocument(next) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "next" => JSON.Bool(next),
+      ],
+    )
+  | TGroup(optNext)
+  | TInLine(optNext) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "next" => optNext.map(next -> JSON.Bool(next)).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Selection {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiMonospace.TAll" -> TAll()
+    | "UiMonospace.TPortion" -> TPortion(Ui.Portion::fromJSON(jso.get("value")))
+    | "UiMonospace.TPos" -> TPos(jso.maybeGet("pos").map(Ui.Position::fromJSON))
+    | "UiMonospace.TColumn" -> TColumn(jso.getBool("next"))
+    | "UiMonospace.TGroup" -> TGroup(jso.maybeGetBool("next"))
+    | "UiMonospace.TInLine" -> TInLine(jso.maybeGetBool("next"))
+    | "UiMonospace.TLine" -> TLine(jso.getBool("next"))
+    | "UiMonospace.TPage" -> TPage(jso.getBool("next"))
+    | "UiMonospace.TDocument" -> TDocument(jso.getBool("next"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiMonospace.Target`)
+    }
+  }
+}
+
+module end;

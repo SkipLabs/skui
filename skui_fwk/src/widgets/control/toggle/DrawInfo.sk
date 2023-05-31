@@ -1,0 +1,80 @@
+module UiToggle;
+
+type Filler = (
+  mutable SKFS.Context,
+  Ui.DrawableSupport,
+  Geometry.Offset,
+  Color,
+  mutable Vector<Ui.Drawable>,
+) ~> void;
+
+class TextDrawInfo(
+  text: String,
+  bounds: Geometry.Rect,
+  faceId: Font.FaceID,
+  textSupport: Ui.TextSupport,
+)
+
+class IconsDrawInfo(
+  selected: Filler,
+  unselected: Filler,
+  indeterminate: Filler,
+)
+
+class DrawInfo private (
+  optLabel: ?TextDrawInfo,
+  optSelectionIcons: ?IconsDrawInfo,
+  optIcon: ?Filler,
+) extends Ui.DrawInfo {
+  //
+  static fun compute(layout: Layout, size: Geometry.Size): this {
+    left = layout.hSide;
+    top = layout.vSide;
+    width = size.width - 2.0 * layout.hSide;
+    height = size.height - 2.0 * layout.vSide;
+    iconTextGap = layout.optLabel.map(_t -> layout.iconTextGap).default(0.0);
+    optSelectionIcons = layout.optSelectionIcons.map(sis -> {
+      sSize = sis.size();
+      res = sis.toDraw(
+        Geometry.Offset(left, top),
+        Geometry.Size(sSize.width, height),
+      );
+      fWidth =
+        sSize.width +
+        layout.optIcon.map(_i -> layout.iconIconGap).default(iconTextGap);
+      !left = left + fWidth;
+      !width = width - fWidth;
+      res
+    });
+    if (optSelectionIcons.isNone()) {
+      itWidth = layout.computeIconTextWidth();
+      if (width > itWidth) {
+        diff = (width - itWidth) / 2.0;
+        !left = left + diff;
+        !width = width - diff;
+      };
+    };
+    optIcon = layout.optIcon.map(iconInfo -> {
+      iOffset = Geometry.Offset(left, top);
+      res = (ctx, support, abs, color, drawables) ~>
+        iconInfo.fillDrawables(
+          ctx,
+          support,
+          abs + iOffset,
+          Geometry.Size(iconInfo.size.width, height),
+          color,
+          drawables,
+        );
+      fWidth = iconInfo.size.width + iconTextGap;
+      !left = left + fWidth;
+      !width = width - fWidth;
+      res
+    });
+    optLabel = layout.optLabel.map(label ->
+      label.toDraw(Geometry.Offset(left, top), Geometry.Size(width, height))
+    );
+    static(optLabel, optSelectionIcons, optIcon)
+  }
+}
+
+module end;

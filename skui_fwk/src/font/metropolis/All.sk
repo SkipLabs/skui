@@ -1,0 +1,114 @@
+module Font;
+
+fun fillMetropolis(
+  p: SortedMap<TypefaceInfo, String>,
+): SortedMap<TypefaceInfo, String> {
+  metropolis = "Metropolis";
+  // Metropolis thin
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::thin, Normal()),
+    Metropolis.thinB64(),
+  );
+  thinItalicB64 = Metropolis.thinItalicB64();
+  !p = p.add(TypefaceInfo(metropolis, Weight::thin, Italic()), thinItalicB64);
+  !p = p.add(TypefaceInfo(metropolis, Weight::thin, Oblique()), thinItalicB64);
+  // Metropolis extra light
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::extralight, Normal()),
+    Metropolis.extraLightB64(),
+  );
+  extraLightItalicB64 = Metropolis.extraLightItalicB64();
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::extralight, Italic()),
+    extraLightItalicB64,
+  );
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::extralight, Oblique()),
+    extraLightItalicB64,
+  );
+  // Metropolis light
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::light, Normal()),
+    Metropolis.lightB64(),
+  );
+  lightItalicB64 = Metropolis.lightItalicB64();
+  !p = p.add(TypefaceInfo(metropolis, Weight::light, Italic()), lightItalicB64);
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::light, Oblique()),
+    lightItalicB64,
+  );
+  // Metropolis normal
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::normal, Normal()),
+    Metropolis.regularB64(),
+  );
+  regularItalicB64 = Metropolis.regularItalicB64();
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::normal, Italic()),
+    regularItalicB64,
+  );
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::normal, Oblique()),
+    regularItalicB64,
+  );
+  // Metropolis medium
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::medium, Normal()),
+    Metropolis.mediumB64(),
+  );
+  mediumItalicB64 = Metropolis.mediumItalicB64();
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::medium, Italic()),
+    mediumItalicB64,
+  );
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::medium, Oblique()),
+    mediumItalicB64,
+  );
+  // Metropolis semi bold
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::semibold, Normal()),
+    Metropolis.semiBoldB64(),
+  );
+  semiBoldItalicB64 = Metropolis.semiBoldItalicB64();
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::semibold, Italic()),
+    semiBoldItalicB64,
+  );
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::semibold, Oblique()),
+    semiBoldItalicB64,
+  );
+  // Metropolis bold
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::bold, Normal()),
+    Metropolis.boldB64(),
+  );
+  boldItalicB64 = Metropolis.boldItalicB64();
+  !p = p.add(TypefaceInfo(metropolis, Weight::bold, Italic()), boldItalicB64);
+  !p = p.add(TypefaceInfo(metropolis, Weight::bold, Oblique()), boldItalicB64);
+  // Metropolis extra bold
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::extrabold, Normal()),
+    Metropolis.extraBoldB64(),
+  );
+  extraBoldItalicB64 = Metropolis.extraBoldItalicB64();
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::extrabold, Italic()),
+    extraBoldItalicB64,
+  );
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::extrabold, Oblique()),
+    extraBoldItalicB64,
+  );
+  // Metropolis black
+  !p = p.add(
+    TypefaceInfo(metropolis, Weight::black, Normal()),
+    Metropolis.blackB64(),
+  );
+  blackItalicB64 = Metropolis.blackItalicB64();
+  !p = p.add(TypefaceInfo(metropolis, Weight::black, Italic()), blackItalicB64);
+  p.add(TypefaceInfo(metropolis, Weight::black, Oblique()), blackItalicB64);
+}
+
+module end;

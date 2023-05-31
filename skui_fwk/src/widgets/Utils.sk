@@ -1,0 +1,97 @@
+module Ui;
+
+fun buildTooltip(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  ttGetter: Getter<?Text>,
+): ?FWK.SourcedWidget {
+  ttGetter(context).map(tt ->
+    FWK.SourcedWidget(Some(path), (ctx, _root) ~>
+      Some(
+        Ui.Tooltip::create(
+          ctx,
+          path.makeChild("tooltip"),
+          UiTooltip.LamController{text => _ctx ~> tt},
+        ),
+      )
+    )
+  )
+}
+
+base class Timed(tick: SKFS.Tick) extends SKFS.File {
+  children =
+  | TimedBool(value: Bool)
+  | TimedString(value: String)
+  | TimedInt(value: Int)
+  | TimedRange(value: Range)
+  | TimedStatus(value: Status)
+}
+
+fun getTextInfo(
+  context: mutable SKFS.Context,
+  textSupport: Ui.TextSupport,
+  faceId: Font.FaceID,
+  str: String,
+): (String, Geometry.Size, Font.FaceID) {
+  lineSpacing = context.getThemeThickness(UiTheme.LineSpacing());
+  size = textSupport.getLinesSize(context, str, None(), faceId, _lh ->
+    lineSpacing.toFloat()
+  );
+  (str, size, faceId)
+}
+
+fun drawConstrainedText(
+  context: mutable SKFS.Context,
+  support: Ui.DrawableSupport,
+  textSupport: Ui.TextSupport,
+  text: String,
+  bounds: Geometry.Rect,
+  color: .Color,
+  faceId: Font.FaceID,
+  drawables: mutable Vector<Ui.Drawable>,
+  hAlignment: Text.FixedAlign = Text.Left(),
+  vAlignment: Text.VAlign = Text.Middle(),
+): void {
+  lineSpacing = context.getThemeThickness(UiTheme.LineSpacing());
+  lines = textSupport.getLines(
+    context,
+    text,
+    bounds.size(),
+    Text.Style{
+      faceId,
+      lineSpacing => Text.ConstLineSpacing(lineSpacing.toFloat()),
+      vAlignment,
+      hAlignment,
+    },
+  );
+  lines.each(l ->
+    l.fillDrawables(context, support, bounds.topLeft(), color, drawables)
+  )
+}
+
+fun themeShadow(
+  context: mutable SKFS.Context,
+  offset: Geometry.Offset,
+  size: Geometry.Size,
+  radius: Float,
+): Array<Ui.Drawable> {
+  color = context.getThemeColor(UiTheme.Shadow());
+  smooth = context.getThemeThickness(UiTheme.Shadow());
+  shift = (smooth * 3 / 4).toFloat();
+  context
+    .getDrawableSupport()
+    .map(support ->
+      Array[
+        support.roundedRectangle(
+          offset.translate(-shift, -shift),
+          size + Geometry.Size::square(2.0 * shift),
+          color,
+          radius + shift,
+          smooth,
+        ),
+      ]
+    )
+    .default(Array[])
+}
+
+module end;

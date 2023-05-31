@@ -1,0 +1,73 @@
+module UiTabsSc;
+
+fun widgetDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/viewport/widget/")
+}
+
+fun verifiedMetricsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/scroll/metrics/verified/")
+}
+
+fun computedMetricsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tabs/scroll/metrics/computed/")
+}
+
+const space: Float = 16.0;
+
+base class Target extends SKFS.File uses Orderable, Show {
+  children =
+  | Index(value: Int)
+
+  fun toString(): String
+  | Before() -> "Before"
+  | After() -> "After"
+  | Index(value) -> `Index[${value}]`
+
+  fun asHover(): Hover
+  | Before() -> Before()
+  | After() -> After()
+  | Index _ -> invariant_violation("UiTabsSc.Index is not UiTabsSc.Hover.")
+}
+
+base class Hover extends Target {
+  children =
+  | Before()
+  | After()
+}
+
+base class Controller extends Ui.WidgetsCollection {
+  fun getDirection(context: mutable SKFS.Context): Ui.Axis;
+  fun getVisibleSource(context: mutable SKFS.Context): ?Ui.Visible;
+  fun getDropMessages(
+    context: mutable SKFS.Context,
+    source: String,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message>;
+}
+
+base class State extends Ui.StateWithScroll {
+  fun getHover(context: mutable SKFS.Context): ?Hover;
+  fun isScrolling(context: mutable SKFS.Context): Bool;
+  fun emitHover(context: mutable SKFS.Context, value: ?Hover): void;
+  fun emitGoTo(
+    context: mutable SKFS.Context,
+    value: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+}
+
+class Parameters(
+  reference: Ui.Path,
+  controller: Controller,
+  state: State,
+) extends Ui.Parameters
+
+base class Storage extends Ui.StorageWithScroll {
+  fun getName(): String;
+  fun getScope(): String;
+
+  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  fun setHover(context: mutable SKFS.Context, optHover: ?Hover): void;
+}
+
+module end;

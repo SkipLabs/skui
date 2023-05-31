@@ -12,10 +12,42 @@ class LambdaHandle(
   }
 }
 
+class Handles(
+  value: Array<Ui.Handle>,
+  optViewport: ?Ui.Path = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Handles _ -> x
+    | _ -> invariant_violation("Must be Ui.Handles")
+    }
+  }
+}
+
 base class Drawable extends SKFS.File uses HasClassName {
   fun translate(offset: Geometry.Offset): this;
   fun size(): Geometry.Size;
 }
+
+class Drawables(
+  value: Array<Drawable>,
+  optViewport: ?Ui.Path = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Drawables _ -> x
+    | _ -> invariant_violation("Must be Ui.Drawables")
+    }
+  }
+}
+
+base class Ctx {
+  fun getId(): Int;
+}
+
+base class Supplier
 
 base class RectangleDrawable(bounds: Geometry.Rect) extends Drawable {
   fun translate(offset: Geometry.Offset): this {

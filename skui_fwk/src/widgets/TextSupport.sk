@@ -1,0 +1,509 @@
+module Ui;
+
+class Word(width: Float, widths: Vector<Float>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Word _ -> x
+    | _ -> invariant_violation("Must be Ui.Word")
+    }
+  }
+}
+
+class Glyph(
+  gid: Font.GlyphID,
+  offset: Geometry.Offset,
+  glyph: Font.GlyphFile,
+  color: .Color,
+)
+
+class Line(offset: Geometry.Offset, glyphs: Vector<Glyph>) extends SKFS.File {
+  //
+  fun fillDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    if (FWKEnv.getWindowId(context).isSome()) {
+      fontSupport = context.getFontSupport();
+      offset = absolute.move(this.offset);
+      this.glyphs.each(glyph -> {
+        size = glyph.glyph.glyph.optPath
+          .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
+          .default(Geometry.Size(0.0, 0.0));
+        fontSupport.getMSDF(context, glyph.gid).each(msdf ->
+          drawables.push(
+            support.msdf(
+              offset.move(glyph.offset),
+              size,
+              msdf.image,
+              msdf.conv,
+              glyph.gid.pxRange,
+              thickness(glyph.gid.fid.size, glyph.gid.fid.isNotBold()),
+              paint,
+            ),
+          )
+        );
+      })
+    };
+  }
+}
+
+class FacedText(value: String, faceId: Font.FaceID) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.value}:${this.faceId}`
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as FacedText _);
+    sComp = this.value.compare(oKey.value);
+    if (sComp == EQ()) {
+      this.faceId.compare(oKey.faceId);
+    } else {
+      sComp
+    }
+  }
+}
+
+class TextKey(
+  value: String,
+  style: Text.Display,
+  pxRange: Int = 8,
+) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.value}:${Utils.toString(this.style)}:${this.pxRange}`
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as TextKey _);
+    sComp = this.value.compare(oKey.value);
+    if (sComp == EQ()) {
+      stComp = this.style.compare(oKey.style);
+      if (stComp == EQ()) {
+        this.pxRange.compare(oKey.pxRange);
+      } else {
+        stComp
+      }
+    } else {
+      sComp
+    }
+  }
+}
+
+class TextSupport(
+  private sizesHdl: SKFS.LHandle<Geometry.Size>,
+  private wordsHdl: SKFS.LHandle<Word>,
+  private drawablesHdl: SKFS.LHandle<Ui.Drawables>,
+  private glyphsHdl: SKFS.LHandle<Line>,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ TextSupport _ -> x
+    | _ -> invariant_violation("Must be Ui.TextSupport")
+    }
+  }
+
+  static fun create(context: mutable SKFS.Context): this {
+    sizesHdl = SKFS.LHandle::lazy(
+      Geometry.Size::fromFile,
+      context,
+      SKFS.DirName::create("/ui/utils/text/sizes/"),
+      (context, _self, key) ~> {
+        key match {
+        | textKey @ FacedText _ ->
+          chars = textKey.value.chars();
+          context
+            .getFontSupport()
+            .getTextSize(
+              context,
+              chars,
+              Text.Token::make(0, chars.size()),
+              textKey.faceId,
+            )
+        | _ -> invariant_violation(`Invalid sies key ${key}`)
+        }
+      },
+    );
+    drawablesHdl = SKFS.LHandle::optLazy(
+      Ui.Drawables::fromFile,
+      context,
+      SKFS.DirName::create("/ui/utils/text/drawables/"),
+      (context, _self, key) ~> {
+        key match {
+        | textKey @ TextKey _ ->
+          context.getDrawableSupport().flatMap(support -> {
+            toDrawables(
+              context,
+              support,
+              textKey.value.chars(),
+              textKey.style,
+              thickness(
+                textKey.style.faceId.size,
+                textKey.style.faceId.isNotBold(),
+              ),
+              textKey.pxRange,
+            )
+          })
+        | _ -> invariant_violation(`Invalid drawables key ${key}`)
+        }
+      },
+    );
+    wordsHdl = SKFS.LHandle::lazy(
+      Word::fromFile,
+      context,
+      SKFS.DirName::create("/ui/utils/text/words/"),
+      (context, _self, key) ~> {
+        key match {
+        | tKey @ FacedText _ ->
+          fontSupport = context.getFontSupport();
+          width = 0.0;
+          optPrevious: ?Char = None();
+          widths = tKey.value.chars().map(char -> {
+            gid = Font.GlyphID::create(tKey.faceId, char);
+            glyph = fontSupport.getGlyphForId(context, gid);
+            gw = glyph.getKern(optPrevious) + glyph.width();
+            !width = width + gw;
+            !optPrevious = Some(char);
+            gw
+          });
+          Word(width, widths)
+        | _ -> invariant_violation(`Invalid word key ${key}`)
+        }
+      },
+    );
+    glyphssHdl = SKFS.LHandle::lazy(
+      Line::fromFile,
+      context,
+      SKFS.DirName::create("/ui/utils/text/glyphs/"),
+      (context, _self, key) ~> {
+        key match {
+        | tKey @ TextKey _ ->
+          Line(
+            Geometry.Offset::zero,
+            buildGlyphs(context, tKey.value.chars(), tKey.style),
+          )
+        | _ -> invariant_violation(`Invalid text key ${key}`)
+        }
+      },
+    );
+    static(sizesHdl, wordsHdl, drawablesHdl, glyphssHdl)
+  }
+
+  fun getSize(
+    context: mutable SKFS.Context,
+    text: String,
+    faceId: Font.FaceID,
+  ): Geometry.Size {
+    this.sizesHdl.get(context, FacedText(text, faceId))
+  }
+
+  fun getWord(
+    context: mutable SKFS.Context,
+    text: String,
+    faceId: Font.FaceID,
+  ): Word {
+    this.wordsHdl.get(context, FacedText(text, faceId))
+  }
+
+  fun getDrawables(
+    context: mutable SKFS.Context,
+    text: String,
+    display: Text.Display,
+    pxRange: Int = 8,
+  ): ?Array<Ui.Drawable> {
+    this.drawablesHdl.maybeGet(context, TextKey(text, display, pxRange)).map(
+      v -> v.value,
+    )
+  }
+
+  fun getSpaceSize(
+    context: mutable SKFS.Context,
+    faceId: Font.FaceID,
+  ): Ui.FontSize {
+    glyph = context
+      .getFontSupport()
+      .glyphProps(context, Font.GlyphID::create(faceId, ' '));
+    Ui.FontSize(glyph.width(), glyph.ascent(), glyph.descent());
+  }
+
+  fun getGlyphs(
+    context: mutable SKFS.Context,
+    text: String,
+    style: Text.Display,
+  ): Vector<Glyph> {
+    this.glyphsHdl.get(context, TextKey(text, style)).glyphs;
+  }
+
+  fun getLines(
+    context: mutable SKFS.Context,
+    text: String,
+    size: Geometry.Size,
+    style: Text.Style,
+  ): Array<Line> {
+    display = style.toDisplay();
+    chars = text.chars();
+    (lines, widths, _) = fsplit(
+      context,
+      chars,
+      this,
+      Some(size.width),
+      style.faceId,
+      style.wrapping,
+    );
+    lineHeight = context
+      .getFontSupport()
+      .getLineHeight(context, display.faceId);
+    space = style.lineSpacing.getLineSpace(context, lineHeight);
+    len = lines.size();
+    height = ((len - 1).toFloat() * (space + lineHeight)) + lineHeight;
+    fullLine = space + lineHeight;
+    top = style.vAlignment match {
+    | Text.Top() -> 0.0
+    | Text.Middle() -> (size.height - height) / 2.0
+    | Text.Bottom() -> size.height - height
+    };
+    lines.mapWithIndex((index, line) -> {
+      (lText, twidth, _visible) = style.overrun match {
+      | Text.Visible() ->
+        (
+          String::fromChars(Text.charsInside(chars.toArray(), line)),
+          widths[index],
+          true,
+        )
+      | overflow @ Text.Overflow _ ->
+        (reducer, reduction) = overflow match {
+        | oc @ Text.OverflowChar _ ->
+          (
+            Text.Reducer::charsReducer(
+              context,
+              chars,
+              style.faceId,
+              oc.optEllipsis,
+              Some(line),
+            ),
+            oc.toReduction(),
+          )
+        | ow @ Text.OverflowWord _ ->
+          (
+            Text.Reducer::wordsReducer(
+              context,
+              chars,
+              style.faceId,
+              ow.optEllipsis,
+              Some(line),
+            ),
+            ow.toReduction(),
+          )
+        };
+        (lText, twidth) = reducer.reduce(size.width, reduction);
+        (lText, twidth, false)
+      };
+      left = style.hAlignment match {
+      | Text.Center() -> (size.width - twidth) / 2.0
+      | Text.Justify()
+      | Text.Left() ->
+        0.0
+      | Text.Right() -> size.width - twidth
+      };
+      res = Line(
+        Geometry.Offset(left, top),
+        this.getGlyphs(context, lText, display),
+      );
+      !top = top + fullLine;
+      res
+    });
+  }
+
+  fun getLinesSize(
+    context: mutable SKFS.Context,
+    text: String,
+    optMaxWidth: ?Float,
+    faceId: Font.FaceID,
+    lineSpacing: Float -> Float,
+    wrapping: Text.Wrapping = Text.WordWrap(),
+  ): Geometry.Size {
+    (lines, _, width) = fsplit(
+      context,
+      text.chars(),
+      context.getTextSupport(),
+      optMaxWidth,
+      faceId,
+      wrapping,
+    );
+    lineHeight = context.getFontSupport().getLineHeight(context, faceId);
+    space = lineSpacing(lineHeight);
+    len = lines.size();
+    Geometry.Size(
+      optMaxWidth.map(maxWidth -> Math.min(width, maxWidth)).default(width),
+      lineHeight * len.toFloat() + (len - 1).toFloat() * space,
+    );
+  }
+
+  fun fillLinesDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    str: String,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    style: Text.Style,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    lines = this.getLines(
+      context,
+      str,
+      size,
+      style with {fill => Colors.black()},
+    );
+    lines.each(l ->
+      l.fillDrawables(context, support, absolute, style.fill, drawables)
+    )
+  }
+}
+
+fun fsplit(
+  context: mutable SKFS.Context,
+  chars: Vector<Char>,
+  textSupport: Ui.TextSupport,
+  optMaxWidth: ?Float,
+  faceId: Font.FaceID,
+  wrapping: Text.Wrapping,
+): (Array<Text.Range>, Array<Float>, Float) {
+  splitter = Text.LineSplitter();
+  lines = splitter.split(chars);
+  width = 0.0;
+  widths = lines.map(line -> {
+    tmp = textSupport.getSize(
+      context,
+      String::fromChars(Text.charsInside(chars.toArray(), line)),
+      faceId,
+    ).width;
+    !width = Math.max(width, tmp);
+    tmp;
+  });
+  !width = if (
+    optMaxWidth.map(maxWidth -> Math.lower(maxWidth, width)).default(false)
+  ) {
+    maxWidth = optMaxWidth.fromSome();
+    wrappedLines = mutable Vector<Text.Range>[];
+    wrappedWidths = mutable Vector<Float>[];
+    nWidth = 0.0;
+    widths.eachWithIndex((index, w) -> {
+      if (w <= maxWidth) {
+        !nWidth = Math.max(nWidth, w);
+        wrappedLines.push(lines[index]);
+        wrappedWidths.push(w);
+      } else {
+        wrapping match {
+        | Text.CharWrap() ->
+          wrapper = Text.LineWrapper::charsWrapper(
+            context,
+            chars,
+            faceId,
+            Some(lines[index]),
+          );
+          wrapper.split(maxWidth.toFloat()).each(tuple -> {
+            (r, rw) = tuple;
+            !nWidth = Math.max(nWidth, rw);
+            wrappedLines.push(r);
+            wrappedWidths.push(rw);
+          })
+        | Text.WordWrap(separators) ->
+          wrapper = Text.LineWrapper::wordsWrapper(
+            context,
+            chars,
+            faceId,
+            Some(lines[index]),
+            separators.test,
+          );
+          wrapper.split(maxWidth.toFloat()).each(tuple -> {
+            (r, rw) = tuple;
+            !nWidth = Math.max(nWidth, rw);
+            wrappedLines.push(r);
+            wrappedWidths.push(rw);
+          })
+        | _ ->
+          !nWidth = Math.max(nWidth, maxWidth);
+          wrappedLines.push(lines[index]);
+          wrappedWidths.push(w)
+        }
+      }
+    });
+    !lines = wrappedLines.toArray();
+    !widths = wrappedWidths.toArray();
+    nWidth;
+  } else {
+    width
+  };
+  (lines, widths.map(v -> v.toFloat()), width.toFloat());
+}
+
+fun toDrawables(
+  context: mutable SKFS.Context,
+  support: Ui.DrawableSupport,
+  text: Vector<Char>,
+  style: Text.Display,
+  thickness: Float,
+  pxRange: Int = 8,
+): ?Ui.Drawables {
+  if (FWKEnv.getWindowId(context).isSome()) {
+    drawables = mutable Vector<Ui.Drawable>[];
+    fontSupport = context.getFontSupport();
+    top = 0.0;
+    left = 0.0;
+    optPrevious: ?Char = None();
+    for (char in text) {
+      gid = Font.GlyphID::create(style.faceId, char, pxRange);
+      glyph = fontSupport.getGlyphForId(context, gid);
+      kern = glyph.getKern(optPrevious);
+      width = glyph.width() + kern;
+      offset = Geometry.Offset(left, top).move(glyph.offset(kern));
+      size = glyph.glyph.optPath
+        .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
+        .default(Geometry.Size(0.0, 0.0));
+      fontSupport.getMSDF(context, gid).each(msdf ->
+        drawables.push(
+          support.msdf(
+            offset,
+            size,
+            msdf.image,
+            msdf.conv,
+            gid.pxRange,
+            thickness,
+            style.fill,
+          ),
+        )
+      );
+      !left = left + width;
+      !optPrevious = Some(char);
+    };
+    Some(Ui.Drawables(drawables.toArray()))
+  } else {
+    None()
+  }
+}
+
+fun buildGlyphs(
+  context: mutable SKFS.Context,
+  text: Vector<Char>,
+  style: Text.Display,
+): Vector<Glyph> {
+  fontSupport = context.getFontSupport();
+  top = 0.0;
+  left = 0.0;
+  optPrevious: ?Char = None();
+  text.map(char -> {
+    gid = Font.GlyphID::create(style.faceId, char);
+    glyph = fontSupport.getGlyphForId(context, gid);
+    kern = glyph.getKern(optPrevious);
+    width = glyph.width() + kern;
+    offset = Geometry.Offset(left, top).move(glyph.offset(kern));
+    !left = left + width;
+    !optPrevious = Some(char);
+    Glyph(gid, offset, glyph, style.fill as .Color _)
+  });
+}
+
+module end;

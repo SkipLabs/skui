@@ -1,0 +1,275 @@
+module UiScroll;
+
+class FocusHandler{
+  path: Ui.Path,
+  controller: Controller,
+  sizesHdl: SKFS.Handle<UiScroll.Sizes>,
+} extends Ui.FocusHandlerWrapper uses FWK.Shortcuts {
+  //
+  protected fun getMainIdentifier(): Ui.Path {
+    this.path;
+  }
+
+  protected fun getShortcuts(
+    _context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    Array[
+      FWK.ShortcutAction(
+        "scrollLeft",
+        FWK.Shortcut(
+          Array[
+            UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowLeft),
+            UiEvent.control(UiEvent.KeyInfo::arrowLeft),
+          ],
+        ),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+                hSizes -> {
+                  hScroll = this.controller.getHScroll(ctx, true);
+                  hScrollValue = hScroll.get(ctx, true);
+                  if (hScrollValue > 0) {
+                    unit = this.controller.getUnit(ctx, true);
+                    hScroll.set(ctx, Some(hSizes.clamp(hScrollValue - unit)), 0)
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "scrollRight",
+        FWK.Shortcut(
+          Array[
+            UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowRight),
+            UiEvent.control(UiEvent.KeyInfo::arrowRight),
+          ],
+        ),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+                hSizes -> {
+                  hScroll = this.controller.getHScroll(ctx, true);
+                  hScrollValue = hScroll.get(ctx, true);
+                  if (hScrollValue < hSizes.max()) {
+                    unit = this.controller.getUnit(ctx, true);
+                    hScroll.set(ctx, Some(hSizes.clamp(hScrollValue + unit)), 0)
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "scrollUp",
+        FWK.Shortcut(
+          Array[
+            UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowUp),
+            UiEvent.control(UiEvent.KeyInfo::arrowUp),
+          ],
+        ),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+                vSizes -> {
+                  vScroll = this.controller.getVScroll(ctx, true);
+                  vScrollValue = vScroll.get(ctx, true);
+                  if (vScrollValue > 0) {
+                    unit = this.controller.getUnit(ctx, true);
+                    vScroll.set(ctx, Some(vSizes.clamp(vScrollValue - unit)), 0)
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "scrollDown",
+        FWK.Shortcut(
+          Array[
+            UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowDown),
+            UiEvent.control(UiEvent.KeyInfo::arrowDown),
+          ],
+        ),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+                vSizes -> {
+                  vScroll = this.controller.getVScroll(ctx, true);
+                  vScrollValue = vScroll.get(ctx, true);
+                  if (vScrollValue < vSizes.max()) {
+                    unit = this.controller.getUnit(ctx, true);
+                    vScroll.set(ctx, Some(vSizes.clamp(vScrollValue + unit)), 0)
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "pageLeft",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::pageUp)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+                hSizes -> {
+                  hScroll = this.controller.getHScroll(ctx, true);
+                  hScrollValue = hScroll.get(ctx, true);
+                  if (hScrollValue > 0) {
+                    hScroll.set(
+                      ctx,
+                      Some(hSizes.clamp(hScrollValue - hSizes.page())),
+                      0,
+                    )
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "pageRight",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::pageDown)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+                hSizes -> {
+                  hScroll = this.controller.getHScroll(ctx, true);
+                  hScrollValue = hScroll.get(ctx, true);
+                  if (hScrollValue < hSizes.max()) {
+                    hScroll.set(
+                      ctx,
+                      Some(hSizes.clamp(hScrollValue + hSizes.page())),
+                      0,
+                    )
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "pageUp",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::pageUp)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+                vSizes -> {
+                  vScroll = this.controller.getVScroll(ctx, true);
+                  vScrollValue = vScroll.get(ctx, true);
+                  if (vScrollValue > 0) {
+                    vScroll.set(
+                      ctx,
+                      Some(vSizes.clamp(vScrollValue - vSizes.page())),
+                      0,
+                    )
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "pageDown",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::pageDown)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          SystemProperties.repeat(
+            ctx,
+            ctx ~>
+              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+                vSizes -> {
+                  vScroll = this.controller.getVScroll(ctx, true);
+                  vScrollValue = vScroll.get(ctx, true);
+                  if (vScrollValue < vSizes.max()) {
+                    vScroll.set(
+                      ctx,
+                      Some(vSizes.clamp(vScrollValue + vSizes.page())),
+                      0,
+                    )
+                  }
+                },
+              ),
+            repeat,
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "hBegin",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::home)]),
+        FWK.Standard(ctx ~>
+          this.controller.getHScroll(ctx, true).set(ctx, Some(0), 0)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "hEnd",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::end)]),
+        FWK.Standard(ctx ~>
+          this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(hSizes ->
+            this.controller.getHScroll(ctx, true).set(
+              ctx,
+              Some(hSizes.max()),
+              0,
+            )
+          )
+        ),
+      ),
+      FWK.ShortcutAction(
+        "vBegin",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::home)]),
+        FWK.Standard(ctx ~>
+          this.controller.getVScroll(ctx, true).set(ctx, Some(0), 0)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "vEnd",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::end)]),
+        FWK.Standard(ctx ~>
+          this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(vSizes ->
+            this.controller.getVScroll(ctx, true).set(
+              ctx,
+              Some(vSizes.max()),
+              0,
+            )
+          )
+        ),
+      ),
+    ]
+  }
+
+  protected fun beforeShortcuts(
+    _context: mutable SKFS.Context,
+    _keys: UiEvent.KeysFile,
+  ): Bool {
+    false
+  }
+
+  protected fun afterShortcuts(
+    _context: mutable SKFS.Context,
+    _keys: UiEvent.KeysFile,
+  ): Bool {
+    false
+  }
+}
+
+module end;

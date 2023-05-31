@@ -1,0 +1,62 @@
+module UiScroll;
+
+class HoverHandler(
+  path: Ui.Path,
+  controller: Controller,
+  sizesHdl: SKFS.Handle<UiScroll.Sizes>,
+) extends Ui.HoverHandlerWrapper {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.path
+  }
+
+  protected fun onEnter(_context: mutable SKFS.Context): void {
+    void
+  }
+
+  protected fun onMouse(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    wheel = mouse.getWheelValue(context.tick);
+    FWK.Result(
+      if (wheel != 0) {
+        incr = Math.sign(-wheel).toInt();
+        unit = this.controller.getUnit(context, false);
+        if (FWK.isShiftDown(context, true)) {
+          hScroll = this.controller.getHScroll(context, true);
+          this.sizesHdl.maybeGetValue(context, SKFS.IID(0), true)
+            .map(hSizes -> {
+              hScroll.set(
+                context,
+                Some(hSizes.clamp(hScroll.get(context, true) + (incr * unit))),
+                0,
+              );
+              true
+            })
+            .default(false)
+        } else {
+          vScroll = this.controller.getVScroll(context, true);
+          this.sizesHdl.maybeGetValue(context, SKFS.IID(1), true)
+            .map(vSizes -> {
+              vScroll.set(
+                context,
+                Some(vSizes.clamp(vScroll.get(context, true) + (incr * unit))),
+                0,
+              );
+              true
+            })
+            .default(false)
+        };
+      } else {
+        false
+      },
+    );
+  }
+
+  protected fun onExit(_context: mutable SKFS.Context): void {
+    void
+  }
+}
+
+module end;

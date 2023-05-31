@@ -1,0 +1,32 @@
+module UiSplit;
+
+class LamController{
+  first: Ui.Getter<Ui.Widget>,
+  second: Ui.Getter<Ui.Widget>,
+  axis: Ui.GetterOne<Ui.Axis, Bool>,
+  separation: Ui.GetterOne<Ui.SeparationProperty, Bool>,
+} extends Controller {
+  fun getAxis(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.Axis {
+    this.axis(context, isUntracked)
+  }
+
+  fun getSeparation(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.SeparationProperty {
+    this.separation(context, isUntracked)
+  }
+
+  fun getFirstWidget(context: mutable SKFS.Context): Ui.Widget {
+    this.first(context)
+  }
+
+  fun getSecondWidget(context: mutable SKFS.Context): Ui.Widget {
+    this.second(context)
+  }
+}
+
+module end;

@@ -1,0 +1,952 @@
+module Ui;
+
+type HoverHandlerGetter = (
+  mutable SKFS.Context,
+  Geometry.Offset,
+  NodeInfo,
+) ~> ?FWK.HoverHandler;
+
+type LockHandlerGetter = (
+  mutable SKFS.Context,
+  UiEvent.MouseFile,
+  NodeInfo,
+) ~> ?FWK.LockHandler;
+
+type DragHandlerGetter = (
+  mutable SKFS.Context,
+  Geometry.Offset,
+  NodeInfo,
+) ~> ?FWK.DragHandler;
+
+type DropHandlerGetter = (
+  mutable SKFS.Context,
+  Geometry.Offset,
+  NodeInfo,
+) ~> ?FWK.DropHandler;
+
+type UserDataGetter = (mutable SKFS.Context) ~> ?UserData;
+
+fun constUserData(optUserData: ?UserData): UserDataGetter {
+  (_) ~> optUserData
+}
+
+fun constHoverHandler(hh: FWK.HoverHandler): HoverHandlerGetter {
+  (_, _, _) ~> Some(hh)
+}
+
+base class Object uses Orderable, Show
+
+base class Separator uses Hashable, Equality {
+  children =
+  | Nil()
+  | Before()
+  | After()
+  | Both()
+
+  fun before(): Bool {
+    this == Before() || this == Both()
+  }
+
+  fun after(): Bool {
+    this == After() || this == Both()
+  }
+
+  fun toCode(): Int
+  | Nil() -> 0
+  | Before() -> 1
+  | After() -> 2
+  | Both() -> 3
+
+  static fun fromCode(code: Int): Separator {
+    code match {
+    | 1 -> Before()
+    | 2 -> After()
+    | 3 -> Both()
+    | 0
+    | _ ->
+      Nil()
+    }
+  }
+}
+
+base class DrawInfo private (offset: Geometry.Point = Geometry.Point(0, 0)) {}
+
+base class UserData
+
+base class LayerData
+
+base class LayerId uses Orderable, Show, Hashable {
+  children =
+  | MainLayer()
+  | BackgroundLayer()
+  | ForegroundLayer()
+
+  fun toString(): String
+  | MainLayer() -> "main"
+  | BackgroundLayer() -> "backgound"
+  | ForegroundLayer() -> "foregound"
+}
+
+base class Configuration extends SKFS.File {
+  static fun forFile(obj: SKFS.File): Configuration {
+    obj match {
+    | x @ Configuration _ -> x
+    | _ -> invariant_violation("Invalid Configuration")
+    }
+  }
+}
+
+class DummyConfiguration{} extends Configuration {}
+
+base class Converter<T> {
+  fun convert(value: T): Text;
+}
+
+class NumberConverter<T: Number>() extends Converter<T> {
+  fun convert(value: T): Text {
+    Raw(value.toString())
+  }
+}
+
+class Opaque(mouse: Bool = true, keys: Bool = false)
+
+class NodeSum(
+  nodeInfoGetter: NodeInfoGetter,
+  nodeOffsetsGetter: NodeOffsetsGetter,
+  viewportGetter: ViewportGetter,
+  size: Geometry.Size,
+  optParent: ?Path,
+  optViewport: ?Path,
+)
+
+class NodeOffsets(
+  viewport: Geometry.Offset,
+  relative: Geometry.Offset,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ NodeOffsets _ -> x
+    | _ -> invariant_violation("Must be Ui.NodeOffsets")
+    }
+  }
+
+  fun relativeViewport(): Geometry.Offset {
+    this.viewport - this.viewport.floor()
+  }
+}
+
+class NodeInfo(
+  nodeSum: NodeSum,
+  optUserData: ?UserData = None(),
+  optDrawInfo: ?DrawInfo = None(),
+) {
+  //
+  fun size(): Geometry.Size {
+    this.nodeSum.size
+  }
+
+  fun viewport(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Geometry.Offset {
+    this.nodeSum.nodeOffsetsGetter(context, isUntracked)
+      .map(nos -> nos.viewport)
+      .default(Geometry.Offset::zero)
+  }
+
+  fun getWindowBounds(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+    offsetsUntracked: Bool = false,
+  ): Geometry.Rect {
+    Geometry.Rect::fromOffsetSize(
+      this.getWindowOffset(context, isUntracked, offsetsUntracked),
+      this.nodeSum.size,
+    )
+  }
+
+  fun getWindowOffset(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+    offsetsUntracked: Bool = false,
+  ): Geometry.Offset {
+    this.nodeSum.nodeOffsetsGetter(context, offsetsUntracked)
+      .map(nodeOffsets ->
+        nodeOffsets.viewport +
+          this.nodeSum.optViewport.map(vp ->
+            this.getParentViewportOffset(context, vp, isUntracked)
+          ).default(Geometry.Offset::zero)
+      )
+      .default(Geometry.Offset::zero);
+  }
+
+  fun getParentViewportOffset(
+    context: mutable SKFS.Context,
+    path: Path,
+    isUntracked: Bool = false,
+    offsetsUntracked: Bool = false,
+  ): Geometry.Offset {
+    vp = this.nodeSum.viewportGetter(context, path, isUntracked);
+    offset = vp.offset.toOffset();
+    if (vp.optViewport.map(pVp ~> pVp != path).default(false)) {
+      ni = this.nodeSum.nodeInfoGetter(context, path, isUntracked);
+      offset + ni.getWindowOffset(context, isUntracked, offsetsUntracked);
+    } else {
+      offset
+    }
+  }
+}
+
+class Layer(layer: Int, pixelable: Bool) uses Show, Orderable, Hashable {
+  fun toString(): String {
+    `[${this.layer},${this.pixelable}]`;
+  }
+}
+
+class ViewportDef(
+  path: Path,
+  optReference: ?Path,
+  optWidget: ?Widget,
+  children_: Array<ViewportDef>,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ ViewportDef _ -> x
+    | _ -> invariant_violation("Must be Ui.ViewportDef")
+    }
+  }
+}
+
+class ViewportLeaf(
+  widget: Widget,
+  optParent: ?Path,
+  optReference: ?Path,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ ViewportLeaf _ -> x
+    | _ -> invariant_violation("Must be Ui.ViewportLeaf")
+    }
+  }
+}
+
+mutable base class Writer<K, T> {
+  mutable fun write(key: K, value: T): void;
+  readonly fun getSize(): Int;
+}
+
+base class Widget protected {
+  path: Path,
+  optConfiguration: ?Configuration = None(),
+  protected tick: SKFS.Tick,
+} uses HasClassName {
+  fun getNode(context: mutable SKFS.Context, constraints: BoxConstraints): Node;
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef;
+
+  fun checkFocusHandlers(
+    context: mutable SKFS.Context,
+    nodeInfo: Getter<NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler>;
+
+  overridable fun getHoverHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    None()
+  }
+
+  overridable fun getLockHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.LockHandler>,
+  ): ?LockHandlerGetter {
+    None()
+  }
+
+  overridable fun getDragHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.DragHandler>,
+  ): ?DragHandlerGetter {
+    None()
+  }
+
+  overridable fun getDropHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.DropHandler>,
+  ): ?DropHandlerGetter {
+    None()
+  }
+
+  overridable fun computeDrawInfo(
+    _context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    _nodeSum: NodeSum,
+    _optUserData: ?UserData,
+  ): ?DrawInfo {
+    None()
+  }
+
+  overridable fun computeLayer(
+    _context: mutable SKFS.Context,
+    _support: DrawableSupport,
+    _absolute: Geometry.Offset,
+    _layer: LayerId,
+    _node: NodeInfo,
+  ): Array<Drawable> {
+    Array[]
+  }
+
+  protected fun getPath(): Path {
+    this.path
+  }
+}
+
+class WidgetFile(widget: Widget) extends SKFS.File {
+  static fun fromFile(obj: SKFS.File): WidgetFile {
+    obj match {
+    | x @ WidgetFile _ -> x
+    | _ -> SKFS.cast_violation("Ui.WidgetFile", obj)
+    }
+  }
+}
+
+class Node(
+  widget: Widget,
+  size: Geometry.Size,
+  subNodes: Array<NChild> = Array[],
+  userData: UserDataGetter = constUserData(None()),
+  manageVisibility: Bool = false,
+  reversedEvents: Bool = false,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Node _ -> x
+    | _ -> invariant_violation("Must be Ui.Node")
+    }
+  }
+
+  static fun reversed(
+    widget: Widget,
+    size: Geometry.Size,
+    subNodes: Array<NChild> = Array[],
+    userData: UserDataGetter = constUserData(None()),
+    manageVisibility: Bool = false,
+  ): Node {
+    Node(widget, size, subNodes, userData, manageVisibility, true)
+  }
+
+  //
+  fun getEventsNode(): Array<NChild> {
+    if (this.reversedEvents) {
+      this.subNodes.reversed()
+    } else {
+      this.subNodes
+    };
+  }
+}
+
+class Badge(text: Text, optMaxCharCount: ?Int = None()) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Badge _ -> x
+    | _ -> invariant_violation("Must be Ui.Badge")
+    }
+  }
+}
+
+base class Progress extends SKFS.File {
+  children =
+  | Indeterminate()
+  | Progression(Int)
+
+  static fun fromInt(value: Int): Progress {
+    if (value >= 0) Ui.Progression(value) else Ui.Indeterminate()
+  }
+}
+
+class NViewport(
+  offset: Geometry.Point,
+  window: Geometry.Rectangle,
+  optViewport: ?Path = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ NViewport _ -> x
+    | _ -> invariant_violation("Must be Ui.NViewport")
+    }
+  }
+}
+
+type NodeGetter = (mutable SKFS.Context, Path, Bool) ~> Node;
+type ViewportGetter = (mutable SKFS.Context, Path, Bool) ~> NViewport;
+type NodeInfoGetter = (mutable SKFS.Context, Path, Bool) ~> NodeInfo;
+type NodeOffsetsGetter = (mutable SKFS.Context, Bool) ~> ?NodeOffsets;
+
+base class NChild(constraints: BoxConstraints) {
+  children =
+  | CNode(node: Node, offset: Geometry.Offset)
+  | CLink(path: Path, bounds: Geometry.Rect, opaque: Opaque)
+
+  fun getOffset(): Geometry.Offset
+  | CNode(__, offset, _) -> offset
+  | CLink(_, bounds, _, _) -> bounds.topLeft()
+
+  fun getSize(): Geometry.Size
+  | CNode(node, _, _) -> node.size
+  | CLink(_, bounds, _, _) -> bounds.size()
+
+  fun getBounds(): Geometry.Rect
+  | CNode(node, offset, _) -> Geometry.Rect::fromOffsetSize(offset, node.size)
+  | CLink(_, bounds, _, _) -> bounds
+
+  fun getMouseNode(
+    context: mutable SKFS.Context,
+    nodeGetter: NodeGetter,
+    viewportGetter: ViewportGetter,
+    isUntracked: Bool = false,
+  ): (Geometry.Offset, Node, Bool)
+  | CNode(node, _, _) -> (Geometry.Offset::zero, node, false)
+  | CLink(path, _, opaque, _) ->
+    viewport = viewportGetter(context, path, isUntracked);
+    node = nodeGetter(context, path, isUntracked);
+    (viewport.offset.toOffset(), node, opaque.mouse)
+
+  fun getKeysNode(
+    context: mutable SKFS.Context,
+    nodeGetter: NodeGetter,
+    isUntracked: Bool = false,
+  ): (Node, Bool)
+  | CNode(node, _, _) -> (node, false)
+  | CLink(path, _, opaque, _) ->
+    node = nodeGetter(context, path, isUntracked);
+    (node, opaque.keys)
+}
+
+base class Parameters extends SKFS.File
+
+base class Cache {
+  static fun create(path: Ui.Path): this;
+  fun init(context: mutable SKFS.Context, w: ParameterizedWidget): void;
+}
+
+base class NodeBuffer extends Cache {
+  fun getNode(context: mutable SKFS.Context, constraints: BoxConstraints): Node;
+}
+
+base class ParameterizedWidget protected {
+  protected cache: this::Buffer,
+} extends Widget {
+  //
+  type Params: Parameters;
+  type Buffer: Cache;
+
+  protected static deferred fun makeWithCache(
+    context: mutable SKFS.Context,
+    params: this::Params,
+    path: Path,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    // Create node cache
+    w = static::make(
+      context,
+      path,
+      params,
+      static::makeCache(path),
+      optConfiguration,
+    );
+    w.cache.init(context, w);
+    w
+  }
+
+  protected static deferred fun makeCache(path: Path): this::Buffer;
+
+  static deferred fun create(
+    context: mutable SKFS.Context,
+    path: Path,
+    params: this::Params,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static::makeWithCache(context, params, path, optConfiguration);
+  }
+
+  protected static deferred fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    params: this::Params,
+    cache: this::Buffer,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this;
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node;
+}
+
+base class StrictWidget extends ParameterizedWidget {
+  type Buffer: NodeBuffer;
+
+  fun getNode(
+    context: mutable SKFS.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    this.cache.getNode(context, constraints)
+  }
+}
+
+base class Hoverable {
+  fun isHover(context: mutable SKFS.Context): Bool;
+  fun hover(context: mutable SKFS.Context): void;
+}
+
+class Widgets(value: Array<Widget>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Widgets _ -> x
+    | _ -> invariant_violation("Must be Ui.Widgets")
+    }
+  }
+}
+
+base class WidgetsCollection extends SKFS.File {
+  fun getSize(context: mutable SKFS.Context): Int;
+  fun getWidget(context: mutable SKFS.Context, index: Int): Widget;
+
+  overridable fun all(context: mutable SKFS.Context): Array<Widget> {
+    this.collect(context)
+  }
+
+  protected fun collect(context: mutable SKFS.Context): Array<Widget> {
+    Array::fillBy(this.getSize(context), index ->
+      this.getWidget(context, index)
+    )
+  }
+
+  static fun forFile(obj: SKFS.File): WidgetsCollection {
+    obj match {
+    | x @ WidgetsCollection _ -> x
+    | _ -> invariant_violation("Invalid WidgetsCollection")
+    }
+  }
+}
+
+class WidgetsArray(widgets: Array<Widget>) extends WidgetsCollection {
+  fun getSize(_context: mutable SKFS.Context): Int {
+    this.widgets.size()
+  }
+  fun getWidget(_context: mutable SKFS.Context, index: Int): Widget {
+    this.widgets[index]
+  }
+  fun all(_context: mutable SKFS.Context): Array<Widget> {
+    this.widgets
+  }
+}
+
+class WidgetsGetterArray(
+  widgets: Array<Ui.Getter<Widget>>,
+) extends WidgetsCollection {
+  fun getSize(_context: mutable SKFS.Context): Int {
+    this.widgets.size()
+  }
+  fun getWidget(context: mutable SKFS.Context, index: Int): Widget {
+    this.widgets[index](context)
+  }
+}
+
+class MergeCollection(
+  c1: WidgetsCollection,
+  c2: WidgetsCollection,
+) extends WidgetsCollection {
+  //
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.c1.getSize(context) + this.c2.getSize(context)
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Widget {
+    size = this.c1.getSize(context);
+    if (index < size) {
+      this.c1.getWidget(context, index);
+    } else {
+      this.c2.getWidget(context, index - size);
+    }
+  }
+}
+
+class HandledCollection(
+  handle: SKFS.Handle<SKFS.File>,
+  keyConv: SKFS.BaseName ~> SKFS.BaseName = k ~> k,
+  withIndex: Bool = false,
+) extends WidgetsCollection {
+  //
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.handle.getInt(context, this.keyConv(SKFS.KSize()))
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Widget {
+    if (this.withIndex) {
+      WidgetFile::fromFile(
+        this.handle.get(context, this.keyConv(SKFS.IID(index))),
+      ).widget
+    } else {
+      key = (this.handle.get(
+        context,
+        this.keyConv(SKFS.KKeys()),
+      ) as SKFS.Keys _).value[index];
+      WidgetFile::fromFile(this.handle.get(context, key)).widget
+    }
+  }
+
+  fun all(context: mutable SKFS.Context): Array<Widget> {
+    if (this.withIndex) {
+      this.collect(context)
+    } else {
+      this.handle.maybeGetProp(
+        context,
+        this.keyConv(SKFS.KKeys()),
+        SKFS.Keys::fromFile,
+      )
+        .map(keys ->
+          keys.value.map(key ->
+            WidgetFile::fromFile(this.handle.get(context, key)).widget
+          )
+        )
+        .default(Array[])
+    }
+  }
+}
+
+class LamCollection(
+  size: Ui.Getter<Int>,
+  item: Ui.GetterOne<Widget, Int>,
+) extends WidgetsCollection {
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.size(context)
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Widget {
+    this.item(context, index);
+  }
+}
+
+class DeferredCollection(
+  collection: Ui.Getter<WidgetsCollection>,
+) extends WidgetsCollection {
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.collection(context).getSize(context)
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Widget {
+    this.collection(context).getWidget(context, index)
+  }
+}
+
+base class IconBuilder {
+  fun buildIcon(context: mutable SKFS.Context, fontSize: Float): ?Icon;
+}
+
+class FromIconSupport(
+  icon: UiIcon.Icon,
+  collection: String = UiIcon.default,
+  optSize: ?Size = None(),
+) extends IconBuilder {
+  fun buildIcon(_context: mutable SKFS.Context, fontSize: Float): ?Icon {
+    pixels = Ui.Pt(fontSize).pixels();
+    Some(
+      FontIcon(
+        this.icon,
+        this.collection,
+        fontSize,
+        this.optSize.map(s -> s.toSize(Geometry.Size::square(pixels))),
+        this.optSize.map(s -> s.keepRatio).default(false),
+      ),
+    )
+  }
+}
+
+class InnerIconBuilder(builder: Pt ~> Icon) extends IconBuilder {
+  fun buildIcon(_context: mutable SKFS.Context, fontSize: Float): ?Icon {
+    Some(this.builder(Pt(fontSize)));
+  }
+}
+
+base class WithShortcuts{
+  optShortcuts: ?(
+    String,
+    mutable SKFS.Context ~> Array<FWK.ShortcutAction>,
+    Bool,
+  ) = None(),
+} {
+  fun getIdentifier(): Path;
+
+  fun checkFocusHandlers(
+    _context: mutable SKFS.Context,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    this.optShortcuts match {
+    | Some(descriptor) ->
+      (category, shortcuts, parentBefore) = descriptor;
+      handlers.map(cfh ->
+        FocusHandlerWithShortcuts{
+          identifier => this.getIdentifier(),
+          category,
+          shortcuts,
+          optFocusHandler => Some(cfh),
+          parentBefore,
+        }
+      )
+    | _ -> handlers.chill()
+    }
+  }
+}
+
+base class Executable extends SKFS.File
+
+class Todo(command: Executable, tick: SKFS.Tick) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Todo _ -> x
+    | _ -> invariant_violation("Must be Ui.Todo")
+    }
+  }
+}
+
+class Shortcut(
+  key: String,
+  ctrl: Bool,
+  shift: Bool,
+  alt: Bool,
+  meta: Bool = false,
+) {
+  fun toText(): Text {
+    v = mutable Vector<Text>[];
+    if (this.ctrl) v.push(!"Ctrl");
+    if (this.meta) v.push(!"Meta");
+    if (this.alt) v.push(!"Alt");
+    if (this.shift) v.push(!"Shift");
+    v.push(Raw(this.key));
+    format = Array::fillBy(v.size(), idx -> `{${idx + 1}}`).join("+");
+    Format(Raw(format), v.toArray())
+  }
+}
+
+base class Drawer {
+  fun fillDrawables(
+    context: SKFS.Context,
+    support: Ui.DrawableSupport,
+    layer: Ui.LayerId,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void;
+}
+
+base class StorageWithScroll {
+  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick;
+  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void;
+  fun setScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void;
+}
+
+base class StateWithScroll {
+  fun getScroll(context: mutable SKFS.Context): ?Ui.Scroll;
+  fun getEnsureVisible(context: mutable SKFS.Context): ?Ui.Visible;
+  fun emitScroll(context: mutable SKFS.Context, value: ?Ui.Scroll): void;
+  fun emitScrolling(context: mutable SKFS.Context, value: Int): void;
+}
+
+base class Drop uses Orderable extends SKFS.File {
+  children =
+  | DropBefore()
+  | DropAfter()
+  | DropIn()
+
+  static fun all(): Array<Drop> {
+    Array[DropBefore(), DropAfter(), DropIn()]
+  }
+
+  fun toString(): String
+  | DropBefore() -> "DropBefore"
+  | DropAfter() -> "DropAfter"
+  | DropIn() -> "DropIn"
+
+  fun toCode(): Int
+  | DropBefore() -> 0
+  | DropAfter() -> 1
+  | DropIn() -> 2
+
+  static fun fromCode(code: Int): Drop {
+    code match {
+    | 1 -> DropAfter()
+    | 2 -> DropIn()
+    | 0
+    | _ ->
+      DropIn()
+    }
+  }
+}
+
+class Visibility(tick: SKFS.Tick, visible: Bool) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Visibility _ -> x
+    | _ -> invariant_violation("Must be Ui.Visibility")
+    }
+  }
+}
+
+class ListHandle<T: frozen>(
+  handle: SKFS.EHandle<SKFS.File>,
+  conv: SKFS.File ~> T,
+) {
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.handle.getInt(context, SKFS.KSize())
+  }
+
+  fun getKeys(context: mutable SKFS.Context): Array<SKFS.BaseName> {
+    this.handle.getProp(
+      context,
+      SKFS.KKeys(),
+      SKFS.Keys::fromFile,
+      SKFS.Keys(Array[]),
+    ).value
+  }
+
+  fun getElement(context: mutable SKFS.Context, key: SKFS.BaseName): T {
+    this.handle.maybeGetProp(context, key, this.conv).fromSome()
+  }
+
+  fun getElementAt(context: mutable SKFS.Context, index: Int): T {
+    this.getElement(context, this.getKeys(context)[index])
+  }
+
+  fun map<U: frozen>(
+    context: mutable SKFS.Context,
+    dirName: SKFS.DirName,
+    builder: (mutable SKFS.Context, SKFS.BaseName, T) ~> U,
+    converter: SKFS.Converter<U>,
+  ): ListHandle<U> {
+    ListHandle<U>(
+      this.handle.contextWriterKeyMap(
+        this.handle.getConv(),
+        context,
+        dirName,
+        (context, writer, key, file) ~>
+          key match {
+          | SKFS.KKeys()
+          | SKFS.KSize() ->
+            writer.write(key, file)
+          | _ ->
+            writer.write(
+              key,
+              converter.toFile(builder(context, key, this.conv(file))),
+            )
+          }
+        ,
+      ),
+      converter.fromFile,
+    )
+  }
+}
+
+class WidgetsList(handle: ListHandle<WidgetFile>) extends WidgetsCollection {
+  //
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.handle.getSize(context)
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Widget {
+    this.handle.getElementAt(context, index).widget
+  }
+
+  fun all(context: mutable SKFS.Context): Array<Widget> {
+    keys = this.handle.getKeys(context);
+    keys.map(key -> this.handle.getElement(context, key).widget)
+  }
+}
+
+class Token(info: Text.TokenInfo, optColor: ?Color)
+
+class Tokens(
+  value: Vector<Token>,
+  size: Int,
+  start: Int = 0,
+  shift: Int = 0,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Tokens _ -> x
+    | _ -> invariant_violation("Must be Ui.Tokens")
+    }
+  }
+
+  fun filter(start: Int, count: Int): this {
+    newValues = mutable Vector<Token>[];
+    end = start + count;
+    toAdd = false;
+    index = 0;
+    startIndex = 0;
+    shift = 0;
+    for (token in this.value) {
+      if (!toAdd) {
+        !toAdd = (index + token.info.count) > start;
+        if (toAdd) {
+          !startIndex = start - index;
+          if (token.info.kind != Text.KWhiteSpace()) {
+            !shift = token.info.shift;
+          }
+        } else if (token.info.kind != Text.KWhiteSpace()) {
+          !shift = token.info.shift;
+        }
+      } else if (index >= end) {
+        break void;
+      };
+      if (toAdd) newValues.push(token);
+      !index = index + token.info.count;
+    };
+    Tokens(unsafe_chill_trust_me(newValues), this.size, startIndex, shift)
+  }
+
+  fun indexes(): Vector<Int> {
+    indexes = mutable Vector<Int>[];
+    index = this.shift;
+    this.value.each(token -> {
+      if (token.info.kind == Text.KWhiteSpace()) {
+        token.info.text.chars().each(char -> {
+          indexes.push(index);
+          if (char == Text.tabSuffix || char == Text.whiteSpace) {
+            !index = index + 1;
+          }
+        });
+      } else {
+        for (_idx in .Range(0, token.info.count)) {
+          indexes.push(index);
+          !index = index + 1;
+        }
+      }
+    });
+    unsafe_chill_trust_me(indexes);
+  }
+}
+
+/// DUMMY
+
+class DummyWidget{} extends Widget uses FWK.NoFocusHandler {
+  //
+  fun getNode(
+    _context: mutable SKFS.Context,
+    _constraints: BoxConstraints,
+  ): Node {
+    dummy()
+  }
+
+  fun getViewportDefinition(_context: mutable SKFS.Context): ?ViewportDef {
+    dummy()
+  }
+}
+
+module end;

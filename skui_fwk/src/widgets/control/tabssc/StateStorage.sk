@@ -1,0 +1,216 @@
+module UiTabsSc;
+
+const statePath: String = "ui/tabssc/state";
+const computedPath: String = "ui/tabssc/computed";
+
+class HStorage(
+  name: String,
+  handle: SKFS.IHandle<SKFS.File>,
+) extends Storage uses Ui.ScrollingStorage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKFS.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.getDirName().toString()
+  }
+
+  protected fun getHandle(): SKFS.IHandle<SKFS.File> {
+    this.handle
+  }
+
+  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+  }
+
+  fun setHover(context: mutable SKFS.Context, optHover: ?Hover): void {
+    this.handle.writeOrRemove(context, Ui.hoverProp, optHover)
+  }
+
+  fun setTargeted(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.targetedProp, SKFS.BoolFile(value))
+  }
+
+  fun getTodo(context: mutable SKFS.Context): Ui.Todo {
+    Ui.Todo::fromFile(this.handle.get(context, Ui.todoProp))
+  }
+}
+
+class HState(
+  storage: SKFS.EHandle<SKFS.File>,
+  after: SKFS.EHandle<SKFS.File>,
+) extends State uses Ui.ScrollingState {
+  //
+  fun isTargeted(context: mutable SKFS.Context): Bool {
+    this.storage.getBool(context, Ui.targetedProp)
+  }
+
+  protected fun getHandle(): SKFS.EHandle<SKFS.File> {
+    this.storage
+  }
+
+  protected fun getComputed(): SKFS.EHandle<SKFS.File> {
+    this.after
+  }
+
+  protected fun getStatePath(): String {
+    statePath
+  }
+
+  protected fun setScrollCmd(value: ?Ui.Scroll): FWKMessage.Command {
+    SetScroll(value)
+  }
+
+  protected fun manageScrollingCmd(
+    value: Int,
+    tick: SKFS.Tick,
+  ): FWKMessage.Command {
+    ManageScrolling(value, tick)
+  }
+
+  fun getHover(context: mutable SKFS.Context): ?Hover {
+    this.storage.maybeGetProp(context, Ui.hoverProp, f ~> f as Hover _);
+  }
+
+  fun isScrolling(context: mutable SKFS.Context): Bool {
+    this.storage.maybeGetInt(context, Ui.scrollingProp).isSome()
+  }
+
+  fun emitHover(context: mutable SKFS.Context, value: ?Hover): void {
+    this.emit(context, SetHover(value));
+  }
+
+  fun emitGoTo(
+    context: mutable SKFS.Context,
+    value: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, GoTo(value, optRepeatOn));
+  }
+}
+
+@debug
+fun init(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  controller: Controller,
+  reference: Ui.Path,
+): Parameters {
+  dirName = Ui.controllerDirName(path);
+  filteredDirName = SKFS.DirName::make(dirName, "filtered/");
+  stateHdl = context.makeDir(
+    f ~> f,
+    dirName,
+    Array<(SKFS.BaseName, SKFS.File)>[
+      (Ui.todoProp, Ui.Todo(Init(), context.tick)),
+    ],
+  );
+  preFilteredHdl = context.makePreDir(f ~> f, filteredDirName, Array[]);
+  filteredHdl = stateHdl.contextWriterKeyMap(
+    Ui.Todo::fromFile,
+    context,
+    filteredDirName,
+    (context, writer, key, file) ~> {
+      if (key == Ui.todoProp) {
+        todo = Ui.Todo::fromFile(file);
+        executables = mutable Vector<Executable>[];
+        optCurrent = preFilteredHdl.maybeGetProp(
+          context,
+          key,
+          Ui.Todo::fromFile,
+          true,
+        );
+        tick = optCurrent.map(c -> c.tick).default(SKFS.Tick(-1));
+        max = tick;
+        if (todo.tick > tick) {
+          executables.push(todo.command as Executable _);
+          !max = todo.tick;
+        };
+        controller.getVisibleSource(context).each(v ->
+          if (v.tick > tick) {
+            if (v.tick > todo.tick) {
+              executables.push(ManageVisible(v.index));
+            } else {
+              executables.insert(0, ManageVisible(v.index));
+            };
+            if (v.tick > max) {
+              !max = todo.tick;
+            }
+          }
+        );
+        size = executables.size();
+        if (size == 0) {
+          optCurrent.each(c -> writer.write(key, c))
+        } else if (size == 1) {
+          writer.write(key, Ui.Todo(executables.first(), max))
+        } else {
+          writer.write(
+            key,
+            Ui.Todo(All(unsafe_chill_trust_me(executables)), max),
+          )
+        }
+      }
+    },
+  );
+  computedDirName = SKFS.DirName::make(dirName, "computed/");
+  initKeys = Array[Ui.ensureVisibleProp];
+  computedHdl = SKFS.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    filteredHdl,
+    Ui.todoProp,
+    initKeys,
+    update,
+    None(),
+  );
+  Parameters(reference, controller, HState(stateHdl, computedHdl));
+}
+
+@debug
+fun update(
+  context: mutable SKFS.Context,
+  _scope: String,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  todo: Ui.Todo,
+  _optUserData: ?SKFS.UserData,
+): void {
+  execute(context, todo.command as Executable _, values);
+}
+
+@debug
+fun execute(
+  context: mutable SKFS.Context,
+  executable: Executable,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+): void {
+  executable match {
+  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
+  | Init() -> void
+  | ManageScrolling(incr, _) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+  | ManageVisible(value) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.tick)))
+  | GoTo(target, _, _) ->
+    target match {
+    | Before() ->
+      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(-1, context.tick)))
+    | After() ->
+      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(1, context.tick)))
+    | Index(value) ->
+      values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.tick)))
+    }
+  }
+}
+
+module end;

@@ -1,0 +1,22 @@
+module UiButton;
+
+const statePath: String = "ui/button/state";
+
+class HState(handle: SKFS.IHandle<SKFS.File>) extends State {
+  //
+  fun isArmed(context: mutable SKFS.Context): Bool {
+    this.handle.getBool(context, Ui.armedProp)
+  }
+
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.armedProp, SKFS.BoolFile(value))
+  }
+}
+
+fun init(context: mutable SKFS.Context, path: Ui.Path): State {
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeDir(f ~> f, dirName, Array[]);
+  HState(SKFS.toIHandle(stateHdl))
+}
+
+module end;

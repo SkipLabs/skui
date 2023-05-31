@@ -1,0 +1,48 @@
+module Font;
+
+fun fillMonoid(
+  p: SortedMap<TypefaceInfo, String>,
+): SortedMap<TypefaceInfo, String> {
+  monoid = "Monoid";
+  regularB64 = Monoid.regularB64();
+  italicB64 = Monoid.italicB64();
+  // Monoid thin
+  !p = p.add(TypefaceInfo(monoid, Weight::thin, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::thin, Italic()), italicB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::thin, Oblique()), italicB64);
+  // Monoid extra light
+  !p = p.add(TypefaceInfo(monoid, Weight::extralight, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::extralight, Italic()), italicB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::extralight, Oblique()), italicB64);
+  // Monoid light
+  !p = p.add(TypefaceInfo(monoid, Weight::light, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::light, Italic()), italicB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::light, Oblique()), italicB64);
+  // Monoid normal
+  !p = p.add(TypefaceInfo(monoid, Weight::normal, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::normal, Italic()), italicB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::normal, Oblique()), italicB64);
+  // Monoid medium
+  !p = p.add(TypefaceInfo(monoid, Weight::medium, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::medium, Italic()), italicB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::medium, Oblique()), italicB64);
+  // Monoid semi bold
+  !p = p.add(TypefaceInfo(monoid, Weight::semibold, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::semibold, Italic()), italicB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::semibold, Oblique()), italicB64);
+  boldB64 = Monoid.boldB64();
+  // Monoid bold
+  !p = p.add(TypefaceInfo(monoid, Weight::bold, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::bold, Italic()), boldB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::bold, Oblique()), boldB64);
+  // Monoid extra bold
+  !p = p.add(TypefaceInfo(monoid, Weight::extrabold, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::extrabold, Italic()), boldB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::extrabold, Oblique()), boldB64);
+  // Monoid black
+  !p = p.add(TypefaceInfo(monoid, Weight::black, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(monoid, Weight::black, Italic()), boldB64);
+  p.add(TypefaceInfo(monoid, Weight::black, Oblique()), boldB64);
+}
+
+module end;

@@ -1,0 +1,135 @@
+module UiTextLine;
+
+class DragHandler{
+  textline: Ui.TextLine,
+  optClipboardContent: ?FWKClipboard.Content,
+} extends FWK.DragHandler {
+  fun getTransfer(_context: mutable SKFS.Context): FWK.Transfer {
+    FWK.TrCopyOrMove()
+  }
+
+  fun getDragInfo(_context: mutable SKFS.Context): ?FWK.DragInfo {
+    None()
+  }
+
+  fun getClipboardContent(
+    _context: mutable SKFS.Context,
+  ): ?FWKClipboard.Content {
+    this.optClipboardContent
+  }
+
+  fun dropped(
+    context: mutable SKFS.Context,
+    optInfo: ?(FWK.DropHandler, FWK.TransferMode),
+  ): void {
+    commands = mutable Vector<FWKMessage.Command>[];
+    tcm = this.textline.controller.getTextCommandsManager(context, true);
+    commands.push(tcm.getTargetCommand(None()));
+    commands.push(tcm.getSetMoveSelectionCommand(false));
+    optInfo.each(info -> {
+      (dropHandler, transfer) = info;
+      same = dropHandler match {
+      | dh @ DropHandler _ -> this.textline.reference == dh.textline.reference
+      | _ -> false
+      };
+      if (!same && transfer.isMove()) {
+        commands.push(tcm.getDeleteSelectionCommand())
+      }
+    });
+    if (!commands.isEmpty()) {
+      tcm.emitAll(context, commands);
+    };
+  }
+}
+
+class DropHandler(
+  textline: Ui.TextLine,
+  nodeInfo: Ui.NodeInfo,
+) extends FWK.DropHandler {
+  //
+  fun getIdentifier(): String {
+    this.textline.path.toString()
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    tcm = this.textline.controller.getTextCommandsManager(context, true);
+    commands = Vector[tcm.getTargetCommand(None())];
+    tcm.emitAll(context, commands);
+  }
+
+  fun over(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): ?FWK.TransferMode {
+    mode = FWK.TrCopyOrMove().choose(transfer);
+    optTextPlain = dragHandler.getPlainText(context);
+    if (optTextPlain.isNone() || !mode.isCopyOrMove()) {
+      return None();
+    };
+    commands = mutable Vector<FWKMessage.Command>[];
+    tcm = this.textline.controller.getTextCommandsManager(context, true);
+    position = this.textline.getTextPostionFor(
+      context,
+      mouse.offset(),
+      false,
+      this.nodeInfo,
+      true,
+    );
+    same = dragHandler match {
+    | dh @ DragHandler _ -> this.textline.reference == dh.textline.reference
+    | _ -> false
+    };
+    isScrolling = this.textline.controller.isScrolling(context);
+    res = if (!isScrolling) {
+      commands.push(tcm.getTargetCommand(Some(position)));
+      this.textline.controller.getSelection(context, true) match {
+      | Some(selection) if (same && selection.contains(position.column)) ->
+        None()
+      | _ -> Some(mode)
+      }
+    } else {
+      None()
+    };
+    if (!commands.isEmpty()) {
+      tcm.emitAll(context, commands);
+    };
+    res;
+  }
+
+  fun dropped(
+    context: mutable SKFS.Context,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): void {
+    commands = mutable Vector<FWKMessage.Command>[];
+    tcm = this.textline.controller.getTextCommandsManager(context, true);
+    same = dragHandler match {
+    | dh @ DragHandler _ -> this.textline.reference == dh.textline.reference
+    | _ -> false
+    };
+    SystemProperties.setRequireFocus(context, this.textline.reference);
+    dragHandler.getPlainText(context).each(plainText -> {
+      optTarget = this.textline.controller.getTarget(context, true);
+      optTarget.each(target ->
+        commands.push(
+          tcm.getInsertCommand(
+            plainText,
+            !same || !transfer.isMove(),
+            Ui.Position(
+              this.textline.controller.getLine(context, true),
+              target,
+            ),
+          ),
+        )
+      )
+    });
+    commands.push(tcm.getTargetCommand(None()));
+    if (!commands.isEmpty()) {
+      tcm.emitAll(context, commands);
+    };
+  }
+}
+
+module end;

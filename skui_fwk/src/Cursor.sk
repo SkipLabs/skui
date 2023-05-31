@@ -1,0 +1,109 @@
+module Ui;
+
+base class Cursor() extends SKFS.File uses Hashable, Equality {
+  children =
+  | NoneCursor()
+  | DefaultCursor()
+  | HandCursor()
+  | OpenHandCursor()
+  | ClosedHandCursor()
+  | CrosshairCursor()
+  | DisappearCursor()
+  | MoveCursor()
+  | NorthResizeCursor()
+  | NorthEastResizeCursor()
+  | EastResizeCursor()
+  | SouthEastResizeCursor()
+  | SouthResizeCursor()
+  | SouthWestResizeCursor()
+  | WestResizeCursor()
+  | NorthWestResizeCursor()
+  | HorizontalResizeCursor()
+  | VerticalResizeCursor()
+  | TextCursor()
+  | WaitCursor()
+  | ForbiddenCursor()
+  | PlusCursor()
+  | QuestionCursor()
+  | DnDCopyCursor()
+  | DnDLinkCursor()
+  | DnDMoveCursor()
+  | DnDNoneCursor()
+  | DnDAskCursor()
+
+  fun code(): Int {
+    this match {
+    | NoneCursor() -> 0
+    | DefaultCursor() -> 1
+    | HandCursor() -> 2
+    | OpenHandCursor() -> 3
+    | ClosedHandCursor() -> 4
+    | CrosshairCursor() -> 5
+    | DisappearCursor() -> 6
+    | MoveCursor() -> 7
+    | NorthResizeCursor() -> 8
+    | NorthEastResizeCursor() -> 9
+    | EastResizeCursor() -> 10
+    | SouthEastResizeCursor() -> 11
+    | SouthResizeCursor() -> 12
+    | SouthWestResizeCursor() -> 13
+    | WestResizeCursor() -> 14
+    | NorthWestResizeCursor() -> 15
+    | HorizontalResizeCursor() -> 16
+    | VerticalResizeCursor() -> 17
+    | TextCursor() -> 18
+    | WaitCursor() -> 19
+    | ForbiddenCursor() -> 20
+    | PlusCursor() -> 21
+    | QuestionCursor() -> 22
+    | DnDCopyCursor() -> 23
+    | DnDLinkCursor() -> 24
+    | DnDMoveCursor() -> 25
+    | DnDNoneCursor() -> 26
+    | DnDAskCursor() -> 27
+    }
+  }
+
+  static fun fromCode(code: Int): Cursor {
+    code match {
+    | 0 -> NoneCursor()
+    | 1 -> DefaultCursor()
+    | 2 -> HandCursor()
+    | 3 -> OpenHandCursor()
+    | 4 -> ClosedHandCursor()
+    | 5 -> CrosshairCursor()
+    | 6 -> DisappearCursor()
+    | 7 -> MoveCursor()
+    | 8 -> NorthResizeCursor()
+    | 9 -> NorthEastResizeCursor()
+    | 10 -> EastResizeCursor()
+    | 11 -> SouthEastResizeCursor()
+    | 12 -> SouthResizeCursor()
+    | 13 -> SouthWestResizeCursor()
+    | 14 -> WestResizeCursor()
+    | 15 -> NorthWestResizeCursor()
+    | 16 -> HorizontalResizeCursor()
+    | 17 -> VerticalResizeCursor()
+    | 18 -> TextCursor()
+    | 19 -> WaitCursor()
+    | 20 -> ForbiddenCursor()
+    | 21 -> PlusCursor()
+    | 22 -> QuestionCursor()
+    | 23 -> DnDCopyCursor()
+    | 24 -> DnDLinkCursor()
+    | 25 -> DnDMoveCursor()
+    | 26 -> DnDNoneCursor()
+    | 27 -> DnDAskCursor()
+    | _ -> invariant_violation("Invalid Ui.Cursor code")
+    }
+  }
+
+  static fun forFile(obj: SKFS.File): Cursor {
+    obj match {
+    | x @ Cursor _ -> x
+    | _ -> invariant_violation("Invalid Ui.Cursor")
+    }
+  }
+}
+
+module end;

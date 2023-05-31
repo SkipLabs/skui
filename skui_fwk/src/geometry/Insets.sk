@@ -1,0 +1,36 @@
+module Geometry;
+
+/**
+ * Convert this instance into an [Insets], which uses literal coordinates
+ * (i.e. the `left` coordinate being explicitly a distance from the left, and
+ * the `right` coordinate being explicitly a distance from the right).
+ *
+ * See also:
+ *
+ *  * [Insets], for which this is a no-op (returns itself).
+ *  * [InsetsDirectional], which flips the horizontal direction
+ *    based on the `direction` argument.
+ */
+fun resolveInsest(
+  insets: InsetsGeometry,
+  direction: Ui.HorizontalDirection,
+): Insets {
+  direction match {
+  | Ui.ToRight() ->
+    Insets::fromLTRB(
+      insets.start + insets.left,
+      insets.top,
+      insets.end + insets.right,
+      insets.bottom,
+    )
+  | Ui.ToLeft() ->
+    Insets::fromLTRB(
+      insets.end + insets.left,
+      insets.top,
+      insets.start + insets.right,
+      insets.bottom,
+    )
+  }
+}
+
+module end;

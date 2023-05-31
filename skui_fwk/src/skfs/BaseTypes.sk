@@ -1,0 +1,47 @@
+module SKFS;
+
+extension base class File uses HasClassName {}
+
+class TSFile(value: System.TimeStamp) extends File {}
+
+class TimeStampConverter() extends Converter<System.TimeStamp> {
+  fun fromFile(file: SKFS.File): System.TimeStamp {
+    TSFile::fromFile(file).value;
+  }
+
+  fun toFile(value: System.TimeStamp): SKFS.File {
+    TSFile(value)
+  }
+}
+
+class HandleFile(handle: Handle<File>) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ HandleFile _ -> x
+    | _ -> invariant_violation("Must be SKFS.HandleFile")
+    }
+  }
+}
+
+class Strings(value: Array<String>) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Strings _ -> x
+    | _ -> invariant_violation("Must be SKFS.Strings")
+    }
+  }
+}
+
+class StringSet(value: Set<String>) extends File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ StringSet _ -> x
+    | _ -> invariant_violation("Must be SKFS.StringSet")
+    }
+  }
+}
+
+module end;

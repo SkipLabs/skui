@@ -7,7 +7,7 @@ base class BaseNameConverter<K: frozen> extends SKFS.Converter<K> {
 
 class StrIDConverter() extends BaseNameConverter<String> {
   fun toBaseName(key: String): SKFS.BaseName {
-    SKFS.StrID::create(key)
+    SKFS.StrID(key)
   }
 
   fun fromBaseName(key: SKFS.BaseName): String {

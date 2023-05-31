@@ -1,0 +1,22 @@
+module UiTableRow;
+
+class HoverHandler(path: Ui.Path) extends Ui.HoverHandlerWrapper {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.path
+  }
+
+  protected fun isParentBefore(): Bool {
+    false
+  }
+
+  protected fun onMouse(
+    _context: mutable SKFS.Context,
+    _mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    // TODO Select
+    FWK.Result(false)
+  }
+}
+
+module end;

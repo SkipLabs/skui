@@ -1,0 +1,46 @@
+module Ui;
+
+class RectangleAlpha private (
+  rect: Geometry.Rect,
+  outer: Geometry.Rectangle,
+  inner: Geometry.Rectangle,
+) extends AlphaSupplier {
+  static fun make(rect: Geometry.Rect): RectangleAlpha {
+    RectangleAlpha(rect, rect.toRectangle(), rect.toInnerRectangle());
+  }
+
+  fun getAlpha(x: Int, y: Int): Float {
+    if (!this.outer.containsPoint(x, y)) {
+      0.0;
+    } else if (this.inner.containsPoint(x, y)) {
+      1.0;
+    } else {
+      sx = x.toFloat();
+      ex = (x + 1).toFloat();
+      ey = (y + 1).toFloat();
+      pixel = Geometry.Rect(sx, y.toFloat(), ex, ey);
+      pixel.intersect(this.rect).area();
+    }
+  }
+}
+
+class Difference private (
+  first: AlphaSupplier,
+  second: AlphaSupplier,
+) extends AlphaSupplier {
+  static fun strokeRectangle(
+    rect: Geometry.Rect,
+    padding: Geometry.Insets,
+  ): Difference {
+    Difference(
+      RectangleAlpha::make(rect),
+      RectangleAlpha::make(padding.deflateRect(rect)),
+    )
+  }
+
+  fun getAlpha(x: Int, y: Int): Float {
+    this.first.getAlpha(x, y) * (1.0 - this.second.getAlpha(x, y));
+  }
+}
+
+module end;

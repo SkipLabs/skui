@@ -1,0 +1,349 @@
+module UiMonospace;
+
+fun widgetDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/monospace/widget/")
+}
+
+class OffsetKey() extends SKFS.BaseName {
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+class KIdx(value: Int) extends SKFS.BaseName {
+  fun toString(): String {
+    this.value.toString()
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as KIdx _);
+    this.value.compare(oKey.value);
+  }
+}
+
+class CountKey() extends SKFS.BaseName {
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+class RangeKey() extends SKFS.BaseName {
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+class Indexed(idx: Int, widget: Ui.Widget) extends SKFS.File
+
+class TextKey(value: Array<Char>) extends SKFS.BaseName {
+  fun toString(): String {
+    String::fromChars(this.value)
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as TextKey _);
+    this.value.compare(oKey.value);
+  }
+}
+
+base class Step uses Equality {
+  children =
+  | SInsert(index: Int, value: Line)
+  | SDelete(index: Int)
+  | SMove(from: Int, to: Int)
+  | SUpdate(index: Int, value: Line)
+  | SSet(value: Vector<Line>)
+
+  fun execute(src: Vector<Line>, dst: mutable Vector<Line>): void {
+    this match {
+    | SInsert(index, value) -> dst.insert(index, value)
+    | SDelete(index) -> dst.delete(index)
+    | SMove(from, to) ->
+      src.maybeGet(from).each(line -> {
+        dst.delete(from);
+        if (to < from) {
+          dst.insert(to, line)
+        } else if (to - 1 < dst.size()) {
+          dst.insert(to - 1, line)
+        } else {
+          dst.push(line)
+        }
+      })
+    | SUpdate(index, value) -> dst.set(index, value)
+    | SSet(value) ->
+      dst.clear();
+      value.each(dst.push)
+    }
+  }
+}
+
+fun stringToLines(
+  text: String,
+  bracketsChecker: BracketsBuilder,
+  idSupplier: () -> Int,
+): Vector<Line> {
+  toLines(VectorAccessor(text.chars()), bracketsChecker, idSupplier)
+}
+
+fun toLines(
+  chars: Accessor,
+  bracketsChecker: BracketsBuilder,
+  idSupplier: () -> Int,
+): Vector<Line> {
+  if (chars.isEmpty()) {
+    Vector[Line(idSupplier(), Array[], Array[])]
+  } else {
+    lines = mutable Vector<Line>[];
+    brackets = mutable Vector<Bracket>[];
+    text = mutable Vector<Char>[];
+    index = 0;
+    column = 0;
+    newline = false;
+    while (index < chars.size()) {
+      char = chars[index];
+      if (char == '\n' || char == '\r') {
+        endLine = chars.maybeGet(index + 1) match {
+        | Some(next) ->
+          if (
+            (char == '\n' && next == '\r') ||
+            (char == '\r' && next == '\n')
+          ) {
+            Array[char, next]
+          } else {
+            Array[char]
+          }
+        | _ -> Array[char]
+        };
+        lines.push(Line(idSupplier(), text.toArray(), brackets.toArray()));
+        !newline = true;
+        !column = 0;
+        text.clear();
+        brackets.clear();
+        !index = index + endLine.size()
+      } else {
+        !newline = false;
+        bracketsChecker(chars, index, column) match {
+        | Some(bracket) ->
+          brackets.push(bracket);
+          bracket.value.each(text.push);
+          !index = index + bracket.value.size();
+          !column = column + bracket.value.size()
+        | None() ->
+          text.push(chars[index]);
+          !index = index + 1;
+          !column = column + 1
+        }
+      }
+    };
+    if (!text.isEmpty() || newline) {
+      lines.push(Line(idSupplier(), text.toArray(), brackets.toArray()));
+      text.clear();
+      brackets.clear();
+    };
+    unsafe_chill_trust_me(lines)
+  }
+}
+
+fun process(old: Vector<Line>, new: Vector<Line>): Vector<Step> {
+  table = mutable Map<Array<Char>, Diff.Data>[];
+  new.eachWithIndex((idx, line) -> checkData(line, idx, table, true));
+  old.eachWithIndex((idx, line) -> checkData(line, idx, table, true));
+  oldVector = old.clone();
+  newVector = new.clone();
+  findUniqueVirtualEntries(oldVector, newVector, table);
+  expandUniqueEntriesAsc(oldVector, newVector);
+  expandUniqueEntriesDesc(oldVector, newVector);
+  steps = mutable Vector<Step>[];
+  deleteOffsets = Array::mfill(oldVector.size(), 0);
+  offset = 0;
+  oldVector.eachWithIndex((index, line) -> {
+    deleteOffsets.set(index, offset);
+    if (line.optOther.isNone()) {
+      steps.insert(0, SDelete(index));
+      !offset = offset + 1;
+    }
+  });
+  !offset = 0;
+  newVector.eachWithIndex((index, line) -> {
+    line.optOther match {
+    | Some(oldIndex) ->
+      oldLine = oldVector[oldIndex];
+      if (oldLine.text != line.text) {
+        steps.push(SUpdate(index, line));
+      };
+      deleteOffset = deleteOffsets[oldIndex];
+      if ((oldIndex - deleteOffset + offset) != index) {
+        steps.push(SMove(oldIndex, index))
+      }
+    | _ ->
+      steps.push(SInsert(index, line));
+      !offset = offset + 1
+    }
+  });
+  unsafe_chill_trust_me(steps);
+}
+
+fun patch(lines: Vector<Line>, steps: readonly Vector<Step>): Vector<Line> {
+  target = lines.clone();
+  steps.each(step -> step.execute(lines, target));
+  unsafe_chill_trust_me(target);
+}
+
+fun checkData(
+  line: Line,
+  index: Int,
+  table: mutable Map<Array<Char>, Diff.Data>,
+  old: Bool,
+): void {
+  data = table.maybeGet(line.text).default(Diff.Data());
+  if (old) {
+    !data.oldOccurence = data.oldOccurence.incr();
+    !data.optLastOldIndex = Some(index);
+  } else {
+    !data.newOccurence = data.newOccurence.incr()
+  };
+  table.set(line.text, data);
+}
+
+fun findUniqueVirtualEntries(
+  old: mutable Vector<Line>,
+  new: mutable Vector<Line>,
+  table: readonly Map<Array<Char>, Diff.Data>,
+): void {
+  new.eachWithIndex((index, line) -> {
+    data = table.get(line.text);
+    if (data.inBoth()) {
+      data.optLastOldIndex.each(oldIndex -> {
+        !line.optOther = Some(oldIndex);
+        new.set(index, line);
+        oldLine = old[oldIndex];
+        !oldLine.optOther = Some(index);
+        old.set(oldIndex, oldLine);
+      })
+    }
+  });
+}
+
+fun expandUniqueEntriesAsc(
+  old: mutable Vector<Line>,
+  new: mutable Vector<Line>,
+): void {
+  new.eachWithIndex((i, line) -> {
+    line.optOther.each(j -> {
+      new.maybeGet(i + 1).each(nlp1 ->
+        old.maybeGet(j + 1).each(olp1 ->
+          if (nlp1.text == olp1.text) {
+            !nlp1.optOther = Some(j + 1);
+            new.set(i + 1, nlp1);
+            !olp1.optOther = Some(i + 1);
+            old.set(j + 1, olp1);
+          }
+        )
+      )
+    })
+  });
+}
+
+fun expandUniqueEntriesDesc(
+  old: mutable Vector<Line>,
+  new: mutable Vector<Line>,
+): void {
+  for (i in Range(0, new.size()).reversed()) {
+    line = new[i];
+    line.optOther.each(j -> {
+      new.maybeGet(i - 1).each(nlm1 ->
+        old.maybeGet(j - 1).each(olm1 ->
+          if (nlm1.text == olm1.text) {
+            !nlm1.optOther = Some(j - 1);
+            new.set(i - 1, nlm1);
+            !olm1.optOther = Some(i - 1);
+            old.set(j - 1, olm1);
+          }
+        )
+      )
+    })
+  }
+}
+
+fun withIndentation(
+  chars: Array<Char>,
+  indentation: Ui.Indentation,
+  space: (Int, Int, mutable Vector<Char>) ~> void,
+  tab: (Int, Int, mutable Vector<Char>) ~> void,
+  size: Int,
+): Array<Char> {
+  i = 0;
+  count = 0;
+  !size = Math.max(size, 2);
+  result = mutable Vector<Char>[];
+  if (chars.size() > 0) {
+    c = chars.get(i);
+    while (Char.isWhitespace(c) && i < chars.size()) {
+      if (c == '\t') {
+        !count = count + size
+      } else {
+        !count = count + 1
+      };
+      !i = i + 1;
+      !c = chars.get(i);
+    };
+  };
+  indentation match {
+  | Ui.Space(_) -> space(count, size, result)
+  | _ -> tab(count, size, result)
+  };
+  while (i < chars.size()) {
+    result.push(chars.get(i));
+    !i = i + 1;
+  };
+  result.toArray()
+}
+
+fun indentLine(chars: Array<Char>, indentation: Ui.Indentation): Array<Char> {
+  withIndentation(
+    chars,
+    indentation,
+    (count, size, result) ~> {
+      toAdd = size - (count % size);
+      for (_j in Range(0, count + toAdd)) {
+        result.push(' ');
+      }
+    },
+    (count, size, result) ~> {
+      number = (count / size) + 1;
+      for (_j in Range(0, number)) {
+        result.push('\t');
+      }
+    },
+    indentation.size,
+  )
+}
+
+fun outdentLine(chars: Array<Char>, indentation: Ui.Indentation): Array<Char> {
+  withIndentation(
+    chars,
+    indentation,
+    (count, size, result) ~> {
+      suffix = count % size;
+      if (suffix == 0) {
+        !suffix = size;
+      };
+      number = Math.max(count - suffix, 0);
+      for (_j in Range(0, number)) {
+        result.push(' ');
+      }
+    },
+    (count, size, result) ~> {
+      number = count / size;
+      if (count % size == 0) {
+        !number = Math.max(number - 1, 0);
+      };
+      for (_j in Range(0, number)) {
+        result.push('\t');
+      }
+    },
+    indentation.size,
+  )
+}
+
+module end;

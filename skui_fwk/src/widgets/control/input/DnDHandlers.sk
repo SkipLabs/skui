@@ -1,0 +1,115 @@
+module UiInput;
+
+class DragHandler{
+  input: Ui.Input,
+  optClipboardContent: ?FWKClipboard.Content,
+} extends FWK.DragHandler {
+  fun getTransfer(_context: mutable SKFS.Context): FWK.Transfer {
+    FWK.TrCopyOrMove()
+  }
+
+  fun getDragInfo(_context: mutable SKFS.Context): ?FWK.DragInfo {
+    None()
+  }
+
+  fun getClipboardContent(
+    _context: mutable SKFS.Context,
+  ): ?FWKClipboard.Content {
+    this.optClipboardContent
+  }
+
+  fun dropped(
+    context: mutable SKFS.Context,
+    optInfo: ?(FWK.DropHandler, FWK.TransferMode),
+  ): void {
+    this.input.state.emitTarget(context, None(), false);
+    this.input.state.emitMoveSelection(context, false);
+    optInfo.each(info -> {
+      (dropHandler, transfer) = info;
+      same = dropHandler match {
+      | dh @ DropHandler _ -> this.input.path == dh.input.path
+      | _ -> false
+      };
+      if (!same && transfer.isMove()) {
+        this.input.state.emitDeleteTo(context, TPos(None()))
+      }
+    });
+  }
+}
+
+class DropHandler{
+  input: Ui.Input,
+  nodeInfo: Ui.NodeInfo,
+} extends FWK.DropHandler {
+  fun getIdentifier(): String {
+    this.input.path.toString()
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    this.input.state.emitTarget(context, None(), false);
+  }
+
+  fun over(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): ?FWK.TransferMode {
+    mode = FWK.TrCopyOrMove().choose(transfer);
+    if (
+      dragHandler
+        .getPlainText(context)
+        .map(txt -> {
+          kind = this.input.controller.getKind(context);
+          validator = kind.toBehavior(context).optValidator.default(_ ~> OK());
+          validity = validator(txt.chars());
+          !(validity == OK() || validity == Valid())
+        })
+        .default(true) ||
+      !mode.isCopyOrMove()
+    ) {
+      return None();
+    };
+    offset = mouse.offset();
+    (position, _, _, _, isIn) = this.input.getMousePosition(
+      context,
+      offset,
+      this.nodeInfo,
+      false,
+      false,
+    );
+    isScrolling = this.input.state.isScrolling(context);
+    if (isIn || !isScrolling) {
+      this.input.state.emitTarget(context, Some(position), !isIn);
+      this.input.state.getSelection(context, true) match {
+      | Some(selection) if (UiInput.contains(selection, position)) -> None()
+      | _ -> Some(mode)
+      }
+    } else {
+      None()
+    }
+  }
+
+  fun dropped(
+    context: mutable SKFS.Context,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): void {
+    same = dragHandler match {
+    | dh @ DragHandler _ -> this.input.path == dh.input.path
+    | _ -> false
+    };
+    SystemProperties.setRequireFocus(context, this.input.path);
+    dragHandler.getPlainText(context).each(plainText ->
+      this.input.state.emitInsert(
+        context,
+        plainText,
+        !same || !transfer.isMove(),
+        this.input.state.getTarget(context),
+      )
+    );
+    this.input.state.emitTarget(context, None(), false);
+  }
+}
+
+module end;

@@ -1,0 +1,66 @@
+module UiTreeItem;
+
+fun toJSON(v: JSONValue): JSON.Value {
+  v.toJSON()
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHover(expand: Bool, hover: Bool)
+  | SetArmed(expand: Bool, armed: Bool)
+  | SetTargeted(optDrop: ?Ui.Drop)
+  | SetIndeterminate(value: Int)
+  | Multiple(values: Array<Command>)
+
+  fun toJSON(): JSON.Value
+  | SetHover(expand, value)
+  | SetArmed(expand, value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "expand" => JSON.Bool(expand),
+        "value" => JSON.Bool(value),
+      ],
+    )
+  | SetIndeterminate(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+  | SetTargeted(optDrop) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "drop" => optDrop.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Multiple(values) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "values" => JSON.arrayToJSON(values, v ~> v.toJSON()),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTreeItem.SetArmed" ->
+      SetArmed(jso.getBool("expand"), jso.getBool("value"))
+    | "UiTreeItem.SetHover" ->
+      SetHover(jso.getBool("expand"), jso.getBool("value"))
+    | "UiTreeItem.SetTargeted" ->
+      SetTargeted(jso.maybeGet("drop").map(Ui.Drop::fromJSON))
+    | "UiTreeItem.SetIndeterminate" -> SetIndeterminate(jso.getInt("value"))
+    | "UiTreeItem.Multiple" ->
+      Multiple(JSON.arrayFromJSON(jso.getArray("values"), Command::fromJSON))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiTreeItem.Command`)
+    }
+  }
+}
+
+module end;

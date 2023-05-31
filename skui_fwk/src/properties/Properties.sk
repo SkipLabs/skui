@@ -1,0 +1,1287 @@
+module UiBoolProp;
+
+class Timed extends Ui.TimedFile<Bool> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiBoolProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.BoolProperty,
+  Ui.PropertyFile<Bool, Timed, SKFS.BoolFile>,
+{
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(optV: ?Bool, tick: SKFS.Tick, source: Int): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiBoolProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Bool {
+    SKFS.BoolFile::fromFile(file).value
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): SKFS.BoolFile {
+    SKFS.BoolFile::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: Bool): SKFS.File {
+    SKFS.BoolFile(value)
+  }
+
+  protected static fun getDefaultValue(): Bool {
+    false
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+
+  fun toggle(context: mutable SKFS.Context, source: Int): void {
+    this.set(context, Some(!this.get(context, true)), source)
+  }
+}
+
+class Const extends Ui.BoolProperty, Ui.PropertyConst<Bool, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Bool, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Bool {
+    false
+  }
+
+  fun toggle(_context: mutable SKFS.Context, _source: Int): void {
+    void
+  }
+}
+
+class Jsonable extends Ui.BoolProperty, Ui.PropertyJsonable<Bool> {
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): Bool {
+    JSON.optBool(s).default(false)
+  }
+
+  protected static fun valueToJSON(v: Bool): JSON.Value {
+    JSON.Bool(v)
+  }
+
+  protected static fun getDefaultValue(): Bool {
+    false
+  }
+
+  fun toggle(context: mutable SKFS.Context, source: Int): void {
+    this.set(context, Some(!this.get(context, true)), source)
+  }
+}
+
+module end;
+
+module UiIntProp;
+
+class Timed extends Ui.TimedFile<Int> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiIntProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.IntProperty,
+  Ui.PropertyFile<Int, Timed, SKFS.IntFile>,
+{
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(optV: ?Int, tick: SKFS.Tick, source: Int): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiIntProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Int {
+    SKFS.IntFile::fromFile(file).value
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): SKFS.IntFile {
+    SKFS.IntFile::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: Int): SKFS.File {
+    SKFS.IntFile(value)
+  }
+
+  protected static fun getDefaultValue(): Int {
+    0
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.IntProperty, Ui.PropertyConst<Int, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Int, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Int {
+    0
+  }
+}
+
+class Jsonable extends Ui.IntProperty, Ui.PropertyJsonable<Int> {
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): Int {
+    JSON.optInt(s).default(0)
+  }
+
+  protected static fun valueToJSON(v: Int): JSON.Value {
+    JSON.IntNumber(v)
+  }
+
+  protected static fun getDefaultValue(): Int {
+    0
+  }
+}
+
+module end;
+
+module UiFloatProp;
+
+class Timed extends Ui.TimedFile<Float> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiFloatProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.FloatProperty,
+  Ui.PropertyFile<Float, Timed, SKFS.FloatFile>,
+{
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(
+    optV: ?Float,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiFloatProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Float {
+    SKFS.FloatFile::fromFile(file).value
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): SKFS.FloatFile {
+    SKFS.FloatFile::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: Float): SKFS.File {
+    SKFS.FloatFile(value)
+  }
+
+  protected static fun getDefaultValue(): Float {
+    0.0
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.FloatProperty, Ui.PropertyConst<Float, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Float, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Float {
+    0.0
+  }
+}
+
+class Jsonable extends Ui.FloatProperty, Ui.PropertyJsonable<Float> {
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): Float {
+    JSON.optFloat(s).default(0.0)
+  }
+
+  protected static fun valueToJSON(v: Float): JSON.Value {
+    JSON.FloatNumber(v)
+  }
+
+  protected static fun getDefaultValue(): Float {
+    0.0
+  }
+}
+
+module end;
+
+module UiTextProp;
+
+class Timed extends Ui.TimedFile<Text> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiTextProp.Timed")
+    }
+  }
+}
+
+class Property extends Ui.TextProperty, Ui.PropertyFile<Text, Timed, Text> {
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(optV: ?Text, tick: SKFS.Tick, source: Int): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiStringProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Text {
+    Text::forFile(file)
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): Text {
+    Text::forFile(file)
+  }
+
+  protected static fun valueToFile(value: Text): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Text {
+    Raw("")
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.TextProperty, Ui.PropertyConst<Text, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Text, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Text {
+    Raw("")
+  }
+}
+
+class String(property: Property) extends Ui.StringProperty {
+  fun getName(): .String {
+    this.property.getName()
+  }
+
+  fun getPath(): ?.String {
+    this.property.getPath()
+  }
+
+  fun maybeGet(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?.String {
+    this.property.maybeGet(context, isUntracked).map(context.uTranslate)
+  }
+
+  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): .String {
+    this.maybeGet(context, isUntracked) match {
+    | Some(v) -> v
+    | _ -> ""
+    }
+  }
+
+  fun maybeGetTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?(?.String, SKFS.Tick, Int) {
+    this.property.maybeGetTimed(context, isUntracked).map(t ->
+      (t.i0.map(context.uTranslate), t.i1, t.i2)
+    )
+  }
+
+  fun getTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): (.String, SKFS.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked) match {
+    | Some(v) -> (v.i0.default(""), v.i1, v.i2)
+    | _ -> ("", SKFS.Tick(0), 0)
+    }
+  }
+
+  fun set(
+    context: mutable SKFS.Context,
+    optValue: ?.String,
+    source: Int,
+  ): void {
+    this.property.set(context, optValue.map(str -> Raw(str)), source)
+  }
+}
+
+module end;
+
+module UiStringProp;
+
+class Timed extends Ui.TimedFile<String> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiStringProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.StringProperty,
+  Ui.PropertyFile<String, Timed, SKFS.StringFile>,
+{
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(
+    optV: ?String,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiStringProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): String {
+    SKFS.StringFile::fromFile(file).value
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): SKFS.StringFile {
+    SKFS.StringFile::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: String): SKFS.File {
+    SKFS.StringFile(value)
+  }
+
+  protected static fun getDefaultValue(): String {
+    ""
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.StringProperty, Ui.PropertyConst<String, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?String, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): String {
+    ""
+  }
+}
+
+class Jsonable extends Ui.StringProperty, Ui.PropertyJsonable<String> {
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): String {
+    JSON.optString(s).default("")
+  }
+
+  protected static fun valueToJSON(v: String): JSON.Value {
+    JSON.String(v)
+  }
+
+  protected static fun getDefaultValue(): String {
+    ""
+  }
+}
+
+module end;
+
+module UiPositionProp;
+
+class Timed extends Ui.TimedFile<Ui.Position> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiPositionProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.PositionProperty,
+  Ui.FPropertyFile<Ui.Position, Timed>,
+{
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?Ui.Position,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiPositionProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Ui.Position {
+    Ui.Position::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: Ui.Position): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Ui.Position {
+    Ui.Position::zero
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.PositionProperty, Ui.PropertyConst<Ui.Position, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Ui.Position, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Ui.Position {
+    Ui.Position::zero
+  }
+}
+
+module end;
+
+module UiPortionProp;
+
+class Timed extends Ui.TimedFile<Ui.Portion> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiPortionProp.Timed")
+    }
+  }
+}
+
+class Property extends Ui.PortionProperty, Ui.FPropertyFile<Ui.Portion, Timed> {
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?Ui.Portion,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiPortionProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Ui.Portion {
+    Ui.Portion::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: Ui.Portion): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Ui.Portion {
+    Ui.Portion::empty
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.PortionProperty, Ui.PropertyConst<Ui.Portion, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Ui.Portion, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Ui.Portion {
+    Ui.Portion::empty
+  }
+}
+
+module end;
+
+module UiIndentationProp;
+
+class Timed extends Ui.TimedFile<Ui.Indentation> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiIndentationProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.IndentationProperty,
+  Ui.FPropertyFile<Ui.Indentation, Timed>,
+{
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?Ui.Indentation,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiIndentationProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Ui.Indentation {
+    Ui.Indentation::forFile(file)
+  }
+
+  protected static fun valueToFile(value: Ui.Indentation): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Ui.Indentation {
+    Ui.Space(2)
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends
+  Ui.IndentationProperty,
+  Ui.PropertyConst<Ui.Indentation, Timed>,
+{
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Ui.Indentation, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Ui.Indentation {
+    Ui.Space(2)
+  }
+}
+
+module end;
+
+module UiEndLineProp;
+
+class Timed extends Ui.TimedFile<Ui.EndLine> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiEndLineProp.Timed")
+    }
+  }
+}
+
+class Property extends Ui.EndLineProperty, Ui.FPropertyFile<Ui.EndLine, Timed> {
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?Ui.EndLine,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiEndLineProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Ui.EndLine {
+    Ui.EndLine::forFile(file)
+  }
+
+  protected static fun valueToFile(value: Ui.EndLine): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Ui.EndLine {
+    Ui.LF()
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.EndLineProperty, Ui.PropertyConst<Ui.EndLine, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Ui.EndLine, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Ui.EndLine {
+    Ui.LF()
+  }
+}
+
+module end;
+
+module UiSeparationProp;
+
+class Timed extends Ui.TimedFile<Ui.Separation> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiSeparationProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.SeparationProperty,
+  Ui.FPropertyFile<Ui.Separation, Timed>,
+{
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?Ui.Separation,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiSeparationProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Ui.Separation {
+    Ui.Separation::forFile(file)
+  }
+
+  protected static fun valueToFile(value: Ui.Separation): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Ui.Separation {
+    Ui.FromStart(100)
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends
+  Ui.SeparationProperty,
+  Ui.PropertyConst<Ui.Separation, Timed>,
+{
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Ui.Separation, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Ui.Separation {
+    Ui.FromStart(100)
+  }
+}
+
+module end;
+
+module UiIconProp;
+
+class Timed extends Ui.TimedFile<UiIcon.Description> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiIconProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.IconProperty,
+  Ui.FPropertyFile<UiIcon.Description, Timed>,
+{
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?UiIcon.Description,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiIconProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): UiIcon.Description {
+    UiIcon.Description::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: UiIcon.Description): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): UiIcon.Description {
+    UiIcon.Description(UiIcon.KTheme(), "forbiden", None())
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends
+  Ui.IconProperty,
+  Ui.PropertyConst<UiIcon.Description, Timed>,
+{
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(
+    optV: ?UiIcon.Description,
+    tick: SKFS.Tick,
+  ): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): UiIcon.Description {
+    UiIcon.Description(UiIcon.KTheme(), "forbiden", None())
+  }
+}
+
+module end;
+
+module UiDecorationProp;
+
+class Timed extends Ui.TimedFile<Ui.Decoration> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiDecorationProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.DecorationProperty,
+  Ui.FPropertyFile<Ui.Decoration, Timed>,
+{
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?Ui.Decoration,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiDecorationProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Ui.Decoration {
+    file match {
+    | x @ Ui.Decoration _ -> x
+    | _ -> invariant_violation("Invalid Ui.Decoration")
+    }
+  }
+
+  protected static fun valueToFile(value: Ui.Decoration): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Ui.Decoration {
+    Ui.Padding::all(0.0)
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends
+  Ui.DecorationProperty,
+  Ui.PropertyConst<Ui.Decoration, Timed>,
+{
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Ui.Decoration, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Ui.Decoration {
+    Ui.Padding::all(0.0)
+  }
+}
+
+module end;
+
+module UiRangeProp;
+
+class Timed extends Ui.TimedFile<Range> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiRangeProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.RangeProperty,
+  Ui.PropertyFile<Range, Timed, SKFS.RangeFile>,
+{
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(
+    optV: ?Range,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiRangeProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Range {
+    static::fileValueFromFile(file).value
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): SKFS.RangeFile {
+    file match {
+    | x @ SKFS.RangeFile _ -> x
+    | _ -> invariant_violation("Invalid SKFS.RangeFile")
+    }
+  }
+
+  protected static fun valueToFile(value: Range): SKFS.File {
+    SKFS.RangeFile(value)
+  }
+
+  protected static fun getDefaultValue(): Range {
+    Range(0, 0)
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.RangeProperty, Ui.PropertyConst<Range, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Range, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Range {
+    Range(0, 0)
+  }
+}
+
+module end;
+
+module UiStatusProp;
+
+class Timed extends Ui.TimedFile<Status> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiStatusProp.Timed")
+    }
+  }
+}
+
+class Property extends Ui.StatusProperty, Ui.FPropertyFile<Status, Timed> {
+  //
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
+
+  protected static fun timed(
+    optV: ?Status,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiStatusProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): Status {
+    file match {
+    | x @ Status _ -> x
+    | _ -> invariant_violation("Invalid SKFS.StatusFile")
+    }
+  }
+
+  protected static fun valueToFile(value: Status): SKFS.File {
+    value
+  }
+
+  protected static fun getDefaultValue(): Status {
+    OK()
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+}
+
+class Const extends Ui.StatusProperty, Ui.PropertyConst<Status, Timed> {
+  //
+  fun get from Ui.PropertyConst;
+  fun getTimed from Ui.PropertyConst;
+
+  protected static fun timed(optV: ?Status, tick: SKFS.Tick): Timed {
+    Timed(optV, tick, 0)
+  }
+
+  protected static fun getDefaultValue(): Status {
+    OK()
+  }
+}
+
+module end;
+
+module UiJSONProp;
+
+class Timed extends Ui.TimedFile<JSON.Value> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Must be a UiJSONProp.Timed")
+    }
+  }
+}
+
+class Property extends
+  Ui.JSONProperty,
+  Ui.PropertyFile<JSON.Value, Timed, JSON.File>,
+{
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(
+    optV: ?JSON.Value,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> invariant_violation("Invalid UiJSONProp.Timed")
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): JSON.Value {
+    JSON.File::fromFile(file).value
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): JSON.File {
+    JSON.File::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: JSON.Value): SKFS.File {
+    JSON.File(value)
+  }
+
+  protected static fun getDefaultValue(): JSON.Value {
+    JSON.Null()
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+
+  fun toOptIntGetter(): Ui.GetterOne<?Int, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optInt)
+  }
+
+  fun toOptFloatGetter(): Ui.GetterOne<?Float, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optFloat)
+  }
+
+  fun toOptStringGetter(): Ui.GetterOne<?String, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optString)
+  }
+
+  fun toOptBoolGetter(): Ui.GetterOne<?Bool, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optBool)
+  }
+
+  fun toOptValueGetter<T>(conv: JSON.Value ~> ?T): Ui.GetterOne<?T, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(conv)
+  }
+
+  fun set(
+    context: mutable SKFS.Context,
+    optValue: ?JSON.Value,
+    source: Int,
+  ): void {
+    if (this.timedHdl.hdl.isWritable(context)) {
+      static::toIHandle(this.timedHdl.hdl).write(
+        context,
+        this.timedHdl.key,
+        static::timed(optValue, context.tick.next(), source),
+      );
+    } else {
+      combinesDirName = SKFS.DirName::make(
+        this.timedHdl.hdl.getDirName(),
+        "combines/",
+      );
+      combinesHdl = SKFS.EHandle(Ui.Combine::forFile, combinesDirName);
+      if (combinesHdl.exists(context)) {
+        combinesHdl.maybeGet(context, this.timedHdl.key).each(combine ->
+          combine.write(context, optValue)
+        )
+      }
+    }
+  }
+
+  static fun combine(
+    context: mutable SKFS.Context,
+    optPath: ?String,
+    combine: Ui.Combine,
+  ): SKFS.StrID {
+    optCombined = Ui.combinedPath(optPath);
+    dirName = Ui.toDirName(context, optCombined);
+    className = SKFS.normalize(static::sClassName().lowercase());
+    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
+    combinesDirName = SKFS.DirName::make(timedDirName, "combines/");
+    hdl = SKFS.EHandle(Ui.Combine::forFile, combinesDirName);
+    key = SKFS.StrID(`prop${context.timeStamp().value}`);
+    SKFS.toIHandle(hdl).write(context, key, combine);
+    key;
+  }
+
+  static fun initCombines(context: mutable SKFS.Context, path: String): void {
+    dirName = Ui.toDirName(context, Some(path));
+    className = SKFS.normalize(static::sClassName().lowercase());
+    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
+    combinesDirName = SKFS.DirName::make(timedDirName, "combines/");
+    combinesCacheDirName = SKFS.DirName::make(combinesDirName, "cache/");
+    valueDirName = SKFS.DirName::make(timedDirName, "value/");
+    combinesHdl = context.makeDir(Ui.Combine::forFile, combinesDirName);
+    cache = SKFS.LHandle::lazy(
+      static::timedFromFile,
+      context,
+      combinesCacheDirName,
+      (context, _self, key) ~> {
+        optValue = combinesHdl.maybeGet(context, key).map(combine ->
+          combine.combine(context, path)
+        );
+        static::timed(optValue, context.tick, 0)
+      },
+    );
+    _ = combinesHdl
+      .contextWriterKeyMap(
+        static::timedFromFile,
+        context,
+        timedDirName,
+        (ctx, writer, key, _) ~> writer.write(key, cache.get(ctx, key)),
+      )
+      .contextWriterKeyMap(
+        static::fileValueFromFile,
+        context,
+        valueDirName,
+        (_ctx, writer, key, timed) ~>
+          timed.optValue.each(v -> writer.write(key, static::valueToFile(v)))
+        ,
+      );
+  }
+}
+
+class Const(value: JSON.Value, writer: Ui.JSONWriter) extends Ui.JSONProperty {
+  //
+  fun getName(): String {
+    this.value.toString()
+  }
+
+  fun getPath(): ?String {
+    None()
+  }
+
+  fun maybeGet(
+    _context: mutable SKFS.Context,
+    _isUntracked: Bool = false,
+  ): ?JSON.Value {
+    if (this.value == JSON.Null()) {
+      None()
+    } else {
+      Some(this.value)
+    }
+  }
+
+  fun set(
+    context: mutable SKFS.Context,
+    optValue: ?JSON.Value,
+    _source: Int,
+  ): void {
+    this.writer.write(context, optValue)
+  }
+
+  fun maybeGetTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?(?JSON.Value, SKFS.Tick, Int) {
+    Some((this.maybeGet(context, isUntracked), SKFS.Tick(0), 0))
+  }
+}
+
+module end;

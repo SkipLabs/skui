@@ -1,0 +1,115 @@
+module Ui;
+
+const hoverProp: SKFS.StrID = SKFS.StrID("hover");
+const armedProp: SKFS.StrID = SKFS.StrID("armed");
+const caretVisibleProp: SKFS.StrID = SKFS.StrID("caretVisible");
+const showingProp: SKFS.StrID = SKFS.StrID("showing");
+const moveSelectionProp: SKFS.StrID = SKFS.StrID("moveSelection");
+const todoProp: SKFS.StrID = SKFS.StrID("todo");
+const positionProp: SKFS.StrID = SKFS.StrID("position");
+const selectionProp: SKFS.StrID = SKFS.StrID("selection");
+const statusProp: SKFS.StrID = SKFS.StrID("status");
+const diacriticProp: SKFS.StrID = SKFS.StrID("diacritic");
+const unicodeProp: SKFS.StrID = SKFS.StrID("unicode");
+const targetProp: SKFS.StrID = SKFS.StrID("target");
+const scrollProp: SKFS.StrID = SKFS.StrID("scroll");
+const hScrollProp: SKFS.StrID = SKFS.StrID("hScroll");
+const vScrollProp: SKFS.StrID = SKFS.StrID("vScroll");
+const textProp: SKFS.StrID = SKFS.StrID("text");
+const lastProp: SKFS.StrID = SKFS.StrID("last");
+const historyProp: SKFS.StrID = SKFS.StrID("history");
+const partsProp: SKFS.StrID = SKFS.StrID("parts");
+const ensureVisibleProp: SKFS.StrID = SKFS.StrID("ensureVisible");
+const hEnsureVisibleProp: SKFS.StrID = SKFS.StrID("hEnsureVisible");
+const vEnsureVisibleProp: SKFS.StrID = SKFS.StrID("vEnsureVisible");
+const lengthProp: SKFS.StrID = SKFS.StrID("length");
+const scrollingProp: SKFS.StrID = SKFS.StrID("scrolling");
+const blinkingProp: SKFS.StrID = SKFS.StrID("blinking");
+const visibilityProp: SKFS.StrID = SKFS.StrID("visibility");
+const valueProp: SKFS.StrID = SKFS.StrID("value");
+const disableProp: SKFS.StrID = SKFS.StrID("disable");
+const iconProp: SKFS.StrID = SKFS.StrID("icon");
+const tooltipProp: SKFS.StrID = SKFS.StrID("tooltip");
+const kindProp: SKFS.StrID = SKFS.StrID("kind");
+const modeProp: SKFS.StrID = SKFS.StrID("mode");
+const actionProp: SKFS.StrID = SKFS.StrID("action");
+const changeProp: SKFS.StrID = SKFS.StrID("change");
+const configurationProp: SKFS.StrID = SKFS.StrID("configuration");
+const ticksProp: SKFS.StrID = SKFS.StrID("ticks");
+const rangeKindProp: SKFS.StrID = SKFS.StrID("rangeKind");
+const smallProp: SKFS.StrID = SKFS.StrID("small");
+const verticalProp: SKFS.StrID = SKFS.StrID("vertical");
+const withLabelProp: SKFS.StrID = SKFS.StrID("withLabel");
+const stepProp: SKFS.StrID = SKFS.StrID("step");
+const rangeProp: SKFS.StrID = SKFS.StrID("range");
+const labelProp: SKFS.StrID = SKFS.StrID("label");
+const prefixProp: SKFS.StrID = SKFS.StrID("prefix");
+const suffixProp: SKFS.StrID = SKFS.StrID("suffix");
+const placeHolderProp: SKFS.StrID = SKFS.StrID("placeHolder");
+const alignRightProp: SKFS.StrID = SKFS.StrID("alignRight");
+const editableProp: SKFS.StrID = SKFS.StrID("editable");
+const withCounterProp: SKFS.StrID = SKFS.StrID("withCounter");
+const withClearProp: SKFS.StrID = SKFS.StrID("withClear");
+const withStatusProp: SKFS.StrID = SKFS.StrID("withStatus");
+const actionIconProp: SKFS.StrID = SKFS.StrID("actionIcon");
+const maxCharsProp: SKFS.StrID = SKFS.StrID("maxChars");
+const visibleCharsProp: SKFS.StrID = SKFS.StrID("visibleChars");
+const inputCountProp: SKFS.StrID = SKFS.StrID("inputCount");
+const outputCountProp: SKFS.StrID = SKFS.StrID("outputCount");
+const keysProp: SKFS.StrID = SKFS.StrID("keys");
+const visibleProp: SKFS.StrID = SKFS.StrID("visible");
+const sizeProp: SKFS.StrID = SKFS.StrID("size");
+const undefinedProp: SKFS.StrID = SKFS.StrID("undefined");
+const userStatusProp: SKFS.StrID = SKFS.StrID("userStatus");
+const shadowProp: SKFS.StrID = SKFS.StrID("shadow");
+const nextProp: SKFS.StrID = SKFS.StrID("next");
+const indeterminateProp: SKFS.StrID = SKFS.StrID("indeterminate");
+const selectedProp: SKFS.StrID = SKFS.StrID("selected");
+const targetedProp: SKFS.StrID = SKFS.StrID("targeted");
+const activeProp: SKFS.StrID = SKFS.StrID("active");
+const rootProp: SKFS.StrID = SKFS.StrID("root");
+const numberProp: SKFS.StrID = SKFS.StrID("number");
+const titleProp: SKFS.StrID = SKFS.StrID("title");
+const currentProp: SKFS.StrID = SKFS.StrID("current");
+const closedProp: SKFS.StrID = SKFS.StrID("closed");
+const itemsProp: SKFS.StrID = SKFS.StrID("items");
+const expansionProp: SKFS.StrID = SKFS.StrID("expansion");
+
+const placeholderAsLabelProp: SKFS.StrID = SKFS.StrID("placeholderAsLabel");
+
+fun inputNameProp(idx: Int): SKFS.StrID {
+  SKFS.StrID(`inputName_${idx}`)
+}
+
+fun outputNameProp(idx: Int): SKFS.StrID {
+  SKFS.StrID(`outputName_${idx}`)
+}
+
+fun controllerDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/control/states/")
+}
+
+base class TextCommandsManager {
+  fun manageAcquire(context: mutable SKFS.Context): void;
+  fun getSelectToPosCommand(position: Position): FWKMessage.Command;
+  fun getGoToPosCommand(position: Position): FWKMessage.Command;
+  fun getSetMoveSelectionCommand(move: Bool): FWKMessage.Command;
+  fun getSetArmedCommand(armed: Bool): FWKMessage.Command;
+  fun getSelectGroupCommand(): FWKMessage.Command;
+  fun getSelectLineCommand(): FWKMessage.Command;
+  fun getSelectAllCommand(): FWKMessage.Command;
+  fun getDeleteSelectionCommand(): FWKMessage.Command;
+  fun getInsertCommand(
+    str: String,
+    ignoreSelection: Bool,
+    position: Ui.Position,
+  ): FWKMessage.Command;
+  fun getTargetCommand(optPosition: ?Position): FWKMessage.Command;
+
+  fun emitAll(
+    context: mutable SKFS.Context,
+    commands: readonly Vector<FWKMessage.Command>,
+  ): void;
+}
+
+module end;

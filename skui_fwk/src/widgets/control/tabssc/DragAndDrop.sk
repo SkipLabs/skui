@@ -1,0 +1,67 @@
+module UiTabsSc;
+
+class DropHandler(
+  scroll: Ui.TabsSc,
+  nodeInfo: Ui.NodeInfo,
+  optDropHandler: ?FWK.DropHandler,
+) extends FWK.DropHandler {
+  fun getIdentifier(): String {
+    this.optDropHandler.map(dh -> dh.getIdentifier()).default(
+      this.scroll.path.toString(),
+    )
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    this.optDropHandler.each(dh -> dh.exit(context))
+  }
+
+  fun over(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): ?FWK.TransferMode {
+    scrollables = this.nodeInfo.optDrawInfo.map(v ~> v as DrawInfo _)
+      .map(di -> (di.optScrollBefore.isSome(), di.optScrollAfter.isSome()))
+      .default((false, false));
+    wOffset = this.nodeInfo.getWindowOffset(context, true);
+    offset = mouse.offset() - wOffset;
+    direction = this.scroll.controller.getDirection(context);
+    if (
+      (scrollables.i0 || scrollables.i1) &&
+      !this.scroll.state.isScrolling(context)
+    ) {
+      scrollGap = space + 6.0;
+      direction match {
+      | Ui.HorizontalAxis() ->
+        width = this.nodeInfo.nodeSum.size.width;
+        if (scrollables.i0 && offset.dx < scrollGap) {
+          this.scroll.state.emitScrolling(context, -1);
+        } else if (scrollables.i1 && offset.dx > width - scrollGap) {
+          this.scroll.state.emitScrolling(context, 1);
+        }
+      | Ui.VerticalAxis() ->
+        height = this.nodeInfo.nodeSum.size.height;
+        if (scrollables.i0 && offset.dy < scrollGap) {
+          this.scroll.state.emitScrolling(context, -1);
+        } else if (scrollables.i1 && offset.dy > height - scrollGap) {
+          this.scroll.state.emitScrolling(context, 1);
+        }
+      }
+    };
+    this.optDropHandler match {
+    | Some(dh) -> dh.over(context, mouse, dragHandler, transfer)
+    | _ -> None()
+    }
+  }
+
+  fun dropped(
+    context: mutable SKFS.Context,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): void {
+    this.optDropHandler.each(dh -> dh.dropped(context, dragHandler, transfer))
+  }
+}
+
+module end;

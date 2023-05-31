@@ -1,0 +1,275 @@
+module Transform;
+
+const scalarNearbyZero: Float = 1.0 / (1.shl(12)).toFloat();
+
+class Flags(flags: Int) uses Equality {
+  const identity: Flags = Flags(0x00);
+  const translate: Flags = Flags(0x01);
+  const scale: Flags = Flags(0x02);
+  const skew: Flags = Flags(0x04);
+
+  fun hasTranslate(): Bool {
+    this.flags.and(0x01) == 0x01
+  }
+
+  fun hasScale(): Bool {
+    this.flags.and(0x02) == 0x02
+  }
+
+  fun hasSkew(): Bool {
+    this.flags.and(0x04) == 0x04
+  }
+
+  fun isScaleTranslate(): Bool {
+    (this.hasScale() || this.hasTranslate()) && !this.hasSkew()
+  }
+
+  fun or(other: Flags): Flags {
+    Flags(this.flags.or(other.flags))
+  }
+}
+
+fun scalarProduct(a: Float, b: Float, c: Float, d: Float): Float {
+  a * b + c * d
+}
+
+fun dCross(a: Float, b: Float, c: Float, d: Float): Float {
+  a * b - c * d
+}
+
+class Matrix(
+  matrix: Array<Float> = Array[1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+  flags: Flags = Flags::identity,
+) uses Equality {
+  static fun fromRow(
+    scaleX: Float,
+    skewY: Float,
+    skewX: Float,
+    scaleY: Float,
+    translateX: Float,
+    translateY: Float,
+  ): Matrix {
+    invariant(
+      scaleX != 0.0 && scaleX != 0.0,
+      "scaleX and scaleX must not be zero.",
+    );
+    matrix = Array[scaleX, skewY, skewX, scaleY, translateX, translateY];
+    Matrix(matrix, static::computeFlags(matrix));
+  }
+
+  static fun fromTranslate(translateX: Float, translateY: Float): Matrix {
+    Matrix(
+      Array[1.0, 0.0, 0.0, 1.0, translateX, translateY],
+      if (translateX != 0.0 || translateY != 0.0) {
+        Flags::translate
+      } else {
+        Flags::identity
+      },
+    );
+  }
+
+  static fun fromScale(scaleX: Float, scaleY: Float): Matrix {
+    invariant(
+      scaleX != 0.0 && scaleX != 0.0,
+      "scaleX and scaleX must not be zero.",
+    );
+    Matrix(
+      Array[scaleX, 0.0, 0.0, scaleY, 0.0, 0.0],
+      if (scaleX != 1.0 || scaleY != 1.0) Flags::scale else {
+        Flags::identity
+      },
+    );
+  }
+
+  static fun fromSkew(skewX: Float, skewY: Float): Matrix {
+    Matrix(
+      Array[1.0, skewY, skewX, 1.0, 0.0, 0.0],
+      if (skewX != 0.0 || skewY != 0.0) Flags::skew else {
+        Flags::identity
+      },
+    );
+  }
+
+  static fun fromSinCosAt(sin: Float, cos: Float, x: Float, y: Float): Matrix {
+    cosInv = 1.0 - cos;
+    static::fromRow(
+      cos,
+      sin,
+      -sin,
+      cos,
+      scalarProduct(sin, y, cosInv, x),
+      scalarProduct(-sin, x, cosInv, y),
+    );
+  }
+
+  static fun fromPoly(p0: Geometry.Offset, p1: Geometry.Offset): Matrix {
+    static::fromRow(
+      p1.dy - p0.dy,
+      p0.dx - p1.dx,
+      p1.dx - p0.dx,
+      p1.dy - p0.dy,
+      p0.dx,
+      p0.dy,
+    )
+  }
+
+  static fun fromPolyToPoly(
+    src1: Geometry.Offset,
+    src2: Geometry.Offset,
+    dst1: Geometry.Offset,
+    dst2: Geometry.Offset,
+  ): Matrix {
+    tmp = static::fromPoly(src1, src2);
+    res = tmp.invert();
+    !tmp = static::fromPoly(dst1, dst2);
+    tmp.concat(res);
+  }
+
+  fun isIdentity(): Bool {
+    this.flags == Flags::identity
+  }
+
+  fun isTranslate(): Bool {
+    this.flags == Flags::translate
+  }
+
+  fun getScale(): (Float, Float) {
+    (this.matrix[0], this.matrix[3])
+  }
+
+  fun getSkew(): (Float, Float) {
+    (this.matrix[2], this.matrix[1])
+  }
+
+  fun getTranslate(): Geometry.Offset {
+    Geometry.Offset(this.matrix[4], this.matrix[5])
+  }
+
+  fun getRow(): (Float, Float, Float, Float, Float, Float) {
+    (
+      this.matrix[0],
+      this.matrix[1],
+      this.matrix[2],
+      this.matrix[3],
+      this.matrix[4],
+      this.matrix[5],
+    )
+  }
+
+  fun invert(): Matrix {
+    (sx, ky, kx, sy, tx, ty) = this.getRow();
+    if (this.flags.isScaleTranslate()) {
+      if (this.flags.hasScale()) {
+        invX = 1.0 / sx;
+        invY = 1.0 / sy;
+        static::fromRow(invX, 0.0, 0.0, invY, -tx * invX, -ty * invY)
+      } else {
+        // translate only
+        static::fromTranslate(-tx, -ty)
+      }
+    } else {
+      invDet = this.invDeterminant();
+      static::fromRow(
+        sy * invDet,
+        -ky * invDet,
+        -kx * invDet,
+        sx * invDet,
+        dCross(kx, ty, sy, tx) * invDet,
+        dCross(ky, tx, sx, ty) * invDet,
+      )
+    }
+  }
+
+  fun scale(scaleX: Float, scaleY: Float): Matrix {
+    this.concat(static::fromScale(scaleX, scaleY));
+  }
+
+  fun postScale(scaleX: Float, scaleY: Float): Matrix {
+    static::fromScale(scaleX, scaleY).concat(this);
+  }
+
+  fun translate(translateX: Float, translateY: Float): Matrix {
+    this.concat(static::fromTranslate(translateX, translateY));
+  }
+
+  fun postTranslate(translateX: Float, translateY: Float): Matrix {
+    static::fromTranslate(translateX, translateY).concat(this);
+  }
+
+  fun concat(other: Matrix): Matrix {
+    if (this.flags == Flags::identity) {
+      other
+    } else if (other.flags == Flags::identity) {
+      this
+    } else if (!this.flags.hasSkew() && !other.flags.hasSkew()) {
+      // just scale and translate
+      (a_sx, _, _, a_sy, a_tx, a_ty) = this.getRow();
+      (b_sx, _, _, b_sy, b_tx, b_ty) = other.getRow();
+      static::fromRow(
+        a_sx * b_sx,
+        0.0,
+        0.0,
+        a_sy * b_sy,
+        a_sx * b_tx + a_tx,
+        a_sy * b_ty + a_ty,
+      )
+    } else {
+      (a_sx, a_ky, a_kx, a_sy, a_tx, a_ty) = this.getRow();
+      (b_sx, b_ky, b_kx, b_sy, b_tx, b_ty) = other.getRow();
+      static::fromRow(
+        ((a_sx * b_sx) + (a_kx * b_ky)),
+        ((a_ky * b_sx) + (a_sy * b_ky)),
+        ((a_sx * b_kx) + (a_kx * b_sy)),
+        ((a_ky * b_kx) + (a_sy * b_sy)),
+        ((a_sx * b_tx) + (a_kx * b_ty)) + a_tx,
+        ((a_ky * b_tx) + (a_sy * b_ty)) + a_ty,
+      )
+    }
+  }
+
+  fun mapper(): Geometry.Offset ~> Geometry.Offset {
+    // TODO: simd
+    (sx, ky, kx, sy, tx, ty) = this.getRow();
+    offset ~> {
+      if (this.flags == Flags::identity) {
+        offset
+      } else if (this.flags == Flags::translate) {
+        offset.translate(tx, ty)
+      } else if (this.flags.isScaleTranslate()) {
+        offset.scale(sx, sy).translate(tx, ty)
+      } else {
+        x = offset.dx * sx + offset.dy * kx + tx;
+        y = offset.dx * ky + offset.dy * sy + ty;
+        Geometry.Offset(x, y)
+      }
+    }
+  }
+
+  private fun invDeterminant(): Float {
+    (sx, ky, kx, sy, _, _) = this.getRow();
+    det = dCross(sx, sy, kx, ky);
+    // Since the determinant is on the order of the cube of the matrix members,
+    // compare to the cube of the default nearly-zero constant (although an
+    // estimate of the condition number would be better if it wasn't so expensive).
+    tolerance = scalarNearbyZero * scalarNearbyZero * scalarNearbyZero;
+    invariant(!Math.like(det, 0.0, tolerance), "Matrix cannot be inverted");
+    1.0 / det
+  }
+
+  private static fun computeFlags(matrix: Array<Float>): Flags {
+    invariant(matrix.size() == 6, "Invalid matrix");
+    flags = Flags::identity;
+    if (matrix[0] != 1.0 || matrix[3] != 1.0) {
+      !flags = flags.or(Flags::scale);
+    };
+    if (matrix[4] != 0.0 || matrix[5] != 0.0) {
+      !flags = flags.or(Flags::translate);
+    };
+    if (matrix[1] != 0.0 || matrix[2] != 0.0) {
+      !flags = flags.or(Flags::skew);
+    };
+    flags
+  }
+}
+
+module end;

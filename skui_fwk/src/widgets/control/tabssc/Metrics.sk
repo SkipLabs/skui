@@ -1,0 +1,15 @@
+module UiTabsSc;
+
+fun computeMetrics(
+  context: mutable SKFS.Context,
+  state: State,
+  sizes: Array<Float>,
+  size: Float,
+  ids: Array<Ui.Path>,
+): Ui.Metrics {
+  elements = sizes.map(s -> Ui.Elem(0.0, s));
+  reversed = elements.reversed();
+  Ui.Metrics::compute(context, elements, reversed, size, ids, state.getScroll)
+}
+
+module end;

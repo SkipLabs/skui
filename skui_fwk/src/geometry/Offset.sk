@@ -1,0 +1,24 @@
+module Geometry;
+
+extension class Offset extends SKFS.File uses Show {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Offset _ -> x
+    | _ -> SKFS.cast_violation("Geometry.Offset", obj)
+    }
+  }
+
+  fun toFixed(): Fixed.Point26_6 {
+    Fixed.Point26_6(
+      Fixed.Int26_6::fromFloat(this.dx),
+      Fixed.Int26_6::fromFloat(this.dy),
+    )
+  }
+
+  fun toPoint(): Point {
+    Point(this.dx.toInt(), this.dy.toInt())
+  }
+}
+
+module end;

@@ -1,0 +1,411 @@
+module Ui;
+
+const rootPath: SKFS.DirName = SKFS.DirName::create("/");
+
+base class JSONWriter extends SKFS.File {
+  fun write(context: mutable SKFS.Context, optValue: ?JSON.Value): void;
+
+  static fun sinceFile(file: SKFS.File): JSONWriter {
+    file match {
+    | x @ JSONWriter _ -> x
+    | _ -> invariant_violation("Must be Ui.JSONWriter")
+    }
+  }
+}
+
+base class Combine extends JSONWriter {
+  fun combine(context: mutable SKFS.Context, path: String): JSON.Value;
+
+  static fun forFile(file: SKFS.File): Combine {
+    file match {
+    | x @ Combine _ -> x
+    | _ -> invariant_violation("Must be Ui.Combine")
+    }
+  }
+}
+
+base class Property<T: frozen> uses HasClassName {
+  fun getName(): String;
+  fun getPath(): ?String;
+
+  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T;
+  fun set(context: mutable SKFS.Context, optValue: ?T, source: Int): void;
+
+  fun maybeGetTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?(?T, SKFS.Tick, Int);
+
+  overridable fun get(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): T {
+    this.maybeGet(context, isUntracked).fromSome()
+  }
+
+  overridable fun getTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): (T, SKFS.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked)
+      .map(v -> (v.i0.fromSome(), v.i1, v.i2))
+      .fromSome()
+  }
+}
+
+base class BoolProperty extends Property<Bool> {
+  fun toggle(context: mutable SKFS.Context, source: Int): void;
+}
+
+base class StringProperty extends Property<String>
+base class TextProperty extends Property<Text>
+base class IntProperty extends Property<Int>
+base class FloatProperty extends Property<Float>
+base class RangeProperty extends Property<Range>
+base class StatusProperty extends Property<Status>
+base class PositionProperty extends Property<Position>
+base class PortionProperty extends Property<Portion>
+base class IndentationProperty extends Property<Indentation>
+base class EndLineProperty extends Property<EndLine>
+base class SeparationProperty extends Property<Separation>
+base class IconProperty extends Property<UiIcon.Description>
+base class DecorationProperty extends Property<Ui.Decoration>
+base class JSONProperty extends Property<JSON.Value>
+
+base class TimedFile<T: frozen>(
+  optValue: ?T,
+  tick: SKFS.Tick,
+  source: Int,
+) extends SKFS.File {
+  //
+  overridable static fun fromFile(_file: SKFS.File): this {
+    useless()
+  }
+
+  fun toTuple(): (?T, SKFS.Tick, Int) {
+    (this.optValue, this.tick, this.source)
+  }
+}
+
+fun toDirName(context: readonly SKFS.Context, optPath: ?String): SKFS.DirName {
+  root = context
+    .getGlobal("Ui.Properties.Root")
+    .map(SKFS.DirName::fromFile)
+    .default(Ui.rootPath);
+  optPath
+    .map(p -> SKFS.DirName::make(root, `${SKFS.normalize(p, true)}/`))
+    .default(root)
+}
+
+base class PropertyFile<
+  T: frozen,
+  TT: TimedFile<T>,
+  FT: SKFS.File,
+> private final (
+  timedHdl: SKFS.EHValue<TT>,
+  valueHdl: SKFS.EHValue<T>,
+  optPath: ?String,
+) extends Ui.Property<T> {
+  protected static fun timedFromFile(file: SKFS.File): TT;
+  protected static fun valueFromFile(file: SKFS.File): T;
+  protected static fun valueToFile(value: T): SKFS.File;
+  protected static fun timed(optV: ?T, tick: SKFS.Tick, source: Int): TT;
+  protected static fun getDefaultValue(): T;
+  static fun toIHandle(hdl: SKFS.EHandle<TT>): SKFS.IHandle<TT>;
+
+  deferred protected static fun fileValueFromFile(file: SKFS.File): FT;
+
+  macro static fun sClassName(): String {
+    #thisClassName
+  }
+
+  overridable deferred static fun init(
+    context: mutable SKFS.Context,
+    optPath: ?String,
+    values: Array<(SKFS.StrID, TT)> = Array[],
+  ): void {
+    _ = static::internalInit(context, optPath, values)
+  }
+
+  deferred static fun initValues(
+    context: mutable SKFS.Context,
+    optPath: ?String,
+    values: Array<(SKFS.StrID, ?T)> = Array[],
+  ): void {
+    static::init(
+      context,
+      optPath,
+      values.map(v -> (v.i0, static::timed(v.i1, context.tick, 0))),
+    )
+  }
+
+  deferred protected static fun internalInit(
+    context: mutable SKFS.Context,
+    optPath: ?String,
+    values: Array<(SKFS.StrID, TT)> = Array[],
+  ): SKFS.EHandle<FT> {
+    dirName = toDirName(context, optPath);
+    className = SKFS.normalize(static::sClassName().lowercase());
+    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
+    valueDirName = SKFS.DirName::make(timedDirName, "value/");
+    context
+      .makeDir(static::timedFromFile, timedDirName, values)
+      .contextWriterKeyMap(
+        static::fileValueFromFile,
+        context,
+        valueDirName,
+        (_ctx, writer, key, timed) ~>
+          timed.optValue.each(v -> writer.write(key, static::valueToFile(v)))
+        ,
+      );
+  }
+
+  deferred static fun create(
+    context: mutable SKFS.Context,
+    optPath: ?String,
+    optValue: ?T = None(),
+  ): this {
+    dirName = toDirName(context, optPath);
+    className = SKFS.normalize(static::sClassName().lowercase());
+    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
+    valueDirName = SKFS.DirName::make(timedDirName, "value/");
+    timedHdl = SKFS.EHandle(static::timedFromFile, timedDirName);
+    valueHdl = SKFS.EHandle(static::valueFromFile, valueDirName);
+    key = SKFS.StrID(`prop${context.timeStamp().value}`);
+    res = static(
+      SKFS.EHValue(timedHdl, key),
+      SKFS.EHValue(valueHdl, key),
+      optPath,
+    );
+    optValue.each(_ -> res.set(context, optValue, 0));
+    res;
+  }
+
+  fun subscribe(
+    context: mutable SKFS.Context,
+    f: (mutable SKFS.Context, optValue: ?T, source: Int) ~> void,
+  ): void {
+    _ = this.timedHdl.mapContext(
+      SKFS.IntFile::fromFile,
+      context,
+      SKFS.DirName::make(
+        this.timedHdl.getDirName(),
+        `subscribed_${context.timeStamp()}/`,
+      ),
+      (ctx, timed) ~> {
+        f(ctx, timed.optValue, timed.source);
+        SKFS.IntFile(timed.tick.value)
+      },
+    );
+  }
+
+  deferred static fun forStrID(
+    context: readonly SKFS.Context,
+    optPath: ?String,
+    key: SKFS.StrID,
+  ): this {
+    dirName = toDirName(context, optPath);
+    className = SKFS.normalize(static::sClassName().lowercase());
+    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
+    valueDirName = SKFS.DirName::make(timedDirName, "value/");
+    timedHdl = SKFS.EHandle(static::timedFromFile, timedDirName);
+    valueHdl = SKFS.EHandle(static::valueFromFile, valueDirName);
+    static(SKFS.EHValue(timedHdl, key), SKFS.EHValue(valueHdl, key), optPath);
+  }
+
+  deferred static fun forName(
+    context: readonly SKFS.Context,
+    optPath: ?String,
+    name: String,
+  ): this {
+    static::forStrID(context, optPath, SKFS.StrID(name))
+  }
+
+  fun getName(): String {
+    this.valueHdl.key match {
+    | sid @ SKFS.StrID _ -> sid.value
+    | _ -> invariant_violation("Must be a SKFS.StrID")
+    };
+  }
+
+  fun getPath(): ?String {
+    this.optPath
+  }
+
+  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
+    this.valueHdl.maybeGet(context, isUntracked)
+  }
+
+  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+    this.maybeGet(context, isUntracked) match {
+    | Some(v) -> v
+    | _ -> static::getDefaultValue()
+    }
+  }
+
+  fun maybeGetTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?(?T, SKFS.Tick, Int) {
+    this.timedHdl.maybeGet(context, isUntracked).map(v -> v.toTuple())
+  }
+
+  fun getTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): (T, SKFS.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked) match {
+    | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
+    | _ -> (static::getDefaultValue(), SKFS.Tick(0), 0)
+    }
+  }
+
+  overridable fun set(
+    context: mutable SKFS.Context,
+    optValue: ?T,
+    source: Int,
+  ): void {
+    if (this.timedHdl.hdl.isWritable(context)) {
+      static::toIHandle(this.timedHdl.hdl).write(
+        context,
+        this.timedHdl.key,
+        static::timed(optValue, context.tick.next(), source),
+      );
+    }
+  }
+}
+
+base class FPropertyFile<T: SKFS.File, TT: TimedFile<T>> extends
+  PropertyFile<T, TT, T>,
+{
+  deferred protected static fun fileValueFromFile(file: SKFS.File): T {
+    static::valueFromFile(file)
+  }
+}
+
+base class PropertyJsonable<T: frozen> final (
+  property: Ui.JSONProperty,
+) extends Ui.Property<T> {
+  protected static fun valueFromJSON(s: JSON.Value): T;
+  protected static fun valueToJSON(v: T): JSON.Value;
+  protected static fun getDefaultValue(): T;
+
+  fun getName(): String {
+    this.property.getName()
+  }
+
+  fun getPath(): ?String {
+    this.property.getPath()
+  }
+
+  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
+    this.property.maybeGet(context, isUntracked).map(static::valueFromJSON)
+  }
+
+  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+    this.maybeGet(context, isUntracked) match {
+    | Some(v) -> v
+    | _ -> static::getDefaultValue()
+    }
+  }
+
+  fun maybeGetTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?(?T, SKFS.Tick, Int) {
+    this.property.maybeGetTimed(context, isUntracked).map(t ->
+      (t.i0.map(static::valueFromJSON), t.i1, t.i2)
+    )
+  }
+
+  fun getTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): (T, SKFS.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked) match {
+    | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
+    | _ -> (static::getDefaultValue(), SKFS.Tick(0), 0)
+    }
+  }
+
+  fun set(context: mutable SKFS.Context, optValue: ?T, source: Int): void {
+    this.property.set(context, optValue.map(static::valueToJSON), source)
+  }
+}
+
+base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
+  value: TT,
+) extends Ui.Property<T> {
+  //
+  protected static fun timed(optV: ?T, tick: SKFS.Tick): TT;
+  protected static fun getDefaultValue(): T;
+
+  deferred static fun create(
+    context: mutable SKFS.Context,
+    optValue: ?T = None(),
+  ): this {
+    static(static::timed(optValue, context.tick))
+  }
+
+  fun getPath(): ?String {
+    None()
+  }
+
+  fun getName(): String {
+    this.value.tick.toString()
+  }
+
+  fun maybeGet(_context: mutable SKFS.Context, _isUntracked: Bool = false): ?T {
+    this.value.optValue
+  }
+
+  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+    this.maybeGet(context, isUntracked) match {
+    | Some(v) -> v
+    | _ -> static::getDefaultValue()
+    }
+  }
+
+  fun maybeGetTimed(
+    _context: mutable SKFS.Context,
+    _isUntracked: Bool = false,
+  ): ?(?T, SKFS.Tick, Int) {
+    Some(this.value.toTuple())
+  }
+
+  fun getTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): (T, SKFS.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked) match {
+    | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
+    | _ -> (static::getDefaultValue(), SKFS.Tick(0), 0)
+    }
+  }
+
+  fun emitSet(
+    _context: mutable SKFS.Context,
+    _optValue: ?T,
+    _source: Int,
+  ): void {
+    void
+  }
+
+  fun set(_context: mutable SKFS.Context, _optValue: ?T, _source: Int): void {
+    void
+  }
+}
+
+// DUMMY
+
+class DummyCombine() extends Combine {
+  fun combine(_context: mutable SKFS.Context, _path: String): JSON.Value {
+    dummy()
+  }
+
+  fun write(_context: mutable SKFS.Context, _optValue: ?JSON.Value): void {
+    dummy()
+  }
+}
+
+module end;

@@ -1,0 +1,218 @@
+module UiTable;
+
+base class Pager {
+  fun getPrevious(context: mutable SKFS.Context, optCurrent: ?String): String;
+  fun getNext(context: mutable SKFS.Context, optCurrent: ?String): String;
+  fun indexOf(context: mutable SKFS.Context, row: String): ?Int;
+}
+
+base class SelectionModel extends SKFS.File {
+  fun isAllowMultiple(): Bool;
+
+  fun selectAll(selection: Selection): Selection;
+
+  fun select(selection: Selection, row: String, toggle: Bool): Selection;
+
+  fun selectTo(
+    context: mutable SKFS.Context,
+    selection: Selection,
+    pager: Pager,
+    row: String,
+    keep: Bool,
+  ): Selection;
+
+  fun selectItem(
+    context: mutable SKFS.Context,
+    selection: Selection,
+    pager: Pager,
+    row: String,
+    to: Bool,
+    keep: Bool = false,
+  ): Selection {
+    if (to) {
+      this.selectTo(context, selection, pager, row, keep)
+    } else {
+      this.select(selection, row, false)
+    }
+  }
+
+  fun selectPrevious(
+    context: mutable SKFS.Context,
+    selection: Selection,
+    pager: Pager,
+    to: Bool,
+    keep: Bool = false,
+  ): Selection {
+    this.selectItem(
+      context,
+      selection,
+      pager,
+      pager.getPrevious(context, selection.optMain),
+      to,
+      keep,
+    )
+  }
+
+  fun selectNext(
+    context: mutable SKFS.Context,
+    selection: Selection,
+    pager: Pager,
+    to: Bool,
+    keep: Bool = false,
+  ): Selection {
+    this.selectItem(
+      context,
+      selection,
+      pager,
+      pager.getNext(context, selection.optMain),
+      to,
+      keep,
+    )
+  }
+
+  static fun forFile(obj: SKFS.File): SelectionModel {
+    obj match {
+    | x @ SelectionModel _ -> x
+    | _ -> invariant_violation("Invalid UiTable.SelectionModel")
+    }
+  }
+}
+
+class Single() extends SelectionModel {
+  //
+  fun isAllowMultiple(): Bool {
+    false
+  }
+
+  fun selectAll(selection: Selection): Selection {
+    selection
+  }
+
+  fun select(selection: Selection, row: String, toggle: Bool): Selection {
+    optIndex = selection.multiple.indexOf(row);
+    select = optIndex.isNone() || toggle;
+    if (select) {
+      Included(Array[row], Some(row))
+    } else {
+      Included(Array[], selection.optMain)
+    }
+  }
+
+  fun selectTo(
+    _context: mutable SKFS.Context,
+    selection: Selection,
+    _pager: Pager,
+    row: String,
+    _keep: Bool,
+  ): Selection {
+    this.select(selection, row, false)
+  }
+}
+
+class Multiple() extends SelectionModel {
+  fun isAllowMultiple(): Bool {
+    true
+  }
+
+  fun selectAll(selection: Selection): Selection {
+    Excluded(
+      Array[],
+      if (selection.optMain.isSome()) {
+        selection.optMain
+      } else {
+        None()
+      },
+    )
+  }
+
+  fun select(selection: Selection, row: String, toggle: Bool): Selection {
+    !selection = if (toggle) {
+      selection.remove(row)
+    } else {
+      selection.clear()
+    };
+    if (!toggle) {
+      selection.add(row, Some(row));
+    } else {
+      selection
+    }
+  }
+
+  fun selectTo(
+    _context: mutable SKFS.Context,
+    _selection: Selection,
+    _pager: Pager,
+    _row: String,
+    _keep: Bool,
+  ): Selection {
+    todo("UiTable.Multiple.selectTo");
+    /*sSet = Set::createFromItems(selection.multiple);
+    selectedItems = rows
+      .mapWithIndex((idx, p) -> (idx, p, sSet.contains(p)))
+      .filter(i -> i.i2);
+    if (selectedItems.isEmpty()) {
+      optIndex match {
+      | Some(idx) ->
+        Selection(
+          rows.slice(Math.min(idx, item), Math.max(idx, item)),
+          Some(row),
+        )
+      | _ -> Selection(Array[row], Some(row))
+      }
+    } else {
+      firstSelected = selectedItems.first();
+      !firstSelected = optIndex
+        .map(idx ->
+          if (idx < firstSelected.i0) {
+            (idx, rows[idx], true)
+          } else {
+            firstSelected
+          }
+        )
+        .default(firstSelected);
+      lastSelected = selectedItems.last();
+      !lastSelected = optIndex
+        .map(idx ->
+          if (idx > lastSelected.i0) {
+            (idx, rows[idx], true)
+          } else {
+            lastSelected
+          }
+        )
+        .default(lastSelected);
+      set = mutable Set<String>[];
+      selections = mutable Vector<String>[];
+      if (keep) {
+        selectedItems.each(i -> {
+          selections.push(i.i1);
+          set.insert(i.i1)
+        });
+      };
+      other = if (item < firstSelected.i0) {
+        if (optIndex == Some(firstSelected.i0)) {
+          lastSelected.i0;
+        } else {
+          firstSelected.i0
+        };
+      } else {
+        if (optIndex == Some(lastSelected.i0)) {
+          firstSelected.i0;
+        } else {
+          lastSelected.i0
+        };
+      };
+      start = Math.min(item, other);
+      end = Math.max(item, other) + 1;
+      for (idx in Range(start, end)) {
+        toAdd = rows[idx];
+        if (!set.contains(toAdd)) {
+          selections.push(toAdd);
+          set.insert(toAdd)
+        }
+      };
+      Selection(selections.toArray(), Some(row))
+    }*/
+  }
+}
+
+module end;

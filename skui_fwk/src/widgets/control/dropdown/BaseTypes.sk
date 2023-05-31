@@ -1,0 +1,177 @@
+module UiDropdown;
+
+fun widgetsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/dropdown/widgets/")
+}
+
+fun dataDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/dropdown/data/")
+}
+
+base class ItemsCollection {
+  fun getNumberOfItems(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Int;
+
+  fun getItem(
+    context: mutable SKFS.Context,
+    index: Int,
+    isUntracked: Bool = false,
+  ): ItemBase;
+}
+
+base class Accessor{items: Ui.GetterOne<ItemsCollection, Bool>} {
+  //
+  fun getTitle(context: mutable SKFS.Context): ?Text;
+}
+
+base class ItemBase{
+  id: String,
+  text: mutable SKFS.Context ~> Text,
+  icon: mutable SKFS.Context ~> ?UiIcon.Description = _ctx ~> None(),
+  disabled: mutable SKFS.Context ~> Bool = _ctx ~> false,
+  separator: mutable SKFS.Context ~> Ui.Separator = _ctx ~> Ui.Nil(),
+} extends SKFS.File {
+  children =
+  | Item{
+    shortcut: mutable SKFS.Context ~> ?Ui.Shortcut = _ ~> None(),
+    message: (mutable SKFS.Context, Bool) ~> Array<FWKMessage.Message> = (
+      _ctx,
+      _iu,
+    ) ~>
+      Array[],
+  }
+
+  fun isMenu(): Bool
+  | _i @ Item _ -> false
+  | _m @ Menu _ -> true
+}
+
+class Menu extends ItemBase, Accessor {
+  //
+  fun getTitle(context: mutable SKFS.Context): ?Text {
+    Some(this.text(context))
+  }
+}
+
+class ArrayCollection(items: Array<ItemBase>) extends ItemsCollection {
+  fun getNumberOfItems(
+    _context: mutable SKFS.Context,
+    _isUntracked: Bool = false,
+  ): Int {
+    this.items.size()
+  }
+
+  fun getItem(
+    _context: mutable SKFS.Context,
+    index: Int,
+    _isUntracked: Bool = false,
+  ): ItemBase {
+    this.items[index]
+  }
+}
+
+class LamCollection(
+  numberOfItems: Ui.GetterOne<Int, Bool>,
+  items: Ui.GetterTwo<ItemBase, Int, Bool>,
+) extends ItemsCollection {
+  fun getNumberOfItems(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Int {
+    this.numberOfItems(context, isUntracked)
+  }
+
+  fun getItem(
+    context: mutable SKFS.Context,
+    index: Int,
+    isUntracked: Bool = false,
+  ): ItemBase {
+    this.items(context, index, isUntracked)
+  }
+}
+
+base class Spot {
+  children =
+  | Forward(idx: Int)
+  | Backward()
+}
+
+base class Target {
+  children =
+  | Previous()
+  | Next()
+  | Idx(idx: Int)
+}
+
+base class Controller extends Accessor, SKFS.UserData {
+  fun getCloseMessage(
+    context: mutable SKFS.Context,
+    isUntracked: Bool,
+  ): FWKMessage.Message;
+
+  fun getTitle(_context: mutable SKFS.Context): ?Text {
+    None()
+  }
+}
+
+base class State extends Ui.StateWithScroll {
+  fun isSelected(context: mutable SKFS.Context, index: Int): Bool;
+  fun getSelected(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Int;
+  fun isRoot(context: mutable SKFS.Context): Bool;
+  fun getTitle(context: mutable SKFS.Context): ?Text;
+  fun getNumberOfItems(context: mutable SKFS.Context): Int;
+  fun getItem(context: mutable SKFS.Context, index: Int): ItemBase;
+  fun getHover(context: mutable SKFS.Context): ?Ui.Path;
+  fun getCurrent(context: mutable SKFS.Context): ?Ui.Path;
+  fun getActive(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Active;
+
+  fun emitHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
+  fun emitSelect(
+    context: mutable SKFS.Context,
+    value: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitGoto(context: mutable SKFS.Context, value: Spot): void;
+  fun emitAll(context: mutable SKFS.Context, commands: Array<Command>): void;
+  fun emitClose(context: mutable SKFS.Context): void;
+
+  fun gotoMessage(value: Spot): FWKMessage.Message;
+}
+
+base class Storage extends Ui.StorageWithScroll {
+  fun getName(): String;
+  fun getScope(): String;
+
+  fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
+  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+class UserData(metrics: Ui.Metrics) extends Ui.UserData
+
+class DrawInfo private () extends Ui.DrawInfo {
+  static fun compute(
+    context: mutable SKFS.Context,
+    dropdown: Ui.Dropdown,
+    metrics: Ui.Metrics,
+  ): this {
+    optEV = dropdown.state.getEnsureVisible(context);
+    fMetrics = metrics.checkEnsureVisible(optEV);
+    if (fMetrics.optScroll.isSome()) {
+      dropdown.state.emitScroll(context, fMetrics.optScroll)
+    };
+    iOffset = fMetrics.offset.toInt();
+    DrawInfo(Geometry.Point(0, iOffset))
+  }
+}
+
+module end;

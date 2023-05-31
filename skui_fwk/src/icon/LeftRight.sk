@@ -1,0 +1,49 @@
+module UiIcon;
+
+class LeftRight(left: Ui.Icon, right: Ui.Icon, gap: Float) extends Ui.Icon {
+  protected fun computedSize(context: mutable SKFS.Context): Geometry.Size {
+    leftSize = this.left.size(context);
+    rightSize = this.right.size(context);
+    Geometry.Size(
+      leftSize.width + this.gap + rightSize.width,
+      Math.max(leftSize.height, rightSize.width),
+    );
+  }
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this {
+    static(this.left, this.right, this.gap, optSize, keepRatio)
+  }
+
+  fun fillDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    leftSize = this.left.size(context);
+    this.left.fillDrawables(
+      context,
+      support,
+      offset.translateY((size.height - leftSize.height) / 2.0),
+      leftSize,
+      paint,
+      drawables,
+    );
+    rightSize = this.right.size(context);
+    this.right.fillDrawables(
+      context,
+      support,
+      offset.translate(
+        size.width - rightSize.width,
+        (size.height - rightSize.height) / 2.0,
+      ),
+      rightSize,
+      paint,
+      drawables,
+    );
+  }
+}
+
+module end;

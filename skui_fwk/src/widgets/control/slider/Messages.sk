@@ -1,0 +1,91 @@
+module UiSlider;
+
+base class ForStorage
+  extends FWKMessage.Support
+  uses FWKMessage.WithUpdate<Command> {
+  //
+  fun init(_context: mutable SKFS.Context): void {
+    void
+  }
+
+  protected fun executeForStorage(
+    context: mutable SKFS.Context,
+    storage: Storage,
+    command: Command,
+  ): void {
+    name = storage.getName();
+    scope = storage.getScope();
+    command match {
+    | Multiples(commands) ->
+      commands.each(cmd -> this.executeForStorage(context, storage, cmd))
+    | SetHover(optHover) -> storage.setHover(context, optHover)
+    | SetArmed(armed) -> storage.setArmed(context, armed)
+    | Reset() ->
+      storage.setHover(context, None());
+      storage.setArmed(context, false)
+    | executable @ ExecCommand _ ->
+      executable match {
+      | repeatable @ Repeatable _ ->
+        FWKMessage.repeat(
+          context,
+          name,
+          scope,
+          repeatable.next(),
+          ctx ~> storage.setTodo(ctx, repeatable),
+          repeatable.optRepeatOn,
+          false,
+          if (repeatable.count == 1) {
+            500
+          } else {
+            50
+          },
+        )
+      | _ -> storage.setTodo(context, executable)
+      }
+    }
+  }
+}
+
+class Messages(storage: Storage) extends ForStorage {
+  //
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+
+  protected fun execute(
+    context: mutable SKFS.Context,
+    _name: String,
+    _scope: String,
+    command: Command,
+  ): void {
+    this.executeForStorage(context, this.storage, command)
+  }
+}
+
+class AllMessages() extends ForStorage {
+  //
+  protected fun execute(
+    context: mutable SKFS.Context,
+    name: String,
+    scope: String,
+    command: Command,
+  ): void {
+    HStorage::forNameAndScope(context, name, scope).each(storage ->
+      this.executeForStorage(context, storage, command)
+    )
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+}
+
+module end;

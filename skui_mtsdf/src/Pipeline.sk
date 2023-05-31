@@ -86,7 +86,6 @@ class Configuration{
 const tolerance: Float = 0.0003;
 
 fun toMSDF{
-  char: Char,
   shape: Shape,
   pxRange: Int = MTSDF.pxRange,
   fillRule: FillRule = NoneZero(),

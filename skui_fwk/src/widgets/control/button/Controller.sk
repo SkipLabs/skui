@@ -1,0 +1,42 @@
+module UiButton;
+
+class LamController{
+  disabled: mutable SKFS.Context ~> Bool = _ctx ~> false,
+  text: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
+  icon: (mutable SKFS.Context, Float) ~> ?Ui.Icon = (_ctx, _fs) ~> None(),
+  tooltip: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
+  kind: mutable SKFS.Context ~> Kind = _ctx ~> Regular(),
+  mode: mutable SKFS.Context ~> Mode = _ctx ~> Stroked(),
+  onFire: (mutable SKFS.Context, ?Int) ~> void = (_ctx, _optCount) ~> void,
+} extends Controller {
+  //
+  fun isDisabled(context: mutable SKFS.Context): Bool {
+    this.disabled(context)
+  }
+
+  fun getText(context: mutable SKFS.Context): ?Text {
+    this.text(context)
+  }
+
+  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+    this.icon(context, fontSize)
+  }
+
+  fun getTooltip(context: mutable SKFS.Context): ?Text {
+    this.tooltip(context)
+  }
+
+  fun getKind(context: mutable SKFS.Context): Kind {
+    this.kind(context)
+  }
+
+  fun getMode(context: mutable SKFS.Context): Mode {
+    this.mode(context)
+  }
+
+  fun fire(context: mutable SKFS.Context, optCount: ?Int = None()): void {
+    this.onFire(context, optCount)
+  }
+}
+
+module end;

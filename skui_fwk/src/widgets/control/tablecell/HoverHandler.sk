@@ -1,0 +1,70 @@
+module UiTableCell;
+
+class HoverHandler(
+  path: Ui.Path,
+  controller: Controller,
+  state: State,
+  action: Bool,
+) extends FWK.HoverHandler {
+  //
+  fun getIdentifier(): Ui.Path {
+    if (this.action) this.path.makeChild("action") else this.path;
+  }
+
+  fun enter(context: mutable SKFS.Context): void {
+    if (this.action) {
+      this.state.emitHover(context, true);
+      FWKPointer.setCursor(context, Ui.HandCursor());
+    }
+  }
+
+  fun manage(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    if (this.action) {
+      FWK.Result(
+        if (mouse.isPrimaryPressed(context.tick)) {
+          this.state.emitArmed(context, true);
+          true
+        } else if (
+          mouse.isPrimaryReleased(context.tick) &&
+          this.state.isArmed(context)
+        ) {
+          this.state.emitArmed(context, false);
+          this.controller.getAction(context, true).each(a ->
+            a.messages.each(message -> FWKMessage.emitMessage(context, message))
+          );
+          true
+        } else {
+          false
+        },
+      )
+    } else {
+      FWK.Result(false)
+    }
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    if (this.action) {
+      FWKPointer.resetCursor(context);
+      this.state.emitAll(context, false, false);
+    }
+  }
+
+  fun getTooltip(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    getTooltip = if (this.action) {
+      ctx ~> this.controller.getAction(ctx).flatMap(a -> a.tooltip)
+    } else {
+      this.controller.getTooltip
+    };
+    Ui.buildTooltip(context, this.getIdentifier(), getTooltip)
+  }
+
+  fun getDropdown(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    None()
+  }
+}
+
+module end;

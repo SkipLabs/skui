@@ -1,0 +1,264 @@
+module UiSlider;
+
+class DrawInfo private (
+  thumb: Geometry.Rect,
+  optEndThumb: ?Geometry.Rect,
+  tracks: Array<(Geometry.Rect, Bool, Float)>,
+  optThumbLabel: ?(String, Geometry.Rect, Geometry.Rect, .UiSide),
+  ticks: Array<(Geometry.Rect, Bool)>,
+  overflow: Float,
+  startOffset: Float,
+  endOffset: Float,
+) extends Ui.DrawInfo {
+  //
+  static fun compute(
+    context: mutable SKFS.Context,
+    slider: Ui.Slider,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+  ): this {
+    direction = slider.controller.getDirection(context);
+    range = slider.controller.getRange(context);
+    main = direction.main(size);
+    cross = direction.cross(size);
+    small = slider.controller.isSmall(context);
+    crossLabelRef = direction match {
+    | Ui.HorizontalAxis() -> if (small) 50.0 else 70.0
+    | Ui.VerticalAxis() -> if (small) 66.0 else 86.0
+    };
+    isWithLabel =
+      slider.controller.isWithLabel(context) &&
+      cross >= crossLabelRef;
+    mainStart = if (small) 15.0 else 30.0;
+    mainEnd = if (small) main - 15.0 else main - 30.0;
+    mainTrack = Math.max(mainEnd - mainStart, 0.0);
+    thumbSize = if (small) 10.0 else 20.0;
+    thumbRadius = thumbSize / 2.0;
+    crossPos = if (isWithLabel) {
+      if (small) cross - 15.0 else cross - 30.0
+    } else {
+      if (small) 15.0 else 30.0
+    };
+    overflow = if (small) 10.0 else 20.0;
+    value = slider.state.getValue(context);
+    (thumbOffset, optEndThumbOffset) = value match {
+    | VValue(v, _) ->
+      s = v.toFloat() / range.size().toFloat();
+      (mainTrack * s, None())
+    | VRange(min, max, _) ->
+      sMin = min.toFloat() / range.size().toFloat();
+      sMax = max.toFloat() / range.size().toFloat();
+      (mainTrack * sMin, Some(mainTrack * sMax))
+    };
+    (thumb, optEndThumb) = (
+      Geometry.Rect::fromOffsetSize(
+        absolute +
+          direction.offset(
+            mainStart + thumbOffset - thumbRadius,
+            crossPos - thumbRadius,
+          ),
+        direction.size(thumbSize, thumbSize),
+      ),
+      optEndThumbOffset.map(offset ->
+        Geometry.Rect::fromOffsetSize(
+          absolute +
+            direction.offset(
+              mainStart + offset - thumbRadius,
+              crossPos - thumbRadius,
+            ),
+          direction.size(thumbSize, thumbSize),
+        )
+      ),
+    );
+    activeThickness = if (small) 2.0 else 3.0;
+    inactiveThickness = if (small) 1.0 else 2.0;
+    tracks = optEndThumbOffset match {
+    | Some(endOffset) ->
+      Array[
+        (
+          Geometry.Rect::fromOffsetSize(
+            absolute +
+              direction.offset(
+                mainStart - inactiveThickness,
+                crossPos - inactiveThickness,
+              ),
+            direction.size(
+              mainTrack + 2.0 * inactiveThickness,
+              2.0 * inactiveThickness,
+            ),
+          ),
+          false,
+          inactiveThickness,
+        ),
+        (
+          Geometry.Rect::fromOffsetSize(
+            absolute +
+              direction.offset(
+                mainStart + thumbOffset - activeThickness,
+                crossPos - activeThickness,
+              ),
+            direction.size(
+              endOffset - thumbOffset + 2.0 * activeThickness,
+              2.0 * activeThickness,
+            ),
+          ),
+          true,
+          activeThickness,
+        ),
+      ]
+    | _ ->
+      Array[
+        (
+          Geometry.Rect::fromOffsetSize(
+            absolute +
+              direction.offset(
+                mainStart - inactiveThickness + thumbOffset,
+                crossPos - inactiveThickness,
+              ),
+            direction.size(
+              mainTrack - thumbOffset + 2.0 * inactiveThickness,
+              2.0 * inactiveThickness,
+            ),
+          ),
+          false,
+          inactiveThickness,
+        ),
+        (
+          Geometry.Rect::fromOffsetSize(
+            absolute +
+              direction.offset(
+                mainStart - activeThickness,
+                crossPos - activeThickness,
+              ),
+            direction.size(
+              thumbOffset + 2.0 * activeThickness,
+              2.0 * activeThickness,
+            ),
+          ),
+          true,
+          activeThickness,
+        ),
+      ]
+    };
+    ticks = slider.controller.getTicks(context) match {
+    | Some(step) ->
+      fs = step.first.toFloat() / range.size().toFloat() * mainTrack;
+      vs = step.value.toFloat() / range.size().toFloat() * mainTrack;
+      incr = if (step.first > 0) fs else vs;
+      width = 0.0;
+      vect = mutable Vector<(Geometry.Rect, Bool)>[];
+      while (width <= mainTrack) {
+        active = optEndThumbOffset match {
+        | Some(endOffset) -> width >= thumbOffset && width <= endOffset
+        | _ -> width <= thumbOffset
+        };
+        vect.push(
+          (
+            Geometry.Rect::fromOffsetSize(
+              absolute +
+                direction.offset(mainStart + width - 1.0, crossPos - 1.0),
+              direction.size(2.0, 2.0),
+            ),
+            active,
+          ),
+        );
+        !width = width + incr;
+        !incr = vs;
+      };
+      if (width > mainTrack) {
+        active = optEndThumbOffset match {
+        | Some(endOffset) -> mainTrack >= thumbOffset && mainTrack <= endOffset
+        | _ -> mainTrack <= thumbOffset
+        };
+        vect.push(
+          (
+            Geometry.Rect::fromOffsetSize(
+              absolute +
+                direction.offset(mainStart + mainTrack - 1.0, crossPos - 1.0),
+              direction.size(2.0, 2.0),
+            ),
+            active,
+          ),
+        );
+      };
+      vect.toArray()
+    | _ -> Array[]
+    };
+    thumbLabel = (value, bounds) -> {
+      tOffset =
+        bounds.center() +
+        direction match {
+        | Ui.HorizontalAxis() ->
+          if (small) Geometry.Offset(-20.0, -35.0) else {
+            Geometry.Offset(-20.0, -40.0)
+          }
+        | Ui.VerticalAxis() ->
+          if (small) Geometry.Offset(-51.0, -12.0) else {
+            Geometry.Offset(-56.0, -12.0)
+          }
+        };
+      aOffset =
+        bounds.center() +
+        direction match {
+        | Ui.HorizontalAxis() ->
+          if (small) Geometry.Offset(-5.0, -11.0) else {
+            Geometry.Offset(-5.0, -16.0)
+          }
+        | Ui.VerticalAxis() ->
+          if (small) Geometry.Offset(-11.0, -5.0) else {
+            Geometry.Offset(-16.0, -5.0)
+          }
+        };
+      (
+        value.toString(),
+        Geometry.Rect::fromOffsetSize(tOffset, Geometry.Size(40.0, 24.0)),
+        Geometry.Rect::fromOffsetSize(aOffset, direction.size(10.0, 6.0)),
+        direction match {
+        | Ui.HorizontalAxis() -> UiSide.Bottom()
+        | Ui.VerticalAxis() -> UiSide.Right()
+        },
+      )
+    };
+    optThumb = slider.state.getHover(context) match {
+    | Some(h) -> Some(h)
+    | _ ->
+      if (context.isFocused(slider.path.makeChild("min"))) {
+        Some(Min())
+      } else if (context.isFocused(slider.path.makeChild("max"))) {
+        Some(Max())
+      } else {
+        None()
+      }
+    };
+    optThumbLabel = optThumb.flatMap(st ->
+      if (isWithLabel) {
+        value match {
+        | VValue(v, _) -> Some(thumbLabel(v, thumb))
+        | VRange(min, max, _) ->
+          st match {
+          | Min() -> Some(thumbLabel(min, thumb))
+          | Max() -> optEndThumb.map(mt -> thumbLabel(max, mt))
+          }
+        };
+      } else {
+        None()
+      }
+    );
+    static(
+      thumb,
+      optEndThumb,
+      tracks,
+      optThumbLabel,
+      ticks,
+      overflow,
+      direction.mainOffset(absolute) + mainStart,
+      direction.mainOffset(absolute) + mainEnd,
+    )
+  }
+
+  fun computeProportion(offset: Float): Float {
+    (offset - this.startOffset) / (this.endOffset - this.startOffset)
+  }
+}
+
+module end;

@@ -1,0 +1,56 @@
+module UiSlider;
+
+class LamController{
+  value: (mutable SKFS.Context, Bool) ~> Value,
+  range: (mutable SKFS.Context, Bool) ~> Range,
+  rangeKind: (mutable SKFS.Context, Bool) ~> Bool = (_ctx, _iu) ~> false,
+  step: (mutable SKFS.Context, Bool) ~> Step = (_ctx, _iu) ~> Step(1),
+  ticks: mutable SKFS.Context ~> ?Step = _ctx ~> None(),
+  disabled: mutable SKFS.Context ~> Bool = _ctx ~> false,
+  direction: mutable SKFS.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  withLabel: mutable SKFS.Context ~> Bool = _ctx ~> false,
+  small: mutable SKFS.Context ~> Bool = _ctx ~> false,
+} extends Controller {
+  //
+  fun isRange(context: mutable SKFS.Context, isUnkracked: Bool = false): Bool {
+    this.rangeKind(context, isUnkracked)
+  }
+
+  fun getRange(
+    context: mutable SKFS.Context,
+    isUnkracked: Bool = false,
+  ): Range {
+    this.range(context, isUnkracked)
+  }
+
+  fun getStep(context: mutable SKFS.Context, isUnkracked: Bool = false): Step {
+    this.step(context, isUnkracked)
+  }
+
+  fun isDisabled(context: mutable SKFS.Context): Bool {
+    this.disabled(context)
+  }
+
+  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+    this.direction(context)
+  }
+
+  fun isWithLabel(context: mutable SKFS.Context): Bool {
+    this.withLabel(context)
+  }
+
+  fun isSmall(context: mutable SKFS.Context): Bool {
+    this.small(context)
+  }
+
+  fun getTicks(context: mutable SKFS.Context): ?Step {
+    this.ticks(context)
+  }
+
+  fun getValue(
+    context: mutable SKFS.Context,
+    isUnkracked: Bool = false,
+  ): Value {
+    this.value(context, isUnkracked)
+  }
+}

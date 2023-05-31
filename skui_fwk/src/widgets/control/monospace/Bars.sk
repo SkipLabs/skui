@@ -1,0 +1,102 @@
+module UiMonospace;
+
+class Bars{
+  reference: Ui.Path,
+  state: State,
+} extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
+  //
+  fun getNode(
+    _context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
+      Ui.Node(this, constraints.biggest(), Array[])
+    } else {
+      Ui.Node(this, constraints.smallest(), Array[])
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | Ui.MainLayer() ->
+      node.optDrawInfo.map(di ~> di as UiMonospace.DrawInfo _) match {
+      | Some(drawInfo) -> this.computeMain(context, support, absolute, drawInfo)
+      | _ -> Array[]
+      }
+    | Ui.BackgroundLayer()
+    | Ui.ForegroundLayer() ->
+      Array[]
+    };
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    _nodeSum: Ui.NodeSum,
+    _optUserData: ?Ui.UserData,
+  ): ?Ui.DrawInfo {
+    FWKPipeline.gNodeInfo.maybeGetValue(context, this.reference).flatMap(ni ->
+      ni.info.optDrawInfo
+    )
+  }
+
+  private fun computeMain(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    drawInfo: UiMonospace.DrawInfo,
+  ): Array<Ui.Drawable> {
+    optHover = this.state.getHover(context);
+    color = context.getThemeColor(UiTheme.Regular());
+    drawables = mutable Vector<Ui.Drawable>[];
+    this.fillBarDrawables(
+      support,
+      absolute,
+      drawInfo.optHBar,
+      color,
+      optHover == Some(HHBar()),
+      false,
+      drawables,
+    );
+    this.fillBarDrawables(
+      support,
+      absolute,
+      drawInfo.optVBar,
+      color,
+      optHover == Some(HVBar()),
+      true,
+      drawables,
+    );
+    drawables.toArray();
+  }
+
+  private fun fillBarDrawables(
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    optBar: ?(Geometry.Rect, Geometry.Rect),
+    color: Color,
+    hover: Bool,
+    width: Bool,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    optBar.each(bar -> {
+      size = bar.i0.size();
+      drawables.push(
+        support.roundedRectangle(
+          absolute + bar.i0.topLeft(),
+          size,
+          color.scaleAlpha(if (hover) 0.5 else 0.1),
+          (if (width) size.width else size.height) / 2.0,
+        ),
+      )
+    });
+  }
+}
+
+module end;

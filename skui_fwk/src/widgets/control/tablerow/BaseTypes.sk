@@ -1,0 +1,22 @@
+module UiTableRow;
+
+base class Controller extends Ui.Parameters {
+  //
+  fun getWidths(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Array<Float>;
+
+  fun getHeight(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Float;
+
+  fun getCells(context: mutable SKFS.Context): Array<Ui.TableCell>;
+  fun isSelected(context: mutable SKFS.Context): Bool;
+  fun isHover(context: mutable SKFS.Context): Bool;
+  fun isHighlighted(context: mutable SKFS.Context): Bool;
+  fun hasSeparators(context: mutable SKFS.Context): Bool;
+}
+
+module end;

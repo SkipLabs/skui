@@ -1,0 +1,43 @@
+module UiTree;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+  | All(value: Vector<Executable>)
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHover(hover: Bool)
+  | SetAsking(optPath: ?Ui.Path)
+  | CheckAsking(path: Ui.Path)
+  | SetScroll(optScroll: ?Ui.Scroll)
+  | CancelScrolling(tick: SKFS.Tick)
+}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | ManageVisible(visible: Int)
+  | ManageExpansion(path: Ui.Path, expansion: Bool)
+  | ToggleExpansion(path: Ui.Path)
+  | ManageCurrentExpansion(expansion: Bool)
+  | ToggleCurrentExpansion()
+  | Fire(optPath: ?Ui.Path)
+}
+
+base class Repeatable(
+  optRepeatOn: ?FWK.Repeat = None(),
+  count: Int = 1,
+) extends ExecCommand {
+  children =
+  | ManageGoto(optTarget: ?GTarget)
+  | ManageSelect(target: STarget)
+
+  fun next(): this {
+    !this.count = this.count + 1;
+    this;
+  }
+}
+
+module end;

@@ -1,0 +1,139 @@
+module UiTable;
+
+class LamController{
+  columns: Ui.Getter<Array<Column>>,
+  rows: Ui.Getter<Array<Row>>,
+  columnWidth: Ui.GetterOne<Width, String>,
+  showCheckboxes: Ui.Getter<Bool> = Ui.default(true),
+  showOddEven: Ui.Getter<Bool> = Ui.default(true),
+  rowHeight: Ui.GetterOne<Float, Bool> = Ui.defaultOne(52.0),
+  headerHeight: Ui.GetterOne<Float, Bool> = Ui.defaultOne(56.0),
+  selectionModel: Ui.GetterOne<SelectionModel, Bool> = Ui.defaultOne(
+    Multiple(),
+  ),
+  progress: Ui.Getter<?Ui.Progress> = Ui.default(None()),
+  rowProgress: Ui.GetterOne<?Ui.Progress, String> = Ui.defaultOne(None()),
+  placeHolder: Ui.Getter<Text> = Ui.default(!"No content in table."),
+  gridPolicy: Ui.Getter<GridPolicy> = Ui.default(Horizontal()),
+  columnOrder: Ui.GetterOne<?Order, String> = Ui.defaultOne(None()),
+  contextMenuItems: Ui.GetterTwo<
+    Array<UiDropdown.Item>,
+    ?String,
+    Array<String>,
+  > = Ui.defaultTwo(Array[]),
+  selectionChange: Ui.GetterTwo<
+    Array<FWKMessage.Message>,
+    Array<String>,
+    Bool,
+  > = Ui.defaultTwo(Array[]),
+  fire: Ui.GetterThree<
+    Array<FWKMessage.Message>,
+    ?String,
+    Array<String>,
+    Bool,
+  > = Ui.defaultThree(Array[]),
+  sort: Ui.GetterThree<
+    Array<FWKMessage.Message>,
+    String,
+    Sort,
+    Bool,
+  > = Ui.defaultThree(Array[]),
+} extends Controller {
+  //
+  fun getColumns(context: mutable SKFS.Context): Array<Column> {
+    this.columns(context)
+  }
+
+  fun getRows(context: mutable SKFS.Context): Array<Row> {
+    this.rows(context)
+  }
+
+  fun getColumnWidth(context: mutable SKFS.Context, column: String): Width {
+    this.columnWidth(context, column)
+  }
+
+  fun isShowCheckboxes(context: mutable SKFS.Context): Bool {
+    this.showCheckboxes(context)
+  }
+
+  fun isShowOddEven(context: mutable SKFS.Context): Bool {
+    this.showOddEven(context)
+  }
+
+  fun getSelectionModel(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): SelectionModel {
+    this.selectionModel(context, isUntracked)
+  }
+
+  fun getProgress(context: mutable SKFS.Context): ?Ui.Progress {
+    this.progress(context)
+  }
+
+  fun getRowProgress(context: mutable SKFS.Context, row: String): ?Ui.Progress {
+    this.rowProgress(context, row)
+  }
+
+  fun getPlaceHolder(context: mutable SKFS.Context): Text {
+    this.placeHolder(context)
+  }
+
+  fun getGridPolicy(context: mutable SKFS.Context): GridPolicy {
+    this.gridPolicy(context)
+  }
+
+  fun getColumnOrder(context: mutable SKFS.Context, column: String): ?Order {
+    this.columnOrder(context, column)
+  }
+
+  fun getRowHeight(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Float {
+    this.rowHeight(context, isUntracked)
+  }
+
+  fun getHeaderHeight(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Float {
+    this.headerHeight(context, isUntracked)
+  }
+
+  fun getContextMenuItems(
+    context: mutable SKFS.Context,
+    optCurrent: ?String,
+    selections: Array<String>,
+  ): Array<UiDropdown.Item> {
+    this.contextMenuItems(context, optCurrent, selections)
+  }
+
+  fun getSelectionChangeMessages(
+    context: mutable SKFS.Context,
+    selections: Array<String>,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message> {
+    this.selectionChange(context, selections, isUntracked)
+  }
+
+  fun getFireMessages(
+    context: mutable SKFS.Context,
+    optCurrent: ?String,
+    selections: Array<String>,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message> {
+    this.fire(context, optCurrent, selections, isUntracked)
+  }
+
+  fun getSortMessages(
+    context: mutable SKFS.Context,
+    column: String,
+    sort: Sort,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message> {
+    this.sort(context, column, sort, isUntracked)
+  }
+}
+
+module end;

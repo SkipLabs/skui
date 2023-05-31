@@ -1,0 +1,56 @@
+module UiInput;
+
+fun validateInteger(chars: Vector<Char>, optMin: ?Int, optMax: ?Int): Validity {
+  if (chars.isEmpty()) {
+    return OK()
+  };
+  str = String::fromChars(chars.toArray());
+  str.toIntOption() match {
+  | Some(value) ->
+    optMin match {
+    | Some(min) if (value < min) ->
+      KO(Some(Format(!"Lower than {1}", Array[Raw(min.toString())])))
+    | _ ->
+      optMax match {
+      | Some(max) if (value > max) ->
+        KO(Some(Format(!"Greater than {1}", Array[Raw(max.toString())])))
+      | _ -> Valid()
+      }
+    }
+  | _ -> KO(Some(!"Not a valid integer"))
+  }
+}
+
+fun validateReal(chars: Vector<Char>): Validity {
+  if (chars.isEmpty()) {
+    return OK()
+  };
+  str = String::fromChars(chars.toArray());
+  str.toFloatOption() match {
+  | Some _ -> Valid()
+  | _ ->
+    str.toIntOption() match {
+    | Some _ -> Valid()
+    | _ -> KO(Some(!"Not a valid real"))
+    }
+  }
+}
+
+fun filterInt(c: Char, optMin: ?Int): Bool {
+  if (optMin.map(min -> min >= 0).default(false)) {
+    Unicode.isNumber(c)
+  } else {
+    Unicode.isNumber(c) || c == '-'
+  }
+}
+
+fun filterReal(c: Char): Bool {
+  Unicode.isNumber(c) ||
+    c == '-' ||
+    c == '+' ||
+    c == '.' ||
+    c == 'e' ||
+    c == 'E'
+}
+
+module end;

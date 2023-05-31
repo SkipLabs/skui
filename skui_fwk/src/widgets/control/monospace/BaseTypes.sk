@@ -1,0 +1,487 @@
+module UiMonospace;
+
+class Bracket(index: Int, value: Array<Char>, count: Int = 0) uses Orderable
+class ColorRange(start: Ui.Position, end: Ui.Location, color: Color) {
+  fun endLine(): Int {
+    this.end match {
+    | Ui.LineEnd(line) -> line
+    | Ui.Position(line, _, _) -> line
+    }
+  }
+
+  fun endColumn(): ?Int {
+    this.end match {
+    | Ui.LineEnd _ -> None()
+    | Ui.Position(_, column, _) -> Some(column)
+    }
+  }
+
+  fun startLine(): Int {
+    this.start.line
+  }
+
+  fun toLinePortion(line: Int): ?LinePortion {
+    endLine = this.endLine();
+    if (this.start.line <= line && endLine >= line) {
+      start = if (this.start.line == line) {
+        this.start.column
+      } else {
+        0
+      };
+      optEnd = if (endLine == line) {
+        this.endColumn()
+      } else {
+        None()
+      };
+      Some(LinePortion(Ui.LinePortion(start, optEnd), this.color))
+    } else {
+      None()
+    }
+  }
+}
+
+class ColorRanges(value: Vector<ColorRange>) extends SKFS.File
+
+type BracketsBuilder = (Accessor, Int, Int) ~> ?Bracket;
+type BracketsChecker = (
+  ?Bracket,
+  ?Bracket,
+  mutable Vector<Bracket>,
+) ~> ?Bracket;
+type ColorSupplier = String ~> ?Color;
+
+base class Accessor {
+  fun get(index: Int): Char;
+  fun maybeGet(index: Int): ?Char;
+  fun isEmpty(): Bool;
+  fun size(): Int;
+}
+
+class ArrayAccessor(value: Array<Char>) extends Accessor {
+  fun get(index: Int): Char {
+    this.value.get(index)
+  }
+
+  fun maybeGet(index: Int): ?Char {
+    this.value.maybeGet(index)
+  }
+
+  fun isEmpty(): Bool {
+    this.value.isEmpty()
+  }
+
+  fun size(): Int {
+    this.value.size()
+  }
+}
+
+class VectorAccessor(value: Vector<Char>) extends Accessor {
+  fun get(index: Int): Char {
+    this.value.get(index)
+  }
+
+  fun maybeGet(index: Int): ?Char {
+    this.value.maybeGet(index)
+  }
+
+  fun isEmpty(): Bool {
+    this.value.isEmpty()
+  }
+
+  fun size(): Int {
+    this.value.size()
+  }
+}
+
+class Line(
+  id: Int,
+  text: Array<Char>,
+  brackets: Array<Bracket>,
+  optOther: ?Int = None(),
+) extends SKFS.File uses Orderable {
+  //
+  static fun empty(idSupplier: () -> Int): Line {
+    Line(idSupplier(), Array[], Array[]);
+  }
+
+  fun compare(other: Line): Order {
+    this.text.compare(other.text)
+  }
+
+  fun isEmpty(): Bool {
+    this.text.isEmpty()
+  }
+}
+
+class Group(start: Array<Char>, optEnd: ?Array<Char>)
+
+class Lines(value: Vector<Line>) extends SKFS.File {
+  //
+  static fun empty(idSupplier: () -> Int): Lines {
+    Lines(Vector[Line::empty(idSupplier)])
+  }
+
+  fun isEmpty(): Bool {
+    this.value.isEmpty() || this.value[0].isEmpty()
+  }
+}
+
+class LinePortion(portion: Ui.LinePortion, color: Color) {
+  fun contains(idx: Int): Bool {
+    this.portion.contains(idx)
+  }
+}
+
+class LinePortions(value: Vector<LinePortion>) extends SKFS.File
+
+base class StorePolicy uses Orderable, Hashable {
+  children =
+  | OnChange()
+  | OnSave()
+  | OnFocusLost()
+}
+
+base class Hover extends SKFS.File uses Orderable {
+  children =
+  | HLine(Int)
+  | HVBar()
+  | HHBar()
+}
+
+base class Selection uses HasClassName, Equality {
+  children =
+  | TAll()
+  | TPortion(portion: Ui.Portion)
+
+  fun toTarget(): Target {
+    this match {
+    | target @ Target _ -> target
+    | _ -> invariant_violation("Must be a UiMonospace.Target")
+    }
+  }
+}
+
+base class Target extends Selection {
+  children =
+  | TPos(?Ui.Position)
+}
+
+base class PredefinedTarget() extends Target {
+  children =
+  | TColumn(next: Bool)
+  | TGroup(optNext: ?Bool)
+  | TInLine(optNext: ?Bool)
+  | TLine(next: Bool)
+  | TPage(next: Bool)
+  | TDocument(next: Bool)
+}
+
+//TODO
+//base class Undoable(position: Ui.Position) extends FWK.Undoable {}
+
+base class Controller {
+  //
+  fun getStorePolicies(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Set<StorePolicy>;
+
+  fun getColorSupplier(context: mutable SKFS.Context): ?ColorSupplier;
+  fun getNumberColor(context: mutable SKFS.Context): ?Color;
+  fun getColumnsLimit(context: mutable SKFS.Context): ?Int;
+  fun isLineNumbersVisible(context: mutable SKFS.Context): Bool;
+  fun isSpacesVisible(context: mutable SKFS.Context): Bool;
+  fun isEditable(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool;
+
+  fun getBracketsBuilder(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?BracketsBuilder;
+
+  fun getBracketsChecker(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?BracketsChecker;
+
+  fun getPosition(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.PositionProperty;
+
+  fun getSelection(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.PortionProperty;
+
+  fun getText(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.StringProperty;
+
+  fun getIndentation(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.IndentationProperty;
+
+  fun getEndLine(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.EndLineProperty;
+
+  fun getEditingMessage(
+    context: mutable SKFS.Context,
+    value: Bool,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message>;
+}
+
+base class NumbersController extends Ui.Parameters {
+  //
+  fun getNumberOfLines(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Int;
+
+  fun isFontLoading(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool;
+
+  fun getFontSize(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.FontSize;
+
+  fun getRange(context: mutable SKFS.Context, isUntracked: Bool = false): Range;
+
+  fun getActiveLine(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Int;
+
+  fun emitSelectLine(context: mutable SKFS.Context, line: Int): void;
+}
+
+base class State {
+  fun getNumberOfLines(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Int;
+  fun getNumberOfColumns(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Int;
+  fun isArmed(context: mutable SKFS.Context, isUntracked: Bool = false): Bool;
+  fun isFontLoading(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool;
+  fun getHover(context: mutable SKFS.Context): ?Hover;
+  fun isMoveSelection(
+    context: mutable SKFS.Context,
+    isUntracker: Bool = false,
+  ): Bool;
+  fun isScrolling(context: mutable SKFS.Context): Bool;
+  fun isCaretVisible(context: mutable SKFS.Context): Bool;
+  fun getLines(context: mutable SKFS.Context): Vector<Line>;
+
+  fun getHScroll(context: mutable SKFS.Context): ?Ui.Scroll;
+  fun getVScroll(context: mutable SKFS.Context): ?Ui.Scroll;
+  fun getFontSize(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.FontSize;
+
+  fun getPosition(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.Position;
+
+  fun getTarget(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.Position;
+
+  fun getSelection(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.Portion;
+
+  fun getLineCommandsManager(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.TextCommandsManager;
+
+  fun getHEnsureVisible(context: mutable SKFS.Context): ?Ui.Visible;
+  fun getVEnsureVisible(context: mutable SKFS.Context): ?Ui.Visible;
+  fun computeClipboardContent(
+    context: mutable SKFS.Context,
+    endLine: Ui.EndLine,
+    isUntracked: Bool = false,
+  ): ?FWKClipboard.Content;
+  fun getColorRanges(context: mutable SKFS.Context): Vector<ColorRange>;
+
+  fun emitHover(context: mutable SKFS.Context, optHover: ?Hover): void;
+  fun emitHScroll(context: mutable SKFS.Context, value: ?Ui.Scroll): void;
+  fun emitVScroll(context: mutable SKFS.Context, value: ?Ui.Scroll): void;
+  fun emitHScrolling(context: mutable SKFS.Context, value: Int): void;
+  fun emitVScrolling(context: mutable SKFS.Context, value: Int): void;
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun emitMoveSelection(context: mutable SKFS.Context, value: Bool): void;
+  fun emitDiacritic(context: mutable SKFS.Context, value: Char): void;
+  fun emitUnicode(context: mutable SKFS.Context, optValue: ?Int): void;
+  fun emitDuplicate(context: mutable SKFS.Context): void;
+  fun emitSwitchLine(context: mutable SKFS.Context): void;
+  fun emitDecrLine(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitIncrLine(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitIndent(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitOutdent(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitNewLine(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitUndo(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitRedo(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitGoTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitSelectLine(context: mutable SKFS.Context, line: Int): void;
+  fun emitSelectTo(
+    context: mutable SKFS.Context,
+    target: Selection,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitDeleteTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitCut(context: mutable SKFS.Context): void;
+  fun emitCopy(context: mutable SKFS.Context): void;
+  fun emitPaste(context: mutable SKFS.Context): void;
+  fun emitUpper(context: mutable SKFS.Context): void;
+  fun emitLower(context: mutable SKFS.Context): void;
+  fun emitSave(context: mutable SKFS.Context): void;
+  fun emitInsert(
+    context: mutable SKFS.Context,
+    text: String,
+    ignoreSelection: Bool,
+    optPosition: ?Ui.Position,
+  ): void;
+  fun emitBlinking(context: mutable SKFS.Context, value: Bool): void;
+  fun emitHVisible(context: mutable SKFS.Context, index: Int): void;
+  fun emitVVisible(context: mutable SKFS.Context, index: Int): void;
+  fun emitTarget(context: mutable SKFS.Context, optTarget: ?Ui.Position): void;
+  fun emitAll(
+    context: mutable SKFS.Context,
+    commands: readonly Vector<Command>,
+  ): void;
+  fun emitOpenGoToLine(context: mutable SKFS.Context): void;
+}
+
+base class Storage {
+  fun getName(): String;
+  fun getScope(): String;
+
+  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick;
+  fun getTodo(context: mutable SKFS.Context): Ui.Todo;
+  fun getVisibility(context: mutable SKFS.Context): ?Ui.Visibility;
+
+  fun setHover(context: mutable SKFS.Context, optValue: ?Hover): void;
+  fun setArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun setBlinking(context: mutable SKFS.Context, value: Bool): void;
+  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void;
+  fun setMoveSelection(
+    context: mutable SKFS.Context,
+    moveSelection: Bool,
+  ): void;
+  fun setVisibility(
+    context: mutable SKFS.Context,
+    optVisibility: ?Ui.Visibility,
+  ): void;
+  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  fun setHScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void;
+  fun setVScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+class LayoutParameters(widgets: Ui.WidgetsCollection) extends Ui.Parameters {}
+
+base class Undoable() {
+  fun undo(updater: mutable Updater, tick: SKFS.Tick): void;
+  fun redo(updater: mutable Updater, tick: SKFS.Tick): void;
+}
+
+class LamUndoable(
+  lamUndo: (mutable Updater, SKFS.Tick) ~> void,
+  lamRedo: (mutable Updater, SKFS.Tick) ~> void,
+) extends Undoable {
+  fun undo(updater: mutable Updater, tick: SKFS.Tick): void {
+    this.lamUndo(updater, tick)
+  }
+  fun redo(updater: mutable Updater, tick: SKFS.Tick): void {
+    this.lamRedo(updater, tick)
+  }
+}
+
+class History(
+  index: Int = -1,
+  undoables: Array<Undoable> = Array[],
+) extends SKFS.File {
+  fun undo(updater: mutable Updater, tick: SKFS.Tick): (History, Bool) {
+    this.undoables.maybeGet(this.index) match {
+    | Some(undoable) ->
+      undoable.undo(updater, tick);
+      !this.index = Math.max(this.index - 1, -1);
+      (this, true)
+    | _ -> (this, false)
+    }
+  }
+
+  fun redo(updater: mutable Updater, tick: SKFS.Tick): (History, Bool) {
+    this.undoables.maybeGet(this.index + 1) match {
+    | Some(undoable) ->
+      undoable.redo(updater, tick);
+      !this.index = Math.min(this.index + 1, this.undoables.size());
+      (this, true)
+    | _ -> (this, false)
+    }
+  }
+
+  fun add(undoable: Undoable): History {
+    undoables = if (this.index < this.undoables.size() - 1) {
+      Vector::mcreateFromItems(this.undoables.slice(0, this.index + 1));
+    } else {
+      Vector::mcreateFromItems(this.undoables)
+    };
+    undoables.push(undoable);
+    History(undoables.size() - 1, undoables.toArray())
+  }
+}
+
+class NumbersDrawInfo(drawables: Array<Ui.Drawable>) extends Ui.DrawInfo {}
+
+module end;

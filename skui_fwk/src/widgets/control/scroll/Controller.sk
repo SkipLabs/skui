@@ -1,0 +1,48 @@
+module UiScroll;
+
+class LamController{
+  widget: Ui.Getter<Ui.Widget>,
+  hScroll: Ui.GetterOne<Ui.IntProperty, Bool>,
+  vScroll: Ui.GetterOne<Ui.IntProperty, Bool>,
+  hPolicy: Ui.Getter<Policy> = Ui.default(AsNeeded()),
+  vPolicy: Ui.Getter<Policy> = Ui.default(AsNeeded()),
+  negative: Ui.Getter<Bool> = Ui.default(false),
+  unit: Ui.GetterOne<Int, Bool> = Ui.defaultOne(100),
+} extends Controller {
+  //
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+    this.widget(context)
+  }
+
+  fun getHScroll(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.IntProperty {
+    this.hScroll(context, isUntracked)
+  }
+
+  fun getVScroll(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.IntProperty {
+    this.vScroll(context, isUntracked)
+  }
+
+  fun getHPolicy(context: mutable SKFS.Context): Policy {
+    this.hPolicy(context)
+  }
+
+  fun getVPolicy(context: mutable SKFS.Context): Policy {
+    this.vPolicy(context)
+  }
+
+  fun isNegative(context: mutable SKFS.Context): Bool {
+    this.negative(context)
+  }
+
+  fun getUnit(context: mutable SKFS.Context, isUntracked: Bool = false): Int {
+    this.unit(context, isUntracked)
+  }
+}
+
+module end;

@@ -1,0 +1,57 @@
+module UiButton;
+
+class HoverHandler(button: Ui.Button) extends FWK.HoverHandler {
+  fun getIdentifier(): Ui.Path {
+    this.button.path
+  }
+
+  fun enter(context: mutable SKFS.Context): void {
+    if (!this.button.controller.isDisabled(context)) {
+      FWKPointer.setCursor(context, Ui.HandCursor());
+    };
+  }
+
+  fun manage(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    if (this.button.controller.isDisabled(context)) {
+      return FWK.Result(false);
+    };
+    FWK.Result(
+      if (mouse.isPrimaryPressed(context.tick)) {
+        SystemProperties.setRequireFocus(context, this.button.path);
+        this.button.state.emitArmed(context, true);
+        true
+      } else if (
+        mouse.isPrimaryReleased(context.tick) &&
+        this.button.state.isArmed(context)
+      ) {
+        this.button.state.emitArmed(context, false);
+        this.button.controller.fire(
+          context,
+          Some(mouse.getPrimaryClickCount()),
+        );
+        true
+      } else {
+        false
+      },
+    )
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    FWKPointer.resetCursor(context);
+    this.button.state.emitArmed(context, false);
+  }
+
+  fun getTooltip(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    Ui.buildTooltip(
+      context,
+      this.button.path,
+      this.button.controller.getTooltip,
+    )
+  }
+}
+
+module end;

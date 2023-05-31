@@ -1,0 +1,234 @@
+module UiTree;
+
+fun toJSON(v: JSONValue): JSON.Value {
+  v.toJSON()
+}
+
+extension base class Command {
+  //
+  fun toJSON(): JSON.Value
+  | ToggleCurrentExpansion() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | CancelScrolling(tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | SetHover(hover) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.Bool(hover),
+      ],
+    )
+  | ManageVisible(visible) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(visible),
+      ],
+    )
+  | ManageScrolling(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | ManageExpansion(path, expansion) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "path" => path.toJSON(),
+        "expansion" => JSON.Bool(expansion),
+      ],
+    )
+  | ManageCurrentExpansion(expansion) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "expansion" => JSON.Bool(expansion),
+      ],
+    )
+  | ToggleExpansion(path)
+  | CheckAsking(path) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "path" => path.toJSON(),
+      ],
+    )
+  | SetScroll(optValue)
+  | Fire(optValue)
+  | SetAsking(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | ManageGoto(optTarget, optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "target" => optTarget.map(toJSON).default(JSON.Null()),
+        "repeatOn" => optRepeatOn.map(toJSON).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | ManageSelect(target, optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "target" => target.toJSON(),
+        "repeatOn" => optRepeatOn.map(toJSON).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTree.Fire" -> Fire(jso.maybeGet("value").map(Ui.Path::fromJSON))
+    | "UiTree.ToggleCurrentExpansion" -> ToggleCurrentExpansion()
+    | "UiTree.ManageScrolling" ->
+      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "UiTree.CancelScrolling" -> CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+    | "UiTree.SetScroll" ->
+      SetScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
+    | "UiTree.ManageExpansion" ->
+      ManageExpansion(
+        Ui.Path::fromJSON(jso.get("path")),
+        jso.getBool("expansion"),
+      )
+    | "UiTree.ManageCurrentExpansion" ->
+      ManageCurrentExpansion(jso.getBool("expansion"))
+    | "UiTree.SetHover" -> SetHover(jso.getBool("value"))
+    | "UiTree.ToggleExpansion" ->
+      ToggleExpansion(Ui.Path::fromJSON(jso.get("path")))
+    | "UiTree.ManageGoto" ->
+      ManageGoto(
+        jso.maybeGet("target").map(GTarget::fromJSON),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiTree.ManageSelect" ->
+      ManageSelect(
+        STarget::fromJSON(jso.get("target")),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiTree.CheckAsking" -> CheckAsking(Ui.Path::fromJSON(jso.get("path")))
+    | "UiTree.SetAsking" ->
+      SetAsking(jso.maybeGet("value").map(Ui.Path::fromJSON))
+    | "UiTree.ManageVisible" -> ManageVisible(jso.getInt("value"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTree.Command`)
+    }
+  }
+}
+
+extension base class GTarget extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | GPrevious()
+  | GNext()
+  | GFirst()
+  | GLast() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | GIndex(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): GTarget {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTree.GPrevious" -> GPrevious()
+    | "UiTree.GNext" -> GNext()
+    | "UiTree.GFirst" -> GFirst()
+    | "UiTree.GLast" -> GLast()
+    | "UiTree.GIndex" -> GIndex(jso.getInt("value"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTree.GTarget`)
+    }
+  }
+}
+
+extension base class STarget extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | SAll()
+  | SClear()
+  | SPrevious()
+  | SNext()
+  | SFirst()
+  | SLast() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | SToCurrent(keep)
+  | SToPrevious(keep)
+  | SToNext(keep)
+  | SToFirst(keep)
+  | SToLast(keep) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "keep" => JSON.Bool(keep),
+      ],
+    )
+  | SCurrent(toggle) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "toggle" => JSON.Bool(toggle),
+      ],
+    )
+  | SPath(path, toggle) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => path.toJSON(),
+        "toggle" => JSON.Bool(toggle),
+      ],
+    )
+  | SToPath(path, keep) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => path.toJSON(),
+        "keep" => JSON.Bool(keep),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): STarget {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTree.SAll" -> SAll()
+    | "UiTree.SClear" -> SClear()
+    | "UiTree.SPrevious" -> SPrevious()
+    | "UiTree.SNext" -> SNext()
+    | "UiTree.SFirst" -> SFirst()
+    | "UiTree.SLast" -> SLast()
+    | "UiTree.SToCurrent" -> SToCurrent(jso.getBool("keep"))
+    | "UiTree.SToPrevious" -> SToPrevious(jso.getBool("keep"))
+    | "UiTree.SToNext" -> SToNext(jso.getBool("keep"))
+    | "UiTree.SToFirst" -> SToFirst(jso.getBool("keep"))
+    | "UiTree.SToLast" -> SToLast(jso.getBool("keep"))
+    | "UiTree.SPath" ->
+      SPath(Ui.Path::fromJSON(jso.get("value")), jso.getBool("toggle"))
+    | "UiTree.SCurrent" -> SCurrent(jso.getBool("toggle"))
+    | "UiTree.SToPath" ->
+      SToPath(Ui.Path::fromJSON(jso.get("value")), jso.getBool("keep"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTree.STarget`)
+    }
+  }
+}
+
+module end;

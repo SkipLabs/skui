@@ -1,0 +1,386 @@
+module UiEvent;
+
+const clickDelay: System.TimeStamp = System.TimeStamp(0, 200000);
+
+base class ButtonState(
+  timeStamp: System.TimeStamp,
+  click: Int = 0,
+) uses HasClassName {
+  fun derive(
+    pressed: Bool,
+    timeStamp: System.TimeStamp,
+    absolute: Geometry.Offset,
+    tick: SKFS.Tick,
+  ): ButtonState;
+  fun next(): ButtonState;
+  fun clearCount(): ButtonState;
+
+  protected fun clickCount(timeStamp: System.TimeStamp): Int {
+    if (timeStamp - this.timeStamp < clickDelay) {
+      1
+    } else {
+      0
+    }
+  }
+
+  fun toMouseDown(button: FWK.Button): ?FWK.MouseDown;
+  fun isRepeating(mouseDown: FWK.MouseDown): Bool;
+}
+
+base class ButtonUpBase() extends ButtonState {
+  fun derive(
+    pressed: Bool,
+    timeStamp: System.TimeStamp,
+    absolute: Geometry.Offset,
+    tick: SKFS.Tick,
+  ): ButtonState {
+    if (pressed) {
+      ButtonPressed(
+        tick,
+        absolute,
+        timeStamp,
+        this.click * this.clickCount(timeStamp),
+      )
+    } else {
+      ButtonUp(timeStamp)
+    }
+  }
+
+  fun next(): ButtonState {
+    ButtonUp(this.timeStamp, this.click)
+  }
+
+  fun clearCount(): ButtonState {
+    ButtonUp(this.timeStamp, 0)
+  }
+
+  fun toMouseDown(_button: FWK.Button): ?FWK.MouseDown {
+    None()
+  }
+
+  fun isRepeating(_mouseDown: FWK.MouseDown): Bool {
+    false
+  }
+}
+
+base class ButtonDownBase(
+  tick: SKFS.Tick,
+  absolute: Geometry.Offset,
+) extends ButtonState {
+  fun derive(
+    pressed: Bool,
+    timeStamp: System.TimeStamp,
+    _absolute: Geometry.Offset,
+    tick: SKFS.Tick,
+  ): ButtonState {
+    if (pressed) {
+      ButtonDown(this.tick, this.absolute, this.timeStamp, this.click)
+    } else {
+      ButtonReleased(
+        tick,
+        this.absolute,
+        (timeStamp - this.timeStamp).toSeconds(),
+        timeStamp,
+        this.click + this.clickCount(timeStamp),
+      )
+    }
+  }
+
+  fun next(): ButtonState {
+    ButtonDown(this.tick, this.absolute, this.timeStamp, this.click)
+  }
+
+  fun clearCount(): ButtonState {
+    ButtonDown(this.tick, this.absolute, this.timeStamp, 0)
+  }
+
+  fun toMouseDown(button: FWK.Button): ?FWK.MouseDown {
+    Some(FWK.MouseDown(button, this.tick, Some(this.absolute)))
+  }
+
+  fun isRepeating(mouseDown: FWK.MouseDown): Bool {
+    mouseDown.tick == this.tick &&
+      mouseDown.optOffset
+        .map(offset -> offset.like(this.absolute))
+        .default(true)
+  }
+}
+
+class ButtonDown() extends ButtonDownBase {}
+
+class ButtonPressed() extends ButtonDownBase {}
+
+class ButtonUp() extends ButtonUpBase {}
+
+class ButtonReleased(
+  tick: SKFS.Tick,
+  pressed: Geometry.Offset,
+  ellapsed: Float,
+) extends ButtonUpBase {}
+
+class Wheel(value: Int, tick: SKFS.Tick) {
+  fun getValue(tick: SKFS.Tick): ?Int {
+    if (tick == this.tick) {
+      Some(this.value)
+    } else {
+      None()
+    }
+  }
+}
+
+class Mouse(
+  timeStamp: System.TimeStamp,
+  point: Geometry.Offset,
+  movement: Geometry.Offset,
+  wheel: ?Wheel,
+  lastWheel: System.TimeStamp,
+  primaryButton: ButtonState,
+  middleButton: ButtonState,
+  secondaryButton: ButtonState,
+  speed: Float,
+  scrolling: Bool,
+) {
+  static fun new(timeStamp: System.TimeStamp = System.TimeStamp(0, 0)): Mouse {
+    Mouse(
+      timeStamp,
+      Geometry.Offset::zero,
+      Geometry.Offset::zero,
+      None(),
+      timeStamp,
+      ButtonUp(timeStamp),
+      ButtonUp(timeStamp),
+      ButtonUp(timeStamp),
+      0.0,
+      false,
+    );
+  }
+
+  fun relativeTo(offset: Geometry.Offset): Mouse {
+    !this.point = this.point - offset;
+    this
+  }
+
+  fun next(): Mouse {
+    Mouse(
+      this.timeStamp,
+      this.point,
+      this.movement,
+      None(),
+      this.lastWheel,
+      this.primaryButton.next(),
+      this.middleButton.next(),
+      this.secondaryButton.next(),
+      0.0,
+      this.scrolling,
+    )
+  }
+
+  fun clearCount(): Mouse {
+    Mouse(
+      this.timeStamp,
+      this.point,
+      this.movement,
+      None(),
+      this.lastWheel,
+      this.primaryButton.clearCount(),
+      this.middleButton.clearCount(),
+      this.secondaryButton.clearCount(),
+      0.0,
+      this.scrolling,
+    )
+  }
+
+  fun isPrimaryButtonDown(tick: SKFS.Tick): Bool {
+    static::isButtonDown(this.primaryButton, tick);
+  }
+
+  fun isMiddleButtonDown(tick: SKFS.Tick): Bool {
+    static::isButtonDown(this.middleButton, tick);
+  }
+
+  fun isSecondaryButtonDown(tick: SKFS.Tick): Bool {
+    static::isButtonDown(this.secondaryButton, tick);
+  }
+
+  fun isPrimaryButtonPressed(tick: SKFS.Tick): Bool {
+    static::isButtonPressed(this.primaryButton, tick);
+  }
+
+  fun isMiddleButtonPressed(tick: SKFS.Tick): Bool {
+    static::isButtonPressed(this.middleButton, tick);
+  }
+
+  fun isSecondaryButtonPressed(tick: SKFS.Tick): Bool {
+    static::isButtonPressed(this.secondaryButton, tick);
+  }
+
+  fun isPrimaryButtonReleased(tick: SKFS.Tick): Bool {
+    static::isButtonReleased(this.primaryButton, tick);
+  }
+
+  fun isMiddleButtonReleased(tick: SKFS.Tick): Bool {
+    static::isButtonReleased(this.middleButton, tick);
+  }
+
+  fun isSecondaryButtonReleased(tick: SKFS.Tick): Bool {
+    static::isButtonReleased(this.secondaryButton, tick);
+  }
+
+  fun isPrimaryButtonUp(tick: SKFS.Tick): Bool {
+    static::isButtonUp(this.primaryButton, tick);
+  }
+
+  fun isMiddleButtonUp(tick: SKFS.Tick): Bool {
+    static::isButtonUp(this.middleButton, tick);
+  }
+
+  fun isSecondaryButtonUp(tick: SKFS.Tick): Bool {
+    static::isButtonUp(this.secondaryButton, tick);
+  }
+
+  fun toMouseRepeat(context: mutable SKFS.Context): ?FWK.MouseRepeat {
+    downs = mutable Vector<FWK.MouseDown>[];
+    this.primaryButton.toMouseDown(FWK.Primary()).each(downs.push);
+    this.middleButton.toMouseDown(FWK.Middle()).each(downs.push);
+    this.secondaryButton.toMouseDown(FWK.Secondary()).each(downs.push);
+    if (!downs.isEmpty()) {
+      Some(
+        FWK.MouseRepeat(
+          downs.toArray(),
+          FWKKeys.isControlDown(context, true),
+          FWKKeys.isShiftDown(context, true),
+          FWKKeys.isAltDown(context, true),
+        ),
+      )
+    } else {
+      None()
+    }
+  }
+
+  static fun isButtonDown(state: ButtonState, tick: SKFS.Tick): Bool {
+    state match {
+    | _s @ ButtonDown _ -> true
+    | p @ ButtonPressed _ -> p.tick != tick
+    | _ -> false
+    }
+  }
+
+  static fun isButtonPressed(state: ButtonState, tick: SKFS.Tick): Bool {
+    state match {
+    | p @ ButtonPressed _ -> p.tick == tick
+    | _ -> false
+    }
+  }
+
+  static fun isButtonReleased(state: ButtonState, tick: SKFS.Tick): Bool {
+    state match {
+    | r @ ButtonReleased _ -> r.tick == tick
+    | _ -> false
+    }
+  }
+  static fun isButtonUp(state: ButtonState, _tick: SKFS.Tick): Bool {
+    state match {
+    | _s @ ButtonUp _ -> true
+    | _ -> false
+    }
+  }
+}
+
+class MouseFile(
+  mouse: Mouse,
+  position: SKFS.Tick,
+  absolute: Geometry.Offset = Geometry.Offset::zero,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ MouseFile _ -> x
+    | _ -> invariant_violation("Must be UiEvent.MouseFile")
+    }
+  }
+
+  fun next(): MouseFile {
+    !this.mouse = this.mouse.next();
+    this;
+  }
+
+  fun clearCount(): MouseFile {
+    !this.mouse = this.mouse.clearCount();
+    this;
+  }
+
+  fun getWheelValue(tick: SKFS.Tick): Int {
+    this.mouse.wheel.flatMap(wheel -> wheel.getValue(tick)).default(0);
+  }
+
+  fun getPrimaryClickCount(): Int {
+    this.mouse.primaryButton.click;
+  }
+
+  fun getPrimaryTimeStamp(): System.TimeStamp {
+    this.mouse.primaryButton.timeStamp;
+  }
+
+  fun isPressed(tick: SKFS.Tick): Bool {
+    this.mouse.isPrimaryButtonPressed(tick) ||
+      this.mouse.isMiddleButtonPressed(tick) ||
+      this.mouse.isSecondaryButtonPressed(tick);
+  }
+
+  fun isScrolling(): Bool {
+    this.mouse.scrolling
+  }
+
+  fun checkDrag(): ?Geometry.Offset {
+    this.mouse.primaryButton match {
+    | s @ ButtonDown _ ->
+      if ((s.absolute - this.mouse.point).distance() > 5.0) {
+        Some(s.absolute)
+      } else {
+        None()
+      }
+    | _ -> None()
+    }
+  }
+
+  fun isPrimaryDown(tick: SKFS.Tick): Bool {
+    this.mouse.isPrimaryButtonDown(tick)
+  }
+
+  fun isPrimaryPressed(tick: SKFS.Tick): Bool {
+    this.mouse.isPrimaryButtonPressed(tick)
+  }
+
+  fun isPrimaryUp(tick: SKFS.Tick): Bool {
+    this.mouse.isPrimaryButtonUp(tick)
+  }
+
+  fun isPrimaryReleased(tick: SKFS.Tick): Bool {
+    this.mouse.isPrimaryButtonReleased(tick)
+  }
+
+  fun isSecondaryPressed(tick: SKFS.Tick): Bool {
+    this.mouse.isSecondaryButtonPressed(tick)
+  }
+
+  fun isSecondaryDown(tick: SKFS.Tick): Bool {
+    this.mouse.isSecondaryButtonDown(tick)
+  }
+
+  fun isDown(tick: SKFS.Tick): Bool {
+    this.mouse.isPrimaryButtonDown(tick) &&
+      this.mouse.isMiddleButtonDown(tick) &&
+      this.mouse.isSecondaryButtonDown(tick);
+  }
+
+  fun offset(): Geometry.Offset {
+    this.mouse.point;
+  }
+
+  fun relativeTo(offset: Geometry.Offset): MouseFile {
+    !this.mouse = this.mouse.relativeTo(offset);
+    this
+  }
+}
+
+module end;

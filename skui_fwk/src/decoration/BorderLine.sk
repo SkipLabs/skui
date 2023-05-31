@@ -1,0 +1,68 @@
+module Ui;
+
+class BorderLine{
+  padding: Geometry.InsetsGeometry,
+  paint: Paint,
+} extends Decoration {
+  static fun all(width: Float, paint: Paint): BorderLine {
+    BorderLine{padding => Geometry.Insets::all(width), paint}
+  }
+
+  fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets {
+    Geometry.resolveInsest(this.padding, direction);
+  }
+
+  fun fillDrawables(
+    _context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    _direction: Ui.HorizontalDirection,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    if (this.padding.top > 0.0) {
+      drawables.push(
+        support.rectangle(
+          offset,
+          Geometry.Size(size.width, this.padding.top),
+          this.paint,
+        ),
+      )
+    };
+    if (this.padding.bottom > 0.0) {
+      drawables.push(
+        support.rectangle(
+          offset.translateY(size.height - this.padding.bottom),
+          Geometry.Size(size.width, this.padding.bottom),
+          this.paint,
+        ),
+      )
+    };
+    if (this.padding.left > 0.0) {
+      drawables.push(
+        support.rectangle(
+          offset.translateY(this.padding.top),
+          Geometry.Size(
+            this.padding.left,
+            size.height - this.padding.top - this.padding.bottom,
+          ),
+          this.paint,
+        ),
+      )
+    };
+    if (this.padding.right > 0.0) {
+      drawables.push(
+        support.rectangle(
+          offset.translate(size.width - this.padding.right, this.padding.top),
+          Geometry.Size(
+            this.padding.right,
+            size.height - this.padding.top - this.padding.bottom,
+          ),
+          this.paint,
+        ),
+      )
+    };
+  }
+}
+
+module end;

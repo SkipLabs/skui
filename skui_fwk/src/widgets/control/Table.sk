@@ -1,0 +1,245 @@
+module Ui;
+
+class Table protected {
+  controller: UiTable.Controller,
+  state: UiTable.State,
+  viewport: UiTable.Viewport,
+  indicator: Indicator,
+  widths: Getter<?UiTable.Widths>,
+} extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
+  //
+  type Params = UiTable.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    params: UiTable.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Configuration = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiTable.itemsDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+    );
+    visibleItemsHdl = mainHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTable.itemsDirName(path),
+      (context, writer, _key, _file) ~> {
+        if (FWKPipeline.hasNodeInfos(context)) {
+          FWKPipeline.gNodeInfo.maybeGetValue(context, path).each(ni ->
+            ni.info.optUserData
+              .map(ud ~> ud as UiTable.Metrics _)
+              .each(metrics -> {
+                offset = metrics.pages.start * metrics.pageSize;
+                rows = params.controller.getRows(context);
+                vKeys = mutable Vector<SKFS.BaseName>[];
+                for (idx in metrics.vertical.range) {
+                  rows.maybeGet(idx).each(r -> {
+                    sk = SKFS.StrID(r.id);
+                    writer.write(sk, r);
+                    vKeys.push(sk);
+                    writer.write(
+                      UiTable.Even(r.id),
+                      SKFS.BoolFile(offset + idx % 2 == 0),
+                    );
+                  });
+                };
+                writer.write(
+                  UiTable.RangeKey(),
+                  SKFS.RangeFile(metrics.vertical.range),
+                );
+                writer.write(
+                  UiTable.WidthsKey(),
+                  UiTable.Widths(metrics.widths),
+                );
+                writer.write(SKFS.KKeys(), SKFS.Keys(vKeys.toArray()));
+                writer.write(SKFS.KSize(), SKFS.IntFile(vKeys.size()));
+              })
+          )
+        }
+      },
+    );
+    rowsHdl = visibleItemsHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTable.itemsDirName(path.makeChild("rows")),
+      (context, writer, key, file) ~> {
+        key match {
+        | sid @ SKFS.StrID _ ->
+          row = UiTable.Row::fromFile(file);
+          columns = params.controller.getColumns(context);
+          font = context.getThemeFont(UiTheme.Table());
+          fill = context.getThemeColor(UiTheme.Regular());
+          cells = columns.mapWithIndex((idx, col) -> {
+            subPath = path.makeChild(`${sid}`).makeChild(col.id);
+            row.cells.maybeGet(idx) match {
+            | Some(cell) ->
+              controller = UiTableCell.LamController{
+                text => default(cell.optText),
+                icon => (ctx, fs) ~>
+                  cell.optIcon.flatMap(ib -> ib.buildIcon(ctx, fs)),
+                tooltip => default(cell.optTooltip),
+                alignment => default(cell.alignment),
+                font => default(font),
+                fill => default(fill),
+                action => defaultOne(cell.optAction),
+              };
+              TableCell::create(
+                context,
+                subPath,
+                UiTableCell.Parameters(
+                  controller,
+                  UiTableCell.init(context, subPath),
+                ),
+              )
+            | _ -> todo()
+            }
+          });
+          controller = UiTableRow.LamController{
+            widths => (ctx, iu) ~>
+              UiTable.Widths::fromFile(
+                visibleItemsHdl.getValue(ctx, UiTable.WidthsKey(), iu),
+              ).value,
+            height => params.controller.getRowHeight,
+            cells => default(cells),
+            selected => ctx ~> params.state.isSelected(ctx, sid.value),
+            hover => ctx ~> params.state.isHover(ctx, sid.value),
+            separators => ctx ~>
+              params.controller.getGridPolicy(ctx).isHorizontal(),
+            highlighted => ctx ~>
+              visibleItemsHdl.getBool(ctx, UiTable.Even(sid.value)),
+          };
+          writer.write(
+            sid,
+            WidgetFile(
+              TableRow::create(context, path.makeChild("rows"), controller),
+            ),
+          )
+        | SKFS.KKeys()
+        | SKFS.KSize() ->
+          writer.write(key, file)
+        | _ -> void
+        }
+      },
+    );
+    viewport = UiTable.Viewport::create(
+      context,
+      path.makeChild("viewport"),
+      UiTable.VpParams(HandledCollection(rowsHdl), ctx ~>
+        params.controller.getGridPolicy(ctx).isVertical()
+      ),
+    );
+    indPath = path.makeChild("indicator");
+    indicator = Indicator::create(
+      context,
+      indPath,
+      UiProgress.parameters(context, indPath, UiProgress.LamController{}),
+    );
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      viewport,
+      indicator,
+      widths => ctx ~>
+        visibleItemsHdl.maybeGetProp(
+          ctx,
+          UiTable.WidthsKey(),
+          UiTable.Widths::fromFile,
+        ),
+      optConfiguration,
+      cache,
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    userData = if (constraints.hasBoundedWidth()) {
+      maxWidth = constraints.maxWidth();
+      remainingWidth = maxWidth;
+      totalFLex = 0;
+      columns = this.controller.getColumns(context);
+      optWidths = this.widths(context);
+      valid = optWidths
+        .map(ws -> ws.value.size() == columns.size())
+        .default(false);
+      rowHeight = this.controller.getRowHeight(context);
+      widthInfos = columns.map(column -> {
+        width = this.controller.getColumnWidth(context, column.id);
+        width match {
+        | UiTable.Fixed(size) ->
+          !remainingWidth = remainingWidth - size;
+          (Some(size), None())
+        | UiTable.Flex(flex) ->
+          !totalFLex = totalFLex + flex;
+          (None(), Some(flex))
+        | UiTable.Percent(percent) ->
+          size = maxWidth * percent.toFloat() / 100.0;
+          !remainingWidth = remainingWidth - size;
+          (Some(size), None())
+        };
+      });
+      widths = widthInfos.map(wi ->
+        wi match {
+        | (Some(w), _) -> w
+        | (None(), Some(f)) ->
+          remainingWidth * f.toFloat() / totalFLex.toFloat()
+        | _ -> 0.0
+        }
+      );
+      count: Int = todo("// Table count"); //this.controller.getCount(context);
+      width = widths.reduce((acc, w) -> acc + w, 0.0);
+      height = rowHeight * count.toFloat();
+      tableSize = Geometry.Size(width, height);
+      size = constraints.constrain(tableSize);
+      // TODO User Data
+      userData = _ctx ~> None();
+      if (valid) {
+        return Node(
+          this,
+          size,
+          Array[
+            CLink(
+              this.path.makeChild("vp"),
+              Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, size),
+              Opaque(),
+              BoxConstraints::new(),
+            ),
+          ],
+          userData,
+        )
+      };
+      userData
+    } else {
+      _ctx ~> None()
+    };
+    node = this.indicator.getNode(context, constraints);
+    offset = Geometry.Offset::zero;
+    Node(this, node.size, Array[CNode(node, offset, constraints)], userData)
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    columns = this.controller.getColumns(context);
+    optWidths = this.widths(context);
+    valid = optWidths
+      .map(ws -> ws.value.size() == columns.size())
+      .default(false);
+    if (valid) {
+      Some(
+        ViewportDef(
+          this.path.makeChild("vp"),
+          Some(this.path),
+          Some(this.viewport),
+          Array[],
+        ),
+      )
+    } else {
+      None()
+    }
+  }
+}
+
+module end;

@@ -1,0 +1,197 @@
+module UiTree;
+
+fun itemsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tree/items/")
+}
+
+fun widgetDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/tree/widget/")
+}
+
+class MainKey() extends SKFS.BaseName {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ MainKey _ -> x
+    | _ -> invariant_violation("Must be UiTree.MainKey")
+    }
+  }
+
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+class ItemKey(path: Ui.Path, info: Int) extends SKFS.BaseName {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ ItemKey _ -> x
+    | _ -> invariant_violation("Must be UiTree.ItemKey")
+    }
+  }
+
+  fun toString(): String {
+    `${this.info}:${this.path}`
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as ItemKey _);
+    dComp = this.info.compare(oKey.info);
+    if (dComp == EQ()) {
+      this.path.compare(oKey.path);
+    } else {
+      dComp
+    }
+  }
+}
+
+fun create(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  allItemsDirName: SKFS.DirName,
+  controller: Controller,
+  expansion: Ui.GetterOne<Bool, Ui.Path>,
+): (
+  Ui.ListHandle<ItemFile>,
+  Ui.Getter<Int>,
+  Ui.GetterOne<?Ui.Progress, Ui.Path>,
+  Ui.GetterOne<?Ui.Badge, Ui.Path>,
+) {
+  mainHdl = context.makeDir(
+    SKFS.IntFile::fromFile,
+    itemsDirName(path.makeChild("source")),
+    Array<(SKFS.BaseName, SKFS.File)>[(MainKey(), SKFS.IntFile(0))],
+  );
+  itemsHdl = mainHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    allItemsDirName,
+    (context, writer, _key, _file) ~> {
+      allItems = mutable Vector<ItemKey>[];
+      fillItem(context, controller, expansion, allItems);
+      writer.write(SKFS.KKeys(), SKFS.Keys(allItems.toArray()));
+      writer.write(SKFS.KSize(), SKFS.IntFile(allItems.size()))
+    },
+  );
+  visibleItemsHdl = itemsHdl
+    .contextWriterKeyMap(
+      SKFS.IntFile::fromFile,
+      context,
+      itemsDirName(path.makeChild("visible")),
+      (context, writer, key, file) ~> {
+        if (key == SKFS.KKeys()) {
+          keys = SKFS.Keys::fromFile(file).value;
+          if (FWKPipeline.hasNodeInfos(context)) {
+            FWKPipeline.gNodeInfo.maybeGetValue(context, path).each(ni ->
+              ni.info.optUserData
+                .map(ud ~> ud as Metrics _)
+                .each(metrics ->
+                  for (idx in metrics.axis.range) {
+                    keys.maybeGet(idx).each(k ->
+                      writer.write(k, SKFS.IntFile(0))
+                    )
+                  }
+                )
+            )
+          }
+        };
+      },
+    )
+    .contextWriterKeyMap(
+      ItemFile::fromFile,
+      context,
+      itemsDirName(path),
+      (context, writer, key, _) ~> {
+        itemKey = key as ItemKey _;
+        writer.write(
+          itemKey.path,
+          ItemFile(controller.getItem(context, itemKey.path), itemKey.info),
+        )
+      },
+    );
+  progressHdl = visibleItemsHdl.contextWriterKeyMap(
+    f ~> f as Ui.Progress _,
+    context,
+    itemsDirName(path.makeChild("progress")),
+    (context, writer, key, _) ~> {
+      controller.getProgress(context, key as Ui.Path _).each(progress ->
+        writer.write(key, progress)
+      )
+    },
+  );
+  badgeHdl = visibleItemsHdl.contextWriterKeyMap(
+    Ui.Badge::fromFile,
+    context,
+    itemsDirName(path.makeChild("badge")),
+    (context, writer, key, _) ~> {
+      controller.getBadge(context, key as Ui.Path _).each(text ->
+        writer.write(key, Ui.Badge(text, controller.getBadgeMaxChar(context)))
+      )
+    },
+  );
+  visibleItemsList = Ui.ListHandle(
+    visibleItemsHdl
+      .contextWriterKeyMap(
+        f ~> f,
+        context,
+        itemsDirName(path.makeChild("grouped")),
+        (_, writer, key, file) ~> {
+          writer.write(SKFS.KKeys(), key);
+          writer.write(key, file);
+        },
+      )
+      .contextWriterKeyValues(
+        f ~> f,
+        context,
+        itemsDirName(path.makeChild("joined")),
+        (context, writer, key, files) ~> {
+          if (key == SKFS.KKeys()) {
+            items = SKFS.Keys::fromFile(itemsHdl.get(context, SKFS.KKeys()))
+              .value.map(ItemKey::fromFile)
+              .map(i -> i.path);
+            set = Set::createFromItems(files.map(Ui.Path::fromFile));
+            writer.write(SKFS.KKeys(), SKFS.Keys(items.filter(set.contains)));
+            writer.write(SKFS.KSize(), SKFS.IntFile(files.size()))
+          } else {
+            writer.writeArray(key, files);
+          }
+        },
+      ),
+    ItemFile::fromFile,
+  );
+  (
+    visibleItemsList,
+    ctx ~> itemsHdl.getInt(ctx, SKFS.KSize()),
+    (ctx, path) ~> progressHdl.maybeGetValue(ctx, path),
+    (ctx, path) ~> badgeHdl.maybeGetValue(ctx, path),
+  )
+}
+
+fun fillItem(
+  context: mutable SKFS.Context,
+  controller: Controller,
+  expansion: Ui.GetterOne<Bool, Ui.Path>,
+  allItems: mutable Vector<ItemKey>,
+  optParent: ?Ui.Path = None(),
+  depth: Int = 0,
+): void {
+  controller.getItems(context, optParent).each(items ->
+    for (item in items) {
+      path = Ui.Path(item, optParent);
+      allItems.push(ItemKey(path, depth));
+      if (expansion(context, path)) {
+        fillItem(
+          context,
+          controller,
+          expansion,
+          allItems,
+          Some(path),
+          depth + 1,
+        )
+      }
+    }
+  )
+}
+
+module end;

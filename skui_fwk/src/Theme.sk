@@ -1,0 +1,409 @@
+module UiTheme;
+
+const family: String = "Roboto";
+// Good ConsolaMono
+const monospace: String = "NotoMono";
+
+const passChar: Char = '•';
+
+const defaultFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::normal, Font.Normal()),
+  11.0,
+);
+
+const largeFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::normal, Font.Normal()),
+  12.0,
+);
+
+const boldFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::bold, Font.Normal()),
+  11.0,
+);
+
+const bigFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::bold, Font.Normal()),
+  14.0,
+);
+
+const smallFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::normal, Font.Normal()),
+  9.0,
+);
+
+const smallBoldFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::bold, Font.Normal()),
+  9.0,
+);
+
+const smallItalicFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::normal, Font.Italic()),
+  9.0,
+);
+
+const mediumFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::normal, Font.Normal()),
+  10.0,
+);
+
+const mediumBoldFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(family, Font.Weight::bold, Font.Normal()),
+  10.0,
+);
+
+const monospaceFace: Font.FaceID = Font.FaceID::create(
+  Font.TypefaceInfo::create(monospace, Font.Weight::normal, Font.Normal()),
+  11.0,
+);
+
+base class Font {
+  children =
+  | Basic()
+  | Action()
+  | ILabel()
+  | IHelper()
+  | Badge()
+  | PanePlaceHolder()
+  | Tree()
+  | Monospace()
+  | Table()
+  | Header()
+}
+
+base class Icon {
+  children =
+  | Checked()
+  | Unchecked()
+  | IndCheck()
+  | Selected()
+  | Unselected()
+  | IndSelection()
+  | Expanded()
+  | Collapsed()
+  | ScrollLeft()
+  | ScrollRight()
+  | ScrollUp()
+  | ScrollDown()
+  | Close()
+  | Editing()
+  | File()
+  | Folder()
+  | Files()
+  | Add()
+  | Question()
+  | SubMenu()
+  | Show(shown: Bool = true)
+  | Copy()
+  | Cut()
+  | Paste()
+  | Back()
+  | On()
+  | Off()
+  | Cancel()
+  | Refresh()
+  | Filter()
+  | Forbiden()
+}
+
+base class Thickness {
+  children =
+  | TrackWidth()
+  | Mark()
+  | TreeTabulation()
+  | InputIcon()
+  | Actions()
+  | Ruler()
+  | MinItemWidth()
+  | Indicator()
+  | LineSpacing()
+  | ActionHorizontalSide()
+  | ActionVerticalSide()
+  | IconTextGap()
+  | IconIconGap()
+  | MonospacePadding()
+  | ScrollBar()
+  | Split()
+  | Track()
+  | Loading()
+  | MenuSeparator()
+}
+
+base class Color {
+  children =
+  | Regular()
+  | Primary()
+  | Accent()
+  | Warn()
+  | PrimaryLoading()
+  | SecondaryLoading()
+  | Background(editable: Bool)
+  | Information()
+  | TooltipText()
+  | Inactive()
+  | WhiteSpace()
+  | Veil()
+  | Target()
+  | Base()
+  | Border()
+  | Highlight(focused: Bool = true)
+  | Disabled(opaque: Bool = false)
+}
+
+class Shadow() extends Color, Thickness {}
+class Separator() extends Color, Thickness {}
+class DataNode() extends Color, Font {}
+class Error(level: Level = .Error()) extends Icon, Color {}
+class Shortcut() extends Color, Font {}
+class Tooltip() extends Color, Font, Thickness {}
+
+class Discriminant(
+  separators: Text.Separators = Text.Separators(),
+) extends Font {}
+
+class Title() extends Color, Font {}
+class Message() extends Color, Font {}
+
+class Default() extends Ui.Theme {
+  fun getColor(_context: mutable SKFS.Context, color: UiTheme.Color): .Color {
+    color match {
+    | Base() -> Colors.white()
+    | Regular() -> Colors.black().withAlpha(0.9)
+    | Primary()
+    | SecondaryLoading() ->
+      .Color::fromARGBHex(0xff5f5fb8)
+    | PrimaryLoading() -> .Color::fromARGBHex(0xff5f9ab8)
+    | Accent() -> .Color::fromARGBHex(0xffd8894a)
+    | Warn() -> .Color::fromARGBHex(0xffb85f5f)
+    | Disabled(opaque) ->
+      if (opaque) .Color::fromARGBHex(0xffbdbdbd) else {
+        Colors.black().withAlpha(0.2)
+      }
+    | Shadow() -> .Color::gray(UInt8::truncate(178))
+    | Inactive() -> Colors.gray()
+    | Border() -> Colors.lightgray()
+    | Background(editable) ->
+      if (editable) {
+        .Color::fromARGBHex(0xffF5F5FF)
+      } else {
+        .Color::fromARGBHex(0xfffcfcfc)
+      }
+    | Information() -> Colors.black().withAlpha(0.5)
+    | Error(level) ->
+      level match {
+      | .Error() -> Colors.firebrick()
+      | .Warning() -> Colors.orange()
+      | .Information() -> Colors.blue()
+      }
+    | Highlight(focused) ->
+      c = Colors.lightsteelblue();
+      if (!focused) c.scaleAlpha(0.25) else {
+        c.scaleAlpha(0.75)
+      }
+    | Target() -> Colors.darkgreen()
+    | Tooltip() -> Colors.black().withAlpha(0.75)
+    | TooltipText() -> Colors.white().withAlpha(0.9)
+    | DataNode() -> .Color::gray(UInt8::truncate(15))
+    | Title() -> Colors.black()
+    | Message() -> Colors.black().withAlpha(0.75)
+    | Veil() -> Colors.black().withAlpha(0.32)
+    | Separator() -> .Color::fromARGBHex(0xffaaaaaa)
+    | Shortcut() -> Colors.darkblue()
+    | WhiteSpace() -> .Color::gray(UInt8::truncate(198))
+    }
+  }
+
+  fun getThickness(
+    _context: mutable SKFS.Context,
+    category: UiTheme.Thickness,
+  ): Int {
+    category match {
+    | TrackWidth() -> 32
+    | Separator() -> 10
+    | TreeTabulation() -> 16
+    | Loading() -> 10
+    | MenuSeparator() -> 4
+    | Mark()
+    | InputIcon() ->
+      8
+    | Split()
+    | Track()
+    | Ruler()
+    | Actions() ->
+      4
+    | MinItemWidth() -> 200
+    | Indicator() -> 64
+    | Tooltip() -> 200
+    | LineSpacing() -> 2
+    | ActionHorizontalSide() -> 16
+    | ActionVerticalSide() -> 8
+    | IconTextGap() -> 8
+    | IconIconGap() -> 4
+    | MonospacePadding() -> 2
+    | ScrollBar() -> 8
+    | Shadow() -> 20
+    }
+  }
+
+  fun getIconBuilder(
+    _context: mutable SKFS.Context,
+    category: UiTheme.Icon,
+  ): Ui.IconBuilder {
+    category match {
+    | Checked() ->
+      Ui.InnerIconBuilder(pt ~> Icon.Check(Math.ceil(pt.pixels()).toInt()))
+    | Unchecked() ->
+      Ui.InnerIconBuilder(pt ~> Icon.Uncheck(Math.ceil(pt.pixels()).toInt()))
+    | IndCheck() ->
+      Ui.InnerIconBuilder(pt ~>
+        Icon.Indeterminate(Math.ceil(pt.pixels()).toInt())
+      )
+    | Selected() ->
+      Ui.InnerIconBuilder(pt ~> Icon.Select(Math.ceil(pt.pixels()).toInt()))
+    | Unselected() ->
+      Ui.InnerIconBuilder(pt ~> Icon.Unselect(Math.ceil(pt.pixels()).toInt()))
+    | IndSelection() ->
+      Ui.InnerIconBuilder(pt ~> Icon.Dot(Math.ceil(pt.pixels()).toInt()))
+    | Error(level) ->
+      level match {
+      | .Error() -> Ui.FromIconSupport(UiIcon.Alert())
+      | .Warning() -> Ui.FromIconSupport(UiIcon.Alert())
+      | .Information() -> Ui.FromIconSupport(UiIcon.Info())
+      }
+    | Question() -> Ui.FromIconSupport(UiIcon.Help())
+    | Expanded() -> Ui.FromIconSupport(UiIcon.AngleDown())
+    | SubMenu()
+    | Collapsed()
+    | ScrollRight() ->
+      Ui.FromIconSupport(UiIcon.AngleRight())
+    | Back()
+    | ScrollLeft() ->
+      Ui.FromIconSupport(UiIcon.AngleLeft())
+    | ScrollUp() -> Ui.FromIconSupport(UiIcon.AngleUp())
+    | ScrollDown() -> Ui.FromIconSupport(UiIcon.AngleDown())
+    | Close()
+    | Cancel() ->
+      Ui.FromIconSupport(UiIcon.Close())
+    | File() -> Ui.FromIconSupport(UiIcon.File())
+    | Folder() -> Ui.FromIconSupport(UiIcon.Folder())
+    | Files() -> Ui.FromIconSupport(UiIcon.Files())
+    | Add() -> Ui.FromIconSupport(UiIcon.Plus())
+    | Show(shown) ->
+      Ui.FromIconSupport(if (shown) UiIcon.Eye() else UiIcon.Occulted())
+    | Copy() -> Ui.FromIconSupport(UiIcon.Copy())
+    | Cut() -> Ui.FromIconSupport(UiIcon.Cut())
+    | Paste() -> Ui.FromIconSupport(UiIcon.Paste())
+    | Editing() ->
+      Ui.InnerIconBuilder(pt ~> Icon.Dot(Math.ceil(pt.pixels()).toInt()))
+    | On() -> todo("On icon")
+    | Off() -> todo("Off icon")
+    | Refresh() -> Ui.FromIconSupport(UiIcon.Reload())
+    | Filter() -> Ui.FromIconSupport(UiIcon.Filter())
+    | Forbiden() -> Ui.FromIconSupport(UiIcon.Forbiden())
+    }
+  }
+
+  fun getFont(_context: mutable SKFS.Context, font: UiTheme.Font): Font.FaceID {
+    font match {
+    | Basic() -> defaultFace
+    | Action() -> boldFace
+    | IHelper() -> smallItalicFace
+    | Tooltip() -> smallBoldFace
+    | DataNode() -> mediumBoldFace
+    | Title() -> bigFace
+    | Message() -> largeFace
+    | Discriminant _
+    | Shortcut()
+    | ILabel() ->
+      smallFace
+    | Badge() -> smallBoldFace
+    | PanePlaceHolder() -> bigFace
+    | Tree() -> mediumFace
+    | Monospace() -> monospaceFace
+    | Table() -> defaultFace
+    | Header() -> boldFace
+    }
+  }
+}
+
+fun iconFromString(name: String): ?Icon {
+  name match {
+  | "checked" -> Some(Checked())
+  | "unchecked" -> Some(Unchecked())
+  | "indeterminate-check" -> Some(IndCheck())
+  | "selected" -> Some(Selected())
+  | "unselected" -> Some(Unselected())
+  | "indeterminate-selection" -> Some(IndSelection())
+  | "alert" -> Some(Error(.Error()))
+  | "warning" -> Some(Error(.Warning()))
+  | "information" -> Some(Error(.Information()))
+  | "question" -> Some(Question())
+  | "expanded" -> Some(Expanded())
+  | "collapsed" -> Some(Collapsed())
+  | "sub-menu" -> Some(SubMenu())
+  | "scroll-right" -> Some(ScrollRight())
+  | "scroll-left" -> Some(ScrollLeft())
+  | "scroll-up" -> Some(ScrollUp())
+  | "scroll-down" -> Some(ScrollDown())
+  | "back" -> Some(Back())
+  | "close" -> Some(Close())
+  | "cancel" -> Some(Cancel())
+  | "file" -> Some(File())
+  | "folder" -> Some(Folder())
+  | "files" -> Some(Files())
+  | "add" -> Some(Add())
+  | "shown" -> Some(Show(true))
+  | "hidden" -> Some(Show(false))
+  | "copy" -> Some(Copy())
+  | "cut" -> Some(Cut())
+  | "paste" -> Some(Paste())
+  | "editing" -> Some(Editing())
+  | "on" -> Some(On())
+  | "off" -> Some(Off())
+  | "refresh" -> Some(Refresh())
+  | "filter" -> Some(Filter())
+  | "forbiden" -> Some(Forbiden())
+  | _ -> None()
+  }
+}
+
+class IconBuilder(icon: Icon, optSize: ?Ui.Size) extends Ui.IconBuilder {
+  fun buildIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+    pixels = Ui.Pt(fontSize).pixels();
+    context.getThemeIcon(this.icon).buildIcon(context, fontSize).map(i ->
+      i.update(
+        this.optSize.map(s -> s.toSize(Geometry.Size::square(pixels))),
+        this.optSize.map(s -> s.keepRatio).default(false),
+      )
+    )
+  }
+}
+
+module end;
+
+module Ui;
+
+base class Theme extends SKFS.File {
+  //
+  static fun forFile(obj: SKFS.File): Theme {
+    obj match {
+    | x @ Theme _ -> x
+    | _ -> invariant_violation("Invalid Ui.Theme")
+    }
+  }
+
+  fun getColor(context: mutable SKFS.Context, color: UiTheme.Color): Color;
+
+  fun getThickness(
+    context: mutable SKFS.Context,
+    category: UiTheme.Thickness,
+  ): Int;
+
+  fun getIconBuilder(
+    context: mutable SKFS.Context,
+    category: UiTheme.Icon,
+  ): Ui.IconBuilder;
+
+  fun getFont(context: mutable SKFS.Context, style: UiTheme.Font): Font.FaceID;
+}
+
+module end;

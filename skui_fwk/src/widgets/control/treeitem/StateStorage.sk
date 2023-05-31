@@ -1,0 +1,154 @@
+module UiTreeItem;
+
+const statePath: String = "ui/treeitem/state";
+
+class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKFS.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.getDirName().toString()
+  }
+
+  fun setArmed(context: mutable SKFS.Context, expand: Bool, value: Bool): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.armedProp,
+      if (value) Some(SKFS.BoolFile(expand)) else None(),
+    )
+  }
+
+  fun setHover(context: mutable SKFS.Context, expand: Bool, value: Bool): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.hoverProp,
+      if (value) Some(SKFS.BoolFile(expand)) else None(),
+    )
+  }
+
+  fun setIndeterminate(context: mutable SKFS.Context, optValue: ?Int): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.indeterminateProp,
+      optValue.map(v -> SKFS.IntFile(v)),
+    )
+  }
+
+  fun setTargeted(context: mutable SKFS.Context, optDrop: ?Ui.Drop): void {
+    this.handle.writeOrRemove(context, Ui.targetedProp, optDrop)
+  }
+}
+
+class HState(
+  stateDirName: SKFS.DirName,
+  handle: SKFS.Handle<SKFS.File>,
+) extends State {
+  //
+  fun getArmed(context: mutable SKFS.Context): ?Bool {
+    this.handle.maybeGetBool(context, Ui.armedProp)
+  }
+
+  fun getHover(context: mutable SKFS.Context): ?Bool {
+    this.handle.maybeGetBool(context, Ui.hoverProp)
+  }
+
+  fun getIndeterminate(context: mutable SKFS.Context): ?Int {
+    this.handle.maybeGetInt(context, Ui.indeterminateProp)
+  }
+
+  fun getTargeted(context: mutable SKFS.Context): ?Ui.Drop {
+    this.handle.maybeGetProp(context, Ui.targetedProp, f ~> f as Ui.Drop _)
+  }
+
+  fun emitArmed(
+    context: mutable SKFS.Context,
+    expand: Bool,
+    value: Bool,
+  ): void {
+    this.emit(context, SetArmed(expand, value))
+  }
+
+  fun emitHover(
+    context: mutable SKFS.Context,
+    expand: Bool,
+    value: Bool,
+  ): void {
+    this.emit(context, SetHover(expand, value))
+  }
+
+  fun emitIndeterminate(context: mutable SKFS.Context, value: Int): void {
+    this.emit(context, SetIndeterminate(value))
+  }
+
+  fun emitTargeted(context: mutable SKFS.Context, optDrop: ?Ui.Drop): void {
+    this.emit(context, SetTargeted(optDrop))
+  }
+
+  fun emitAll(
+    context: mutable SKFS.Context,
+    expand: Bool,
+    armed: Bool,
+    hover: Bool,
+  ): void {
+    this.emit(
+      context,
+      Multiple(Array[SetArmed(expand, armed), SetHover(expand, hover)]),
+    )
+  }
+
+  private fun emit(
+    context: mutable SKFS.Context,
+    command: FWKMessage.Command,
+  ): void {
+    FWKMessage.emit(context, statePath, this.stateDirName.toString(), command);
+  }
+}
+
+fun init(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  controller: Controller,
+): State {
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeDir(f ~> f, dirName, Array[]);
+  afterDirName = SKFS.DirName::make(dirName, "after/");
+  afterHdl = stateHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    afterDirName,
+    (context, writer, key, file) ~>
+      if (key == Ui.indeterminateProp) {
+        value = SKFS.IntFile::fromFile(file).value;
+        controller.getProgress(context) match {
+        | Some(Ui.Indeterminate()) ->
+          FWKMessage.emit(
+            context,
+            statePath,
+            dirName.toString(),
+            SetIndeterminate((value + 1) % 4),
+            false,
+            Some(100),
+          )
+        | _ -> void
+        };
+        writer.write(key, file)
+      } else {
+        writer.write(key, file)
+      }
+    ,
+  );
+  HState(dirName, afterHdl)
+}
+
+module end;

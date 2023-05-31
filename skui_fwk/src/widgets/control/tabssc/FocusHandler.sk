@@ -1,0 +1,24 @@
+module UiTabsSc;
+
+class FocusHandler{
+  scroll: Ui.TabsSc,
+  index: Int,
+} extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  //
+  protected fun getMainIdentifier(): Ui.Path {
+    this.scroll.path;
+  }
+
+  protected fun getShortcuts(
+    _context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    Array[]
+  }
+
+  protected fun onEnter(context: mutable SKFS.Context): Bool {
+    this.scroll.state.emitGoTo(context, Index(this.index));
+    true
+  }
+}
+
+module end;

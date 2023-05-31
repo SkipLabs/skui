@@ -1,0 +1,56 @@
+module Ui;
+
+fun init(context: mutable SKFS.Context): void {
+  context.registerMessageSupport(
+    UiToggle.statePath,
+    "*",
+    UiToggle.AllMessages(),
+  );
+  context.registerMessageSupport(UiInput.statePath, "*", UiInput.AllMessages());
+  context.registerMessageSupport(
+    UiSlider.statePath,
+    "*",
+    UiSlider.AllMessages(),
+  );
+  context.registerMessageSupport(UiTab.statePath, "*", UiTab.AllMessages());
+  context.registerMessageSupport(
+    UiDialogs.statePath,
+    "*",
+    UiDialogs.AllMessages(),
+  );
+  context.registerMessageSupport(
+    UiTabsSc.statePath,
+    "*",
+    UiTabsSc.AllMessages(),
+  );
+  context.registerMessageSupport(UiTabs.statePath, "*", UiTabs.AllMessages());
+  context.registerMessageSupport(
+    UiDropdown.statePath,
+    "*",
+    UiDropdown.AllMessages(),
+  );
+  context.registerMessageSupport(UiRoot.statePath, "*", UiRoot.AllMessages());
+  context.registerMessageSupport(
+    UiProgress.statePath,
+    "*",
+    UiProgress.AllMessages(),
+  );
+  context.registerMessageSupport(
+    UiTreeItem.statePath,
+    "*",
+    UiTreeItem.AllMessages(),
+  );
+  context.registerMessageSupport(UiTree.statePath, "*", UiTree.AllMessages());
+  context.registerMessageSupport(
+    UiMonospace.statePath,
+    "*",
+    UiMonospace.AllMessages(),
+  );
+  context.registerMessageSupport(
+    UiTableCell.statePath,
+    "*",
+    UiTableCell.AllMessages(),
+  );
+}
+
+module end;

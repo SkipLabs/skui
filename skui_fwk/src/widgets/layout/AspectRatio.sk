@@ -1,0 +1,92 @@
+module UiAspectRatio;
+
+base class Controller extends Ui.Parameters {
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getAspectRatio(context: mutable SKFS.Context): Float;
+  fun isCentered(context: mutable SKFS.Context): Bool;
+}
+
+class LamController{
+  widget: mutable SKFS.Context ~> Ui.Widget,
+  aspectRatio: Ui.Getter<Float> = Ui.default(0.0),
+  centered: Ui.Getter<Bool> = Ui.default(true),
+} extends Controller {
+  //
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+    this.widget(context)
+  }
+
+  fun getAspectRatio(context: mutable SKFS.Context): Float {
+    this.aspectRatio(context)
+  }
+
+  fun isCentered(context: mutable SKFS.Context): Bool {
+    this.centered(context)
+  }
+}
+
+module end;
+
+module Ui;
+
+class AspectRatio{
+  controller: UiAspectRatio.Controller,
+} extends StrictWidget uses FWK.NoFocusHandler, WithNodeCache {
+  //
+  type Params = UiAspectRatio.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    controller: UiAspectRatio.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Configuration = None(),
+  ): this {
+    static{path, controller, optConfiguration, cache, tick => context.tick}
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    this.controller.getWidget(context).getViewportDefinition(context)
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    widget = this.controller.getWidget(context);
+    aspectRatio = this.controller.getAspectRatio(context);
+    centered = this.controller.isCentered(context);
+    node = widget.getNode(context, BoxConstraints::new());
+    if (aspectRatio < 0.0 || Math.like(aspectRatio, 0.0)) {
+      // keep widget radio
+      !aspectRatio = if (
+        Math.greater(node.size.width, 0.0) &&
+        Math.greater(node.size.height, 0.0)
+      ) {
+        node.size.width / node.size.height;
+      } else {
+        1.0
+      };
+    };
+    size = constraints.constrain(node.size);
+    width = size.width;
+    height = width / aspectRatio;
+    if (height > size.height) {
+      !height = size.height;
+      !width = height * aspectRatio;
+    };
+    cConstraints = BoxConstraints::tight(width, height);
+    !node = widget.getNode(context, cConstraints);
+    offset = if (centered) {
+      Geometry.Offset(
+        if (size.width > width) (size.width - width) / 2.0 else 0.0,
+        if (size.height > height) (size.height - height) / 2.0 else 0.0,
+      );
+    } else {
+      Geometry.Offset(0.0, 0.0);
+    };
+    Node(
+      this,
+      Geometry.Size(width, height),
+      Array[CNode(node, offset, cConstraints)],
+    )
+  }
+}

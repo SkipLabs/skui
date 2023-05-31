@@ -1,0 +1,125 @@
+module UiMenued;
+
+base class Controller extends Ui.Parameters {
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getMenu(context: mutable SKFS.Context, root: UiRoot.Storage): Ui.Widget;
+}
+
+class LamController{
+  widget: mutable SKFS.Context ~> Ui.Widget,
+  menu: (mutable SKFS.Context, UiRoot.Storage) ~> Ui.Widget,
+} extends Controller {
+  //
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+    this.widget(context)
+  }
+
+  fun getMenu(context: mutable SKFS.Context, root: UiRoot.Storage): Ui.Widget {
+    this.menu(context, root)
+  }
+}
+
+class HoverHandler(menued: Ui.Menued) extends Ui.HoverHandlerWrapper {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.menued.path
+  }
+
+  protected fun onMouse(
+    _context: mutable SKFS.Context,
+    _mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    FWK.Result(false)
+  }
+
+  fun getDropdown(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    this.menued.getDropdown(context)
+  }
+}
+
+class FocusHandler{
+  menued: Ui.Menued,
+} extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  protected fun getMainIdentifier(): Ui.Path {
+    this.menued.path;
+  }
+
+  protected fun getShortcuts(
+    _context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    Array[]
+  }
+
+  fun getDropdown(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    this.menued.getDropdown(context)
+  }
+}
+
+module end;
+
+module Ui;
+
+class Menued{
+  controller: UiMenued.Controller,
+} extends StrictWidget uses WithNodeCache {
+  //
+  type Params = UiMenued.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    controller: UiMenued.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{path, controller, optConfiguration, cache, tick => context.tick}
+  }
+
+  fun getDropdown(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    Some(
+      FWK.SourcedWidget(Some(this.path), (ctx, root) ~>
+        Some(this.controller.getMenu(ctx, root))
+      ),
+    )
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    widget = this.controller.getWidget(context);
+    node = widget.getNode(context, constraints);
+    Ui.Node(
+      this,
+      node.size,
+      Array[Ui.CNode(node, Geometry.Offset::zero, constraints)],
+    )
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    this.controller.getWidget(context).getViewportDefinition(context)
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKFS.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((ctx, _, _) ~> Some(UiMenued.HoverHandler(this, childGetter(ctx))))
+  }
+
+  fun checkFocusHandlers(
+    _context: mutable SKFS.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    Ui.wrappedFocusHandlers(handlers, optFocusHandler ->
+      Some(
+        UiMenued.FocusHandler{
+          menued => this,
+          category => "menued",
+          optFocusHandler,
+        },
+      )
+    );
+  }
+}
+
+module end;

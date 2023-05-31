@@ -1,0 +1,53 @@
+module UiTree;
+
+class DrawInfo private (
+  optBar: ?(Geometry.Rect, Geometry.Rect),
+) extends Ui.DrawInfo {
+  static fun compute(
+    context: mutable SKFS.Context,
+    tree: Ui.Tree,
+    size: Geometry.Size,
+    metrics: Metrics,
+  ): this {
+    barSize = context.getThemeThickness(UiTheme.ScrollBar()).toFloat();
+    optEV = tree.state.getEnsureVisible(context);
+    fMetrics = metrics.checkEnsureVisible(optEV);
+    if (fMetrics.axis.optScroll.isSome()) {
+      tree.state.emitScroll(context, fMetrics.axis.optScroll)
+    };
+    iOffset = fMetrics.axis.offset.toInt();
+    offset = Geometry.Point(0, iOffset);
+    optBar = if (metrics.axis.main > size.height) {
+      height = Math.max(20.0, (size.height * size.height) / metrics.axis.main);
+      if (height > size.height) {
+        None()
+      } else {
+        dy =
+          ((metrics.axis.range.start.toFloat() * metrics.axis.unity) +
+            Math.abs(iOffset).toFloat()) *
+          size.height /
+          metrics.axis.main;
+        if (dy + height > size.height) {
+          !dy = size.height - height;
+        };
+        Some(
+          (
+            Geometry.Rect::fromOffsetSize(
+              Geometry.Offset(size.width - barSize, dy),
+              Geometry.Size(barSize, height),
+            ),
+            Geometry.Rect::fromOffsetSize(
+              Geometry.Offset(size.width - barSize, 0.0),
+              Geometry.Size(barSize, size.height),
+            ),
+          ),
+        )
+      }
+    } else {
+      None()
+    };
+    DrawInfo(optBar, offset)
+  }
+}
+
+module end;

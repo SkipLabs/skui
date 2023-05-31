@@ -1,0 +1,769 @@
+module FWKPipeline;
+
+const constraintsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/constraints/",
+);
+const vpConstraintsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/vpconstraints/",
+);
+const viewportsPath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/viewports/");
+const nodeSumsPath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/nodeSums/");
+const nodeOffsetsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/nodeOffsets/",
+);
+const computedNodeInfosPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/nodeInfos/computed/",
+);
+const visibleNodeInfosPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/nodeInfos/visible/",
+);
+const vpInfosPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/viewportInfos/",
+);
+const vpWindowPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/viewportWindow/",
+);
+const nodeLayersPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/nodeLayers/",
+);
+
+const nodeRelativeLayersPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/nodeLayers/relative/",
+);
+
+const nodeDrawablesPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/nodeDrawables/",
+);
+
+const nodeHandlesPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/nodeHandles/",
+);
+
+const layerHandlesPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/layerHandles/",
+);
+
+class MainKey() extends SKFS.BaseName {
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+class KOffsets(path: Ui.Path) extends SKFS.BaseName {
+  fun toString(): String {
+    this.path.toString()
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as KOffsets _);
+    this.path.compare(oKey.path);
+  }
+}
+
+class RPath(path: Ui.Path) extends SKFS.BaseName {
+  fun toString(): String {
+    this.path.toString()
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as RPath _);
+    this.path.compare(oKey.path);
+  }
+}
+
+const gNodeInfo: SKFS.EHandle<NodeInfo> = SKFS.EHandle(
+  NodeInfo::fromFile,
+  computedNodeInfosPath.pre(),
+);
+
+fun hasNodeInfos(
+  context: mutable SKFS.Context,
+  isUntracked: Bool = false,
+): Bool {
+  FWKEnv.exists(context, computedNodeInfosPath.pre(), isUntracked)
+}
+
+fun maybeGetInfo(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  isUntracked: Bool = false,
+): ?NodeInfo {
+  if (hasNodeInfos(context, isUntracked)) {
+    gNodeInfo.maybeGetValue(context, path, isUntracked)
+  } else {
+    None()
+  }
+}
+
+class NodeSum(
+  optWidget: ?Ui.Widget,
+  summary: Ui.NodeSum,
+  userData: Ui.UserDataGetter,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ NodeSum _ -> x
+    | _ -> invariant_violation("Must be FWKPipeline.NodeSum")
+    }
+  }
+
+  fun computeNodeInfo(
+    context: mutable SKFS.Context,
+    relative: Geometry.Offset,
+  ): NodeInfo {
+    optUserData = this.userData(context);
+    optDrawInfo = this.optWidget.flatMap(widget ->
+      widget.computeDrawInfo(context, relative, this.summary, optUserData)
+    );
+    NodeInfo(
+      this.optWidget,
+      Ui.NodeInfo(this.summary, optUserData, optDrawInfo),
+    )
+  }
+}
+
+class NodeInfo(optWidget: ?Ui.Widget, info: Ui.NodeInfo) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ NodeInfo _ -> x
+    | _ -> invariant_violation("Must be FWKPipeline.NodeInfo")
+    }
+  }
+
+  fun viewport(): Ui.Path {
+    this.info.nodeSum.optViewport.fromSome()
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+  ): Array<Ui.Drawable> {
+    this.optWidget.flatMap(widget ->
+      context.getDrawableSupport().map(support ->
+        widget.computeLayer(context, support, absolute, layer, this.info)
+      )
+    ).default(Array[]);
+  }
+
+  fun isRoot(): Bool {
+    this.info.nodeSum.optParent.isNone()
+  }
+}
+
+class KLayer(path: Ui.Path, layer: Ui.LayerId) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.path}:${this.layer}`
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as KLayer _);
+    sComp = this.path.compare(oKey.path);
+    if (sComp == EQ()) {
+      this.layer.compare(oKey.layer);
+    } else {
+      sComp
+    }
+  }
+}
+
+class CtxLayer(ctxId: Int, layer: KLayer) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.ctxId}:${this.layer}`
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as CtxLayer _);
+    sComp = this.ctxId.compare(oKey.ctxId);
+    if (sComp == EQ()) {
+      this.layer.compare(oKey.layer);
+    } else {
+      sComp
+    }
+  }
+}
+
+class Layer(nodeInfo: NodeInfo, offset: Geometry.Point) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Layer _ -> x
+    | _ -> invariant_violation("Must be FWKPipeline.Layer")
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+  ): Array<Ui.Drawable> {
+    this.nodeInfo.computeLayer(context, absolute, layer)
+  }
+}
+
+class RelativeLayer(layer: Layer, relative: Geometry.Offset) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ RelativeLayer _ -> x
+    | _ -> invariant_violation("Must be FWKPipeline.RelativeLayer")
+    }
+  }
+}
+
+fun initPipeline(
+  context: mutable SKFS.Context,
+  widgetGetter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+  windowHdl: SKFS.EHandle<UiEvent.Size>,
+  root: UiRoot.Storage,
+): void {
+  // Collect mouse / keys states to manage Dropdrow / Tooltips
+  mouseState = prepareMouse(context);
+  keysState = prepareKeys(context);
+  widgetHdl = root.manageWidgets(
+    context,
+    Ui.Path("root"),
+    widgetGetter,
+    ctx ~> mouseState.get(ctx),
+    ctx ~> keysState.get(ctx),
+  );
+  FWKClipboard.init(context);
+  FWKKeys.init(context);
+  FWKMouse.init(context);
+  FWKPointer.init(context);
+  previousConstraintsHdl = context.makePreDir(
+    Ui.BoxConstraints::fromFile,
+    vpConstraintsPath,
+    Array[],
+  );
+  constraintsHdl = windowHdl.contextWriterMap(
+    Ui.BoxConstraints::fromFile,
+    context,
+    constraintsPath,
+    (context, writer, size) ~> {
+      file = widgetHdl.get(context);
+      writer.write(
+        file.widget.path,
+        Ui.BoxConstraints::tight(size.width.toFloat(), size.height.toFloat()),
+      )
+    },
+  );
+  constraintsHdl.register(context, ctx ~>
+    FWKEnv.getROWindowId(ctx).each(wId ->
+      FWK.expose(wId, UInt32::truncate(ctx.tick.value))
+    )
+  );
+  viewportsHdl = widgetHdl.hdl.contextWriterMap(
+    f ~> f,
+    context,
+    FWK.viewportsPath,
+    (context, writer, wf) ~> {
+      widget = wf.widget;
+      viewportDef = widget.getViewportDefinition(context) match {
+      | Some(definition) ->
+        if (definition.path != widget.path || definition.optWidget.isSome()) {
+          Ui.ViewportDef(widget.path, None(), Some(widget), Array[definition])
+        } else if (definition.path == widget.path) {
+          definition with {optWidget => Some(widget)}
+        } else {
+          definition;
+        }
+      | _ -> Ui.ViewportDef(widget.path, None(), Some(widget), Array[])
+      };
+      writer.write(MainKey(), viewportDef);
+    },
+  );
+  viewportLeafsHdl = viewportsHdl.contextWriterMap(
+    Ui.ViewportLeaf::fromFile,
+    context,
+    viewportsPath,
+    (_, writer, file) ~> {
+      definition = Ui.ViewportDef::fromFile(file);
+      fillViewportDefinitions(definition, writer);
+    },
+  );
+  nodesHdl = viewportLeafsHdl.contextWriterKeyMap(
+    Ui.Node::fromFile,
+    context,
+    FWK.nodesPath,
+    (context, writer, key, viewport) ~> {
+      constraints = previousConstraintsHdl.maybeGet(context, key) match {
+      | Some(constraints) -> constraints
+      | _ ->
+        constraintsHdl.maybeGet(context, key).default(Ui.BoxConstraints::new())
+      };
+      node = viewport.widget.getNode(context, constraints);
+      writer.write(key, node);
+    },
+  );
+  previousNodeInfosHdl = context.makePreDir(
+    NodeInfo::fromFile,
+    computedNodeInfosPath,
+    Array[],
+  );
+  previousNodeOffsetsHdl = context.makePreDir(
+    Ui.NodeOffsets::fromFile,
+    nodeOffsetsPath,
+    Array[],
+  );
+  FWKEnv.declare(context, computedNodeInfosPath.pre());
+  previousVpInfosHdl = context.makePreDir(
+    Ui.NViewport::fromFile,
+    vpInfosPath,
+    Array[],
+  );
+  nodeSumsHdl = nodesHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    nodeSumsPath,
+    (context, writer, key, node) ~> {
+      path = key as Ui.Path _;
+      oZero = Geometry.Offset::zero;
+      fillNodeSums(
+        context,
+        path,
+        oZero,
+        oZero,
+        node,
+        writer,
+        (ctx, path, iu) ~> previousNodeInfosHdl.getValue(ctx, path, iu).info,
+        (ctx, path, iu) ~> previousNodeOffsetsHdl.maybeGetValue(ctx, path, iu),
+        (ctx, path, iu) ~> previousVpInfosHdl.getValue(ctx, path, iu),
+      )
+    },
+  );
+  _ = nodeSumsHdl.contextWriterKeyMap(
+    Ui.NodeOffsets::fromFile,
+    context,
+    nodeOffsetsPath,
+    (_, writer, key, file) ~>
+      key match {
+      | id @ KOffsets _ -> writer.write(id.path, file)
+      | _ -> void
+      }
+    ,
+  );
+  _ = viewportLeafsHdl.contextWriterKeyMap(
+    Ui.BoxConstraints::fromFile,
+    context,
+    vpConstraintsPath,
+    (context, writer, key, _) ~> {
+      nodeSum = NodeSum::fromFile(nodeSumsHdl.get(context, key));
+      constraints = constraintsHdl.maybeGet(context, key) match {
+      | Some(constraints) -> constraints
+      | _ ->
+        size = nodeSum.summary.size;
+        Ui.BoxConstraints::tight(size.width, size.height)
+      };
+      writer.write(key, constraints)
+    },
+  );
+  computedNodeInfosHdl = nodeSumsHdl.contextWriterKeyMap(
+    NodeInfo::fromFile,
+    context,
+    computedNodeInfosPath,
+    (context, writer, key, file) ~>
+      key match {
+      | id @ Ui.Path _ ->
+        relative = Geometry.Offset::fromFile(
+          nodeSumsHdl.get(context, RPath(id)),
+        );
+        writer.write(
+          id,
+          NodeSum::fromFile(file).computeNodeInfo(context, relative),
+        )
+      | _ -> void
+      }
+    ,
+  );
+  vpInfosHdl = viewportLeafsHdl.contextWriterKeyMap(
+    Ui.NViewport::fromFile,
+    context,
+    vpInfosPath,
+    (context, writer, key, leaf) ~> {
+      offset = leaf.optReference
+        .flatMap(iPath -> {
+          nodeInfo = computedNodeInfosHdl.get(context, iPath);
+          nodeInfo.info.optDrawInfo.map(di -> di.offset)
+        })
+        .default(Geometry.Point(0, 0));
+      sizeInfo = computedNodeInfosHdl.get(context, key);
+      sizeOffsets = Ui.NodeOffsets::fromFile(
+        nodeSumsHdl.get(context, KOffsets(key as Ui.Path _)),
+      );
+      writer.write(
+        key,
+        Ui.NViewport(
+          offset,
+          Geometry.Rect::fromOffsetSize(
+            sizeOffsets.viewport,
+            sizeInfo.info.size(),
+          ).toRectangle(),
+          sizeInfo.info.nodeSum.optViewport,
+        ),
+      )
+    },
+  );
+  visibleNodeInfosHdl = computedNodeInfosHdl.contextWriterKeyMap(
+    Layer::fromFile,
+    context,
+    visibleNodeInfosPath,
+    (context, writer, key, nodeInfo) ~> {
+      nodeOffsets = Ui.NodeOffsets::fromFile(
+        nodeSumsHdl.get(context, KOffsets(key as Ui.Path _)),
+      );
+      viewport = vpInfosHdl.get(context, nodeInfo.viewport());
+      nodeRect = Geometry.Rect::fromOffsetSize(
+        nodeOffsets.viewport,
+        nodeInfo.info.size(),
+      )
+        .toRectangle()
+        .translate(viewport.offset);
+      window = viewport.window.translate(viewport.window.min.neg());
+      if (nodeRect.overlaps(window)) {
+        writer.write(key, Layer(nodeInfo, viewport.offset))
+      }
+    },
+  );
+  nodeLayersHdl = visibleNodeInfosHdl.contextWriterKeyMap(
+    Layer::fromFile,
+    context,
+    nodeLayersPath,
+    (_context, writer, key, layer) ~> {
+      path = key as Ui.Path _;
+      writer.write(KLayer(path, Ui.MainLayer()), layer);
+      writer.write(KLayer(path, Ui.BackgroundLayer()), layer);
+      writer.write(KLayer(path, Ui.ForegroundLayer()), layer);
+    },
+  );
+  nodeDrawablesHdl = nodeLayersHdl.contextWriterKeyMap(
+    Ui.Drawables::fromFile,
+    context,
+    nodeDrawablesPath,
+    (context, writer, key, layer) ~> {
+      kLayer = key as KLayer _;
+      nodeOffsets = Ui.NodeOffsets::fromFile(
+        nodeSumsHdl.get(context, KOffsets(kLayer.path)),
+      );
+      drawables = layer.computeLayer(
+        context,
+        nodeOffsets.viewport,
+        kLayer.layer,
+      );
+      if (!drawables.isEmpty()) {
+        writer.write(
+          key,
+          Ui.Drawables(drawables, Some(layer.nodeInfo.viewport())),
+        )
+      }
+    },
+  );
+  optNodeHandlesHdl = context.getDrawableSupport().map(support ->
+    support.init(context, nodeDrawablesHdl, nodeHandlesPath)
+  );
+
+  optNodeHandlesHdl.each(nodeHandlesHdl -> {
+    _ = nodeHandlesHdl
+      .contextWriterKeyMap(
+        Ui.Handles::fromFile,
+        context,
+        layerHandlesPath,
+        (_context, writer, key, handles) ~> {
+          ctxLayer = key as CtxLayer _;
+          !ctxLayer.layer.path = handles.optViewport.fromSome();
+          writer.write(ctxLayer, handles);
+        },
+      )
+      .register(context, ctx ~>
+        FWKEnv.getROWindowId(ctx).each(wId ->
+          FWK.expose(wId, UInt32::truncate(ctx.tick.value))
+        )
+      );
+  });
+  initMouse(
+    context,
+    widgetHdl,
+    (ctx, path, iu) ~> computedNodeInfosHdl.getValue(ctx, path, iu).info,
+    (ctx, path, iu) ~> nodesHdl.getValue(ctx, path, iu),
+    (ctx, path, iu) ~> vpInfosHdl.getValue(ctx, path, iu),
+    root,
+  );
+  initKeys(
+    context,
+    widgetHdl,
+    (ctx, path, iu) ~> computedNodeInfosHdl.getValue(ctx, path, iu).info,
+    (ctx, path, iu) ~> nodesHdl.getValue(ctx, path, iu),
+    root,
+  )
+}
+
+fun fillViewportDefinitions(
+  definition: Ui.ViewportDef,
+  writer: mutable SKFS.Writer,
+  optParent: ?Ui.Path = None(),
+): void {
+  definition.optWidget.each(widget ->
+    writer.write(
+      definition.path,
+      Ui.ViewportLeaf(widget, optParent, definition.optReference),
+    )
+  );
+  definition.children_.each(child ->
+    fillViewportDefinitions(child, writer, Some(definition.path))
+  )
+}
+
+fun fillNodeSums(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  viewport: Geometry.Offset,
+  relative: Geometry.Offset,
+  node: Ui.Node,
+  writer: mutable SKFS.Writer,
+  nodeInfoGetter: Ui.NodeInfoGetter,
+  nodeOffsetsGetter: Ui.GetterTwo<?Ui.NodeOffsets, Ui.Path, Bool>,
+  viewportGetter: Ui.ViewportGetter,
+  optParent: ?Ui.Path = None(),
+): void {
+  nodeSum = NodeSum(
+    Some(node.widget),
+    Ui.NodeSum(
+      nodeInfoGetter,
+      (ctx, iu) ~> nodeOffsetsGetter(ctx, node.widget.path, iu),
+      viewportGetter,
+      node.size,
+      optParent,
+      Some(path),
+    ),
+    node.userData,
+  );
+  nodeOffsets = Ui.NodeOffsets(viewport, relative);
+  writer.write(KOffsets(node.widget.path), nodeOffsets);
+  writer.write(RPath(node.widget.path), nodeOffsets.relativeViewport());
+  writer.write(node.widget.path, nodeSum);
+  node.subNodes.each(c -> {
+    cOffset = c.getOffset();
+    c match {
+    | child @ Ui.CNode _ ->
+      fillNodeSums(
+        context,
+        path,
+        viewport.move(cOffset),
+        cOffset,
+        child.node,
+        writer,
+        nodeInfoGetter,
+        nodeOffsetsGetter,
+        viewportGetter,
+        Some(node.widget.path),
+      )
+    | link @ Ui.CLink _ ->
+      linksOffsets = Ui.NodeOffsets(viewport.move(cOffset), cOffset);
+      writer.write(KOffsets(link.path), linksOffsets);
+      writer.write(RPath(link.path), linksOffsets.relativeViewport());
+      writer.write(
+        link.path,
+        NodeSum(
+          None(),
+          Ui.NodeSum(
+            nodeInfoGetter,
+            (ctx, iu) ~> nodeOffsetsGetter(ctx, link.path, iu),
+            viewportGetter,
+            link.getSize(),
+            optParent,
+            Some(path),
+          ),
+          Ui.constUserData(None()),
+        ),
+      )
+    }
+  });
+}
+
+fun getDrawTick(context: mutable SKFS.Context): ?SKFS.Tick {
+  optContraintsTick = getOnDirectory(
+    context,
+    constraintsPath,
+    constraintsDir -> constraintsDir.getLastTick(),
+  );
+  optHandlesTick = getOnDirectory(context, layerHandlesPath, handlesDir ->
+    handlesDir.getLastTick()
+  );
+  (optContraintsTick, optHandlesTick) match {
+  | (None(), None())
+  | (Some(None()), None())
+  | (None(), Some(None()))
+  | (Some(None()), Some(None())) ->
+    None()
+  | (Some(Some(ct)), Some(Some(ht))) -> Some(Math.max(ct, ht))
+  | (Some(Some(tick)), _)
+  | (_, Some(Some(tick))) ->
+    Some(tick)
+  }
+}
+
+fun drawViewports(
+  gl: Ui.Ctx,
+  context: mutable SKFS.Context,
+  width: Int,
+  height: Int,
+  populateViewport: (
+    gl: Ui.Ctx,
+    viewport: Ui.NViewport,
+    handles: Array<Array<Ui.Handles>>,
+    height: Int,
+  ) -> void,
+): void {
+  doOnDirectory(context, FWK.viewportsPath, viewportsDir ->
+    doOnDirectory(context, layerHandlesPath, layerHandlesDir ->
+      doOnDirectory(context, vpInfosPath, vpInfosDir -> {
+        viewportDef = getValue(
+          viewportsDir,
+          MainKey(),
+          Ui.ViewportDef::fromFile,
+        );
+        drawViewport(
+          gl,
+          context,
+          viewportDef,
+          Ui.NViewport(
+            Geometry.Point(0, 0),
+            Geometry.Rectangle(
+              Geometry.Point(0, 0),
+              Geometry.Point(width.toInt(), height.toInt()),
+            ),
+          ),
+          width.toInt(),
+          height.toInt(),
+          layerHandlesDir,
+          vpInfosDir,
+          populateViewport,
+        );
+      })
+    )
+  )
+}
+
+fun drawViewport(
+  gCtx: Ui.Ctx,
+  context: mutable SKFS.Context,
+  viewportDef: Ui.ViewportDef,
+  absolute: Ui.NViewport,
+  width: Int,
+  height: Int,
+  layerHandlesDir: SKFS.EagerDir,
+  vpInfosDir: SKFS.EagerDir,
+  populateViewport: (
+    gCtx: Ui.Ctx,
+    viewport: Ui.NViewport,
+    handles: Array<Array<Ui.Handles>>,
+    height: Int,
+  ) -> void,
+): void {
+  vpPath = viewportDef.path;
+  if (viewportDef.optWidget.isSome()) {
+    viewport = getValue(vpInfosDir, vpPath, Ui.NViewport::fromFile);
+    currentBounds = viewport.window.translate(absolute.window.min);
+    visibleBounds = currentBounds.intersect(absolute.window);
+    if (!visibleBounds.isEmpty()) {
+      ctxId = gCtx.getId();
+      diff = (currentBounds.min - visibleBounds.min);
+      toPopulate = Ui.NViewport(viewport.offset + diff, visibleBounds);
+      layerHandles = Array[
+        CtxLayer(ctxId, KLayer(vpPath, Ui.BackgroundLayer())),
+        CtxLayer(ctxId, KLayer(vpPath, Ui.MainLayer())),
+        CtxLayer(ctxId, KLayer(vpPath, Ui.ForegroundLayer())),
+      ].map(key -> getValues(layerHandlesDir, key, Ui.Handles::fromFile));
+      populateViewport(gCtx, toPopulate, layerHandles, height);
+      !absolute = Ui.NViewport(diff, visibleBounds);
+    }
+  };
+  viewportDef.children_.each(def ->
+    drawViewport(
+      gCtx,
+      context,
+      def,
+      absolute,
+      width,
+      height,
+      layerHandlesDir,
+      vpInfosDir,
+      populateViewport,
+    )
+  )
+}
+
+fun doOnDirectory(
+  context: mutable SKFS.Context,
+  dirName: SKFS.DirName,
+  todo: SKFS.EagerDir -> void,
+  ignore: Bool = true,
+): void {
+  context.unsafeMaybeGetEagerDir(dirName) match {
+  | Some(dir) -> todo(dir)
+  | _ ->
+    if (!ignore) {
+      invariant_violation(`${dirName} must be defined.`)
+    }
+  };
+}
+
+fun getOnDirectory<T>(
+  context: mutable SKFS.Context,
+  dirName: SKFS.DirName,
+  todo: SKFS.EagerDir -> T,
+  ignore: Bool = true,
+): ?T {
+  context.unsafeMaybeGetEagerDir(dirName) match {
+  | Some(dir) -> Some(todo(dir))
+  | _ ->
+    if (!ignore) {
+      invariant_violation(`${dirName} must be defined.`)
+    };
+    None()
+  };
+}
+
+fun getValue<T: frozen>(
+  dir: SKFS.EagerDir,
+  key: SKFS.BaseName,
+  conv: SKFS.File ~> T,
+): T {
+  conv(dir.getArrayRaw(key).first())
+}
+
+fun maybeGetValue<T: frozen>(
+  dir: SKFS.EagerDir,
+  key: SKFS.BaseName,
+  conv: SKFS.File ~> T,
+): ?T {
+  vs = getValues(dir, key, conv);
+  if (vs.isEmpty()) {
+    None()
+  } else {
+    Some(vs.first())
+  }
+}
+
+fun getValues<T: frozen>(
+  dir: SKFS.EagerDir,
+  key: SKFS.BaseName,
+  conv: SKFS.File ~> T,
+): Array<T> {
+  dir.getArrayRaw(key).map(conv)
+}
+
+@cpp_export("SKIP_FWK_drawFrame")
+fun drawFrame(width: UInt32, height: UInt32): void {
+  pos = SKFS.newObstack();
+  SKFS.Context::withoutGc(context ~>
+    context.getDrawableSupport().each(support ->
+      support.drawAminationFrame(context, width.toInt(), height.toInt())
+    )
+  );
+  SKFS.destroyObstack(pos);
+}
+
+module end;

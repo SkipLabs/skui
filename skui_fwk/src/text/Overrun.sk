@@ -1,0 +1,111 @@
+module Text;
+
+/**
+ * How Overruning text should be handled.
+ */
+base class Overrun() uses Hashable, Orderable, Show {
+  children =
+  /**
+   * Render Overruning text outside of its container.
+   */
+  | Visible()
+
+  fun toString(): String
+  | Visible() -> "visible"
+  | CenterChar(_) -> "center-char"
+  | EndingChar(_) -> "ending-char"
+  | LeadingChar(_) -> "leading-char"
+  | CenterWord(_, _) -> "center-word"
+  | EndingWord(_, _) -> "ending-word"
+  | LeadingWord(_, _) -> "leading-word"
+
+  fun toCode(): Int
+  | LeadingChar _ -> 0
+  | CenterChar _ -> 1
+  | EndingChar _ -> 2
+  | LeadingWord _ -> 3
+  | CenterWord _ -> 4
+  | EndingWord _ -> 5
+  | Visible _ -> 6
+
+  static fun fromCode(code: Int): Overrun {
+    code match {
+    | 1 -> CenterChar()
+    | 2 -> EndingChar()
+    | 3 -> LeadingWord()
+    | 4 -> CenterWord()
+    | 5 -> EndingWord()
+    | 6 -> Visible()
+    | 0
+    | _ ->
+      LeadingChar()
+    }
+  }
+}
+
+base class Overflow() extends Overrun {}
+
+base class OverflowChar(
+  optEllipsis: ?Char = Some(Text.ellipsis),
+) extends Overflow {
+  children =
+  /**
+   * Use an ellipsis at center to indicate that the text has Overruned.
+   */
+  | CenterChar()
+  /**
+   * Use an ellipsis at end to indicate that the text has Overruned.
+   */
+  | EndingChar()
+  /**
+   * Use an ellipsis at begining to indicate that the text has Overruned.
+   */
+  | LeadingChar()
+
+  fun toReduction(): Reduction {
+    this match {
+    | LeadingChar _ -> LeadingReduction()
+    | CenterChar _ -> CenterReduction()
+    | EndingChar _ -> EndingReduction()
+    }
+  }
+}
+
+class Separators(
+  chars: Array<Char> = Array[],
+  whiteSpaces: Bool = true,
+) uses Hashable, Orderable {
+  fun test(char: Char): Bool {
+    (this.whiteSpaces && Char.isWhitespace(char)) ||
+      this.chars.indexOf(char).isSome()
+  }
+}
+
+base class OverflowWord(
+  optEllipsis: ?Char = Some(Text.ellipsis),
+  separator: Separators = Separators(),
+) extends Overflow {
+  children =
+  /**
+   * Use an ellipsis at center on words to indicate that the text has Overruned.
+   */
+  | CenterWord()
+  /**
+   * Use an ellipsis at end on words to indicate that the text has Overruned.
+   */
+  | EndingWord()
+  /**
+   * Use an ellipsis at begining on words to indicate that the text has Overruned.
+   */
+  | LeadingWord()
+
+  fun toReduction(): Reduction {
+    this match {
+    | LeadingWord _ -> LeadingReduction()
+    | CenterWord _ -> CenterReduction()
+    | EndingWord _ -> EndingReduction()
+    }
+  }
+}
+
+module end;

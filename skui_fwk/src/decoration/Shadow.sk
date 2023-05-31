@@ -1,0 +1,76 @@
+module Ui;
+
+class ShadowData(scales: Array<Float>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ ShadowData _ -> x
+    | _ -> invariant_violation("Must be Ui.ShadowData")
+    }
+  }
+}
+
+class Shadow{
+  /**
+   * The standard deviation of the Gaussian to convolve with the shadow's shape.
+   */
+  radius: Int = 0,
+  /**
+   * Color that the shadow will be drawn with.
+   */
+  shadow: .Color = Colors.black(),
+  padding: Geometry.InsetsGeometry = Geometry.Insets::all(0.0),
+  optFill: ?Ui.Paint = None(),
+} extends Decoration {
+  fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets {
+    Geometry.resolveInsest(this.padding, direction);
+  }
+
+  fun fillDrawables(
+    _context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    _direction: Ui.HorizontalDirection,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    drawables.push(
+      support.boxShadow(offset, size, this.radius.toFloat() / 3.0, this.shadow),
+    );
+    this.optFill.each(fill ->
+      drawables.push(
+        support.boxShadow(offset, size, this.radius.toFloat() / 30.0, fill),
+      )
+    )
+  }
+}
+
+fun shadow(
+  x: Int,
+  y: Int,
+  width: Int,
+  height: Int,
+  scalesX: Array<Float>,
+  scalesY: Array<Float>,
+  radius: Int,
+): Float {
+  midX = width / 2;
+  midY = height / 2;
+  radiusX = Math.min(midX, radius);
+  radiusY = Math.min(midY, radius);
+  (strX, strY) = if (x <= midX && y <= midY) {
+    (scalesX[midX - radiusX + x], scalesY[midY - radiusY + y])
+  } else if (x <= midX && y > midY) {
+    (scalesX[midX - radiusX + x], scalesY[midY - radiusY + (height - y)])
+  } else if (x > midX && y <= midY) {
+    (scalesX[midX - radiusX + (width - x)], scalesY[midY - radiusY + y])
+  } else {
+    (
+      scalesX[midX - radiusX + (width - x)],
+      scalesY[midY - radiusY + (height - y)],
+    )
+  };
+  Math.clamp(strX * strY, 0.0, 1.0);
+}
+
+module end;

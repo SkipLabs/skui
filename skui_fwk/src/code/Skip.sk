@@ -1,0 +1,125 @@
+module UiSkip;
+
+const tokenColor: .Color = Colors.blue();
+const stringColor: .Color = Colors.purple();
+const commentColor: .Color = Colors.gray();
+const literalColor: .Color = Colors.olive();
+const internalColor: .Color = Colors.red();
+
+fun tokens(token: String): ?.Color {
+  token match {
+  | "try" | "throw" | "return" | "for" | "while" | "loop" | "match" | "if"
+  | "else" | "children" | "alias" | "as" | "async" | "await" | "catch"
+  | "concurrent" | "overridable" | "deferred" | "frozen" | "memoized" | "watch"
+  | "from" | "private" | "public" | "protected" | "final" | "const" | "extends"
+  | "uses" | "base" | "readonly" | "mutable" | "native" | "module" | "fun"
+  | "type" | "class" | "static" | "this" | "trait" | "@" | "end" | "void"
+  | "extension" | "with" | "untracked" ->
+    Some(tokenColor)
+  | "false" | "true" -> Some(literalColor)
+  | "Int" | "Float" | "Bool" | "String" | "Map" | "Array" | "Option" | "Set"
+  | "Some" | "None" | "Vector" ->
+    Some(internalColor)
+  | "//" | "/*" -> Some(commentColor)
+  | "'" | "\"" | "`" | "}" -> Some(stringColor)
+  | _ -> None()
+  }
+}
+
+fun bracketsBuilder(
+  accessor: UiMonospace.Accessor,
+  index: Int,
+  column: Int,
+): ?UiMonospace.Bracket {
+  accessor.maybeGet(index).flatMap(char ->
+    char match {
+    | '/' ->
+      accessor.maybeGet(index + 1).flatMap(nChar ->
+        nChar match {
+        | '/' | '*' -> Some(UiMonospace.Bracket(index, Array[char, nChar]))
+        | _ -> None()
+        }
+      )
+    | '$' ->
+      accessor.maybeGet(index + 1).flatMap(nChar ->
+        nChar match {
+        | '{' -> Some(UiMonospace.Bracket(column, Array[char, nChar]))
+        | _ -> None()
+        }
+      )
+    | '*' ->
+      accessor.maybeGet(index + 1).flatMap(nChar ->
+        nChar match {
+        | '/' -> Some(UiMonospace.Bracket(column, Array[char, nChar]))
+        | _ -> None()
+        }
+      )
+    | '"' | '`' | '\'' | '{' | '}' | '(' | ')' | '[' | ']' ->
+      Some(UiMonospace.Bracket(column, Array[char]))
+    | _ -> None()
+    }
+  )
+}
+
+fun bracketsChecker(
+  optCurrent: ?UiMonospace.Bracket,
+  optToCheck: ?UiMonospace.Bracket,
+  stack: mutable Vector<UiMonospace.Bracket>,
+): ?UiMonospace.Bracket {
+  optValue = optToCheck.map(v -> v.value);
+  if (!stack.isEmpty()) {
+    lastIdx = stack.size() - 1;
+    last = stack[lastIdx];
+    if (last.value == Array['$', '{']) {
+      if (optValue == Some(Array['{'])) {
+        stack.set(lastIdx, last with {count => last.count + 1});
+      } else if (optValue == Some(Array['}']) && last.count > 0) {
+        stack.set(lastIdx, last with {count => last.count - 1});
+      } else if (optValue == Some(Array['}'])) {
+        _ = stack.pop();
+        return optToCheck
+      }
+    }
+  };
+  optCurrent match {
+  | Some(current) ->
+    if (current.value == Array['/', '/']) {
+      if (optValue.isNone()) None() else Some(current)
+    } else if (current.value == Array['/', '*']) {
+      if (optValue == Some(Array['*', '/'])) None() else Some(current)
+    } else if (current.value == Array['"']) {
+      if (optValue.isNone() || optValue == Some(Array['"'])) None() else {
+        Some(current)
+      }
+    } else if (current.value == Array['\'']) {
+      if (optValue.isNone() || optValue == Some(Array['\''])) None() else {
+        Some(current)
+      }
+    } else if (current.value == Array['`'] || current.value == Array['}']) {
+      if (optValue == Some(Array['`'])) None() else if (
+        optValue == Some(Array['$', '{'])
+      ) {
+        stack.push(optToCheck.fromSome());
+        None()
+      } else {
+        Some(current)
+      }
+    } else {
+      Some(current)
+    }
+  | _ ->
+    if (
+      optValue == Some(Array['/', '/']) ||
+      optValue == Some(Array['/', '*']) ||
+      optValue == Some(Array['"']) ||
+      optValue == Some(Array['\'']) ||
+      optValue == Some(Array['`'])
+    ) {
+      optToCheck
+    } else {
+      None()
+    }
+  }
+}
+
+module end;

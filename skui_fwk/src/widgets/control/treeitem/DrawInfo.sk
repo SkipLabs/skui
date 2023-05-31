@@ -1,0 +1,114 @@
+module UiTreeItem;
+
+class DrawInfo private (
+  label: (String, Geometry.Rect, Font.FaceID, Text.FixedAlign),
+  optIcon: ?(Ui.Icon, Geometry.Offset, Geometry.Size),
+  optBadge: ?(?String, Geometry.Offset, Font.FaceID, Geometry.Rect),
+  optExpand: ?Geometry.Rect,
+  tab: Float,
+  inTab: Float,
+) extends Ui.DrawInfo {
+  //
+  static fun compute(
+    context: mutable SKFS.Context,
+    layout: Layout,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    iconTextGap: Float,
+  ): this {
+    tabIncr = context.getThemeThickness(UiTheme.TreeTabulation());
+    tab = layout.depth * tabIncr;
+    inTab = tab;
+    left = padding + tab.toFloat();
+    right = absolute.dx + size.width - padding;
+    width = size.width - 2.0 * padding - tab.toFloat();
+    optExpand = if (layout.expandable) {
+      res = Some(
+        Geometry.Rect::fromOffsetSize(
+          Geometry.Offset(absolute.dx + left, absolute.dy + padding),
+          Geometry.Size::square(expandIconSize),
+        ),
+      );
+      !left = left + expandIconSize + Math.ceil(iconTextGap / 2.0);
+      !width = width - expandIconSize - Math.ceil(iconTextGap / 2.0);
+      !inTab = inTab + tabIncr;
+      res;
+    } else {
+      None()
+    };
+    optIcon: ?(Ui.Icon, Geometry.Offset, Geometry.Size) = None();
+    optBadge: ?(?String, Geometry.Offset, Font.FaceID, Geometry.Rect) = None();
+    height = Math.ceil(size.height) - 2.0 * padding.toFloat();
+    label = layout.optIcon match {
+    | Some((icon, iSize)) ->
+      top = absolute.dy + padding;
+      iOffset = Geometry.Point(
+        Math.round(left).toInt(),
+        Math.round(top + (height - iSize.height) / 2.0).toInt(),
+      );
+      !optIcon = Some((icon, iOffset.toOffset(), iSize));
+      !width = width - iSize.width - iconTextGap;
+      !left = left + iSize.width + iconTextGap;
+      topLeft = Geometry.Offset(left, top);
+      lSize = Geometry.Size(width, height);
+      (
+        layout.label.i0,
+        Geometry.Rect::fromOffsetSize(topLeft, lSize),
+        layout.label.i2,
+        Text.Left(),
+      )
+    | _ ->
+      top = absolute.dy + padding;
+      topLeft = Geometry.Offset(left, top);
+      lSize = Geometry.Size(width, height);
+      (
+        layout.label.i0,
+        Geometry.Rect::fromOffsetSize(topLeft, lSize),
+        layout.label.i2,
+        Text.Left(),
+      )
+    };
+    layout.optBadge.each(badge -> {
+      (optStr, bSize) = if (badge.i0.isBlank()) {
+        (None(), Geometry.Size(8.0, 8.0))
+      } else {
+        (Some(badge.i0), badge.i1)
+      };
+      (bOffset, bbOffset) = if (bSize.width < bSize.height) {
+        bbOffset = Geometry.Offset(
+          right - bSize.height - 2.0,
+          absolute.dy + 8.0,
+        );
+        res = (
+          bbOffset.translateX((bSize.height - bSize.width).toFloat() / 2.0),
+          bbOffset,
+        );
+        !bSize.width = bSize.height;
+        res
+      } else {
+        bOffset = Geometry.Offset(
+          right - bSize.width.toFloat() - 2.0,
+          absolute.dy + 8.0,
+        );
+        (bOffset, bOffset)
+      };
+      !optBadge = Some(
+        (
+          optStr,
+          bOffset,
+          badge.i2,
+          Geometry.Rect::fromOffsetSize(
+            bbOffset - Geometry.Offset(2.0, 2.0),
+            Geometry.Size(
+              bSize.width.toFloat() + 4.0,
+              bSize.height.toFloat() + 4.0,
+            ),
+          ),
+        ),
+      )
+    });
+    static(label, optIcon, optBadge, optExpand, tab.toFloat(), inTab.toFloat())
+  }
+}
+
+module end;

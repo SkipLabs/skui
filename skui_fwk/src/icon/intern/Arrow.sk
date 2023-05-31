@@ -1,0 +1,70 @@
+module Icon;
+
+base class PathIcon extends Ui.Icon {
+  protected fun getPath(offset: Geometry.Offset): Shape.Path;
+
+  overridable fun fillDrawables(
+    _context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    _size: Geometry.Size,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    this.getPath(offset).toDrawable(support, paint).each(drawable ->
+      drawables.push(drawable)
+    )
+  }
+}
+
+class Arrow(
+  width: Int = 16,
+  direction: Ui.AxisDirection = Ui.ToRight(),
+  optPaint: ?Ui.Paint = None(),
+) extends PathIcon {
+  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+    Geometry.Size::square(this.width.toFloat());
+  }
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this {
+    static(this.width, this.direction, this.optPaint, optSize, keepRatio)
+  }
+
+  protected fun getPath(offset: Geometry.Offset): Shape.Path {
+    fWidth = this.width.toFloat();
+    Shape.Path{
+      elements => this.direction match {
+      | Ui.Up() ->
+        Array[
+          Shape.MoveTo(offset.translateY(fWidth)),
+          Shape.LineTo(offset.translate(fWidth, fWidth)),
+          Shape.LineTo(offset.translateX(fWidth / 2.0)),
+          Shape.ClosePath(),
+        ]
+      | Ui.Down() ->
+        Array[
+          Shape.MoveTo(offset),
+          Shape.LineTo(offset.translateX(fWidth)),
+          Shape.LineTo(offset.translate(fWidth / 2.0, fWidth)),
+          Shape.ClosePath(),
+        ]
+      | Ui.ToLeft() ->
+        Array[
+          Shape.MoveTo(offset.translateX(fWidth)),
+          Shape.LineTo(offset.translate(fWidth, fWidth)),
+          Shape.LineTo(offset.translateY(fWidth / 2.0)),
+          Shape.ClosePath(),
+        ]
+      | Ui.ToRight() ->
+        Array[
+          Shape.MoveTo(offset),
+          Shape.LineTo(offset.translateY(fWidth)),
+          Shape.LineTo(offset.translate(fWidth, fWidth / 2.0)),
+          Shape.ClosePath(),
+        ]
+      },
+    };
+  }
+}
+
+module end;

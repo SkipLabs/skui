@@ -1,0 +1,83 @@
+module UiSlider;
+
+class HoverHandler(
+  slider: Ui.Slider,
+  nodeInfo: Ui.NodeInfo,
+) extends FWK.HoverHandler {
+  fun getIdentifier(): Ui.Path {
+    this.slider.path
+  }
+
+  fun enter(context: mutable SKFS.Context): void {
+    if (!this.slider.controller.isDisabled(context)) {
+      FWKPointer.setCursor(context, Ui.HandCursor());
+    };
+  }
+
+  fun manage(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    if (this.slider.controller.isDisabled(context)) {
+      return FWK.Result(false);
+    };
+    this.onMouse(context, mouse)
+  }
+
+  private fun onMouse(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    wheel = mouse.getWheelValue(context.tick);
+    if (wheel != 0) {
+      if (this.slider.controller.isRange(context) && FWK.isShiftDown(context)) {
+        this.slider.state.emitGoTo(context, Max(), wheel < 0);
+      } else {
+        this.slider.state.emitGoTo(context, Min(), wheel < 0);
+      };
+      return FWK.Result(true)
+    };
+    (thumb, proportion) = this.slider.getMouseThumb(
+      context,
+      mouse.offset(),
+      this.nodeInfo,
+      false,
+    );
+    commands = mutable Vector<Command>[];
+    commands.push(SetHover(Some(thumb)));
+    armed = this.slider.state.isArmed(context);
+    res = if (mouse.isPrimaryPressed(context.tick)) {
+      SystemProperties.setRequireFocus(
+        context,
+        thumb match {
+        | Min() -> this.slider.path.makeChild("min")
+        | Max() -> this.slider.path.makeChild("max")
+        },
+      );
+      commands.push(SetArmed(true));
+      FWK.Result(true, Some(true))
+    } else if (mouse.isPrimaryReleased(context.tick) && armed) {
+      commands.push(SetArmed(false));
+      FWK.Result(true, Some(false))
+    } else if (mouse.isPrimaryDown(context.tick) && armed) {
+      commands.push(SetProportion(thumb, (proportion * factor).toInt()));
+      FWK.Result(true, Some(true))
+    } else {
+      FWK.Result(false)
+    };
+    this.slider.state.emitAll(context, commands);
+    res;
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    this.slider.state.emitReset(context);
+    FWKPointer.resetCursor(context);
+  }
+
+  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    None()
+  }
+}
+
+module end;

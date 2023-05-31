@@ -1,0 +1,908 @@
+module UiInput;
+
+const statePath: String = "ui/input/state";
+const computedPath: String = "ui/input/computed";
+
+class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKFS.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.getDirName().toString()
+  }
+
+  fun setTargeted(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.targetedProp, SKFS.BoolFile(value))
+  }
+
+  fun setHover(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.hoverProp, SKFS.BoolFile(value))
+  }
+
+  fun setArmed(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.armedProp, SKFS.BoolFile(value))
+  }
+
+  fun setBlinking(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.blinkingProp, SKFS.BoolFile(value))
+  }
+
+  fun setShowing(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.showingProp, SKFS.BoolFile(value))
+  }
+
+  fun setMoveSelection(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.moveSelectionProp, SKFS.BoolFile(value))
+  }
+
+  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+  }
+
+  fun setScroll(context: mutable SKFS.Context, optScroll: ?Scroll): void {
+    this.handle.writeOrRemove(context, Ui.scrollProp, optScroll)
+  }
+
+  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.scrollingProp,
+      optTick.map(t -> SKFS.IntFile(t.value)),
+    )
+  }
+
+  fun setVisibility(
+    context: mutable SKFS.Context,
+    optVisibility: ?Ui.Visibility,
+  ): void {
+    this.handle.writeOrRemove(context, Ui.visibilityProp, optVisibility)
+  }
+
+  fun getVisibility(context: mutable SKFS.Context): ?Ui.Visibility {
+    this.handle.maybeGetProp(
+      context,
+      Ui.visibilityProp,
+      Ui.Visibility::fromFile,
+    )
+  }
+
+  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick {
+    this.handle.maybeGetInt(context, Ui.scrollingProp).map(v -> SKFS.Tick(v))
+  }
+
+  fun getTodo(context: mutable SKFS.Context): Ui.Todo {
+    Ui.Todo::fromFile(this.handle.get(context, Ui.todoProp))
+  }
+}
+
+class HState(
+  storage: SKFS.EHandle<SKFS.File>,
+  after: SKFS.EHandle<SKFS.File>,
+) extends State {
+  fun isHover(context: mutable SKFS.Context): Bool {
+    this.storage.getBool(context, Ui.hoverProp)
+  }
+
+  fun isArmed(context: mutable SKFS.Context): Bool {
+    this.storage.getBool(context, Ui.armedProp)
+  }
+
+  fun isShowing(context: mutable SKFS.Context): Bool {
+    this.storage.getBool(context, Ui.showingProp)
+  }
+
+  fun isMoveSelection(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.storage.getBool(context, Ui.moveSelectionProp, isUntracked)
+  }
+
+  fun getScroll(context: mutable SKFS.Context): ?Scroll {
+    this.storage.maybeGetProp(context, Ui.scrollProp, f ~> f as Scroll _);
+  }
+
+  fun isScrolling(context: mutable SKFS.Context): Bool {
+    this.storage.maybeGetInt(context, Ui.scrollingProp).isSome()
+  }
+
+  /// COMPUTED
+  fun isCaretVisible(context: mutable SKFS.Context): Bool {
+    optVisibility = this.storage.maybeGetProp(
+      context,
+      Ui.visibilityProp,
+      Ui.Visibility::fromFile,
+    );
+    optCaretVisible = this.after.maybeGetInt(context, Ui.caretVisibleProp).map(
+      v -> SKFS.Tick(v),
+    );
+    optVisibility match {
+    | Some(visiblity) ->
+      optCaretVisible match {
+      | Some(tick) if (visiblity.tick == tick) -> visiblity.visible
+      | _ -> true
+      }
+    | _ -> optCaretVisible.isSome()
+    }
+  }
+
+  fun getEnsureVisible(context: mutable SKFS.Context): ?Visible {
+    this.after.maybeGetProp(context, Ui.ensureVisibleProp, f ~>
+      f as Visible _
+    ).flatMap(v -> if (v.tick == context.tick) Some(v) else None());
+  }
+
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.after.getInt(context, Ui.lengthProp)
+  }
+
+  fun getPosition(context: mutable SKFS.Context): Int {
+    this.after.maybeGetProp(context, Ui.positionProp, SourcedPos::fromFile)
+      .map(v -> v.pos)
+      .default(0)
+  }
+
+  fun getText(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): String {
+    this.after.maybeGetProp(
+      context,
+      Ui.textProp,
+      SourcedText::fromFile,
+      isUntracked,
+    )
+      .map(v -> v.text)
+      .default("")
+  }
+
+  fun getSelection(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?.Range {
+    this.after.maybeGetProp(
+      context,
+      Ui.selectionProp,
+      SourcedSel::fromFile,
+      isUntracked,
+    ).flatMap(v -> v.optRange)
+  }
+
+  fun getStatus(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Status {
+    this.after.getStatus(context, Ui.statusProp, isUntracked) match {
+    | OK() ->
+      this.after.maybeGetProp(
+        context,
+        Ui.userStatusProp,
+        SourcedStatus::fromFile,
+        isUntracked,
+      )
+        .map(v -> v.status)
+        .default(OK())
+    | status -> status
+    }
+  }
+
+  fun getTarget(context: mutable SKFS.Context): ?Int {
+    this.after.maybeGetInt(context, Ui.targetProp)
+  }
+
+  fun getParts(context: mutable SKFS.Context): Parts {
+    this.after.getProp(context, Ui.partsProp, Parts::fromFile, Parts(Vector[]))
+  }
+
+  fun emitHover(context: mutable SKFS.Context, value: Bool): void {
+    this.emit(context, SetHover(value));
+  }
+
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void {
+    this.emit(context, SetArmed(value));
+  }
+
+  fun emitShowing(context: mutable SKFS.Context, value: Bool): void {
+    this.emit(context, SetShowing(value));
+  }
+
+  fun emitDiacritic(context: mutable SKFS.Context, value: Char): void {
+    this.emit(context, ManageDiacritic(value));
+  }
+
+  fun emitUnicode(context: mutable SKFS.Context, optValue: ?Int): void {
+    this.emit(context, ManageUnicode(optValue));
+  }
+
+  fun emitMoveSelection(context: mutable SKFS.Context, value: Bool): void {
+    this.emit(context, SetMoveSelection(value));
+  }
+
+  fun emitReset(context: mutable SKFS.Context): void {
+    this.emit(context, Reset());
+  }
+
+  fun emitUndo(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Undo(optRepeatOn));
+  }
+
+  fun emitRedo(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Redo(optRepeatOn));
+  }
+
+  fun emitCut(context: mutable SKFS.Context): void {
+    this.emit(context, Cut());
+  }
+
+  fun emitCopy(context: mutable SKFS.Context): void {
+    this.emit(context, Copy());
+  }
+
+  fun emitPaste(context: mutable SKFS.Context): void {
+    FWKClipboard.paste(
+      context,
+      FWKClipboard.Plain(),
+      FWKMessage.Target::forClass(
+        statePath,
+        this.storage.getDirName().toString(),
+        "UiInput.Paste",
+      ),
+    )
+  }
+
+  fun emitUpper(context: mutable SKFS.Context): void {
+    this.emit(context, Upper());
+  }
+
+  fun emitLower(context: mutable SKFS.Context): void {
+    this.emit(context, Lower());
+  }
+
+  fun emitInsert(
+    context: mutable SKFS.Context,
+    text: String,
+    ignoreSelection: Bool,
+    optPosition: ?Int,
+  ): void {
+    this.emit(context, Insert(text, ignoreSelection, optPosition));
+  }
+
+  fun emitTarget(
+    context: mutable SKFS.Context,
+    optTarget: ?Int,
+    scrolling: Bool,
+  ): void {
+    this.emit(context, ManageTarget(optTarget, scrolling));
+  }
+
+  fun emitDeleteTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, DeleteTo(target, optRepeatOn));
+  }
+
+  fun emitGoTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, GoTo(target, optRepeatOn));
+  }
+
+  fun emitSelectTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    ensureVisble: Bool = true,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, SelectTo(target, ensureVisble, optRepeatOn));
+  }
+
+  fun emitBlinking(context: mutable SKFS.Context, value: Bool): void {
+    this.emit(context, SetBlinking(value));
+  }
+
+  fun emitScroll(context: mutable SKFS.Context, value: ?Scroll): void {
+    this.emit(context, SetScroll(value));
+  }
+
+  fun emitScrolling(context: mutable SKFS.Context, value: Int): void {
+    this.emit(context, ManageScrolling(value, context.tick));
+  }
+
+  fun emitCancelScrolling(
+    context: mutable SKFS.Context,
+    tick: SKFS.Tick,
+  ): void {
+    this.emit(context, CancelScrolling(tick));
+  }
+
+  fun emitAll(
+    context: mutable SKFS.Context,
+    commands: readonly Vector<Command>,
+  ): void {
+    this.emit(context, Multiples(commands.toArray()))
+  }
+
+  private fun emit(
+    context: mutable SKFS.Context,
+    command: FWKMessage.Command,
+  ): void {
+    FWKMessage.emit(
+      context,
+      statePath,
+      this.storage.getDirName().toString(),
+      command,
+    );
+  }
+}
+
+class SourcedText(text: String, source: Int) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ SourcedText _ -> x
+    | _ -> invariant_violation("Must be UiInput.SourcedText")
+    }
+  }
+}
+
+class SourcedPos(pos: Int, source: Int) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ SourcedPos _ -> x
+    | _ -> invariant_violation("Must be UiInput.SourcedPos")
+    }
+  }
+}
+
+class SourcedSel(optRange: ?Range, source: Int) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ SourcedSel _ -> x
+    | _ -> invariant_violation("Must be UiInput.SourcedSel")
+    }
+  }
+}
+
+class SourcedStatus(status: Status, source: Int) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ SourcedStatus _ -> x
+    | _ -> invariant_violation("Must be UiInput.SourcedStatus")
+    }
+  }
+}
+
+class UserData(controller: Controller, source: Int) extends SKFS.UserData
+
+@debug
+fun init(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  controller: Controller,
+  supplier: Supplier,
+): Parameters {
+  source = context.timeStamp().value;
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeDir(
+    f ~> f,
+    dirName,
+    Array<(SKFS.BaseName, SKFS.File)>[
+      (Ui.todoProp, Ui.Todo(Init(), context.tick)),
+    ],
+  );
+  filteredDirName = SKFS.DirName::make(dirName, "filtered/");
+  preFilteredHdl = context.makePreDir(f ~> f, filteredDirName, Array[]);
+  filteredHdl = stateHdl.contextWriterKeyMap(
+    Ui.Todo::fromFile,
+    context,
+    filteredDirName,
+    (context, writer, key, file) ~> {
+      if (key == Ui.todoProp) {
+        todo = Ui.Todo::fromFile(file);
+        executables = mutable Vector<(SKFS.Tick, Executable)>[];
+        optCurrent = preFilteredHdl.maybeGetProp(
+          context,
+          key,
+          Ui.Todo::fromFile,
+          true,
+        );
+        tick = optCurrent.map(c -> c.tick).default(SKFS.Tick(-1));
+        max = tick;
+        if (todo.tick > tick) {
+          executables.push((todo.tick, todo.command as Executable _));
+          !max = todo.tick;
+        };
+        supplier
+          .getTextProperty(context)
+          .flatMap(prop -> prop.maybeGetTimed(context))
+          .each(timed -> {
+            (optText, ttick, src) = timed;
+            optText match {
+            | Some(text) if (src != source && ttick > tick) ->
+              executables.push((ttick, SetText(text.toString(), src)));
+              !max = Math.max(max, ttick)
+            | _ -> void
+            }
+          });
+        supplier
+          .getPositionProperty(context)
+          .flatMap(prop -> prop.maybeGetTimed(context))
+          .each(timed -> {
+            (optPos, ttick, src) = timed;
+            optPos match {
+            | Some(pos) if (src != source && ttick > tick) ->
+              executables.push((ttick, SetPosition(pos, src)));
+              !max = Math.max(max, ttick)
+            | _ -> void
+            }
+          });
+        supplier
+          .getSelectionProperty(context)
+          .flatMap(prop -> prop.maybeGetTimed(context))
+          .each(timed -> {
+            (optRange, ttick, src) = timed;
+            if (src != source) {
+              if (ttick > tick) {
+                executables.push((ttick, SetSelection(optRange, src)));
+                !max = Math.max(max, ttick);
+              }
+            }
+          });
+        supplier
+          .getStatusProperty(context)
+          .flatMap(prop -> prop.maybeGetTimed(context))
+          .each(timed -> {
+            (optStatus, ttick, src) = timed;
+            optStatus match {
+            | Some(status) if (src != source && ttick > tick) ->
+              executables.push((ttick, SetStatus(status, src)));
+              !max = Math.max(max, ttick)
+            | _ -> void
+            }
+          });
+        size = executables.size();
+        if (size == 0) {
+          optCurrent.each(c -> writer.write(key, c))
+        } else if (size == 1) {
+          writer.write(key, Ui.Todo(executables.first().i1, max))
+        } else {
+          sorted = executables.sortedFor(v ~> v.i0);
+          writer.write(key, Ui.Todo(All(sorted.map(v ~> v.i1)), max))
+        }
+      }
+    },
+  );
+  computedDirName = SKFS.DirName::make(dirName, "computed/");
+  intermediateDirName = SKFS.DirName::make(dirName, "intermediate/");
+  afterDirName = SKFS.DirName::make(dirName, "after/");
+  initKeys = Array[
+    Ui.textProp,
+    Ui.positionProp,
+    Ui.selectionProp,
+    Ui.diacriticProp,
+    Ui.unicodeProp,
+    Ui.historyProp,
+    Ui.targetProp,
+    Ui.ensureVisibleProp,
+    Ui.userStatusProp,
+  ];
+  preAfterHdl = context.makePreDir(
+    f ~> f,
+    afterDirName,
+    Array<(SKFS.BaseName, SKFS.File)>[(SKFS.KKeys(), SKFS.Keys(initKeys))],
+  );
+  computedHdl = SKFS.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    filteredHdl,
+    Ui.todoProp,
+    initKeys,
+    update,
+    Some(UserData(controller, source)),
+    Some(preAfterHdl),
+  );
+  intHdl = computedHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    intermediateDirName,
+    (context, writer, key, file) ~> {
+      if (key == Ui.textProp) {
+        sourced = SourcedText::fromFile(file);
+        kind = controller.getKind(context);
+        behavior = kind.toBehavior(context);
+        charFilter = behavior.optCharFilter.default(_c ~> true);
+        validator = behavior.optValidator.default(_ ~> OK());
+        chars = sourced.text.chars().filter(charFilter);
+        max = controller.getMaxChars(context);
+        if (chars.size() > max) {
+          !chars = chars.slice(0, max)
+        };
+        validity = validator(chars);
+        writer.write(Ui.statusProp, validity);
+        writer.write(
+          Ui.textProp,
+          SourcedText(String::fromChars(chars.toArray()), sourced.source),
+        )
+      } else {
+        writer.write(key, file)
+      }
+    },
+  );
+  visibilityHdl = intHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    SKFS.DirName::make(dirName, "visibility/"),
+    (context, writer, key, file) ~> {
+      if (key == Ui.textProp) {
+        sourced = SourcedText::fromFile(file);
+        count = sourced.text.chars().size();
+        showing = stateHdl.getBool(context, Ui.showingProp);
+        toSplit = controller.getKind(context) match {
+        | Password() if (!showing) ->
+          // Optimise with unicity manager
+          String::fromChars(Array::fill(count, UiTheme.passChar))
+        | _ -> sourced.text
+        };
+        writer.write(Ui.partsProp, Parts(split(toSplit)));
+        writer.write(Ui.lengthProp, SKFS.IntFile(count));
+        writer.write(Ui.textProp, sourced);
+      } else {
+        writer.write(key, file);
+      }
+    },
+  );
+  verifiedHdl = visibilityHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    SKFS.DirName::make(dirName, "verified/"),
+    (context, writer, key, file) ~> {
+      if (key == Ui.positionProp) {
+        size = visibilityHdl.getInt(context, Ui.lengthProp);
+        sourced = SourcedPos::fromFile(file);
+        writer.write(
+          key,
+          SourcedPos(Math.clamp(sourced.pos, 0, size), sourced.source),
+        );
+      } else if (key == Ui.selectionProp) {
+        size = visibilityHdl.getInt(context, Ui.lengthProp);
+        sourced = SourcedSel::fromFile(file);
+        sourced.optRange match {
+        | Some(r) if (r.start < size) ->
+          writer.write(
+            key,
+            SourcedSel(
+              Some(.Range(r.start, Math.min(r.end, size))),
+              sourced.source,
+            ),
+          )
+        | _ -> writer.write(key, SourcedSel(None(), sourced.source))
+        }
+      } else if (key == Ui.targetProp) {
+        size = visibilityHdl.getInt(context, Ui.lengthProp);
+        position = SKFS.IntFile::fromFile(file).value;
+        writer.write(key, SKFS.IntFile(Math.clamp(position, 0, size)));
+      } else {
+        writer.write(key, file);
+      }
+    },
+  );
+  afterHdl = verifiedHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    afterDirName,
+    (context, writer, key, file) ~> {
+      if (key == Ui.positionProp) {
+        if (stateHdl.getBool(context, Ui.blinkingProp)) {
+          writer.write(Ui.caretVisibleProp, SKFS.IntFile(context.tick.value));
+          FWKMessage.emit(
+            context,
+            statePath,
+            dirName.toString(),
+            ToggleHidden(context.tick),
+            false,
+            Some(500),
+          );
+        };
+        sourced = SourcedPos::fromFile(file);
+        if (sourced.source == source) {
+          supplier.getPositionProperty(context, true).each(pos ->
+            pos.set(context, Some(sourced.pos), source)
+          )
+        }
+      } else if (key == Ui.selectionProp) {
+        sourced = SourcedSel::fromFile(file);
+        if (sourced.source == source) {
+          supplier.getSelectionProperty(context, true).each(sel ->
+            sel.set(context, sourced.optRange, source)
+          )
+        }
+      } else if (key == Ui.textProp) {
+        sourced = SourcedText::fromFile(file);
+        if (sourced.source == source) {
+          supplier.getTextProperty(context, true).each(txt ->
+            txt.set(context, Some(sourced.text), source)
+          )
+        }
+      } else if (key == Ui.userStatusProp) {
+        sourced = SourcedStatus::fromFile(file);
+        if (sourced.source == source) {
+          supplier.getStatusProperty(context, true).each(sts ->
+            sts.set(context, Some(sourced.status), source)
+          )
+        }
+      };
+      writer.write(key, file)
+    },
+  );
+  Parameters(controller, HState(stateHdl, afterHdl))
+}
+
+@debug
+fun split(text: String): Vector<Part> {
+  index = 0;
+  chars = text.chars();
+  parts = mutable Vector<Part>[];
+  tmp = mutable Vector<Char>[];
+  while (index < chars.size()) {
+    space = 0;
+    while (index < chars.size() && Char.isWhitespace(chars[index])) {
+      !space = space + 1;
+      !index = index + 1;
+    };
+    while (index < chars.size() && !Char.isWhitespace(chars[index])) {
+      tmp.push(chars[index]);
+      !index = index + 1;
+    };
+    parts.push(Part(space, String::fromChars(tmp.toArray())));
+    tmp.clear();
+  };
+  unsafe_chill_trust_me(parts);
+}
+
+@debug
+fun update(
+  context: mutable SKFS.Context,
+  _scope: String,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  todo: Ui.Todo,
+  optUserData: ?UserData,
+): void {
+  optOldHistory = values.get(Ui.historyProp).map(History::fromFile);
+  oldText = getText(values);
+  oldPosition = getPosition(values);
+  oldSelection = getSelection(values);
+  userData = optUserData.fromSome();
+  controller = userData.controller;
+  oldUserStatus = getUserStatus(values);
+  charFilter = controller
+    .getKind(context, true)
+    .toBehavior(context, true)
+    .optCharFilter.default(_c ~> true);
+  editable = controller.isEditable(context, true);
+  check = execute(
+    context,
+    todo.command as Executable _,
+    values,
+    charFilter,
+    userData.source,
+  );
+  newText = getText(values);
+  if (check && editable) {
+    history = optOldHistory match {
+    | Some(history) if (oldText != newText) ->
+      newPosition = getPosition(values);
+      newSelection = getSelection(values);
+      setUserStatus(values, OK(), userData.source);
+      history.add(
+        LamUndoable(
+          (v, tick) ~> {
+            v.writeText(oldText);
+            v.writePosition(oldPosition);
+            v.writeSelection(oldSelection);
+            v.writeEnsureVisible(Pos(oldPosition, tick));
+            v.writeUserStatus(oldUserStatus);
+          },
+          (v, tick) ~> {
+            v.writeText(newText);
+            v.writePosition(newPosition);
+            v.writeSelection(newSelection);
+            v.writeEnsureVisible(Pos(newPosition, tick));
+            v.writeUserStatus(OK());
+          },
+        ),
+      )
+    | Some(history) -> history
+    | None() -> History()
+    };
+    values.set(Ui.historyProp, Some(history))
+  };
+}
+
+@debug
+fun execute(
+  context: mutable SKFS.Context,
+  executable: Executable,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  charFilter: Char ~> Bool,
+  source: Int,
+): Bool {
+  check = true;
+  executable match {
+  | All(cmds) ->
+    cmds.each(cmd ->
+      !check = execute(context, cmd, values, charFilter, source) && check
+    )
+  | Init() ->
+    if (values.get(Ui.textProp).isNone()) {
+      values.set(Ui.textProp, Some(SourcedText("", source)))
+    };
+    if (values.get(Ui.positionProp).isNone()) {
+      values.set(Ui.positionProp, Some(SourcedPos(0, source)))
+    };
+    if (values.get(Ui.selectionProp).isNone()) {
+      values.set(Ui.selectionProp, Some(SourcedSel(None(), source)))
+    }
+  | SetStatus(status, src) ->
+    values.set(Ui.userStatusProp, Some(SourcedStatus(status, src)))
+  | SetText(value, src) ->
+    values.set(Ui.textProp, Some(SourcedText(value, src)))
+  | SetPosition(value, src) ->
+    values.set(Ui.positionProp, Some(SourcedPos(value, src)))
+  | SetSelection(optValue, src) ->
+    values.set(Ui.selectionProp, Some(SourcedSel(optValue, src)))
+  | ManageTarget(optTarget, _) ->
+    optTarget.each(t ->
+      values.set(Ui.ensureVisibleProp, Some(Pos(t, context.tick)))
+    );
+    values.set(Ui.targetProp, optTarget.map(v -> SKFS.IntFile(v)))
+  | Undo _ ->
+    undoRedo(context, values, h ~> h.undo, source);
+    !check = false
+  | Redo _ ->
+    undoRedo(context, values, h ~> h.redo, source);
+    !check = false
+  | ManageScrolling(incr, _) ->
+    values.set(Ui.ensureVisibleProp, Some(Incr(incr, context.tick)))
+  | Copy() -> _ = copy(context, values)
+  | Cut() ->
+    cut(context, values, source);
+    ensureVisible(context, values)
+  | Paste(content) ->
+    paste(values, content, charFilter, source);
+    ensureVisible(context, values)
+  | Insert(text, ignoreSelection, optPosition) ->
+    insert(values, charFilter, text, source, ignoreSelection, optPosition);
+    ensureVisible(context, values)
+  | Upper() -> modify(values, Unicode.toUpper, source)
+  | Lower() -> modify(values, Unicode.toLower, source)
+  | GoTo(target, _, _) ->
+    manageGoTo(values, target, source);
+    ensureVisible(context, values)
+  | SelectTo(target, ev, _, _) ->
+    manageSelectTo(values, target, source);
+    if (ev) ensureVisible(context, values)
+  | DeleteTo(target, _, _) ->
+    manageDeleteTo(values, target, source);
+    ensureVisible(context, values)
+  | ManageDiacritic(char) ->
+    if (manageDiacritic(values, charFilter, char, source)) {
+      ensureVisible(context, values)
+    }
+  | ManageUnicode(optValue) ->
+    if (manageUnicode(values, charFilter, optValue, source)) {
+      ensureVisible(context, values)
+    }
+  };
+  check
+}
+
+fun getText(values: mutable Map<SKFS.BaseName, ?SKFS.File>): String {
+  values
+    .get(Ui.textProp)
+    .map(SourcedText::fromFile)
+    .map(f -> f.text)
+    .default("");
+}
+
+fun getSelection(values: mutable Map<SKFS.BaseName, ?SKFS.File>): ?Range {
+  values.get(Ui.selectionProp).map(SourcedSel::fromFile).flatMap(f ->
+    f.optRange
+  )
+}
+
+fun getPosition(values: mutable Map<SKFS.BaseName, ?SKFS.File>): Int {
+  values
+    .get(Ui.positionProp)
+    .map(SourcedPos::fromFile)
+    .map(f -> f.pos)
+    .default(0)
+}
+
+fun getUserStatus(values: mutable Map<SKFS.BaseName, ?SKFS.File>): Status {
+  values
+    .get(Ui.userStatusProp)
+    .map(SourcedStatus::fromFile)
+    .map(v -> v.status)
+    .default(OK())
+}
+
+fun getUnicode(values: mutable Map<SKFS.BaseName, ?SKFS.File>): ?Int {
+  values.get(Ui.unicodeProp).map(SKFS.IntFile::fromFile).map(f -> f.value)
+}
+
+fun getDiacritic(values: mutable Map<SKFS.BaseName, ?SKFS.File>): ?Char {
+  values.get(Ui.diacriticProp).map(SKFS.CharFile::fromFile).map(f -> f.value)
+}
+
+fun setText(
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  text: String,
+  source: Int,
+): void {
+  values.set(Ui.textProp, Some(SourcedText(text, source)));
+}
+
+fun setPosition(
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  position: Int,
+  source: Int,
+): void {
+  values.set(Ui.positionProp, Some(SourcedPos(position, source)));
+}
+
+fun setUnicode(
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  optValue: ?Int,
+): void {
+  values.set(Ui.unicodeProp, optValue.map(v -> SKFS.IntFile(v)));
+}
+
+fun setSelection(
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  optSelection: ?Range,
+  source: Int,
+): void {
+  values.set(Ui.selectionProp, Some(SourcedSel(optSelection, source)));
+}
+
+fun setDiacritic(
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  optDiacritic: ?Char,
+): void {
+  values.set(Ui.diacriticProp, optDiacritic.map(char -> SKFS.CharFile(char)));
+}
+
+fun setUserStatus(
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  status: Status,
+  source: Int,
+): void {
+  values.set(Ui.userStatusProp, Some(SourcedStatus(status, source)));
+}
+
+module end;

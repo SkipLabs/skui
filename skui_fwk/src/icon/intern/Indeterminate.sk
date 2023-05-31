@@ -1,0 +1,63 @@
+module Icon;
+
+class Indeterminate(
+  width: Int = 16,
+  optPaint: ?Ui.Paint = None(),
+  thickness: Int = 2,
+) extends Ui.Icon {
+  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+    Geometry.Size::square(this.width.toFloat());
+  }
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this {
+    static(this.width, this.optPaint, this.thickness, optSize, keepRatio)
+  }
+
+  fun fillDrawables(
+    _context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    thickness = this.thickness.toFloat();
+    if (thickness >= Math.min(size.width, size.height)) {
+      drawables.push(support.rectangle(offset, size, paint));
+    } else {
+      drawables.push(
+        support.rectangle(
+          offset.translate(thickness, thickness),
+          size - Geometry.Size::square(thickness * 2.0),
+          paint.scaleAlpha(0.5),
+        ),
+      );
+      drawables.push(
+        support.rectangle(offset, Geometry.Size(size.width, thickness), paint),
+      );
+      drawables.push(
+        support.rectangle(
+          offset.translateY(size.height - thickness),
+          Geometry.Size(size.width, thickness),
+          paint,
+        ),
+      );
+      drawables.push(
+        support.rectangle(
+          offset.translate(thickness, thickness),
+          Geometry.Size(thickness, size.height - (2.0 * thickness)),
+          paint,
+        ),
+      );
+      drawables.push(
+        support.rectangle(
+          offset.translate(size.width - thickness, thickness),
+          Geometry.Size(thickness, size.height - (2.0 * thickness)),
+          paint,
+        ),
+      );
+    }
+  }
+}
+
+module end;

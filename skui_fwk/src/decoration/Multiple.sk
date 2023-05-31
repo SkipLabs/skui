@@ -1,0 +1,35 @@
+module Ui;
+
+class Nested(decorations: Array<Decoration>) extends Decoration {
+  fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets {
+    this.decorations.reduce(
+      (acc, d) -> acc + d.getPadding(direction),
+      Geometry.Insets::zero(),
+    );
+  }
+
+  fun fillDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    direction: Ui.HorizontalDirection,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    this.decorations.each(decoration -> {
+      decoration.fillDrawables(
+        context,
+        support,
+        offset,
+        size,
+        direction,
+        drawables,
+      );
+      padding = decoration.getPadding(direction);
+      !offset = offset.translate(padding.left, padding.top);
+      !size = padding.deflateSize(size);
+    })
+  }
+}
+
+module end;

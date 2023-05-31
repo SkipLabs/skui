@@ -1,0 +1,134 @@
+module UiTable;
+
+const statePath: String = "ui/table/state";
+const computedPath: String = "ui/table/computed";
+
+class Info(
+  controller: Controller,
+  items: Ui.Getter<Array<String>>,
+) extends SKFS.UserData
+
+class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKFS.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.getDirName().toString()
+  }
+
+  protected fun getHandle(): SKFS.IHandle<SKFS.File> {
+    this.handle
+  }
+
+  fun setHScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void {
+    this.handle.writeOrRemove(context, Ui.hScrollProp, optScroll)
+  }
+
+  fun setVScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void {
+    this.handle.writeOrRemove(context, Ui.vScrollProp, optScroll)
+  }
+
+  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.scrollingProp,
+      optTick.map(t -> SKFS.IntFile(t.value)),
+    )
+  }
+
+  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+  }
+
+  // GETTERS
+
+  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick {
+    this.handle.maybeGetInt(context, Ui.scrollingProp).map(v -> SKFS.Tick(v))
+  }
+
+  fun getTodo(context: mutable SKFS.Context): Ui.Todo {
+    Ui.Todo::fromFile(this.handle.get(context, Ui.todoProp))
+  }
+}
+
+class LamState(
+  selected: Ui.GetterOne<Bool, String>,
+  hover: Ui.GetterOne<Bool, String>,
+) extends State {
+  //
+  fun isSelected(context: mutable SKFS.Context, row: String): Bool {
+    this.selected(context, row)
+  }
+
+  fun isHover(context: mutable SKFS.Context, row: String): Bool {
+    this.hover(context, row)
+  }
+}
+
+@debug
+fun init(
+  _context: mutable SKFS.Context,
+  path: Ui.Path,
+  _controller: Controller,
+): Parameters {
+  _dirName = Ui.controllerDirName(path);
+  todo("UiTable.init")
+}
+
+@debug
+fun update(
+  context: mutable SKFS.Context,
+  _scope: String,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  todo: Ui.Todo,
+  optInfo: ?Info,
+): void {
+  execute(context, todo.command as Executable _, values, optInfo.fromSome());
+}
+
+@debug
+fun execute(
+  context: mutable SKFS.Context,
+  executable: Executable,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  info: Info,
+): void {
+  executable match {
+  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values, info))
+  | Init() -> void
+  | ManageScrolling(incr, _) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+  | ManageVisible(value) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.tick)))
+  | Fire(optRow) ->
+    optCurrent = if (optRow.isSome()) {
+      optRow
+    } else {
+      values.get(Ui.currentProp).map(SKFS.StringFile::fromFile).map(f ->
+        f.value
+      )
+    };
+    selection = values
+      .get(Ui.selectionProp)
+      .map(SKFS.Strings::fromFile)
+      .map(is -> is.value)
+      .default(Array[]);
+    info.controller
+      .getFireMessages(context, optCurrent, selection, true)
+      .each(msg -> FWKMessage.emitMessage(context, msg))
+  | ManageSelect _ -> todo("UiTable.execute ManageSelect")
+  }
+}
+
+module end;

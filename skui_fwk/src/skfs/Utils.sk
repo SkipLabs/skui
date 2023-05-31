@@ -1,0 +1,92 @@
+module SKFS;
+
+base class UserData
+
+class KKeys() extends BaseName {
+  //
+  static fun fromFile(obj: File): this {
+    obj match {
+    | x @ KKeys _ -> x
+    | _ -> invariant_violation("Must be SKFS.KKeys")
+    }
+  }
+
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+class KSize() extends BaseName {
+  //
+  static fun fromFile(obj: File): this {
+    obj match {
+    | x @ KSize _ -> x
+    | _ -> invariant_violation("Must be SKFS.KSize")
+    }
+  }
+
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+class Keys(value: Array<BaseName>) extends File {
+  //
+  static fun fromFile(obj: File): this {
+    obj match {
+    | x @ Keys _ -> x
+    | _ -> invariant_violation("Must be SKFS.Keys")
+    }
+  }
+}
+
+@debug
+fun derive<T: File, U: UserData>(
+  context: mutable Context,
+  scope: String,
+  dirName: DirName,
+  src: EHandle<T>,
+  srcKey: BaseName,
+  initKeys: Array<BaseName>,
+  updater: (
+    mutable Context,
+    String,
+    mutable Map<BaseName, ?File>,
+    file: T,
+    optUserData: ?U,
+  ) ~> void,
+  optUserData: ?U,
+  optPreDir: ?EHandle<File> = None(),
+): EHandle<File> {
+  preComputedHdl = optPreDir match {
+  | Some(preDirHdl) -> preDirHdl
+  | _ ->
+    context.makePreDir(
+      f ~> f,
+      dirName,
+      Array<(BaseName, File)>[(KKeys(), Keys(initKeys))],
+    )
+  };
+  computedHdl = src.contextWriterKeyMap(
+    f ~> f,
+    context,
+    dirName,
+    (context, writer, key, file) ~> {
+      if (srcKey == key) {
+        f = preComputedHdl.getValue(context, KKeys(), true);
+        keys = Keys::fromFile(f);
+        map = mutable Map<BaseName, ?File>[];
+        for (k in keys.value) {
+          map.set(k, preComputedHdl.maybeGetValue(context, k, true))
+        };
+        updater(context, scope, map, file, optUserData);
+        nKeys = Array::createFromIterator(map.keys());
+        map.each((k, opt) -> opt.each(v -> writer.write(k, v)));
+        writer.write(KKeys(), Keys(nKeys));
+      }
+    },
+  );
+  computedHdl
+}
+
+module end;

@@ -1,0 +1,178 @@
+module UiInput;
+
+class HoverHandler(
+  input: Ui.Input,
+  nodeInfo: Ui.NodeInfo,
+) extends FWK.HoverHandler {
+  fun getIdentifier(): Ui.Path {
+    this.input.path
+  }
+
+  fun enter(context: mutable SKFS.Context): void {
+    if (!this.input.controller.isDisabled(context)) {
+      this.input.state.emitHover(context, true);
+      FWKPointer.setCursor(context, Ui.TextCursor());
+    };
+  }
+
+  fun manage(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    if (this.input.controller.isDisabled(context)) {
+      return FWK.Result(false);
+    };
+    this.onMouse(context, mouse)
+  }
+
+  private fun onMouse(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    wheel = mouse.getWheelValue(context.tick);
+    if (wheel != 0) {
+      incr = Math.sign(-wheel).toInt() * 2;
+      this.input.state.emitScrolling(context, incr);
+      return FWK.Result(true)
+    };
+    commands = mutable Vector<Command>[];
+    count = mouse.getPrimaryClickCount();
+    res = if (mouse.isPrimaryPressed(context.tick)) {
+      (position, show, clear, fire, _) = this.input.getMousePosition(
+        context,
+        mouse.offset(),
+        this.nodeInfo,
+        false,
+      );
+      if (show) {
+        this.input.state.emitShowing(
+          context,
+          !this.input.state.isShowing(context),
+        );
+        FWK.Result(true)
+      } else if (clear) {
+        this.input.state.emitDeleteTo(context, TLine(None()));
+        FWK.Result(true)
+      } else if (fire) {
+        FWK.Result(
+          emitMessage(
+            context,
+            this.input.state,
+            this.input.controller.getActionMessages,
+          ),
+        )
+      } else if (count == 0) {
+        SystemProperties.setRequireFocus(context, this.input.path);
+        inSelection = this.input.state.getSelection(context)
+          .map(selection -> contains(selection, position))
+          .default(false);
+        if (FWK.isShiftDown(context)) {
+          commands.push(SelectTo(TPos(Some(position))));
+        } else if (!inSelection) {
+          commands.push(GoTo(TPos(Some(position))));
+        } else {
+          // Mark position
+          commands.push(SetMoveSelection(true));
+        };
+        commands.push(SetArmed(true));
+        FWK.Result(true, Some(true))
+      } else if (count == 1) {
+        this.input.state.emitSelectTo(context, TGroup(None()));
+        FWK.Result(true)
+      } else if (count == 2) {
+        this.input.state.emitSelectTo(context, TLine(None()));
+        FWK.Result(true)
+      } else {
+        FWK.Result(false)
+      }
+    } else if (
+      mouse.isPrimaryReleased(context.tick) &&
+      count <= 1 &&
+      this.input.state.isArmed(context)
+    ) {
+      (position, _, _, _, _) = this.input.getMousePosition(
+        context,
+        mouse.offset(),
+        this.nodeInfo,
+        false,
+      );
+      isMoveSelection = this.input.state.isMoveSelection(context);
+      inSelection = this.input.state.getSelection(context)
+        .map(selection -> contains(selection, position, !isMoveSelection))
+        .default(false);
+      if (inSelection) {
+        commands.push(GoTo(TPos(Some(position))));
+      };
+      commands.push(SetMoveSelection(false));
+      commands.push(SetArmed(false));
+      FWK.Result(inSelection, Some(false))
+    } else if (
+      mouse.isPrimaryDown(context.tick) &&
+      count == 0 &&
+      this.input.state.isArmed(context)
+    ) {
+      optSelection = this.input.state.getSelection(context);
+      (position, _, _, _, _) = this.input.getMousePosition(
+        context,
+        mouse.offset(),
+        this.nodeInfo,
+        false,
+        optSelection.isNone(),
+      );
+      FWK.Result(
+        if (!this.input.state.isMoveSelection(context)) {
+          isScrolling = this.input.state.isScrolling(context);
+          current = this.input.state.getPosition(context);
+          optSelection match {
+          | Some(sel) ->
+            if (position != sel.start && position != sel.end) {
+              this.input.state.emitSelectTo(
+                context,
+                TPos(Some(position)),
+                !isScrolling,
+              );
+            }
+          | _ ->
+            if (current != position) {
+              this.input.state.emitSelectTo(
+                context,
+                TPos(Some(position)),
+                !isScrolling,
+              );
+            }
+          };
+          true
+        } else {
+          false
+        },
+        Some(true),
+      )
+    } else {
+      FWK.Result(false)
+    };
+    if (!commands.isEmpty()) {
+      this.input.state.emitAll(context, commands);
+    };
+    res
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    this.input.state.emitReset(context);
+    FWKPointer.resetCursor(context);
+  }
+
+  fun getTooltip(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    Ui.buildTooltip(context, this.input.path, this.input.controller.getTooltip)
+  }
+}
+
+fun contains(range: Range, position: Int, exclusive: Bool = false): Bool {
+  if (exclusive) {
+    range.start < position && range.end > position
+  } else {
+    range.start <= position && range.end > position
+  }
+}
+
+module end;

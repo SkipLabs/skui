@@ -1,0 +1,27 @@
+module UiProgress;
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetIndeterminate(value: Int)
+
+  fun toJSON(): JSON.Value
+  | SetIndeterminate(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiProgress.SetIndeterminate" -> SetIndeterminate(jso.getInt("value"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiProgress.Command`)
+    }
+  }
+}
+
+module end;

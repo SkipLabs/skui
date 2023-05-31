@@ -1,0 +1,35 @@
+module UiMonospace;
+
+class Metrics(
+  horizontal: Ui.MAxis,
+  vertical: Ui.MAxis,
+) extends Ui.UserData uses Show {
+  //
+  static fun compute(
+    context: mutable SKFS.Context,
+    size: Geometry.Size,
+    lines: Int,
+    columns: Int,
+    font: Geometry.Size,
+    hScroll: Ui.Getter<?Ui.Scroll>,
+    vScroll: Ui.Getter<?Ui.Scroll>,
+  ): this {
+    static(
+      Ui.MAxis::compute(context, size.width, columns + 1, font.width, hScroll),
+      Ui.MAxis::compute(context, size.height, lines + 1, font.height, vScroll),
+    )
+  }
+
+  fun checkEnsureVisible(optHEV: ?Ui.Visible, optVEV: ?Ui.Visible): this {
+    static(
+      this.horizontal.checkEnsureVisible(optHEV),
+      this.vertical.checkEnsureVisible(optVEV),
+    )
+  }
+
+  fun toString(): String {
+    `(horizontal: {${this.horizontal}}, vertical: {${this.vertical}})`
+  }
+}
+
+module end;

@@ -1,0 +1,67 @@
+module UiToggle;
+
+class FocusHandler{
+  toggle: Ui.Toggle,
+} extends Ui.TabFocusHandler uses FWK.OnlyShortcuts {
+  fun getIdentifier(): Ui.Path {
+    this.toggle.path;
+  }
+
+  protected fun getShortcuts(
+    context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    if (!this.toggle.controller.isDisabled(context, true)) {
+      shortcuts = mutable Vector<FWK.ShortcutAction>[];
+      if (this.toggle.state.isArmed(context)) {
+        shortcuts.push(
+          FWK.ShortcutAction(
+            "toogle",
+            FWK.Shortcut(
+              Array[
+                UiEvent.pureKeyReleased(UiEvent.KeyInfo::enter),
+                UiEvent.pureKeyReleased(UiEvent.KeyInfo::space),
+              ],
+            ),
+            FWK.Standard(ctx ~> {
+              this.toggle.controller.getIndeterminateProp(ctx, true).each(
+                prop -> prop.set(ctx, Some(false), 0),
+              );
+              selectedProp = this.toggle.controller.getSelectedProp(ctx, true);
+              this.toggle.controller.getKind(ctx, true) match {
+              | Toggle()
+              | Checkbox() ->
+                selectedProp.toggle(ctx, 0)
+              | Radio() -> selectedProp.set(ctx, Some(true), 0)
+              };
+              this.toggle.state.emitArmed(ctx, false);
+            }),
+          ),
+        );
+        shortcuts.push(
+          FWK.ShortcutAction(
+            "cancel",
+            FWK.Shortcut(Array[UiEvent.keyPressed(UiEvent.KeyInfo::escape)]),
+            FWK.Standard(ctx ~> this.toggle.state.emitArmed(ctx, false)),
+          ),
+        );
+      };
+      shortcuts.push(
+        FWK.ShortcutAction(
+          "arm",
+          FWK.Shortcut(
+            Array[
+              UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter),
+              UiEvent.pureKeyPressed(UiEvent.KeyInfo::space),
+            ],
+          ),
+          FWK.Standard(ctx ~> this.toggle.state.emitArmed(ctx, true)),
+        ),
+      );
+      shortcuts.toArray()
+    } else {
+      Array[]
+    }
+  }
+}
+
+module end;

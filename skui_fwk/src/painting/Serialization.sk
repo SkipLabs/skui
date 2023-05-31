@@ -1,0 +1,95 @@
+module Ui;
+
+extension base class Paint extends JSONValue {
+  static fun fromJSON(jsv: JSON.Value): Paint {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Color" -> .Color::fromStringHex(jso.getString("rgba"))
+    | "Ui.DummyPaint" -> DummyPaint()
+    | "Ui.LinearGradient" ->
+      LinearGradient(
+        Geometry.Offset::fromJSON(jso.get("start")),
+        Geometry.Offset::fromJSON(jso.get("end")),
+        JSON.arrayFromJSON(jso.get("stops"), Stop::fromJSON),
+      )
+    | "Ui.RadialGradient" ->
+      RadialGradient(
+        Geometry.Offset::fromJSON(jso.get("center")),
+        JSON.getFloat("radius", jso),
+        JSON.arrayFromJSON(jso.get("stops"), Stop::fromJSON),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Paint`)
+    }
+  }
+}
+
+extension class .Color {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "rgba" => JSON.String(this.toStringHex()),
+      ],
+    )
+  }
+}
+
+extension class DummyPaint {
+  fun toJSON(): JSON.Value {
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  }
+}
+
+extension class LinearGradient {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "start" => this.start.toJSON(),
+        "end" => this.end.toJSON(),
+        "stops" => JSON.arrayToJSON(this.stops, st ~> st.toJSON()),
+      ],
+    )
+  }
+}
+
+extension class RadialGradient {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "center" => this.center.toJSON(),
+        "radius" => JSON.FloatNumber(this.radius),
+        "stops" => JSON.arrayToJSON(this.stops, st ~> st.toJSON()),
+      ],
+    )
+  }
+}
+
+extension class Stop extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "offset" => JSON.FloatNumber(this.offset),
+        "color" => this.color.toJSON(),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Stop {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.Stop" ->
+      Stop(
+        JSON.getFloat("offset", jso),
+        Paint::fromJSON(jso.get("color")) as .Color _,
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Stop`)
+    }
+  }
+}
+
+module end;

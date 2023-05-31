@@ -1,0 +1,74 @@
+module UiTableCell;
+
+const statePath: String = "ui/tablecell/state";
+
+class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKFS.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.getDirName().toString()
+  }
+
+  fun setArmed(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.armedProp, SKFS.BoolFile(value))
+  }
+
+  fun setHover(context: mutable SKFS.Context, value: Bool): void {
+    this.handle.write(context, Ui.hoverProp, SKFS.BoolFile(value))
+  }
+}
+
+class HState(handle: SKFS.Handle<SKFS.File>) extends State {
+  //
+  fun isArmed(context: mutable SKFS.Context): Bool {
+    this.handle.getBool(context, Ui.armedProp)
+  }
+
+  fun isHover(context: mutable SKFS.Context): Bool {
+    this.handle.getBool(context, Ui.hoverProp)
+  }
+
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void {
+    this.emit(context, SetArmed(value))
+  }
+
+  fun emitHover(context: mutable SKFS.Context, value: Bool): void {
+    this.emit(context, SetHover(value))
+  }
+
+  fun emitAll(context: mutable SKFS.Context, armed: Bool, hover: Bool): void {
+    this.emit(context, Multiple(Array[SetArmed(armed), SetHover(hover)]))
+  }
+
+  private fun emit(
+    context: mutable SKFS.Context,
+    command: FWKMessage.Command,
+  ): void {
+    FWKMessage.emit(
+      context,
+      statePath,
+      this.handle.getDirName().toString(),
+      command,
+    );
+  }
+}
+
+fun init(context: mutable SKFS.Context, path: Ui.Path): State {
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeDir(f ~> f, dirName, Array[]);
+  HState(stateHdl)
+}
+
+module end;

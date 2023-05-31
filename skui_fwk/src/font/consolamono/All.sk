@@ -1,0 +1,56 @@
+module Font;
+
+fun fillConsolaMono(
+  p: SortedMap<TypefaceInfo, String>,
+): SortedMap<TypefaceInfo, String> {
+  consolaMono = "ConsolaMono";
+  regularB64 = ConsolaMono.regularB64();
+  // ConsolaMono thin
+  !p = p.add(TypefaceInfo(consolaMono, Weight::thin, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::thin, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::thin, Oblique()), regularB64);
+  // ConsolaMono extra light
+  !p = p.add(
+    TypefaceInfo(consolaMono, Weight::extralight, Normal()),
+    regularB64,
+  );
+  !p = p.add(
+    TypefaceInfo(consolaMono, Weight::extralight, Italic()),
+    regularB64,
+  );
+  !p = p.add(
+    TypefaceInfo(consolaMono, Weight::extralight, Oblique()),
+    regularB64,
+  );
+  // ConsolaMono light
+  !p = p.add(TypefaceInfo(consolaMono, Weight::light, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::light, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::light, Oblique()), regularB64);
+  // ConsolaMono normal
+  !p = p.add(TypefaceInfo(consolaMono, Weight::normal, Normal()), regularB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::normal, Italic()), regularB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::normal, Oblique()), regularB64);
+  // ConsolaMono medium
+  boldB64 = ConsolaMono.boldB64();
+  !p = p.add(TypefaceInfo(consolaMono, Weight::medium, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::medium, Italic()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::medium, Oblique()), boldB64);
+  // ConsolaMono semi bold
+  !p = p.add(TypefaceInfo(consolaMono, Weight::semibold, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::semibold, Italic()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::semibold, Oblique()), boldB64);
+  // ConsolaMono bold
+  !p = p.add(TypefaceInfo(consolaMono, Weight::bold, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::bold, Italic()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::bold, Oblique()), boldB64);
+  // ConsolaMono extra bold
+  !p = p.add(TypefaceInfo(consolaMono, Weight::extrabold, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::extrabold, Italic()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::extrabold, Oblique()), boldB64);
+  // ConsolaMono black
+  !p = p.add(TypefaceInfo(consolaMono, Weight::black, Normal()), boldB64);
+  !p = p.add(TypefaceInfo(consolaMono, Weight::black, Italic()), boldB64);
+  p.add(TypefaceInfo(consolaMono, Weight::black, Oblique()), boldB64);
+}
+
+module end;

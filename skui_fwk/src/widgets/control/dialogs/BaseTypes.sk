@@ -1,0 +1,467 @@
+module UiDialogs;
+
+base class QType() {
+  children =
+  | YesNo(withNeutral: Bool = false)
+  | AcceptDecline(withNeutral: Bool = false)
+  | AgreeDisagree(withNeutral: Bool = false)
+  | ConfirmDismiss(withNeutral: Bool = false)
+  | QCustom(confirm: Text, dismiss: Text, optNeutral: ?Text)
+}
+
+class Settings{
+  // settings
+  kind: UiInput.Kind = UiInput.Text(),
+  maxChars: Int = 64,
+  visibleChars: Int = 10,
+  //
+  optText: ?JSON.Value = None(),
+  optPosition: ?JSON.Value = None(),
+  optSelection: ?JSON.Value = None(),
+  optStatus: ?JSON.Value = None(),
+  //
+  optPrefix: ?JSON.Value = None(),
+  optSuffix: ?JSON.Value = None(),
+  optPlaceHolder: ?JSON.Value = None(),
+  optTooltip: ?JSON.Value = None(),
+  optIcon: ?JSON.Value = None(),
+  optDisabled: ?JSON.Value = None(),
+  optWithCounter: ?JSON.Value = None(),
+  optWithStatus: ?JSON.Value = None(),
+  optWithClear: ?JSON.Value = None(),
+  optAlignRight: ?JSON.Value = None(),
+} {
+  //
+  fun toSupplier(_context: mutable SKFS.Context): UiInput.Supplier {
+    // Supplier
+    /*textPropertyGetter = Ui.toStringPropOptGetter(context, this.optText);
+    positionPropertyGetter = Ui.toIntPropOptGetter(context, this.optPosition);
+    selectionPropertyGetter = Ui.toRangePropOptGetter(
+      context,
+      this.optSelection,
+    );
+    statusPropertyGetter = Ui.toStatusPropOptGetter(context, this.optStatus);
+    UiInput.LamSupplier{
+      text => textPropertyGetter,
+      position => positionPropertyGetter,
+      selection => selectionPropertyGetter,
+      status => statusPropertyGetter,
+    };*/
+    todo("UiDialog.Settings.toSupplier")
+  }
+
+  fun toDisabled(_context: mutable SKFS.Context): Ui.GetterOne<Bool, Bool> {
+    /*disabledGetter = Ui.toBoolOptGetter(context, this.optDisabled);
+    (ctx, iu) ~> disabledGetter(ctx, iu).default(false)*/
+    todo("UiDialog.Settings.toDisabled")
+  }
+
+  fun toController(_context: mutable SKFS.Context): UiInput.Controller {
+    /*prefixGetter = Ui.toTextOptGetter(context, this.optPrefix);
+    suffixGetter = Ui.toTextOptGetter(context, this.optSuffix);
+    placeHolderGetter = Ui.toTextOptGetter(context, this.optPlaceHolder);
+    tooltipGetter = Ui.toTextOptGetter(context, this.optTooltip);
+    iconGetter = Ui.toIconOptGetter(context, this.optIcon);
+    withCounterGetter = Ui.toBoolOptGetter(context, this.optWithCounter);
+    withStatusGetter = Ui.toBoolOptGetter(context, this.optWithStatus);
+    withClearGetter = Ui.toBoolOptGetter(context, this.optWithClear);
+    alignRightGetter = Ui.toBoolOptGetter(context, this.optAlignRight);
+    UiInput.LamController{
+      kind => (_ctx, _iu) ~> this.kind,
+      placeHolder => ctx ~> placeHolderGetter(ctx, false),
+      prefix => ctx ~> prefixGetter(ctx, false),
+      suffix => ctx ~> suffixGetter(ctx, false),
+      tooltip => ctx ~> tooltipGetter(ctx, false),
+      icon => (ctx, size) ~>
+        iconGetter(ctx, false)
+          .flatMap(ei -> ei.toIconBuilder())
+          .flatMap(ib -> ib.buildIcon(ctx, size)),
+      visibleChars => _ctx ~> this.visibleChars,
+      maxChars => _ctx ~> this.maxChars,
+      alignRight => ctx ~> alignRightGetter(ctx, false).default(false),
+      withCounter => ctx ~> withCounterGetter(ctx, false).default(true),
+      withStatus => ctx ~> withStatusGetter(ctx, false).default(true),
+      withClear => ctx ~> withClearGetter(ctx, false).default(true),
+      withLabel => _ctx ~> false,
+      placeholderAsLabel => _ctx ~> false,
+    };*/
+    todo("UiDialog.Settings.toController")
+  }
+}
+
+base class Kind extends SKFS.File {
+  children =
+  | Alert{text: Text, optTitle: ?Text = None()}
+  | Question{
+    text: Text,
+    target: FWKMessage.Target,
+    type_: QType = YesNo(),
+    optTitle: ?Text = None(),
+    autoClose: Bool = true,
+  }
+  | Input{
+    message: Text,
+    target: FWKMessage.Target,
+    optTitle: ?Text = None(),
+    autoClose: Bool = true,
+    settings: Settings = Settings{},
+  }
+  | Custom(dirName: SKFS.DirName, key: String)
+
+  fun toDialog(
+    context: mutable SKFS.Context,
+    module_: String,
+    scope: String,
+    path: Ui.Path,
+    id: Int,
+  ): Ui.Dialog
+  | Alert{text, optTitle} ->
+    alert(
+      context,
+      path.makeChild("alert"),
+      text,
+      ctx ~>
+        FWKMessage.emitMessage(
+          ctx,
+          FWKMessage.Message(module_, scope, Close(id)),
+        ),
+      optTitle,
+    )
+  | Question{text, target, type_, optTitle, autoClose} ->
+    closeMessage = FWKMessage.Message(module_, scope, Close(id));
+    confirm(
+      context,
+      path.makeChild("confirm"),
+      text,
+      type_,
+      ctx ~>
+        FWKMessage.emitMessage(
+          ctx,
+          target.toMessage(
+            if (autoClose) Map["value" => JSON.Bool(true)] else {
+              Map["value" => JSON.Bool(true), "close" => closeMessage.toJSON()]
+            },
+          ),
+        ),
+      ctx ~>
+        FWKMessage.emitMessage(
+          ctx,
+          target.toMessage(
+            if (autoClose) Map["value" => JSON.Bool(false)] else {
+              Map["value" => JSON.Bool(true), "close" => closeMessage.toJSON()]
+            },
+          ),
+        ),
+      Some(ctx ~> FWKMessage.emitMessage(ctx, closeMessage)),
+      optTitle,
+      autoClose,
+    )
+  | Input{message, target, optTitle, autoClose, settings} ->
+    closeMessage = FWKMessage.Message(module_, scope, Close(id));
+    input(
+      context,
+      path.makeChild("input"),
+      message,
+      settings,
+      (ctx, optStr) ~>
+        optStr match {
+        | Some(value) ->
+          FWKMessage.emitMessage(
+            ctx,
+            target.toMessage(
+              if (autoClose) Map["value" => JSON.String(value)] else {
+                Map[
+                  "value" => JSON.String(value),
+                  "close" => closeMessage.toJSON(),
+                ]
+              },
+            ),
+          )
+        | _ ->
+          FWKMessage.emitMessage(
+            ctx,
+            target.toMessage(
+              if (autoClose) Map[] else {
+                Map["close" => closeMessage.toJSON()]
+              },
+            ),
+          )
+        },
+      if (autoClose) {
+        ctx ~> FWKMessage.emitMessage(ctx, closeMessage)
+      } else {
+        _ctx ~> void
+      },
+      optTitle,
+    )
+  | Custom(dirName, key) ->
+    closeMessage = FWKMessage.Message(module_, scope, Close(id));
+    handle = SKFS.EHandle<UiDialog.Builder>(UiDialog.Builder::forFile, dirName);
+    handle.get(context, SKFS.StrID(key)).build(context, closeMessage)
+}
+
+base class Controller {
+  fun getContent(context: mutable SKFS.Context): Ui.Widget;
+}
+
+base class State extends SKFS.File {
+  fun getDialogCount(context: mutable SKFS.Context): Int;
+  fun getDialog(context: mutable SKFS.Context, index: Int): Ui.Dialog;
+
+  fun emitOpen(context: mutable SKFS.Context, kind: Kind): void;
+  fun emitClose(context: mutable SKFS.Context, id: Int): void;
+  fun emitSetVisible(
+    context: mutable SKFS.Context,
+    id: Int,
+    visible: Bool,
+  ): void;
+
+  fun openAlertMessage(
+    text: Text,
+    optTitle: ?Text = None(),
+  ): FWKMessage.Message;
+
+  fun openConfirmMessage(
+    text: Text,
+    target: FWKMessage.Target,
+    autoClose: Bool = true,
+    type_: UiDialogs.QType = UiDialogs.YesNo(),
+    optTitle: ?Text = None(),
+  ): FWKMessage.Message;
+
+  fun openInputMessage(
+    message: Text,
+    target: FWKMessage.Target,
+    autoClose: Bool = true,
+    optTitle: ?Text = None(),
+    settings: Settings = Settings{},
+  ): FWKMessage.Message;
+}
+
+base class Storage {
+  fun getName(): String;
+  fun getScope(): String;
+  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+class Collection(
+  controller: Controller,
+  state: State,
+) extends Ui.WidgetsCollection {
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.state.getDialogCount(context) + 1;
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+    if (index == 0) {
+      this.controller.getContent(context)
+    } else {
+      this.state.getDialog(context, index - 1)
+    }
+  }
+}
+
+fun alert(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  message: Text,
+  onClose: mutable SKFS.Context ~> void,
+  optTitle: ?Text = None(),
+): Ui.Dialog {
+  content = Ui.VText::createForController(
+    context,
+    path.makeChild("message"),
+    UiText.LamController{
+      text => _ctx ~> message,
+      style => ctx ~> {
+        fill = ctx.getThemeColor(UiTheme.Message());
+        faceId = ctx.getThemeFont(UiTheme.Message());
+        Text.Style{faceId, fill, wrapping => Text.WordWrap()}
+      },
+    },
+  );
+  Ui.Dialog::create(
+    context,
+    path,
+    UiDialog.LamController{
+      kind => _ctx ~>
+        UiDialog.LeftRight(
+          Array[],
+          Array[
+            UiDialog.Action("close", !"OK", onClose, Some(UiDialog.Both())),
+          ],
+        ),
+      content => _ctx ~> content,
+      title => _ctx ~> optTitle,
+      mainFocusable => _ctx ~> None(),
+    },
+  );
+}
+
+fun confirm(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  message: Text,
+  qType: QType,
+  onConfirm: mutable SKFS.Context ~> void,
+  onDismiss: mutable SKFS.Context ~> void,
+  optOnNeutral: ?mutable SKFS.Context ~> void = None(),
+  optTitle: ?Text = None(),
+  neutralInEach: Bool = false,
+): Ui.Dialog {
+  content = Ui.VText::createForController(
+    context,
+    path.makeChild("message"),
+    UiText.LamController{
+      text => _ctx ~> message,
+      style => ctx ~> {
+        fill = ctx.getThemeColor(UiTheme.Message());
+        faceId = ctx.getThemeFont(UiTheme.Message());
+        Text.Style{faceId, fill, wrapping => Text.WordWrap()}
+      },
+    },
+  );
+  (optNeutral, confirm, dismiss) = qType match {
+  | YesNo(withNeutral) ->
+    (if (withNeutral) Some(!"Cancel") else None(), !"Yes", !"No")
+  | AcceptDecline(withNeutral) ->
+    (if (withNeutral) Some(!"Cancel") else None(), !"Accept", !"Decline")
+  | AgreeDisagree(withNeutral) ->
+    (if (withNeutral) Some(!"Cancel") else None(), !"Agree", !"Disagree")
+  | ConfirmDismiss(withNeutral) ->
+    (if (withNeutral) Some(!"Cancel") else None(), !"Confirm", !"Dismiss")
+  | QCustom(confirm, dismiss, optNeutral) -> (optNeutral, confirm, dismiss)
+  };
+  kind = UiDialog.LeftRight(
+    optNeutral
+      .flatMap(neutral ->
+        optOnNeutral.map(perform ->
+          Array[UiDialog.Action("neutral", neutral, perform)]
+        )
+      )
+      .default(Array[]),
+    Array[
+      UiDialog.Action(
+        "confirm",
+        confirm,
+        ctx ~> {
+          if (neutralInEach) {
+            optOnNeutral.each(perform -> perform(ctx));
+          };
+          onConfirm(ctx)
+        },
+        Some(UiDialog.Submit()),
+      ),
+      UiDialog.Action(
+        "dismiss",
+        dismiss,
+        ctx ~> {
+          if (neutralInEach) {
+            optOnNeutral.each(perform -> perform(ctx));
+          };
+          onDismiss(ctx)
+        },
+        Some(UiDialog.Exit()),
+      ),
+    ],
+  );
+  Ui.Dialog::create(
+    context,
+    path,
+    UiDialog.LamController{
+      kind => _ctx ~> kind,
+      content => _ctx ~> content,
+      title => _ctx ~> optTitle,
+      mainFocusable => _ctx ~> None(),
+    },
+  );
+}
+
+fun input(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  message: Text,
+  settings: Settings,
+  onSubmit: (mutable SKFS.Context, ?String) ~> void,
+  onClose: mutable SKFS.Context ~> void = _ctx ~> void,
+  optTitle: ?Text = None(),
+): Ui.Dialog {
+  contentPath = path.makeChild("content");
+  textView = Ui.VText::createForController(
+    context,
+    contentPath.makeChild("message"),
+    UiText.LamController{
+      text => _ctx ~> message,
+      style => ctx ~> {
+        fill = ctx.getThemeColor(UiTheme.Message());
+        faceId = ctx.getThemeFont(UiTheme.Message());
+        Text.Style{faceId, fill, wrapping => Text.WordWrap()}
+      },
+    },
+  );
+  padding = Ui.Decorated::create(
+    context,
+    contentPath.makeChild("padding"),
+    UiDecorated.LamController{
+      decoration => _ctx ~> Ui.Padding(Geometry.Insets::only{bottom => 16.0}),
+      widget => _ctx ~> Some(textView),
+    },
+  );
+  controller = settings.toController(context);
+  input = Ui.Input::new(
+    context,
+    contentPath.makeChild("input"),
+    controller,
+    settings.toSupplier(context),
+  );
+  content = Ui.Flex::createForController(
+    context,
+    contentPath,
+    UiFlex.LamController{
+      widgets => Ui.WidgetsArray(Array[padding, input]),
+      direction => _ctx ~> Ui.VerticalAxis(),
+      crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+    },
+  );
+  disabled = settings.toDisabled(context);
+  Ui.Dialog::create(
+    context,
+    path,
+    UiDialog.LamController{
+      kind => _ctx ~>
+        UiDialog.LeftRight(
+          Array[],
+          Array[
+            UiDialog.Action(
+              "submit",
+              !"Submit",
+              ctx ~> {
+                onSubmit(ctx, Some(input.state.getText(ctx, true)));
+                onClose(ctx);
+              },
+              Some(UiDialog.Submit()),
+              (ctx, iu) ~>
+                disabled(ctx, iu) || !input.getStatus(ctx, iu).isGood()
+              ,
+            ),
+            UiDialog.Action(
+              "cancel",
+              !"Cancel",
+              ctx ~> {
+                onSubmit(ctx, None());
+                onClose(ctx);
+              },
+              Some(UiDialog.Exit()),
+            ),
+          ],
+        ),
+      content => _ctx ~> content,
+      title => _ctx ~> optTitle,
+      mainFocusable => _ctx ~> Some(input.path),
+    },
+  );
+}
+
+module end;

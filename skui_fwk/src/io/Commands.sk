@@ -1,0 +1,32 @@
+module IO; //
+/*
+base class Query(tick: SKFS.Tick) extends SKFS.File {
+  children =
+  | Load()
+  | Remove()
+  | Update(value: JSONValue)
+
+  static fun forFile(obj: SKFS.File): Query {
+    obj match {
+    | x @ Query _ -> x
+    | _ -> invariant_violation("Invalid UiGL.Query")
+    }
+  }
+}
+
+base class Change {
+  children =
+  | Single(value: JSONValue)
+  | Multiple(values: Array<JSONValue>)
+  | Clear()
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | Set(key: JSONValue, value: Change)
+  | SetAll(values: Array<Set>)
+}
+*/
+
+
+module end;

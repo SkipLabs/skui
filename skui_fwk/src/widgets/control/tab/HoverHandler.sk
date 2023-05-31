@@ -1,0 +1,68 @@
+module UiTab;
+
+class HoverHandler(
+  path: Ui.Path,
+  controller: Controller,
+  state: State,
+  close: Bool,
+) extends FWK.HoverHandler {
+  fun getIdentifier(): Ui.Path {
+    if (this.close) this.path.makeChild("close") else this.path;
+  }
+
+  fun enter(context: mutable SKFS.Context): void {
+    if (!this.controller.isDisabled(context)) {
+      this.state.emitHover(context, this.close, true);
+      FWKPointer.setCursor(context, Ui.HandCursor());
+    };
+  }
+
+  fun manage(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    if (this.controller.isDisabled(context)) {
+      return FWK.Result(false)
+    };
+    FWK.Result(
+      if (mouse.isPrimaryPressed(context.tick)) {
+        SystemProperties.setRequireFocus(context, this.path);
+        this.state.emitArmed(context, this.close, true);
+        true
+      } else if (
+        mouse.isPrimaryReleased(context.tick) &&
+        this.state.getArmed(context) == Some(this.close)
+      ) {
+        this.state.emitArmed(context, this.close, false);
+        if (this.close) {
+          this.controller.getCloseMessages(context, true).each(message ->
+            FWKMessage.emitMessage(context, message)
+          )
+        } else {
+          this.controller.getFireMessages(context, true).each(message ->
+            FWKMessage.emitMessage(context, message)
+          )
+        };
+        true
+      } else {
+        false
+      },
+    )
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    FWKPointer.resetCursor(context);
+    this.state.emitAll(context, this.close, false, false);
+  }
+
+  fun getTooltip(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    if (!this.close) {
+      Ui.buildTooltip(context, this.path, this.controller.getTooltip)
+    } else {
+      None()
+    }
+  }
+}
+
+module end;

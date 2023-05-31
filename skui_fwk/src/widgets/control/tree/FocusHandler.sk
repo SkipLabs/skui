@@ -1,0 +1,184 @@
+module UiTree;
+
+class FocusHandler{
+  tree: Ui.Tree,
+} extends Ui.TabFocusHandler uses FWK.OnlyShortcuts {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.tree.path;
+  }
+
+  protected fun getShortcuts(
+    _context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    Array[
+      FWK.ShortcutAction(
+        "selectAll",
+        FWK.Shortcut::selectAll(),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SAll())),
+      ),
+      FWK.ShortcutAction(
+        "fire",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter)]),
+        FWK.Standard(this.tree.state.emitFire),
+      ),
+      FWK.ShortcutAction(
+        "selectCurrent",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::space)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SCurrent(false))),
+      ),
+      FWK.ShortcutAction(
+        "toggleCurrent",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::space)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SCurrent(true))),
+      ),
+      FWK.ShortcutAction(
+        "selectToCurrent",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::space)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SToCurrent(false))),
+      ),
+      FWK.ShortcutAction(
+        "selectToCurrentKeep",
+        FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::space)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SToCurrent(true))),
+      ),
+      FWK.ShortcutAction(
+        "expandCurrent",
+        FWK.Shortcut(
+          Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowRight)],
+        ),
+        FWK.Standard((ctx ~> this.tree.state.emitExpansion(ctx, true, None()))),
+      ),
+      FWK.ShortcutAction(
+        "collapseCurrent",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowLeft)]),
+        FWK.Standard(
+          (ctx ~> this.tree.state.emitExpansion(ctx, false, None())),
+        ),
+      ),
+      FWK.ShortcutAction(
+        "selectPrevious",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowUp)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitSelect(ctx, SPrevious(), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "selectNext",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowDown)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitSelect(ctx, SNext(), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "selectToPrevious",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::arrowUp)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitSelect(ctx, SToPrevious(false), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "selectToNext",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::arrowDown)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitSelect(ctx, SToNext(false), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "selectToPreviousKeep",
+        FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::arrowUp)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitSelect(ctx, SToPrevious(true), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "selectToNextKeep",
+        FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::arrowDown)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitSelect(ctx, SToNext(true), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "goToPrevious",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::arrowUp)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitGoto(ctx, Some(GPrevious()), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "goToNext",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::arrowDown)]),
+        FWK.Repeatable((ctx, optRepeat) ~>
+          this.tree.state.emitGoto(ctx, Some(GNext()), optRepeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "selectFirst",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::home)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SFirst())),
+      ),
+      FWK.ShortcutAction(
+        "selectLast",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::end)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SLast())),
+      ),
+      FWK.ShortcutAction(
+        "selectToFirst",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::home)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SToFirst(false))),
+      ),
+      FWK.ShortcutAction(
+        "selectToLast",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::end)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SToLast(false))),
+      ),
+      FWK.ShortcutAction(
+        "selectToFirstKeep",
+        FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::home)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SToFirst(true))),
+      ),
+      FWK.ShortcutAction(
+        "selectToLastKeep",
+        FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::end)]),
+        FWK.Standard(ctx ~> this.tree.state.emitSelect(ctx, SToLast(true))),
+      ),
+      FWK.ShortcutAction(
+        "goToFirst",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::home)]),
+        FWK.Standard(ctx ~> this.tree.state.emitGoto(ctx, Some(GFirst()))),
+      ),
+      FWK.ShortcutAction(
+        "goToLast",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::end)]),
+        FWK.Standard(ctx ~> this.tree.state.emitGoto(ctx, Some(GLast()))),
+      ),
+    ]
+  }
+
+  fun getDropdown(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    Some(
+      FWK.SourcedWidget(Some(this.tree.path), (ctx, root) ~> {
+        selection = this.tree.state.getSelection(ctx);
+        optCurrent = this.tree.state.getCurrent(ctx);
+        items = this.tree.controller.getContextMenuItems(
+          ctx,
+          optCurrent,
+          selection,
+        );
+        if (!items.isEmpty()) {
+          Some(
+            root.buildDropdown(
+              ctx,
+              this.tree.path.makeChild("@treeContextMenu"),
+              items,
+            ),
+          )
+        } else {
+          None()
+        }
+      }),
+    );
+  }
+}
+
+module end;

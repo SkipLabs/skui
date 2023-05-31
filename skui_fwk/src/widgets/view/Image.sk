@@ -1,0 +1,73 @@
+module UiImage;
+
+base class Controller extends Ui.Parameters {
+  fun getImage(context: mutable SKFS.Context): ?Ui.Picture;
+}
+
+class LamController{
+  image: (mutable SKFS.Context) ~> ?Ui.Picture = (_ctx) ~> None(),
+} extends Controller {
+  //
+  fun getImage(context: mutable SKFS.Context): ?Ui.Picture {
+    this.image(context)
+  }
+}
+
+module end;
+
+module Ui;
+
+class ImageView{
+  controller: UiImage.Controller,
+} extends Ui.StrictWidget uses FWK.NoFocusHandler, Ui.WithNodeCache {
+  //
+  type Params = UiImage.Controller;
+  type Buffer = Ui.NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    controller: UiImage.Controller,
+    cache: Ui.NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{path, controller, optConfiguration, cache, tick => context.tick}
+  }
+
+  fun layout(
+    context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    optSize = this.controller.getImage(context).map(i -> i.getSize());
+    size = constraints.constrain(
+      optSize.default(Geometry.ISize(0, 0)).toSize(),
+    );
+    Ui.Node(this, size)
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | Ui.MainLayer() ->
+      drawables = mutable Vector<Ui.Drawable>[];
+      this.controller.getImage(context).each(picture ->
+        drawables.push(support.image(absolute, node.size(), picture))
+      );
+      drawables.toArray()
+    | Ui.BackgroundLayer()
+    | Ui.ForegroundLayer() ->
+      Array[]
+    };
+  }
+
+  fun getViewportDefinition(_context: mutable SKFS.Context): ?Ui.ViewportDef {
+    None()
+  }
+}
+
+module end;

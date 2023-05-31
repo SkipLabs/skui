@@ -1,0 +1,161 @@
+module UiTab;
+
+class DrawInfo private (
+  optLabel: ?(String, Geometry.Rect, Font.FaceID, Text.FixedAlign),
+  optIcon: ?(Ui.Icon, Geometry.Offset, Geometry.Size),
+  optBadge: ?(?String, Geometry.Offset, Font.FaceID, Geometry.Rect),
+  optDiscriminant: ?(String, Geometry.Rect, Font.FaceID),
+  optClose: ?Geometry.Rect,
+) extends Ui.DrawInfo {
+  //
+  static fun compute(
+    layout: Layout,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    iconTextGap: Float,
+  ): this {
+    innerSize = layout.computeSize();
+    width = size.width - 2.0 * padding;
+    minimized = Math.greater(innerSize.width, width);
+    right = absolute.dx + size.width - padding;
+    optClosable = if (layout.closable) {
+      res = Some(
+        Geometry.Rect::fromOffsetSize(
+          Geometry.Offset(right - closeIconSize, absolute.dy + UiTab.padding),
+          Geometry.Size::square(closeIconSize),
+        ),
+      );
+      !right = right - closeIconSize - iconTextGap;
+      !width = width - closeIconSize - iconTextGap;
+      res;
+    } else {
+      None()
+    };
+    optLabel: ?(String, Geometry.Rect, Font.FaceID, Text.FixedAlign) = None();
+    optIcon: ?(Ui.Icon, Geometry.Offset, Geometry.Size) = None();
+    optBadge: ?(?String, Geometry.Offset, Font.FaceID, Geometry.Rect) = None();
+    optDiscriminant: ?(String, Geometry.Rect, Font.FaceID) = None();
+    layout.optLabel match {
+    | Some((txt, tSize, tfid)) ->
+      tHeight = tSize.height.toFloat();
+      layout.optDiscriminant.each(d -> {
+        dWidth = size.width - 2.0 * padding;
+        left = absolute.dx + padding;
+        bottom =
+          absolute.dy +
+          size.height -
+          UiTab.padding -
+          d.i1.height.toFloat();
+        !optDiscriminant = Some(
+          (
+            d.i0,
+            Geometry.Rect::fromOffsetSize(
+              Geometry.Offset(left, bottom),
+              Geometry.Size(dWidth, d.i1.height.toFloat()),
+            ),
+            d.i2,
+          ),
+        );
+      });
+      layout.optIcon match {
+      | Some((icon, iSize, onTop)) if (!minimized || onTop) ->
+        if (onTop) {
+          iOffset = Geometry.Point(
+            Math.round(
+              absolute.dx + padding + (width - iSize.width) / 2.0,
+            ).toInt(),
+            Math.round(absolute.dy + UiTab.padding).toInt(),
+          );
+          !optIcon = Some((icon, iOffset.toOffset(), iSize));
+          topLeft = Geometry.Offset(
+            absolute.dx + padding,
+            absolute.dy + UiTab.padding + iSize.height + iconTextGap,
+          );
+          lSize = Geometry.Size(width, tSize.height.toFloat());
+          !optLabel = Some(
+            (
+              txt,
+              Geometry.Rect::fromOffsetSize(topLeft, lSize),
+              tfid,
+              Text.Center(),
+            ),
+          );
+        } else {
+          lHeight = Math.max(tHeight, iSize.height);
+          left = absolute.dx + padding;
+          top = absolute.dy + UiTab.padding;
+          iOffset = Geometry.Point(
+            Math.round(left).toInt(),
+            Math.round(top + (lHeight - iSize.height) / 2.0).toInt(),
+          );
+          !optIcon = Some((icon, iOffset.toOffset(), iSize));
+          !width = width - iSize.width - iconTextGap;
+          !left = left + iSize.width + iconTextGap;
+          topLeft = Geometry.Offset(left, top + (lHeight - tHeight) / 2.0);
+          lSize = Geometry.Size(width, tSize.height.toFloat());
+          !optLabel = Some(
+            (
+              txt,
+              Geometry.Rect::fromOffsetSize(topLeft, lSize),
+              tfid,
+              Text.Left(),
+            ),
+          );
+        }
+      | _ ->
+        left = absolute.dx + padding;
+        top = absolute.dy + UiTab.padding;
+        topLeft = Geometry.Offset(left, top);
+        lSize = Geometry.Size(width, tSize.height.toFloat());
+        !optLabel = Some(
+          (
+            txt,
+            Geometry.Rect::fromOffsetSize(topLeft, lSize),
+            tfid,
+            Text.Left(),
+          ),
+        )
+      }
+    | _ ->
+      layout.optIcon match {
+      | Some((icon, iSize, _)) ->
+        iOffset = Geometry.Point(
+          Math.round(
+            absolute.dx + padding + (width - iSize.width) / 2.0,
+          ).toInt(),
+          Math.round(absolute.dy + UiTab.padding).toInt(),
+        );
+        !optIcon = Some((icon, iOffset.toOffset(), iSize))
+      | _ -> invariant_violation("Tab must have almost a text or an icon.")
+      }
+    };
+    layout.optBadge.each(badge -> {
+      (optStr, bSize) = if (badge.i0.isBlank()) {
+        (None(), Geometry.Size(8.0, 8.0))
+      } else {
+        (Some(badge.i0), badge.i1)
+      };
+      bOffset = Geometry.Offset(right - bSize.width - 2.0, absolute.dy + 8.0);
+      !optBadge = Some(
+        (
+          optStr,
+          bOffset,
+          badge.i2,
+          Geometry.Rect::fromOffsetSize(
+            Geometry.Offset(
+              right - bSize.width.toFloat() - 4.0,
+              absolute.dy + 6.0,
+            ),
+            Geometry.Size(
+              bSize.width.toFloat() + 4.0,
+              bSize.height.toFloat() + 4.0,
+            ),
+          ),
+        ),
+      )
+    });
+    DrawInfo(optLabel, optIcon, optBadge, optDiscriminant, optClosable)
+  }
+}
+
+module end;

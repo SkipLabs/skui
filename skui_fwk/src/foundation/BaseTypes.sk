@@ -1,0 +1,17 @@
+module JSON;
+extension base class Value extends JSONValue {
+  fun toJSON(): JSON.Value {
+    this
+  }
+}
+
+module end;
+
+extension base class Text extends SKFS.File {
+  static fun forFile(obj: SKFS.File): Text {
+    obj match {
+    | x @ Text _ -> x
+    | _ -> invariant_violation("Invalid Text")
+    }
+  }
+}

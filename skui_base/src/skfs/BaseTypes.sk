@@ -56,10 +56,6 @@ extension base class BaseName uses HasClassName {
 }
 
 class StrID(value: String) extends BaseName {
-  static fun create(value: String): this {
-    StrID(value)
-  }
-
   fun sameCompare(key: BaseName): Order {
     key match {
     | StrID(v2) -> this.value.compare(v2)

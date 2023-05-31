@@ -1,0 +1,54 @@
+module UiIcon;
+
+class Support(
+  faceProps: Ui.GetterOne<SKFS.Future<Font.TypeFace>, Face>,
+  glyphProps: Ui.GetterOne<?Font.GlyphFile, Glyph>,
+  codesProps: Ui.GetterOne<SKFS.Future<Codes>, SKFS.StrID>,
+  msdfProps: Ui.GetterOne<?Font.Msdf, Glyph>,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Support _ -> x
+    | _ -> invariant_violation("Must be UiIcon.Support")
+    }
+  }
+
+  fun isLoading(context: mutable SKFS.Context, face: Face): Bool {
+    this.faceProps(context, face).isLoading() ||
+      this.codesProps(context, SKFS.StrID(face.collection)).isLoading();
+  }
+
+  fun hasError(context: mutable SKFS.Context, face: Face): Bool {
+    this.faceProps(context, face).error().isSome();
+  }
+
+  fun isStrict(context: mutable SKFS.Context, face: Face): Bool {
+    futur = this.faceProps(context, face);
+    futur.maybeGet() match {
+    | Some(typeface) -> typeface.typeface.family == face.collection
+    | _ -> false
+    };
+  }
+
+  fun getSize(context: mutable SKFS.Context, face: Face): Geometry.Size {
+    futur = this.faceProps(context, face);
+    height = futur
+      .maybeGet()
+      .map(typeface -> typeface.face.height())
+      .default(Ui.Pt(face.size).pixels());
+    Geometry.Size(height, height);
+  }
+
+  fun getMSDF(
+    context: mutable SKFS.Context,
+    icon: Icon,
+    face: Face,
+  ): ?Font.Msdf {
+    futur = this.codesProps(context, SKFS.StrID(face.collection));
+    optChar = futur.maybeGet().flatMap(codes -> codes.getChar(icon));
+    optChar.flatMap(char -> this.msdfProps(context, Glyph(face, char)))
+  }
+}
+
+module end;

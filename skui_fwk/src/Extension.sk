@@ -1,0 +1,9 @@
+trait IntoRange {
+  fun toRange(): Range;
+}
+
+extension class Range uses IntoRange, Hashable {
+  fun toRange(): Range {
+    this;
+  }
+}

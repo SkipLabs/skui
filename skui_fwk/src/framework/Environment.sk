@@ -1,0 +1,56 @@
+module FWKEnv;
+
+const propKey: SKFS.IID = SKFS.IID(0);
+
+const statePath: SKFS.DirName = SKFS.DirName::create("/ui/system/env/state/");
+const windowIdPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/system/env/windowid/",
+);
+
+const widHandle: SKFS.IHandle<Int> = SKFS.IHandle(
+  SKFS.IntConverter(),
+  windowIdPath,
+);
+
+const envHandle: SKFS.IHandle<SKFS.BoolFile> = SKFS.IHandle(
+  SKFS.FileConverter(SKFS.BoolFile::fromFile),
+  statePath,
+);
+
+fun init(context: mutable SKFS.Context): void {
+  _ = context.makeDir(SKFS.IntFile::fromFile, windowIdPath);
+  _ = context.makeDir(
+    SKFS.BoolFile::fromFile,
+    statePath,
+    Array[(windowIdPath, SKFS.BoolFile(true))],
+  );
+}
+
+fun declare(context: mutable SKFS.Context, dirName: SKFS.DirName): void {
+  envHandle.write(context, dirName, SKFS.BoolFile(true));
+}
+
+fun exists(
+  context: mutable SKFS.Context,
+  dirName: SKFS.DirName,
+  isUntracked: Bool = false,
+): Bool {
+  envHandle.getBool(context, dirName, isUntracked)
+}
+
+fun getWindowId(
+  context: mutable SKFS.Context,
+  isUntracked: Bool = false,
+): ?UInt32 {
+  widHandle.maybeGetValue(context, propKey, isUntracked).map(UInt32::truncate);
+}
+
+fun getROWindowId(context: readonly SKFS.Context): ?UInt32 {
+  widHandle.uMaybeGet(context, propKey).map(UInt32::truncate);
+}
+
+fun setWindowId(context: mutable SKFS.Context, wId: UInt32): void {
+  widHandle.write(context, propKey, wId.toInt());
+}
+
+module end;

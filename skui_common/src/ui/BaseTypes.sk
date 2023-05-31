@@ -185,6 +185,13 @@ value class Pix(
   }
 }
 
+base class Picture {
+  //
+  fun getSize(): Geometry.ISize;
+
+  fun resized(width: Int, height: Int): ?Picture;
+}
+
 class Image(
   data: Array<Pix>,
   width: Int,
@@ -311,6 +318,177 @@ class Image(
   }
 }
 
+base class DrawableSupport {
+  //
+  fun init(
+    context: mutable SKFS.Context,
+    drawables: SKFS.EHandle<Ui.Drawables>,
+    dirName: SKFS.DirName,
+  ): SKFS.EHandle<Ui.Handles>;
+
+  fun msdf(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    image: Image,
+    conv: (Geometry.Rect, Float) ~> Geometry.Rect,
+    pxRange: Int,
+    thickness: Float,
+    paint: Ui.Paint,
+  ): Ui.Drawable;
+
+  fun ellipse(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+  ): Ui.Drawable;
+
+  fun disk(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    thickness: Float,
+  ): Ui.Drawable;
+
+  fun roundedRectangle(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    color: .Color,
+    radius: Float,
+    smooth: Int = 2,
+    optBorder: ?(.Color, Int) = None(),
+  ): Ui.Drawable;
+
+  fun rectangle(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+  ): Ui.Drawable;
+
+  fun diagonal(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    fromTopLeft: Bool,
+    thickness: Float,
+    color: .Color,
+  ): Ui.Drawable;
+
+  fun triangle(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    side: .UiSide,
+  ): Ui.Drawable;
+
+  fun progress(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    progress: Float,
+    color1: .Color,
+    color2: .Color,
+    thickness: Float,
+  ): Ui.Drawable;
+
+  fun loading(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    color1: .Color,
+    color2: .Color,
+    step: Int,
+  ): Ui.Drawable;
+
+  fun image(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    picture: Picture,
+  ): Ui.Drawable;
+
+  fun boxShadow(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    sigma: Float,
+    paint: Ui.Paint,
+  ): Ui.Drawable;
+
+  fun drawAminationFrame(
+    context: mutable SKFS.Context,
+    width: Int,
+    height: Int,
+  ): void;
+}
+
+
+class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Path _ -> x
+    | _ -> SKFS.cast_violation("Ui.Path", obj)
+    }
+  }
+
+  static fun create(name: String): this {
+    static(name)
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    other match {
+    | ok @ Path _ ->
+      iComp = this.id.compare(ok.id);
+      if (iComp == EQ()) {
+        this.optParent.compare(ok.optParent)
+      } else {
+        iComp
+      }
+    | _ -> invariant_violation("Must be compared with a UI.Path")
+    }
+  }
+
+  fun toString(): String {
+    this.optParent match {
+    | Some(parent) -> parent.toString() + "/" + this.id
+    | _ -> this.id
+    }
+  }
+
+  fun toPath(): String {
+    this.optParent match {
+    | Some(parent) -> parent.toPath() + "/" + SKFS.normalize(this.id, true)
+    | _ -> SKFS.normalize(this.id, true)
+    }
+  }
+
+  fun toDirName(root: String = "/"): SKFS.DirName {
+    path = this.toPath();
+    SKFS.DirName::create(root + path + "/");
+  }
+
+  fun makeChild(id: String): this {
+    Path(id, Some(this))
+  }
+
+  fun add(toAdd: Path): this {
+    toAdd.optParent match {
+    | Some(parent) -> toAdd with {optParent => Some(this.add(parent))}
+    | _ -> toAdd with {optParent => Some(this)}
+    }
+  }
+
+  fun isParentOf(path: Path): Bool {
+    tPath = this.toString();
+    pPath = path.toString();
+    tPath == pPath || pPath.startsWith(tPath + "/")
+  }
+
+  fun isChildOf(path: Path): Bool {
+    path.optParent.map(p -> p == this || this.isChildOf(p)).default(false)
+  }
+
+  fun statePath(): this {
+    this.makeChild("__states")
+  }
+}
+
+
 @cpp_extern
 private native fun saveImage(
   path: String,
@@ -318,6 +496,8 @@ private native fun saveImage(
   width: UInt32,
   height: UInt32,
 ): Bool;
+
+//// DUMMY
 
 class DummyPaint() extends Paint {
   fun withAlpha(_alpha: Float): this {

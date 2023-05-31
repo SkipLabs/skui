@@ -1,0 +1,13 @@
+module Geometry;
+
+extension class Rectangle extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Rectangle _ -> x
+    | _ -> SKFS.cast_violation("Geometry.Rectangle", obj)
+    }
+  }
+}
+
+module end;

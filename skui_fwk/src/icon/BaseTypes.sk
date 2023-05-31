@@ -1,0 +1,616 @@
+module UiIcon;
+
+const default: String = "themify";
+
+base class Position() uses Hashable, Equality {
+  children =
+  | Bottom()
+  | Left()
+  | Right()
+  | Top()
+}
+
+class Style{position: Position = Left(), gap: Float = 8.0}
+
+class Face(
+  collection: String,
+  size: Float,
+  dpi: Float,
+  hinting: Font.Hinting,
+) extends SKFS.BaseName {
+  //
+  static fun create(
+    collection: String,
+    size: Float,
+    dpi: Float = 96.0,
+    hinting: Font.Hinting = Font.HintingNone(),
+  ): this {
+    Face(collection, size, dpi, hinting)
+  }
+
+  fun sameCompare(y: SKFS.BaseName): Order {
+    y match {
+    | other @ Face _ ->
+      cComp = this.collection.compare(other.collection);
+      if (cComp == EQ()) {
+        sComp = this.size.compare(other.size);
+        if (sComp == EQ()) {
+          dComp = this.dpi.compare(other.dpi);
+          if (dComp == EQ()) {
+            this.hinting.compare(other.hinting);
+          } else {
+            dComp
+          }
+        } else {
+          sComp
+        }
+      } else {
+        cComp
+      }
+    | _ -> invariant_violation("Must be a UiIcon.Face")
+    }
+  }
+
+  fun toString(): String {
+    `Face:${this.size}:${this.dpi}`;
+  }
+}
+
+class Glyph(face: Face, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
+  //
+  fun sameCompare(y: SKFS.BaseName): Order {
+    y match {
+    | other @ Glyph _ ->
+      cComp = this.char.compare(other.char);
+      if (cComp == EQ()) {
+        fComp = this.face.sameCompare(other.face);
+        if (fComp == EQ()) {
+          this.pxRange.compare(other.pxRange);
+        } else {
+          fComp
+        }
+      } else {
+        cComp
+      }
+    | _ -> invariant_violation("Must be a UiIcon.Glyph")
+    }
+  }
+
+  fun toString(): String {
+    `${this.face}:${this.char}:${this.pxRange}`
+  }
+}
+
+base class Icon uses Hashable, Equality, HasClassName {
+  children =
+  | Custom(name: String)
+  | ArrowLeft()
+  | ArrowUp()
+  | ArrowRight()
+  | ArrowDown()
+  | ArrowTopLeft()
+  | ArrowTopRight()
+  | ArrowCircleLeft()
+  | ArrowCircleUp()
+  | ArrowCircleRight()
+  | ArrowCircleDown()
+  | ArrowsHorizontal()
+  | ArrowsVertical()
+  | ArrowsCorner()
+  | AngleLeft()
+  | AngleUp()
+  | AngleRight()
+  | AngleDown()
+  | DoubleAngleLeft()
+  | DoubleAngleUp()
+  | DoubleAngleRight()
+  | DoubleAngleDown()
+  | Move()
+  | Fullscreen()
+  | Redo()
+  | ExchangeVertical()
+  | Save()
+  | Direction()
+  | MultipleDirection()
+  | User()
+  | Link()
+  | Unlink()
+  | Trash()
+  | Target()
+  | Tag()
+  | Desktop()
+  | Tablet()
+  | Mobile()
+  | Email()
+  | Star()
+  | Signal()
+  | ShoppingCart()
+  | Settings()
+  | Search()
+  | ZoomIn()
+  | ZoomOut()
+  | Cut()
+  | Bookmark()
+  | Bookmarked()
+  | Reload()
+  | Plus()
+  | Minus()
+  | Close()
+  | Pin()
+  | Pencil()
+  | Forbiden()
+  | Lock()
+  | Unlock()
+  | LocationArrow()
+  | Layout()
+  | Layers()
+  | Key()
+  | Image()
+  | Heart()
+  | HeartBroken()
+  | HandStop()
+  | HandOpen()
+  | HandDrag()
+  | Flag()
+  | Eye()
+  | Import()
+  | Export()
+  | Comment()
+  | Clip()
+  | Check()
+  | CheckBox()
+  | Briefcase()
+  | Bolt()
+  | Dashboard()
+  | World()
+  | Timer()
+  | Time()
+  | ThumbUp()
+  | ThumbDown()
+  | PowerOff()
+  | Map()
+  | Menu()
+  | Filter()
+  | Clipboard()
+  | Copy()
+  | Info()
+  | Home()
+  | Help()
+  | Alert()
+  | Archive()
+  | Anchor()
+  | Cloud()
+  | CloudUp()
+  | CloudDown()
+  | File()
+  | Files()
+  | Folder()
+  | Zip()
+  | More()
+  | Occulted()
+  | Share()
+  | Calendar()
+  | Paste()
+  | Volume()
+
+  fun toString(): String {
+    this.getClassName();
+  }
+
+  static fun forName(name: String): Icon {
+    name match {
+    | "arrow-left" -> ArrowLeft()
+    | "arrow-up" -> ArrowUp()
+    | "arrow-right" -> ArrowRight()
+    | "arrow-down" -> ArrowDown()
+    | "arrow-top-left" -> ArrowTopLeft()
+    | "arrow-top-right" -> ArrowTopRight()
+    | "arrow-circle-left" -> ArrowCircleLeft()
+    | "arrow-circle-up" -> ArrowCircleUp()
+    | "arrow-circle-right" -> ArrowCircleRight()
+    | "arrow-circle-down" -> ArrowCircleDown()
+    | "arrows-horizontal" -> ArrowsHorizontal()
+    | "arrows-vertical" -> ArrowsVertical()
+    | "arrows-corner" -> ArrowsCorner()
+    | "angle-left" -> AngleLeft()
+    | "angle-up" -> AngleUp()
+    | "angle-right" -> AngleRight()
+    | "angle-down" -> AngleDown()
+    | "double-angle-left" -> DoubleAngleLeft()
+    | "double-angle-up" -> DoubleAngleUp()
+    | "double-angle-right" -> DoubleAngleRight()
+    | "double-angle-down" -> DoubleAngleDown()
+    | "move" -> Move()
+    | "fullscreen" -> Fullscreen()
+    | "back-right" | "redo" -> Redo()
+    | "exchange-vertical" -> ExchangeVertical()
+    | "save" -> Save()
+    | "direction" -> Direction()
+    | "multiple-direction" | "direction-alt" -> MultipleDirection()
+    | "user" -> User()
+    | "link" -> Link()
+    | "unlink" -> Unlink()
+    | "trash" -> Trash()
+    | "target" -> Target()
+    | "tag" -> Tag()
+    | "desktop" -> Desktop()
+    | "tablet" -> Tablet()
+    | "mobile" -> Mobile()
+    | "email" -> Email()
+    | "star" -> Star()
+    | "signal" -> Signal()
+    | "shopping-cart" -> ShoppingCart()
+    | "settings" -> Settings()
+    | "search" -> Search()
+    | "zoom-in" -> ZoomIn()
+    | "zoom-out" -> ZoomOut()
+    | "cut" -> Cut()
+    | "bookmark" -> Bookmark()
+    | "bookmarked" | "bookmarked-alt" -> Bookmarked()
+    | "reload" -> Reload()
+    | "plus" -> Plus()
+    | "minus" -> Minus()
+    | "close" -> Close()
+    | "pin" -> Pin()
+    | "pencil" -> Pencil()
+    | "forbiden" | "na" -> Forbiden()
+    | "lock" -> Lock()
+    | "unlock" -> Unlock()
+    | "location-arrow" -> LocationArrow()
+    | "layout" -> Layout()
+    | "layers" -> Layers()
+    | "key" -> Key()
+    | "image" -> Image()
+    | "heart" -> Heart()
+    | "heart-broken" -> HeartBroken()
+    | "hand-stop" -> HandStop()
+    | "hand-open" -> HandOpen()
+    | "hand-drag" -> HandDrag()
+    | "flag" -> Flag()
+    | "eye" -> Eye()
+    | "import" -> Import()
+    | "export" -> Export()
+    | "comment" -> Comment()
+    | "clip" -> Clip()
+    | "check" -> Check()
+    | "checkbox" -> CheckBox()
+    | "briefcase" -> Briefcase()
+    | "bolt" -> Bolt()
+    | "dashboard" -> Dashboard()
+    | "world" -> World()
+    | "timer" -> Timer()
+    | "time" -> Time()
+    | "thumb-up" -> ThumbUp()
+    | "thumb-down" -> ThumbDown()
+    | "power-off" -> PowerOff()
+    | "map" -> Map()
+    | "menu" -> Menu()
+    | "filter" -> Filter()
+    | "clipboard" -> Clipboard()
+    | "copy" -> Copy()
+    | "info" -> Info()
+    | "home" -> Home()
+    | "help" -> Help()
+    | "alert" -> Alert()
+    | "anchor" -> Anchor()
+    | "archive" -> Archive()
+    | "cloud" -> Cloud()
+    | "cloud-up" -> CloudUp()
+    | "cloud-down" -> CloudDown()
+    | "file" -> File()
+    | "files" -> Files()
+    | "folder" -> Folder()
+    | "zip" -> Zip()
+    | "more" -> More()
+    | "more-alt" -> Occulted()
+    | "share" -> Share()
+    | "calendar" -> Calendar()
+    | "paste" -> Paste()
+    | "volume" -> Volume()
+    | _ -> Custom(name)
+    }
+  }
+
+  static fun elements(): Array<Icon> {
+    Array[
+      ArrowLeft(),
+      ArrowUp(),
+      ArrowRight(),
+      ArrowDown(),
+      ArrowTopLeft(),
+      ArrowTopRight(),
+      ArrowCircleLeft(),
+      ArrowCircleUp(),
+      ArrowCircleRight(),
+      ArrowCircleDown(),
+      ArrowsHorizontal(),
+      ArrowsVertical(),
+      ArrowsCorner(),
+      AngleLeft(),
+      AngleUp(),
+      AngleRight(),
+      AngleDown(),
+      DoubleAngleLeft(),
+      DoubleAngleUp(),
+      DoubleAngleRight(),
+      DoubleAngleDown(),
+      Move(),
+      Fullscreen(),
+      Redo(),
+      ExchangeVertical(),
+      Save(),
+      Direction(),
+      MultipleDirection(),
+      User(),
+      Link(),
+      Unlink(),
+      Trash(),
+      Target(),
+      Tag(),
+      Desktop(),
+      Tablet(),
+      Mobile(),
+      Email(),
+      Star(),
+      Signal(),
+      ShoppingCart(),
+      Settings(),
+      Search(),
+      ZoomIn(),
+      ZoomOut(),
+      Cut(),
+      Bookmark(),
+      Bookmarked(),
+      Reload(),
+      Plus(),
+      Minus(),
+      Close(),
+      Pin(),
+      Pencil(),
+      Forbiden(),
+      Lock(),
+      Unlock(),
+      LocationArrow(),
+      Layout(),
+      Layers(),
+      Key(),
+      Image(),
+      Heart(),
+      HeartBroken(),
+      HandStop(),
+      HandOpen(),
+      HandDrag(),
+      Flag(),
+      Eye(),
+      Import(),
+      Export(),
+      Comment(),
+      Clip(),
+      Check(),
+      CheckBox(),
+      Briefcase(),
+      Bolt(),
+      Dashboard(),
+      World(),
+      Timer(),
+      Time(),
+      ThumbUp(),
+      ThumbDown(),
+      PowerOff(),
+      Map(),
+      Menu(),
+      Filter(),
+      Clipboard(),
+      Copy(),
+      Info(),
+      Home(),
+      Help(),
+      Alert(),
+      Archive(),
+      Anchor(),
+      Cloud(),
+      CloudUp(),
+      CloudDown(),
+      File(),
+      Folder(),
+      Zip(),
+      More(),
+      Share(),
+      Calendar(),
+      Volume(),
+    ]
+  }
+}
+
+base class Codes extends SKFS.File {
+  fun getChar(Icon): ?Char;
+
+  static fun forFile(obj: SKFS.File): Codes {
+    obj match {
+    | x @ Codes _ -> x
+    | _ -> invariant_violation("Invalid UiIcon.Codes")
+    }
+  }
+}
+
+class Predefined(codes: Codes, base64: String)
+
+class MapCodes(value: .Map<Icon, Char>) extends Codes {
+  fun getChar(icon: Icon): ?Char {
+    this.value.maybeGet(icon);
+  }
+}
+
+class LamCodes(lam: Icon ~> ?Char) extends Codes {
+  fun getChar(icon: Icon): ?Char {
+    this.lam(icon);
+  }
+}
+
+fun predefined(): SortedMap<String, Predefined> {
+  p = Themify.fill(SortedMap<String, Predefined>::create());
+  Material.fill(p);
+}
+
+base class Kind {
+  children =
+  | KInner()
+  | KTheme()
+  | KImage()
+  | KCategory(String)
+}
+
+class Description(
+  kind: Kind,
+  name: String,
+  optSize: ?Ui.Size = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Description _ -> x
+    | _ -> invariant_violation("Must be UiIcon.Description")
+    }
+  }
+
+  fun toIconBuilder(): ?Ui.IconBuilder {
+    this.kind match {
+    | KInner() ->
+      this.name match {
+      | "arrow-to-right" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Arrow(
+              Math.ceil(pt.pixels()).toInt(),
+              Ui.ToRight(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "arrow-to-left" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Arrow(
+              Math.ceil(pt.pixels()).toInt(),
+              Ui.ToLeft(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "arrow-up" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Arrow(
+              Math.ceil(pt.pixels()).toInt(),
+              Ui.Up(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "arrow-down" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Arrow(
+              Math.ceil(pt.pixels()).toInt(),
+              Ui.Down(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "check" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Check(
+              Math.ceil(pt.pixels()).toInt(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "dot" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Dot(
+              Math.ceil(pt.pixels()).toInt(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "indeterminate" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Indeterminate(
+              Math.ceil(pt.pixels()).toInt(),
+              None(),
+              2,
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "select" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Select(
+              Math.ceil(pt.pixels()).toInt(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "uncheck" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Uncheck(
+              Math.ceil(pt.pixels()).toInt(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | "unselect" ->
+        Some(
+          Ui.InnerIconBuilder(pt ~>
+            Icon.Unselect(
+              Math.ceil(pt.pixels()).toInt(),
+              None(),
+              this.optSize.map(s -> s.toSize(Geometry.Size::square(pt.value))),
+              this.optSize.map(s -> s.keepRatio).default(false),
+            )
+          ),
+        )
+      | _ -> None()
+      }
+    | KTheme() ->
+      UiTheme.iconFromString(this.name).map(ic ->
+        UiTheme.IconBuilder(ic, this.optSize)
+      )
+    | KImage() -> todo("Update image icons")
+    | KCategory(cat) ->
+      icon = UiIcon.Icon::forName(this.name);
+      Some(Ui.FromIconSupport(icon, cat, this.optSize))
+    }
+  }
+
+  static fun forFile(obj: SKFS.File): Description {
+    obj match {
+    | x @ Description _ -> x
+    | _ -> invariant_violation("Invalid UiIcon.Description")
+    }
+  }
+}
+
+module end;

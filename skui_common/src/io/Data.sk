@@ -42,17 +42,17 @@ base class Data extends SKFS.File uses HasClassName {
     jso = jsv.expectObject();
     cl = jso.getString("__class");
     cl match {
-    | "SysFS.Text" -> Text(jso.getString("data"))
-    | "SysFS.Binary" ->
+    | "IO.Text" -> Text(jso.getString("data"))
+    | "IO.Binary" ->
       Binary(
         jso
           .getArray("data")
           .value.map(v -> UInt8::truncate(v.expectInt()))
           .toArray(),
       )
-    | "SysFS.Base64" -> Base64(jso.getString("data"))
-    | "SysFS.External" -> External::make(UInt32::truncate(jso.getInt("data")))
-    | _ -> invariant_violation(`Invalid json object ${cl} for SysFS.Data`)
+    | "IO.Base64" -> Base64(jso.getString("data"))
+    | "IO.External" -> External::make(UInt32::truncate(jso.getInt("data")))
+    | _ -> invariant_violation(`Invalid json object ${cl} for IO.Data`)
     }
   }
 }

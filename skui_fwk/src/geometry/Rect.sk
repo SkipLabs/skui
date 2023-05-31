@@ -1,0 +1,61 @@
+module Geometry;
+
+extension class Rect extends SKFS.File, JSONValue uses Show {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Rect _ -> x
+    | _ -> invariant_violation("Must be Geometry.Rect")
+    }
+  }
+
+  fun toFixed(): Fixed.Rectangle26_6 {
+    Fixed.Rectangle26_6(this.topLeft().toFixed(), this.bottomRight().toFixed())
+  }
+
+  fun fillVertexes(vertexes: mutable Vector<Geometry.Offset>): void {
+    topLeft = this.topLeft();
+    bottomLeft = this.bottomLeft();
+    topRight = this.topRight();
+    bottomRight = this.bottomRight();
+    vertexes.push(topLeft);
+    vertexes.push(topRight);
+    vertexes.push(bottomLeft);
+    vertexes.push(bottomLeft);
+    vertexes.push(topRight);
+    vertexes.push(bottomRight)
+  }
+
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "left" => JSON.FloatNumber(this.left),
+        "top" => JSON.FloatNumber(this.top),
+        "right" => JSON.FloatNumber(this.right),
+        "bottom" => JSON.FloatNumber(this.bottom),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Rect {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Geometry.Rect" ->
+      Rect(
+        JSON.getFloat("left", jso),
+        JSON.getFloat("top", jso),
+        JSON.getFloat("right", jso),
+        JSON.getFloat("bottom", jso),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for Geometry.Rect`)
+    }
+  }
+
+  fun toString(): String {
+    `[(${this.left},${this.top}),(${this.right},${this.bottom})]`
+  }
+}
+
+module end;

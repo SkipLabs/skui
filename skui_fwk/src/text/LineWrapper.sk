@@ -1,0 +1,135 @@
+module Text;
+
+class WGroup{before: Float, width: Float, kern: Float, range: .Range} {
+  fun after(): Float {
+    this.before + this.width;
+  }
+}
+
+class LineWrapper(
+  chars: Vector<Char>,
+  groups: Array<WGroup>,
+  optRange: ?Text.Range = None(),
+) {
+  static fun charsWrapper(
+    context: mutable SKFS.Context,
+    chars: Vector<Char>,
+    faceId: Font.FaceID,
+    optRange: ?Text.Range = None(),
+  ): LineWrapper {
+    fontSupport = context.getFontSupport();
+    before = 0.0;
+    optChar: ?Char = None();
+    groups = mutable Vector<WGroup>[];
+    range = optRange.default(Text.Token::make(0, chars.size()));
+    for (i in range.toRange()) {
+      char = chars[i];
+      kern = fontSupport.getKern(context, char, faceId, optChar);
+      width = fontSupport.getWidth(context, char, faceId);
+      !optChar = Some(char);
+      g = WGroup{before, kern, width, range => .Range(i, i + 1)};
+      !before = before + width + kern;
+      groups.push(g);
+    };
+    LineWrapper(chars, groups.toArray(), optRange);
+  }
+
+  static fun wordsWrapper(
+    context: mutable SKFS.Context,
+    chars: Vector<Char>,
+    faceId: Font.FaceID,
+    optRange: ?Text.Range = None(),
+    isSeparator: Char ~> Bool = Char.isWhitespace,
+  ): LineWrapper {
+    fontSupport = context.getFontSupport();
+    before = 0.0;
+    groups = mutable Vector<WGroup>[];
+    optChar: ?Char = None();
+    optGroup: ?WGroup = None();
+    range = optRange.default(Text.Token::make(0, chars.size()));
+    for (index in range.toRange()) {
+      char = chars[index];
+      kern = fontSupport.getKern(context, char, faceId, optChar);
+      width = fontSupport.getWidth(context, char, faceId);
+      !optChar = Some(char);
+      if (isSeparator(char)) {
+        optGroup match {
+        | Some(group) ->
+          !group.width = before - group.before;
+          !group.range.end = index;
+          groups.push(group);
+          !optGroup = None()
+        | _ -> void
+        };
+      } else if (optGroup.isNone()) {
+        !optGroup = Some(
+          WGroup{before, kern, width, range => .Range(index, index + 1)},
+        );
+      };
+      !before = before + width + kern;
+    };
+    optGroup match {
+    | Some(group) ->
+      !group.width = before - group.before;
+      !group.range.end = range.end;
+      groups.push(group);
+      !optGroup = None()
+    | _ -> void
+    };
+    LineWrapper(chars, groups.toArray(), optRange);
+  }
+
+  fun split(width: Float): Array<(Text.Range, Float)> {
+    ranges = this.wrapRanges(width);
+    ranges.map(r -> this.toTextRange(r));
+  }
+
+  private fun wrapRanges(width: Float): Array<(.Range, Float)> {
+    size = this.groups.size();
+    if (this.groups.last().after() < width) {
+      Array[(.Range(0, size - 1), this.groups.last().before)]
+    } else {
+      ranges = mutable Vector<(.Range, Float)>[];
+      start = 0;
+      for (i in .Range(0, size)) {
+        w = this.width(.Range(start, i));
+        if (w > width) {
+          if (i == start) {
+            ranges.push((.Range(start, i), w));
+            !start = i + 1;
+          } else {
+            range = .Range(start, i - 1);
+            ranges.push((range, this.width(range)));
+            !start = i;
+          }
+        };
+      };
+      if (start <= size - 1) {
+        range = .Range(start, size - 1);
+        ranges.push((range, this.width(range)));
+      };
+      ranges.toArray();
+    }
+  }
+
+  private fun toTextRange(info: (.Range, Float)): (Range, Float) {
+    (range, width) = info;
+    start = this.groups[range.start];
+    end = this.groups[range.end];
+    (Token::make(start.range.start, end.range.end), width);
+  }
+
+  private fun width(range: .Range): Float {
+    if (range.start > range.end) {
+      0.0
+    } else if (range.start == range.end) {
+      this.groups.get(range.start).width
+    } else {
+      start = this.groups.get(Math.max(0, range.start));
+      end = this.groups.get(Math.min(this.groups.size() - 1, range.end));
+      end.before - (start.before - start.kern) + end.width;
+    }
+  }
+}
+
+module end;

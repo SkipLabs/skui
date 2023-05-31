@@ -1,0 +1,120 @@
+module Text;
+
+base class Splitter() uses Hashable, Equality {
+  fun split(text: String): Array<Range>;
+}
+
+class LineSplitter() {
+  fun split(chars: Vector<Char>): Array<Range> {
+    ranges = Vector::mcreate();
+    optSeparator: ?Char = None();
+    start = 0;
+    chars.eachWithIndex((index, char) -> {
+      if (char == '\n' || char == '\r') {
+        optSeparator match {
+        | Some(separator) ->
+          if (separator != char) {
+            // Two char separator ignore
+            !optSeparator = None();
+          } else {
+            // Empty line
+            ranges.push(Token::make(index, index));
+          }
+        | _ ->
+          ranges.push(Token::make(start, index));
+          !optSeparator = Some(char)
+        };
+        !start = index + 1
+      } else {
+        optSeparator match {
+        | Some _ -> !start = index
+        | _ -> void
+        };
+        !optSeparator = None();
+      }
+    });
+    if (start < chars.size()) {
+      ranges.push(Token::make(start, chars.size()))
+    };
+    ranges.toArray();
+  }
+}
+
+class SepSplitter(separator: String) extends Splitter {
+  fun split(text: String): Array<Range> {
+    ranges = Vector::mcreate();
+    index = 0;
+    while (text != "") {
+      (token, ntext) = text.splitFirst(this.separator);
+      ranges.push(Token::make(index, index + token.length()));
+      !index = index + token.length() + this.separator.length();
+      !text = ntext;
+    };
+    ranges.toArray();
+  }
+
+  fun left(text: String, ranges: Array<Range>, length: Int): String {
+    if (length >= ranges.size()) {
+      text;
+    } else if (length <= 0) {
+      "";
+    } else if (length == 1) {
+      Text.inside(text, ranges[0]);
+    } else {
+      range = ranges[length - 1];
+      `${Text.before(text, range)}${Text.inside(text, range)}`
+    }
+  }
+
+  fun right(text: String, ranges: Array<Range>, length: Int): String {
+    size = ranges.size();
+    if (length >= size) {
+      text;
+    } else if (length <= 0) {
+      "";
+    } else if (length == 1) {
+      Text.inside(text, ranges[size - 1]);
+    } else {
+      range = ranges[size - length];
+      `${Text.inside(text, range)}${Text.after(text, range)}`
+    }
+  }
+
+  fun interval(
+    text: String,
+    ranges: Array<Range>,
+    start: Int,
+    length: Int,
+  ): String {
+    size = ranges.size();
+    if (start >= size || length <= 0) {
+      "";
+    } else {
+      max = Math.min(ranges.size(), start + length);
+      res = "";
+      i = start;
+      while (i < max) {
+        if (i != start) {
+          !res = res + " ";
+        };
+        !res = res + Text.inside(text, ranges[i]);
+        !i = i + 1;
+      };
+      res;
+    }
+  }
+
+  fun center(text: String, ranges: Array<Range>, length: Int): String {
+    size = ranges.size();
+    if (length >= size) {
+      text;
+    } else if (length <= 0) {
+      "";
+    } else {
+      start = (size - length) / 2;
+      this.interval(text, ranges, start, length);
+    }
+  }
+}
+
+module end;

@@ -1,0 +1,83 @@
+module UiButton;
+
+class Layout(size: Geometry.Size) extends Ui.UserData
+
+base class Mode extends SKFS.File uses Show {
+  children =
+  | Basic()
+  | Raised()
+  | Stroked()
+  | Flat()
+  | Icon(mini: Bool = false)
+  | Fab(mini: Bool = false)
+
+  fun getRadius(size: Geometry.Size): Float
+  | Basic()
+  | Stroked()
+  | Raised()
+  | Flat() ->
+    6.0
+  | Icon _
+  | Fab _ ->
+    Math.min(size.width, size.height) / 2.0
+
+  static fun all(): Array<Mode> {
+    Array[Basic(), Raised(), Stroked(), Flat(), Icon(), Fab(false), Fab(true)]
+  }
+
+  fun toString(): String
+  | Basic() -> "Basic"
+  | Stroked() -> "Stroked"
+  | Raised() -> "Raised"
+  | Flat() -> "Flat"
+  | Icon(mini) -> if (mini) "Mini Icon" else "Icon"
+  | Fab(mini) -> if (mini) "Mini Fab" else "Fab"
+
+  fun withText(): Bool
+  | Basic()
+  | Stroked()
+  | Raised()
+  | Flat() ->
+    true
+  | Icon _
+  | Fab _ ->
+    false
+}
+
+base class Kind extends SKFS.File uses Show {
+  children =
+  | Regular()
+  | Primary()
+  | Accent()
+  | Warn()
+
+  static fun all(): Array<Kind> {
+    Array[Regular(), Primary(), Accent(), Warn()]
+  }
+
+  fun toString(): String
+  | Regular() -> "Regular"
+  | Primary() -> "Primary"
+  | Accent() -> "Accent"
+  | Warn() -> "Warn"
+}
+
+base class Controller {
+  fun isDisabled(context: mutable SKFS.Context): Bool;
+  fun getText(context: mutable SKFS.Context): ?Text;
+  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKFS.Context): ?Text;
+  fun getKind(context: mutable SKFS.Context): Kind;
+  fun getMode(context: mutable SKFS.Context): Mode;
+  fun fire(context: mutable SKFS.Context, optCount: ?Int = None()): void;
+}
+
+base class State {
+  fun isArmed(context: mutable SKFS.Context): Bool;
+
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+module end;

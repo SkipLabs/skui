@@ -1,0 +1,552 @@
+module Ui;
+
+class Tab protected {
+  reference: Ui.Path,
+  controller: UiTab.Controller,
+  state: UiTab.State,
+} extends StrictWidget uses WithNodeCache, NoViewports {
+  //
+  type Params = UiTab.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    params: UiTab.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{
+      path,
+      reference => params.reference,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    ts = context.getTextSupport();
+    fil = context.getThemeFont(UiTheme.Action());
+    optLabel = this.controller.getText(context).map(t ->
+      Ui.getTextInfo(context, ts, fil, context.translate(t))
+    );
+    fid = context.getThemeFont(UiTheme.Discriminant());
+    optDiscriminant = this.controller.getDiscriminant(context).map(d ->
+      Ui.getTextInfo(context, ts, fid, context.translate(d))
+    );
+    fib = context.getThemeFont(UiTheme.Badge());
+    optBadge = this.controller.getBadge(context).map(b -> {
+      str = context.translate(b.text);
+      Ui.getTextInfo(
+        context,
+        ts,
+        fib,
+        b.optMaxCharCount match {
+        | Some(count) if (count > 0) ->
+          chars = str.chars();
+          if (chars.size() > count) {
+            String::fromChars(chars.slice(0, count - 1).toArray()) + "+"
+          } else {
+            str
+          }
+        | _ -> str
+        },
+      )
+    });
+    optIcon = this.controller.getIcon(context, fil.size).map(icon ->
+      (icon.icon, icon.icon.size(context), icon.onTop)
+    );
+    layout = UiTab.Layout(
+      optLabel,
+      optBadge,
+      optDiscriminant,
+      optIcon,
+      this.controller.isClosable(context),
+      this.controller.getSide(context) match {
+      | UiSide.Top()
+      | UiSide.Bottom() ->
+        false
+      | UiSide.Left()
+      | UiSide.Right() ->
+        true
+      },
+      context.getThemeThickness(UiTheme.IconTextGap()).toFloat(),
+    );
+    size = constraints.constrain(layout.computeSize());
+    Node(this, size, Array[], constUserData(Some(layout)));
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    nodeSum: Ui.NodeSum,
+    optUserData: ?UserData,
+  ): ?DrawInfo {
+    layout = optUserData.map(ud ~> ud as UiTab.Layout _).fromSome();
+    Some(
+      UiTab.DrawInfo::compute(
+        layout,
+        Geometry.Offset::zero,
+        nodeSum.size,
+        context.getThemeThickness(UiTheme.IconTextGap()).toFloat(),
+      ),
+    );
+  }
+
+  fun getHoverHandler(
+    context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    if (this.controller.isDisabled(context)) {
+      None()
+    } else {
+      Some((_, offset, node) ~> {
+        layout = node.optUserData.map(ud ~> ud as UiTab.Layout _).fromSome();
+        Some(
+          if (layout.closable) {
+            di = node.optDrawInfo.map(di ~> di as UiTab.DrawInfo _).fromSome();
+            close = di.optClose
+              .map(closable -> closable.contains(offset))
+              .default(false);
+            UiTab.HoverHandler(this.path, this.controller, this.state, close)
+          } else {
+            UiTab.HoverHandler(this.path, this.controller, this.state, false)
+          },
+        )
+      })
+    }
+  }
+
+  fun checkFocusHandlers(
+    context: mutable SKFS.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    if (this.controller.isDisabled(context)) {
+      handlers.chill()
+    } else {
+      if (this.controller.isClosable(context)) {
+        Vector[
+          UiTab.FocusHandler{
+            category => "tab",
+            path => this.path,
+            controller => this.controller,
+            state => this.state,
+            close => false,
+          },
+          UiTab.FocusHandler{
+            category => "tab",
+            path => this.path,
+            controller => this.controller,
+            state => this.state,
+            close => true,
+          },
+        ]
+      } else {
+        Vector[
+          UiTab.FocusHandler{
+            category => "tab",
+            path => this.path,
+            controller => this.controller,
+            state => this.state,
+            close => false,
+          },
+        ]
+      }
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    di = node.optDrawInfo.map(di ~> di as UiTab.DrawInfo _).fromSome();
+    drawables = mutable Vector<Ui.Drawable>[];
+    layer match {
+    | MainLayer() -> this.fillMain(context, support, absolute, di, drawables)
+    | BackgroundLayer() ->
+      this.fillBackground(context, support, absolute, node.size(), drawables)
+    | ForegroundLayer() ->
+      this.fillForeground(
+        context,
+        support,
+        absolute,
+        node.size(),
+        di,
+        drawables,
+      )
+    };
+    drawables.toArray()
+  }
+
+  fun getDragHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.DragHandler>,
+  ): ?DragHandlerGetter {
+    Some((_ctx, _o, _ni) ~> Some(UiTab.DragHandler(this)))
+  }
+
+  fun getDropHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.DropHandler>,
+  ): ?DropHandlerGetter {
+    Some((ctx, o, ni) ~> {
+      this.controller.getSide(ctx) match {
+      | UiSide.Top()
+      | UiSide.Bottom() ->
+        if (o.dx > ni.size().width / 2.0) {
+          Some(UiTab.DropHandler(this, Ui.DropAfter()))
+        } else {
+          Some(UiTab.DropHandler(this, Ui.DropBefore()))
+        }
+      | UiSide.Left()
+      | UiSide.Right() ->
+        if (o.dy > ni.size().height / 2.0) {
+          Some(UiTab.DropHandler(this, Ui.DropAfter()))
+        } else {
+          Some(UiTab.DropHandler(this, Ui.DropBefore()))
+        }
+      }
+    })
+  }
+
+  private fun fillMain(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    di: UiTab.DrawInfo,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    disabled = this.controller.isDisabled(context);
+    active = this.controller.isActive(context);
+    fill = if (disabled) {
+      context.getThemeColor(UiTheme.Disabled())
+    } else {
+      mode = this.controller.getMode(context);
+      this.getForegroundColor(context, mode, active, true)
+    };
+    di.optIcon.each(i ->
+      i.i0.fillDrawables(
+        context,
+        support,
+        absolute + i.i1,
+        i.i2,
+        fill,
+        drawables,
+      )
+    );
+    di.optClose.each(close -> {
+      cSize = close.size() / 2.0;
+      cOffset = close.topLeft().move(absolute + (cSize / 2.0).toOffset());
+      incr = 1.0;
+      drawables.push(support.diagonal(cOffset, cSize, true, -incr, fill));
+      drawables.push(support.diagonal(cOffset, cSize, true, incr, fill));
+      drawables.push(support.diagonal(cOffset, cSize, false, -incr, fill));
+      drawables.push(support.diagonal(cOffset, cSize, false, incr, fill));
+    });
+    ts = context.getTextSupport();
+    di.optLabel.each(l ->
+      Ui.drawConstrainedText(
+        context,
+        support,
+        ts,
+        l.i0,
+        l.i1.shift(absolute),
+        fill,
+        l.i2,
+        drawables,
+        l.i3,
+      )
+    );
+    di.optDiscriminant.each(d ->
+      Ui.drawConstrainedText(
+        context,
+        support,
+        ts,
+        d.i0,
+        d.i1.shift(absolute),
+        fill,
+        d.i2,
+        drawables,
+      )
+    );
+    di.optBadge.each(b -> {
+      bSize = b.i3.size();
+      (color, bFill) = if (disabled) {
+        (
+          context.getThemeColor(UiTheme.Disabled()),
+          context.getThemeColor(UiTheme.Base()),
+        )
+      } else {
+        mode = this.controller.getMode(context);
+        mode match {
+        | UiTab.Basic() ->
+          (
+            context.getThemeColor(UiTheme.Warn()),
+            context.getThemeColor(UiTheme.Base()),
+          )
+        | UiTab.Flat() ->
+          (
+            context.getThemeColor(UiTheme.Accent()),
+            context.getThemeColor(UiTheme.Regular()),
+          )
+        }
+      };
+      drawables.push(
+        support.roundedRectangle(
+          absolute + b.i3.topLeft(),
+          bSize,
+          color,
+          bSize.height / 2.0,
+        ),
+      );
+      b.i0.each(txt ->
+        ts.getDrawables(context, txt, Text.Display(b.i2, bFill)).each(ds ->
+          ds.each(d -> drawables.push(d.translate(absolute + b.i1)))
+        )
+      );
+    });
+  }
+
+  private fun fillBackground(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    mode = this.controller.getMode(context);
+    disabled = this.controller.isDisabled(context);
+    optBackground = if (disabled) {
+      Some(context.getThemeColor(UiTheme.Disabled()))
+    } else {
+      mode match {
+      | UiTab.Basic() -> None()
+      | UiTab.Flat() -> Some(context.getThemeColor(UiTheme.Primary()))
+      }
+    };
+    optBackground.each(color ->
+      drawables.push(support.rectangle(absolute, size, color))
+    );
+    if (
+      mode == UiTab.Flat() &&
+      !disabled &&
+      !this.controller.isActive(context)
+    ) {
+      drawables.push(
+        support.rectangle(
+          absolute,
+          size,
+          context.getThemeColor(UiTheme.Base()).scaleAlpha(0.1),
+        ),
+      )
+    }
+  }
+
+  private fun fillForeground(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    di: UiTab.DrawInfo,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    mode = this.controller.getMode(context);
+    active = this.controller.isActive(context);
+    foreground = this.getForegroundColor(context, mode, active, false);
+    disabled = this.controller.isDisabled(context);
+    optColor = if (this.controller.isDisabled(context)) {
+      None()
+    } else {
+      focused = context.isFocused(this.path);
+      hover = this.state.getHover(context).isSome();
+      selected = this.controller.isSelected(context);
+      optArmed = this.state.getArmed(context);
+      if (optArmed == Some(false)) {
+        Some(foreground.scaleAlpha(0.6))
+      } else if (focused || hover || selected) {
+        count = 1;
+        if (focused) !count = count + 1;
+        if (hover) !count = count + 1;
+        if (selected) !count = count + 1;
+        Some(foreground.scaleAlpha(count.toFloat() / 10.0))
+      } else {
+        None()
+      }
+    };
+    optColor.each(color ->
+      drawables.push(support.rectangle(absolute, size, color))
+    );
+
+    side = this.controller.getSide(context);
+    if (!disabled && active) {
+      (rOffset, rSize) = side match {
+      | UiSide.Top() ->
+        (absolute.translateY(size.height - 3.0), size with {height => 3.0})
+      | UiSide.Bottom() -> (absolute, size with {height => 3.0})
+      | UiSide.Left() ->
+        (absolute.translateX(size.width - 3.0), size with {width => 3.0})
+      | UiSide.Right() -> (absolute, size with {width => 3.0})
+      };
+      drawables.push(
+        support.rectangle(rOffset, rSize, foreground.scaleAlpha(0.65)),
+      )
+    };
+    this.controller.getProgress(context).each(progress -> {
+      (bpOffset, bpSize) = side match {
+      | UiSide.Top() -> (absolute, size with {height => 3.0})
+      | UiSide.Bottom() ->
+        (absolute.translateY(size.height - 3.0), size with {height => 3.0})
+      | UiSide.Left() -> (absolute, size with {width => 3.0})
+      | UiSide.Right() ->
+        (absolute.translateX(size.width - 3.0), size with {width => 3.0})
+      };
+      drawables.push(
+        support.rectangle(bpOffset, bpSize, foreground.scaleAlpha(0.25)),
+      );
+      progress match {
+      | Ui.Progression(value) ->
+        percent = Math.clamp(value, 0, 100).toFloat() / 100.0;
+        (pOffset, pSize) = side match {
+        | UiSide.Top() -> (absolute, Geometry.Size(size.width * percent, 3.0))
+        | UiSide.Bottom() ->
+          (
+            absolute.translateY(size.height - 3.0),
+            Geometry.Size(size.width * percent, 3.0),
+          )
+        | UiSide.Left() -> (absolute, Geometry.Size(3.0, size.height * percent))
+        | UiSide.Right() ->
+          (
+            absolute.translateX(size.width - 3.0),
+            Geometry.Size(3.0, size.height * percent),
+          )
+        };
+        drawables.push(support.rectangle(pOffset, pSize, foreground))
+      | Ui.Indeterminate() ->
+        step = this.state.getIndeterminate(context) match {
+        | Some(v) -> v
+        | _ ->
+          this.state.emitIndeterminate(context, 1);
+          0
+        };
+        width = size.width / 8.0;
+        height = size.height / 8.0;
+        (pOffset, pSize) = side match {
+        | UiSide.Top() ->
+          (
+            absolute.translateX(step.toFloat() * width),
+            Geometry.Size(width, 3.0),
+          )
+        | UiSide.Bottom() ->
+          (
+            absolute.translate(step.toFloat() * width, size.height - 3.0),
+            Geometry.Size(width, 3.0),
+          )
+        | UiSide.Left() ->
+          (
+            absolute.translateY(step.toFloat() * height),
+            Geometry.Size(3.0, height),
+          )
+        | UiSide.Right() ->
+          (
+            absolute.translate(size.width - 3.0, step.toFloat() * height),
+            Geometry.Size(3.0, height),
+          )
+        };
+        drawables.push(support.rectangle(pOffset, pSize, foreground))
+      }
+    });
+    if (this.controller.isPinned(context)) {
+      drawables.push(
+        support.ellipse(
+          absolute.translate(4.0, 4.0),
+          Geometry.Size::square(8.0),
+          foreground,
+        ),
+      )
+    };
+    this.state.getTargeted(context).each(drop -> {
+      (tOffset, tSize) = side match {
+      | UiSide.Top()
+      | UiSide.Bottom() ->
+        drop match {
+        | Ui.DropBefore() -> (absolute, size with {width => 3.0})
+        | Ui.DropIn()
+        | Ui.DropAfter() ->
+          (absolute.translateX(size.width - 3.0), size with {width => 3.0})
+        }
+      | UiSide.Left()
+      | UiSide.Right() ->
+        drop match {
+        | Ui.DropBefore() -> (absolute, size with {height => 3.0})
+        | Ui.DropIn()
+        | Ui.DropAfter() ->
+          (absolute.translateY(size.height - 3.0), size with {height => 3.0})
+        }
+      };
+      drawables.push(
+        support.rectangle(
+          tOffset,
+          tSize,
+          context.getThemeColor(UiTheme.Accent()),
+        ),
+      )
+    });
+    if (!disabled) {
+      di.optClose.each(close -> {
+        closePath = this.path.makeChild("close");
+        focused = context.isFocused(closePath);
+        hover = this.state.getHover(context) == Some(true);
+        armed = this.state.getArmed(context) == Some(true);
+        (if (armed) {
+          Some(foreground.scaleAlpha(0.6))
+        } else if (focused || hover) {
+          count = 1;
+          if (focused) !count = count + 1;
+          if (hover) !count = count + 1;
+          Some(foreground.scaleAlpha(count.toFloat() / 10.0))
+        } else {
+          None()
+        }).each(c ->
+          drawables.push(
+            support.ellipse(absolute + close.topLeft(), close.size(), c),
+          )
+        )
+      })
+    };
+  }
+
+  private fun getForegroundColor(
+    context: mutable SKFS.Context,
+    mode: UiTab.Mode,
+    active: Bool,
+    text: Bool,
+  ): .Color {
+    mode match {
+    | UiTab.Basic() ->
+      color = context.getThemeColor(UiTheme.Primary());
+      if (active) {
+        color
+      } else if (text) {
+        context.getThemeColor(UiTheme.Inactive());
+      } else {
+        color.scaleAlpha(0.7)
+      }
+    | UiTab.Flat() ->
+      color = context.getThemeColor(UiTheme.Base());
+      if (active) {
+        color
+      } else {
+        color.scaleAlpha(0.7)
+      }
+    }
+  }
+}
+
+module end;

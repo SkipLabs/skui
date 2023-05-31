@@ -1,0 +1,35 @@
+module UiTabsSc;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+  | All(value: Vector<Executable>)
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetScroll(optScroll: ?Ui.Scroll)
+  | CancelScrolling(tick: SKFS.Tick)
+  | SetHover(optHover: ?Hover)
+}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | ManageVisible(value: Int)
+}
+
+base class Repeatable(
+  optRepeatOn: ?FWK.Repeat = None(),
+  count: Int = 1,
+) extends ExecCommand {
+  children =
+  | GoTo(target: Target)
+
+  fun next(): this {
+    !this.count = this.count + 1;
+    this;
+  }
+}
+
+module end;

@@ -1,0 +1,245 @@
+module FWKMouse;
+
+const statePath: SKFS.DirName = SKFS.DirName::create("/ui/system/mouse/state/");
+const propKey: SKFS.IID = SKFS.IID(0);
+
+const mfHandle: SKFS.IHandle<UiEvent.MouseFile> = SKFS.IHandle(
+  SKFS.FileConverter(UiEvent.MouseFile::fromFile),
+  statePath,
+);
+
+base class Command extends FWKMessage.Command {
+  children =
+  | Next()
+
+  fun toJSON(): JSON.Value
+  | Button(button, pressed, timeStamp, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "button" => button.toJSON(),
+        "pressed" => JSON.Bool(pressed),
+        "timeStamp" => timeStamp.toJSON(),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | Location(offset, timeStamp, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "offset" => offset.toJSON(),
+        "timeStamp" => timeStamp.toJSON(),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | Wheel(delta, timeStamp, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "delta" => JSON.IntNumber(delta),
+        "timeStamp" => timeStamp.toJSON(),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | Next() -> JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWKMouse.Next" -> Next()
+    | "FWKMouse.Button" ->
+      Button(
+        FWK.Button::fromJSON(jso.get("button")),
+        jso.getBool("pressed"),
+        System.TimeStamp::fromJSON(jso.get("timeStamp")),
+        SKFS.Tick(jso.getInt("tick")),
+      )
+    | "FWKMouse.Location" ->
+      Location(
+        Geometry.Offset::fromJSON(jso.get("offset")),
+        System.TimeStamp::fromJSON(jso.get("timeStamp")),
+        SKFS.Tick(jso.getInt("tick")),
+      )
+    | "FWKMouse.Wheel" ->
+      Wheel(
+        jso.getInt("delta"),
+        System.TimeStamp::fromJSON(jso.get("timeStamp")),
+        SKFS.Tick(jso.getInt("tick")),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for FWKMouse.Command`)
+    }
+  }
+}
+
+base class Event(timeStamp: System.TimeStamp, tick: SKFS.Tick) extends Command {
+  fun compute(mouseFile: UiEvent.MouseFile, tick: SKFS.Tick): UiEvent.MouseFile;
+}
+
+class Button(button: FWK.Button, pressed: Bool) extends Event {
+  fun compute(
+    mouseFile: UiEvent.MouseFile,
+    tick: SKFS.Tick,
+  ): UiEvent.MouseFile {
+    nMouseFile = mouseFile;
+    primaryButton = nMouseFile.mouse.primaryButton;
+    middleButton = nMouseFile.mouse.middleButton;
+    secondaryButton = nMouseFile.mouse.secondaryButton;
+    wheel = 0;
+    lastWheel = mouseFile.mouse.lastWheel;
+    scrolling = this.timeStamp - lastWheel < System.TimeStamp(0, 150000);
+    if (this.button == FWK.WheelUp()) {
+      !wheel = if (this.pressed) 100 else 0;
+      !lastWheel = this.timeStamp;
+    } else if (this.button == FWK.WheelDown()) {
+      !wheel = if (this.pressed) -100 else 0;
+      !lastWheel = this.timeStamp;
+    } else if (this.button == FWK.Primary()) {
+      !primaryButton = primaryButton.derive(
+        this.pressed,
+        this.timeStamp,
+        mouseFile.absolute,
+        tick,
+      );
+      !middleButton = middleButton.next();
+      !secondaryButton = secondaryButton.next();
+    } else if (this.button == FWK.Middle()) {
+      !primaryButton = primaryButton.next();
+      !middleButton = middleButton.derive(
+        this.pressed,
+        this.timeStamp,
+        mouseFile.absolute,
+        tick,
+      );
+      !secondaryButton = secondaryButton.next();
+    } else if (this.button == FWK.Secondary()) {
+      !primaryButton = primaryButton.next();
+      !middleButton = middleButton.next();
+      !secondaryButton = secondaryButton.derive(
+        this.pressed,
+        this.timeStamp,
+        mouseFile.absolute,
+        tick,
+      )
+    };
+    !nMouseFile.mouse = UiEvent.Mouse(
+      this.timeStamp,
+      nMouseFile.mouse.point,
+      nMouseFile.mouse.movement,
+      if (wheel != 0) Some(UiEvent.Wheel(wheel, tick)) else None(),
+      lastWheel,
+      primaryButton,
+      middleButton,
+      secondaryButton,
+      0.0,
+      scrolling,
+    );
+    nMouseFile
+  }
+}
+
+class Location(offset: Geometry.Offset) extends Event {
+  fun compute(
+    mouseFile: UiEvent.MouseFile,
+    _tick: SKFS.Tick,
+  ): UiEvent.MouseFile {
+    lastWheel = mouseFile.mouse.lastWheel;
+    scrolling = this.timeStamp - lastWheel < System.TimeStamp(0, 150000);
+    movement = this.offset - mouseFile.mouse.point;
+    elapsed = (this.timeStamp - mouseFile.mouse.timeStamp).toSeconds();
+    distance = movement.distance();
+    speed = distance / elapsed;
+    nMouseFile = if (this.offset != mouseFile.mouse.point) {
+      mouseFile.clearCount();
+    } else {
+      mouseFile.next();
+    };
+    !nMouseFile.mouse.timeStamp = this.timeStamp;
+    !nMouseFile.mouse.point = this.offset;
+    !nMouseFile.mouse.movement = movement;
+    !nMouseFile.mouse.speed = speed;
+    !nMouseFile.mouse.scrolling = scrolling;
+    !nMouseFile.absolute = this.offset;
+    !nMouseFile.position = this.tick;
+    nMouseFile
+  }
+}
+
+class Wheel(delta: Int) extends Event {
+  fun compute(
+    mouseFile: UiEvent.MouseFile,
+    tick: SKFS.Tick,
+  ): UiEvent.MouseFile {
+    lastWheel = mouseFile.mouse.lastWheel;
+    scrolling = this.timeStamp - lastWheel < System.TimeStamp(0, 150000);
+    nMouseFile = mouseFile.clearCount();
+    !nMouseFile.mouse.timeStamp = this.timeStamp;
+    !nMouseFile.mouse.wheel = Some(UiEvent.Wheel(this.delta, tick));
+    !nMouseFile.mouse.scrolling = scrolling;
+    !nMouseFile.mouse.lastWheel = this.timeStamp;
+    !nMouseFile.mouse.speed = 0.0;
+    nMouseFile
+  }
+}
+
+class Messages()
+  extends FWKMessage.Support
+  uses FWKMessage.WithUpdate<Command> {
+  fun init(context: mutable SKFS.Context): void {
+    _ = context.makeDir(
+      UiEvent.MouseFile::fromFile,
+      statePath,
+      Array[(propKey, UiEvent.MouseFile(UiEvent.Mouse::new(), SKFS.Tick(0)))],
+    );
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+
+  protected fun execute(
+    context: mutable SKFS.Context,
+    _name: String,
+    _scope: String,
+    command: Command,
+  ): void {
+    execute(context, command)
+  }
+}
+
+fun init(context: mutable SKFS.Context): void {
+  context.registerMessageSupport("system", "mouse", Messages());
+}
+
+fun emit(context: mutable SKFS.Context, command: Command): void {
+  FWKMessage.emit(context, "system", "mouse", command)
+}
+
+fun execute(context: mutable SKFS.Context, command: Command): void {
+  mouseFile = mfHandle.get(context, propKey);
+  nMouseFile = command match {
+  | Next() -> mouseFile.next()
+  | event @ Event _ -> event.compute(mouseFile, context.tick)
+  };
+  mfHandle.write(context, propKey, nMouseFile)
+}
+
+fun getMouse(
+  context: mutable SKFS.Context,
+  isUntracked: Bool = false,
+): UiEvent.MouseFile {
+  mfHandle.getValue(context, propKey, isUntracked);
+}
+
+fun getOffset(
+  context: mutable SKFS.Context,
+  isUntracked: Bool,
+): Geometry.Offset {
+  mfHandle.getValue(context, propKey, isUntracked).offset();
+}
+
+module end;

@@ -1,0 +1,102 @@
+module UiTextLine;
+
+fun widgetDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/textline/widget/")
+}
+
+class Offset(index: Int, offset: Float) extends SKFS.File
+
+class Tokens(
+  tokens: Ui.Tokens,
+  displayToText: Vector<Int>,
+  textToDisplay: Vector<Int>,
+  t2dOffet: Int,
+) extends SKFS.File {
+  //
+  fun toDisplay(range: Ui.LinePortion): ?Range {
+    tStart = range.start - this.t2dOffet;
+    tEnd = range.optEnd.default(this.tokens.size) - this.t2dOffet;
+    size = this.textToDisplay.size();
+    if (size == 0 || tEnd < 0 || tStart > size) {
+      if (range.optEnd.isNone()) {
+        Some(Range(0, 1))
+      } else {
+        None()
+      }
+    } else if (tStart == size) {
+      Some(Range(tStart, tStart + 1))
+    } else {
+      start = this.textToDisplay[Math.max(tStart, 0)] - this.tokens.start;
+      end = this.textToDisplay[Math.min(tEnd, size - 1)] - this.tokens.start;
+      if (tEnd == size) {
+        !end = end + 1;
+      };
+      if (range.optEnd.isNone()) {
+        !end = end + 1;
+      };
+      if (end > start) {
+        Some(Range(start, end))
+      } else {
+        None()
+      }
+    }
+  }
+
+  fun toDisplayPosition(position: Int): ?Int {
+    tPos = position - this.t2dOffet;
+    this.textToDisplay.maybeGet(tPos).map(p -> p - this.tokens.start) match {
+    | Some(pos) -> Some(pos)
+    | _ ->
+      if (position == this.tokens.size) {
+        Some(this.tokens.size - this.tokens.start)
+      } else {
+        None()
+      }
+    }
+  }
+}
+
+base class Controller {
+  fun getTokens(context: mutable SKFS.Context): Ui.Tokens;
+  fun getOffset(context: mutable SKFS.Context): Offset;
+  fun getCount(context: mutable SKFS.Context): Int;
+  fun getFontSize(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.FontSize;
+  fun getSelection(
+    context: mutable SKFS.Context,
+    isUntraked: Bool = false,
+  ): ?Ui.LinePortion;
+  fun getPosition(context: mutable SKFS.Context): ?Int;
+  fun getTarget(context: mutable SKFS.Context, isUntracked: Bool = false): ?Int;
+  fun isEditable(context: mutable SKFS.Context): Bool;
+  fun isCaretVisible(context: mutable SKFS.Context): Bool;
+  fun isSpacesVisible(context: mutable SKFS.Context): Bool;
+  fun isScrolling(context: mutable SKFS.Context): Bool;
+  fun getLine(context: mutable SKFS.Context, isUntracked: Bool = false): Int;
+  fun isArmed(context: mutable SKFS.Context, isUntracked: Bool = false): Bool;
+  fun isMoveSelection(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool;
+
+  fun getTextCommandsManager(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.TextCommandsManager;
+
+  fun computeClipboardContent(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?FWKClipboard.Content;
+}
+
+class DrawInfo(drawables: Array<Ui.Drawable>) extends Ui.DrawInfo {}
+
+class Parameters(
+  reference: Ui.Path,
+  controller: Controller,
+) extends Ui.Parameters
+
+module end;

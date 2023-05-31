@@ -1,0 +1,107 @@
+module UiTextLine;
+
+class LamController{
+  tokens: Ui.Getter<Ui.Tokens>,
+  fontSize: Ui.GetterOne<Ui.FontSize, Bool>,
+  count: Ui.Getter<Int>,
+  textCommandsManager: Ui.GetterOne<Ui.TextCommandsManager, Bool>,
+  line: Ui.GetterOne<Int, Bool>,
+  scrolling: Ui.Getter<Bool>,
+  spacesVisible: Ui.Getter<Bool> = Ui.default(true),
+  offset: Ui.Getter<Offset> = Ui.default(Offset(0, 0.0)),
+  selection: Ui.GetterOne<?Ui.LinePortion, Bool> = Ui.defaultOne(None()),
+  position: Ui.Getter<?Int> = Ui.default(None()),
+  carretVisible: Ui.Getter<Bool> = Ui.default(true),
+  editable: Ui.Getter<Bool> = Ui.default(true),
+  armed: Ui.GetterOne<Bool, Bool> = Ui.defaultOne(false),
+  moveSelection: Ui.GetterOne<Bool, Bool> = Ui.defaultOne(false),
+  clipboardContent: Ui.GetterOne<?FWKClipboard.Content, Bool> = Ui.defaultOne(
+    None(),
+  ),
+  target: Ui.GetterOne<?Int, Bool> = Ui.defaultOne(None()),
+} extends Controller {
+  //
+  fun computeClipboardContent(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?FWKClipboard.Content {
+    this.clipboardContent(context, isUntracked)
+  }
+
+  fun getLine(context: mutable SKFS.Context, isUntracked: Bool = false): Int {
+    this.line(context, isUntracked)
+  }
+
+  fun getTokens(context: mutable SKFS.Context): Ui.Tokens {
+    this.tokens(context)
+  }
+
+  fun getOffset(context: mutable SKFS.Context): Offset {
+    this.offset(context)
+  }
+
+  fun getCount(context: mutable SKFS.Context): Int {
+    this.count(context)
+  }
+
+  fun getFontSize(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.FontSize {
+    this.fontSize(context, isUntracked)
+  }
+
+  fun getSelection(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.LinePortion {
+    this.selection(context, isUntracked)
+  }
+
+  fun getPosition(context: mutable SKFS.Context): ?Int {
+    this.position(context)
+  }
+
+  fun getTarget(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Int {
+    this.target(context, isUntracked)
+  }
+
+  fun isCaretVisible(context: mutable SKFS.Context): Bool {
+    this.carretVisible(context)
+  }
+
+  fun isSpacesVisible(context: mutable SKFS.Context): Bool {
+    this.spacesVisible(context)
+  }
+
+  fun isScrolling(context: mutable SKFS.Context): Bool {
+    this.scrolling(context)
+  }
+
+  fun isEditable(context: mutable SKFS.Context): Bool {
+    this.editable(context)
+  }
+
+  fun isArmed(context: mutable SKFS.Context, isUntracked: Bool = false): Bool {
+    this.armed(context, isUntracked);
+  }
+
+  fun isMoveSelection(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.moveSelection(context, isUntracked);
+  }
+
+  fun getTextCommandsManager(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Ui.TextCommandsManager {
+    this.textCommandsManager(context, isUntracked)
+  }
+}
+
+module end;

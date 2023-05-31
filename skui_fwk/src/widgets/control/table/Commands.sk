@@ -1,0 +1,36 @@
+module UiTable;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+  | All(value: Vector<Executable>)
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHScroll(optScroll: ?Ui.Scroll)
+  | SetVScroll(optScroll: ?Ui.Scroll)
+  | CancelScrolling(tick: SKFS.Tick)
+}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | ManageVisible(visible: Int)
+  | Fire(optRow: ?String)
+}
+
+base class Repeatable(
+  optRepeatOn: ?FWK.Repeat = None(),
+  count: Int = 1,
+) extends ExecCommand {
+  children =
+  | ManageSelect(target: STarget)
+
+  fun next(): this {
+    !this.count = this.count + 1;
+    this;
+  }
+}
+
+module end;

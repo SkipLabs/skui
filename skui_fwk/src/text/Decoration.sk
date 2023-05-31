@@ -1,0 +1,164 @@
+module Text;
+
+class DecorationLine private (mask: Int) uses Hashable, Orderable {
+  /**
+   * Draw a line through each line of text
+   */
+  const lineThrough: DecorationLine = DecorationLine(4);
+  /**
+   * Do not draw a decoration
+   */
+  const none: DecorationLine = DecorationLine(0);
+  /**
+   * Draw a line above each line of text
+   */
+  const overline: DecorationLine = DecorationLine(2);
+  /**
+   * Draw a line underneath each line of text
+   */
+  const underline: DecorationLine = DecorationLine(1);
+
+  fun underlined(underline: Bool): DecorationLine {
+    if (underline) {
+      this.or(static::underline);
+    } else {
+      this.and(static::underline.not());
+    }
+  }
+
+  fun overlined(overline: Bool): DecorationLine {
+    if (overline) {
+      this.or(static::overline);
+    } else {
+      this.and(static::overline.not());
+    }
+  }
+
+  fun throughlined(lineThrough: Bool): DecorationLine {
+    if (lineThrough) {
+      this.or(static::lineThrough);
+    } else {
+      this.and(static::lineThrough.not());
+    }
+  }
+
+  static fun combine(decorations: Array<DecorationLine>): DecorationLine {
+    decoration = DecorationLine::none;
+    decorations.each(d -> !decoration = decoration.or(d));
+    decoration;
+  }
+
+  fun or(other: DecorationLine): DecorationLine {
+    DecorationLine(this.mask.or(other.mask));
+  }
+
+  fun xor(other: DecorationLine): DecorationLine {
+    DecorationLine(this.mask.xor(other.mask));
+  }
+
+  fun and(other: DecorationLine): DecorationLine {
+    DecorationLine(this.mask.and(other.mask));
+  }
+
+  fun not(): DecorationLine {
+    DecorationLine(this.mask.not());
+  }
+
+  fun contains(other: DecorationLine): Bool {
+    this.and(other) == other;
+  }
+
+  fun hasLineThrough(): Bool {
+    this.contains(static::lineThrough);
+  }
+
+  fun hasUnderline(): Bool {
+    this.contains(static::underline);
+  }
+
+  fun hasOverline(): Bool {
+    this.contains(static::overline);
+  }
+}
+
+/**
+ * The style in which to draw a text decoration
+ */
+base class DecorationStyle() uses Hashable, Orderable {
+  children =
+  /**
+   * Draw a dashed line
+   */
+  | Dashed()
+  /**
+   * Draw a dotted line
+   */
+  | Dotted()
+  /**
+   * Draw two lines
+   */
+  | Double()
+  /**
+   * Draw a solid line
+   */
+  | Solid()
+  /**
+   * Draw a sinusoidal line
+   */
+  | Wavy()
+
+  fun code(): Int {
+    this match {
+    | Dashed() -> 1
+    | Dotted() -> 2
+    | Double() -> 3
+    | Solid() -> 4
+    | Wavy() -> 5
+    }
+  }
+}
+
+class Decoration(
+  line: DecorationLine = DecorationLine::none,
+  style: DecorationStyle = Solid(),
+  fill: Ui.Paint = Colors.black(),
+  thickness: ?Float = None(),
+) uses Hashable, Orderable {
+  static fun underline(style: DecorationStyle = Solid()): Decoration {
+    Decoration(DecorationLine::underline, style);
+  }
+  static fun overline(style: DecorationStyle = Solid()): Decoration {
+    Decoration(DecorationLine::overline, style);
+  }
+
+  static fun lineThrough(style: DecorationStyle = Solid()): Decoration {
+    Decoration(DecorationLine::lineThrough, style);
+  }
+
+  fun underlined(underline: Bool): Decoration {
+    !this.line = this.line.underlined(underline);
+    this;
+  }
+
+  fun overlined(overline: Bool): Decoration {
+    !this.line = this.line.overlined(overline);
+    this;
+  }
+
+  fun throughlined(lineThrough: Bool): Decoration {
+    !this.line = this.line.throughlined(lineThrough);
+    this;
+  }
+
+  fun fillDrawables(
+    _offset: Geometry.Offset,
+    _support: Ui.DrawableSupport,
+    _size: Geometry.Size,
+    _ascent: Float,
+    _drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    todo("Text.Decoration.fillDrawables")
+  }
+}
+
+module end;

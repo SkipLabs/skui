@@ -1,0 +1,28 @@
+module UiRoot;
+
+const statePath: String = "ui/root/state";
+
+base class Storage {
+  fun closeMenu(context: mutable SKFS.Context): void;
+  fun setShownTooltip(context: mutable SKFS.Context, id: String): void;
+  fun isMenuClosed(context: mutable SKFS.Context): Bool;
+  fun isTooltipShown(context: mutable SKFS.Context, path: Ui.Path): Bool;
+
+  fun closeMenuMessage(): FWKMessage.Message;
+
+  fun manageWidgets(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    widgetGetter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+    mouseMenu: Ui.Getter<FWK.MouseState>,
+    focusMenu: Ui.Getter<FWK.FocusState>,
+  ): SKFS.EHValue<Ui.WidgetFile>;
+
+  fun buildDropdown(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    items: Array<UiDropdown.ItemBase>,
+  ): Ui.Dropdown;
+}
+
+module end;

@@ -1,0 +1,250 @@
+module Themify;
+
+const codePoints: Map<String, Int> = Map[
+  "arrow-left" => 58921,
+  "arrow-up" => 58919,
+  "arrow-right" => 58920,
+  "arrow-down" => 58922,
+  "arrow-top-left" => 58971,
+  "arrow-top-right" => 58970,
+  "arrow-circle-left" => 58974,
+  "arrow-circle-up" => 58972,
+  "arrow-circle-right" => 58973,
+  "arrow-circle-down" => 58975,
+  "arrows-horizontal" => 58968,
+  "arrows-vertical" => 58967,
+  "arrows-corner" => 59070,
+  "angle-left" => 58954,
+  "angle-up" => 58952,
+  "angle-right" => 58953,
+  "angle-down" => 58955,
+  "double-angle-left" => 58978,
+  "double-angle-up" => 58976,
+  "double-angle-right" => 58977,
+  "double-angle-down" => 58979,
+  "move" => 58966,
+  "fullscreen" => 58969,
+  "split-horizontal" => 58998,
+  "split-vertical" => 58997,
+  "hand-left" => 59164,
+  "hand-up" => 59162,
+  "hand-right" => 59163,
+  "hand-down" => 59165,
+  "back-left" => 59069,
+  "back-right" => 59068,
+  "exchange-vertical" => 58943,
+  "wand" => 58880,
+  "save" => 59206,
+  "direction" => 59048,
+  "multiple-direction" => 59049,
+  "user" => 58882,
+  "link" => 58925,
+  "unlink" => 58884,
+  "trash" => 58885,
+  "target" => 58887,
+  "tag" => 58888,
+  "desktop" => 58944,
+  "tablet" => 58889,
+  "mobile" => 58913,
+  "email" => 59226,
+  "star" => 58890,
+  "spray" => 58891,
+  "signal" => 58892,
+  "shopping-cart" => 58893,
+  "shopping-cart-full" => 58894,
+  "settings" => 58895,
+  "search" => 58896,
+  "zoom-in" => 58897,
+  "zoom-out" => 58898,
+  "cut" => 58899,
+  "ruler" => 58900,
+  "bookmark" => 58903,
+  "bookmarked" => 58904,
+  "reload" => 58905,
+  "plus" => 58906,
+  "minus" => 58914,
+  "close" => 58950,
+  "pin" => 58907,
+  "pencil" => 58908,
+  "forbiden" => 58912,
+  "medall" => 58915,
+  "lock" => 58923,
+  "unlock" => 58883,
+  "location-arrow" => 58924,
+  "layout" => 58926,
+  "layers" => 58928,
+  "multiple-layers" => 58928,
+  "key" => 58929,
+  "image" => 58931,
+  "heart" => 58932,
+  "heart-broken" => 58933,
+  "hand-stop" => 58934,
+  "hand-open" => 58935,
+  "hand-drag" => 58936,
+  "flag" => 58938,
+  "eye" => 58941,
+  "import" => 58930,
+  "export" => 58942,
+  "comments" => 58947,
+  "comment" => 58948,
+  "thought" => 58886,
+  "clip" => 58951,
+  "check" => 58956,
+  "checkbox" => 58957,
+  "uncheck-box" => 59051,
+  "palette" => 59104,
+  "briefcase" => 58961,
+  "bolt" => 58962,
+  "blackboard" => 58964,
+  "dashboard" => 59050,
+  "world" => 58981,
+  "timer" => 58990,
+  "time" => 59179,
+  "ticket" => 58991,
+  "thumb-up" => 58992,
+  "thumb-down" => 58993,
+  "power-off" => 59010,
+  "map" => 59024,
+  "menu" => 59022,
+  "filter" => 59042,
+  "clipboard" => 59060,
+  "copy" => 59060,
+  "info" => 59031,
+  "home" => 59035,
+  "help" => 59036,
+  "alert" => 59077,
+  "anchor" => 59072,
+  "archive" => 59071,
+  "cloud" => 59057,
+  "cloud-up" => 59058,
+  "cloud-down" => 59059,
+  "file" => 59044,
+  "files" => 59043,
+  "folder" => 58937,
+  "zip" => 58980,
+  "more" => 59105,
+  "more-alt" => 59106,
+  "share" => 59182,
+  "calendar" => 59062,
+  "control-stop" => 59051,
+  "paste" => 59043,
+  "volume" => 58881,
+];
+
+fun iconCodePoint(icon: UiIcon.Icon): ?Int {
+  name = icon match {
+  | UiIcon.ArrowLeft() -> "arrow-left"
+  | UiIcon.ArrowUp() -> "arrow-up"
+  | UiIcon.ArrowRight() -> "arrow-right"
+  | UiIcon.ArrowDown() -> "arrow-down"
+  | UiIcon.ArrowTopLeft() -> "arrow-top-left"
+  | UiIcon.ArrowTopRight() -> "arrow-top-right"
+  | UiIcon.ArrowCircleLeft() -> "arrow-circle-left"
+  | UiIcon.ArrowCircleUp() -> "arrow-circle-up"
+  | UiIcon.ArrowCircleRight() -> "arrow-circle-right"
+  | UiIcon.ArrowCircleDown() -> "arrow-circle-down"
+  | UiIcon.ArrowsHorizontal() -> "arrows-horizontal"
+  | UiIcon.ArrowsVertical() -> "arrows-vertical"
+  | UiIcon.ArrowsCorner() -> "arrows-corner"
+  | UiIcon.AngleLeft() -> "angle-left"
+  | UiIcon.AngleUp() -> "angle-up"
+  | UiIcon.AngleRight() -> "angle-right"
+  | UiIcon.AngleDown() -> "angle-down"
+  | UiIcon.DoubleAngleLeft() -> "double-angle-left"
+  | UiIcon.DoubleAngleUp() -> "double-angle-up"
+  | UiIcon.DoubleAngleRight() -> "double-angle-right"
+  | UiIcon.DoubleAngleDown() -> "double-angle-down"
+  | UiIcon.Move() -> "move"
+  | UiIcon.Fullscreen() -> "fullscreen"
+  | UiIcon.Redo() -> "back-right"
+  | UiIcon.ExchangeVertical() -> "exchange-vertical"
+  | UiIcon.Save() -> "save"
+  | UiIcon.Direction() -> "direction"
+  | UiIcon.MultipleDirection() -> "direction-alt"
+  | UiIcon.User() -> "user"
+  | UiIcon.Link() -> "link"
+  | UiIcon.Unlink() -> "unlink"
+  | UiIcon.Trash() -> "trash"
+  | UiIcon.Target() -> "target"
+  | UiIcon.Tag() -> "tag"
+  | UiIcon.Desktop() -> "desktop"
+  | UiIcon.Tablet() -> "tablet"
+  | UiIcon.Mobile() -> "mobile"
+  | UiIcon.Email() -> "email"
+  | UiIcon.Star() -> "star"
+  | UiIcon.Signal() -> "signal"
+  | UiIcon.ShoppingCart() -> "shopping-cart"
+  | UiIcon.Settings() -> "settings"
+  | UiIcon.Search() -> "search"
+  | UiIcon.ZoomIn() -> "zoom-in"
+  | UiIcon.ZoomOut() -> "zoom-out"
+  | UiIcon.Cut() -> "cut"
+  | UiIcon.Bookmark() -> "bookmark"
+  | UiIcon.Bookmarked() -> "bookmarked"
+  | UiIcon.Reload() -> "reload"
+  | UiIcon.Plus() -> "plus"
+  | UiIcon.Minus() -> "minus"
+  | UiIcon.Close() -> "close"
+  | UiIcon.Pin() -> "pin"
+  | UiIcon.Pencil() -> "pencil"
+  | UiIcon.Forbiden() -> "forbiden"
+  | UiIcon.Lock() -> "lock"
+  | UiIcon.Unlock() -> "unlock"
+  | UiIcon.LocationArrow() -> "location-arrow"
+  | UiIcon.Layout() -> "layout"
+  | UiIcon.Layers() -> "layers"
+  | UiIcon.Key() -> "key"
+  | UiIcon.Image() -> "image"
+  | UiIcon.Heart() -> "heart"
+  | UiIcon.HeartBroken() -> "heart-broken"
+  | UiIcon.HandStop() -> "hand-stop"
+  | UiIcon.HandOpen() -> "hand-open"
+  | UiIcon.HandDrag() -> "hand-drag"
+  | UiIcon.Flag() -> "flag"
+  | UiIcon.Eye() -> "eye"
+  | UiIcon.Import() -> "import"
+  | UiIcon.Export() -> "export"
+  | UiIcon.Comment() -> "comment"
+  | UiIcon.Clip() -> "clip"
+  | UiIcon.Check() -> "check"
+  | UiIcon.CheckBox() -> "checkbox"
+  | UiIcon.Briefcase() -> "work"
+  | UiIcon.Bolt() -> "bolt"
+
+  | UiIcon.Dashboard() -> "dashboard"
+  | UiIcon.World() -> "world"
+  | UiIcon.Timer() -> "timer"
+  | UiIcon.Time() -> "time"
+  | UiIcon.ThumbUp() -> "thumb-up"
+  | UiIcon.ThumbDown() -> "thumb-down"
+  | UiIcon.PowerOff() -> "power-off"
+  | UiIcon.Map() -> "map"
+  | UiIcon.Menu() -> "menu"
+  | UiIcon.Filter() -> "filter"
+  | UiIcon.Clipboard() -> "clipboard"
+  | UiIcon.Copy() -> "copy"
+  | UiIcon.Info() -> "info"
+  | UiIcon.Home() -> "home"
+  | UiIcon.Help() -> "help"
+  | UiIcon.Alert() -> "alert"
+  | UiIcon.Anchor() -> "anchor"
+  | UiIcon.Archive() -> "archive"
+  | UiIcon.Cloud() -> "cloud"
+  | UiIcon.CloudUp() -> "cloud-up"
+  | UiIcon.CloudDown() -> "cloud-down"
+  | UiIcon.File() -> "file"
+  | UiIcon.Files() -> "files"
+  | UiIcon.Folder() -> "folder"
+  | UiIcon.Zip() -> "zip"
+  | UiIcon.More() -> "more"
+  | UiIcon.Occulted() -> "more-alt"
+  | UiIcon.Share() -> "share"
+  | UiIcon.Calendar() -> "calendar"
+  | UiIcon.Paste() -> "paste"
+  | UiIcon.Volume() -> "volume"
+  | UiIcon.Custom(name) -> name
+  };
+  codePoints.maybeGet(name);
+}
+
+module end;

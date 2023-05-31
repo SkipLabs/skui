@@ -1,0 +1,150 @@
+module UiTable;
+
+fun toJSON(v: JSONValue): JSON.Value {
+  v.toJSON()
+}
+
+extension base class Command {
+  //
+  fun toJSON(): JSON.Value
+  | CancelScrolling(tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | ManageVisible(visible) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(visible),
+      ],
+    )
+  | ManageScrolling(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | Fire(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue.map(v -> JSON.String(v)).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | SetHScroll(optValue)
+  | SetVScroll(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | ManageSelect(target, optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "target" => target.toJSON(),
+        "repeatOn" => optRepeatOn.map(toJSON).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTable.Fire" -> Fire(jso.maybeGetString("value"))
+    | "UiTable.ManageScrolling" ->
+      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "UiTable.CancelScrolling" ->
+      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+    | "UiTable.SetHScroll" ->
+      SetHScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
+    | "UiTable.SetVScroll" ->
+      SetVScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
+    | "UiTable.ManageSelect" ->
+      ManageSelect(
+        STarget::fromJSON(jso.get("target")),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiTable.ManageVisible" -> ManageVisible(jso.getInt("value"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTable.Command`)
+    }
+  }
+}
+
+extension base class STarget extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | SAll()
+  | SClear()
+  | SPrevious()
+  | SNext()
+  | SFirst()
+  | SLast() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | SToCurrent(keep)
+  | SToPrevious(keep)
+  | SToNext(keep)
+  | SToFirst(keep)
+  | SToLast(keep) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "keep" => JSON.Bool(keep),
+      ],
+    )
+  | SCurrent(toggle) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "toggle" => JSON.Bool(toggle),
+      ],
+    )
+  | SRow(row, toggle) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.String(row),
+        "toggle" => JSON.Bool(toggle),
+      ],
+    )
+  | SToRow(row, keep) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.String(row),
+        "keep" => JSON.Bool(keep),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): STarget {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTable.SAll" -> SAll()
+    | "UiTable.SClear" -> SClear()
+    | "UiTable.SPrevious" -> SPrevious()
+    | "UiTable.SNext" -> SNext()
+    | "UiTable.SFirst" -> SFirst()
+    | "UiTable.SLast" -> SLast()
+    | "UiTable.SToCurrent" -> SToCurrent(jso.getBool("keep"))
+    | "UiTable.SToPrevious" -> SToPrevious(jso.getBool("keep"))
+    | "UiTable.SToNext" -> SToNext(jso.getBool("keep"))
+    | "UiTable.SToFirst" -> SToFirst(jso.getBool("keep"))
+    | "UiTable.SToLast" -> SToLast(jso.getBool("keep"))
+    | "UiTable.SRow" -> SRow(jso.getString("value"), jso.getBool("toggle"))
+    | "UiTable.SCurrent" -> SCurrent(jso.getBool("toggle"))
+    | "UiTable.SToRow" -> SToRow(jso.getString("value"), jso.getBool("keep"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTable.STarget`)
+    }
+  }
+}
+
+module end;

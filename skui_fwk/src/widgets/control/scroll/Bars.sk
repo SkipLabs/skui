@@ -1,0 +1,61 @@
+module UiScroll;
+
+class Bars{
+  hBar: Ui.Getter<?UiScroll.Bar>,
+  vBar: Ui.Getter<?UiScroll.Bar>,
+} extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
+  //
+  fun getNode(
+    context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
+      barSize = context.getThemeThickness(UiTheme.ScrollBar()).toFloat();
+      size = constraints.biggest();
+      childNodes = mutable Vector<Ui.NChild>[];
+      optHBar = this.hBar(context);
+      optVBar = this.vBar(context);
+      optHBar.each(hBar -> {
+        hConstraints = Ui.BoxConstraints::tight(
+          if (optVBar.isSome()) {
+            size.width - barSize
+          } else {
+            size.width
+          },
+          barSize.toFloat(),
+        );
+        hNode = hBar.getNode(context, hConstraints);
+        childNodes.push(
+          Ui.CNode(
+            hNode,
+            Geometry.Offset(0.0, size.height - barSize),
+            hConstraints,
+          ),
+        );
+      });
+      optVBar.each(vBar -> {
+        vConstraints = Ui.BoxConstraints::tight(
+          barSize.toFloat(),
+          if (optHBar.isSome()) {
+            size.height - barSize
+          } else {
+            size.height
+          },
+        );
+        vNode = vBar.getNode(context, vConstraints);
+        childNodes.push(
+          Ui.CNode(
+            vNode,
+            Geometry.Offset(size.width - barSize, 0.0),
+            vConstraints,
+          ),
+        );
+      });
+      Ui.Node(this, constraints.biggest(), childNodes.toArray())
+    } else {
+      Ui.Node(this, constraints.smallest(), Array[])
+    }
+  }
+}
+
+module end;

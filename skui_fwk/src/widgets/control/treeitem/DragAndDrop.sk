@@ -1,0 +1,83 @@
+module UiTreeItem;
+
+class DragHandler(treeItem: Ui.TreeItem) extends FWK.DragHandler {
+  fun getTransfer(_context: mutable SKFS.Context): FWK.Transfer {
+    FWK.TrMove()
+  }
+
+  fun getClipboardContent(
+    _context: mutable SKFS.Context,
+  ): ?FWKClipboard.Content {
+    Some(FWKClipboard.Content::plain(this.treeItem.id.toString()))
+  }
+
+  fun getDragInfo(_context: mutable SKFS.Context): ?FWK.DragInfo {
+    None()
+  }
+
+  fun dropped(
+    _context: mutable SKFS.Context,
+    _optInfo: ?(FWK.DropHandler, FWK.TransferMode),
+  ): void {
+    void
+  }
+}
+
+class DropHandler(
+  treeItem: Ui.TreeItem,
+  drop: Ui.Drop,
+) extends FWK.DropHandler {
+  fun getIdentifier(): String {
+    this.treeItem.path.makeChild(this.drop.toString()).toString()
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    this.treeItem.state.emitTargeted(context, None());
+  }
+
+  fun over(
+    context: mutable SKFS.Context,
+    _mouse: UiEvent.MouseFile,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): ?FWK.TransferMode {
+    mode = FWK.TrMove().choose(transfer);
+    dragHandler match {
+    | tdh @ DragHandler _ if (
+      tdh.treeItem.reference == this.treeItem.reference &&
+      tdh.treeItem.path.id != this.treeItem.path.id &&
+      !tdh.treeItem.id.isChildOf(this.treeItem.id) &&
+      mode == FWK.TrMove()
+    ) ->
+      this.treeItem.state.emitTargeted(context, Some(this.drop));
+      Some(mode)
+    | _ -> None()
+    }
+  }
+
+  fun dropped(
+    context: mutable SKFS.Context,
+    dragHandler: FWK.DragHandler,
+    transfer: FWK.TransferMode,
+  ): void {
+    dragHandler match {
+    | tdh @ DragHandler _ if (
+      tdh.treeItem.reference == this.treeItem.reference &&
+      tdh.treeItem.id != this.treeItem.id &&
+      !this.treeItem.id.isChildOf(tdh.treeItem.id) &&
+      transfer == FWK.TrMove()
+    ) ->
+      this.treeItem.controller.getDropMessages(
+        context,
+        tdh.treeItem.id,
+        this.treeItem.id,
+        this.drop,
+        true,
+      ).each(message -> FWKMessage.emitMessage(context, message))
+    | _ -> void
+    };
+    this.treeItem.state.emitTargeted(context, None());
+  }
+}
+
+module end;

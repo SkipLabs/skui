@@ -1,0 +1,147 @@
+module RegExp;
+
+class RegExpException(message: String) extends Exception {
+  fun getMessage(): String {
+    this.message;
+  }
+}
+
+fun check(pattern: Array<Char>): ?String {
+  vtry<?String>(
+    () -> {
+      natCheck(String::fromChars(pattern));
+      None()
+    },
+    e -> Some(e.getMessage()),
+  )
+}
+
+fun strMatch(
+  subject: String,
+  pattern: String,
+  caseInsensitive: Bool = false,
+  global: Bool = true,
+): ?Array<Range> {
+  natMatch(subject, pattern, caseInsensitive, global)
+}
+
+fun match(
+  subject: Array<Char>,
+  pattern: Array<Char>,
+  caseInsensitive: Bool = false,
+  global: Bool = true,
+): ?Array<Range> {
+  natMatch(
+    String::fromChars(subject),
+    String::fromChars(pattern),
+    caseInsensitive,
+    global,
+  )
+}
+
+fun strMatchAll(
+  subject: String,
+  pattern: String,
+  caseInsensitive: Bool = false,
+  global: Bool = true,
+): ?Array<Array<Range>> {
+  all = natMatchAll(subject, pattern, caseInsensitive, global);
+  if (!all.isEmpty()) {
+    Some(all)
+  } else {
+    None()
+  }
+}
+
+fun matchAll(
+  subject: Array<Char>,
+  pattern: Array<Char>,
+  caseInsensitive: Bool = false,
+  global: Bool = true,
+): ?Array<Array<Range>> {
+  strMatchAll(
+    String::fromChars(subject),
+    String::fromChars(pattern),
+    caseInsensitive,
+    global,
+  )
+}
+
+fun test(
+  subject: Array<Char>,
+  pattern: String,
+  caseInsensitive: Bool = false,
+  global: Bool = true,
+): Bool {
+  natTest(String::fromChars(subject), pattern, caseInsensitive, global)
+}
+
+@cpp_extern("SKIP_RegExp_check")
+native fun natCheck(pattern: String): void;
+
+@cpp_extern("SKIP_RegExp_escape")
+native fun escape(value: String): String;
+
+@cpp_extern("SKIP_RegExp_test")
+native fun natTest(
+  subject: String,
+  pattern: String,
+  caseInsensitive: Bool,
+  global: Bool,
+): Bool;
+
+@cpp_extern("SKIP_RegExp_match")
+native fun natMatch(
+  subject: String,
+  pattern: String,
+  caseInsensitive: Bool,
+  global: Bool,
+): ?Array<Range>;
+
+@cpp_extern("SKIP_RegExp_matchAll")
+native fun natMatchAll(
+  subject: String,
+  pattern: String,
+  caseInsensitive: Bool,
+  global: Bool,
+): Array<Array<Range>>;
+
+@cpp_export("SKIP_RegExp_createRangeArray")
+fun createRangeArray(size: UInt32): mutable Array<Range> {
+  Array::mfill(size.toInt(), Range(0, 0));
+}
+
+@cpp_export("SKIP_RegExp_setRange")
+fun setRange(
+  ranges: mutable Array<Range>,
+  index: UInt32,
+  start: UInt32,
+  end: UInt32,
+): void {
+  ranges.set(index.toInt(), Range(start.toInt(), end.toInt()));
+}
+
+@cpp_export("SKIP_RegExp_createRangesVector")
+fun createRangesVector(): mutable Vector<Array<Range>> {
+  mutable Vector<Array<Range>>[]
+}
+
+@cpp_export("SKIP_RegExp_pushRanges")
+fun pushRanges(
+  vector: mutable Vector<Array<Range>>,
+  ranges: Array<Range>,
+): void {
+  vector.push(ranges);
+}
+
+@cpp_export("SKIP_RegExp_ranges")
+fun ranges(vector: mutable Vector<Array<Range>>): Array<Array<Range>> {
+  vector.toArray();
+}
+
+@cpp_export("SKIP_throwRegExpException")
+private fun throwRegExpException(msg: String): void {
+  throw RegExpException(msg)
+}
+
+module end;

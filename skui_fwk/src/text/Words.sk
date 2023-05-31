@@ -1,0 +1,311 @@
+module Text;
+
+const whiteSpace: Char = '·';
+const tabPrefix: Char = '―';
+const tabSuffix: Char = '→';
+
+base class Kind uses Equality, Show {
+  children =
+  | KToken()
+  | KSymbol()
+  | KBracket()
+  | KWhiteSpace()
+  | KNumber()
+  | KSplitted(kind: Kind)
+
+  static fun fromChar(c: Char): Kind {
+    if (Char.isAlphaNumeric(c)) {
+      KToken()
+    } else if (Char.isWhitespace(c)) {
+      KWhiteSpace()
+    } else {
+      KSymbol()
+    }
+  }
+
+  fun toString(): String
+  | KToken() -> "KToken"
+  | KSymbol() -> "KSymbol"
+  | KBracket() -> "KBracket"
+  | KWhiteSpace() -> "KWhiteSpace"
+  | KNumber() -> "KNumber"
+  | KSplitted(k) -> `KSplitted(${k})`
+
+  fun realKind(): Kind
+  | KToken()
+  | KSymbol()
+  | KBracket()
+  | KWhiteSpace()
+  | KNumber() ->
+    this
+  | KSplitted(k) -> k.realKind()
+}
+
+class KindGroup(index: Int, kind: Kind) {
+  fun getKind(): Kind {
+    this.kind.realKind()
+  }
+
+  fun splitted(): this {
+    static(this.index, KSplitted(this.kind))
+  }
+}
+
+class TokenInfo(
+  text: String,
+  count: Int,
+  kind: Kind,
+  shift: Int,
+  shifted: Bool = false,
+) {
+  @debug
+  fun toColumnFor(index: Int): Int {
+    if (this.shifted) {
+      column = 0;
+      idx = 0;
+      chars = this.text.chars();
+      last = Math.min(index, chars.size());
+      while (idx < last) {
+        if (chars[idx] != tabPrefix) {
+          !column = column + 1;
+        };
+        !idx = idx + 1;
+      };
+      column
+    } else {
+      index
+    }
+  }
+
+  fun toInt(): Int {
+    this.text.toInt()
+  }
+
+  fun toFloat(): Float {
+    this.text.toFloatOption() match {
+    | Some(v) -> v
+    | _ -> this.text.toInt().toFloat()
+    }
+  }
+}
+
+class Tokens(
+  value: Vector<TokenInfo>,
+  size: Int,
+  start: Int = 0,
+  shift: Int = 0,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Tokens _ -> x
+    | _ -> invariant_violation("Must be Text.Tokens")
+    }
+  }
+
+  fun filter(start: Int, count: Int): this {
+    newValues = mutable Vector<TokenInfo>[];
+    end = start + count;
+    toAdd = false;
+    index = 0;
+    startIndex = 0;
+    shift = 0;
+    for (token in this.value) {
+      if (!toAdd) {
+        !toAdd = (index + token.count) > start;
+        if (toAdd) {
+          !startIndex = start - index;
+          if (token.kind != KWhiteSpace()) {
+            !shift = token.shift;
+          }
+        } else if (token.kind != KWhiteSpace()) {
+          !shift = token.shift;
+        }
+      } else if (index >= end) {
+        break void;
+      };
+      if (toAdd) newValues.push(token);
+      !index = index + token.count;
+    };
+    Tokens(unsafe_chill_trust_me(newValues), this.size, startIndex, shift)
+  }
+
+  fun indexes(): Vector<Int> {
+    indexes = mutable Vector<Int>[];
+    index = this.shift;
+    this.value.each(token -> {
+      if (token.kind == KWhiteSpace()) {
+        token.text.chars().each(char -> {
+          indexes.push(index);
+          if (char == Text.tabSuffix || char == Text.whiteSpace) {
+            !index = index + 1;
+          }
+        });
+      } else {
+        for (_idx in .Range(0, token.count)) {
+          indexes.push(index);
+          !index = index + 1;
+        }
+      }
+    });
+    unsafe_chill_trust_me(indexes);
+  }
+}
+
+class Word(
+  space: String,
+  value: String,
+  count: Int,
+  shift: Int = 0,
+  shifted: Bool = false,
+)
+
+fun indexFromDisplay(chars: Array<Char>, index: Int, tabSize: Int): Int {
+  if (tabSize > 1 && index > 0) {
+    count = 0;
+    idx = 0;
+    for (char in chars) {
+      if (char == '\t') {
+        size = tabSize - (count % tabSize);
+        !count = count + size;
+      } else {
+        !count = count + 1;
+      };
+      if (count >= index) {
+        break idx;
+      };
+      !idx = idx + 1;
+    } else {
+      chars.size()
+    }
+  } else {
+    Math.clamp(index, 0, chars.size())
+  }
+}
+
+fun tabSizeAt(chars: Array<Char>, tabSize: Int, index: Int): Int {
+  if (tabSize > 1) {
+    count = 0;
+    for (idx in .Range(0, index)) {
+      char = chars[idx];
+      if (char == '\t') {
+        size = tabSize - (count % tabSize);
+        !count = count + size;
+      } else {
+        !count = count + 1;
+      };
+    };
+    tabSize - (count % tabSize);
+  } else {
+    1
+  }
+}
+
+class Words(value: Vector<Word>, size: Int) extends SKFS.File {
+  static fun fromString(text: String): this {
+    toWords(text)
+  }
+
+  fun toShownSpaceWords(tabSize: Int): this {
+    count = 0;
+    shift = 0;
+    tmp = mutable Vector<Char>[];
+    Words(
+      this.value.map(word -> {
+        shifted = false;
+        word.space.chars().each(char -> {
+          if (char == '\t' && tabSize > 1) {
+            size = tabSize - (count % tabSize);
+            for (index in .Range(0, size)) {
+              if (index == size - 1) {
+                tmp.push(tabSuffix);
+              } else {
+                tmp.push(tabPrefix);
+                !shift = shift - 1;
+                !shifted = true;
+              };
+              !count = count + 1;
+            }
+          } else if (char == '\t') {
+            tmp.push(tabSuffix);
+            !count = count + 1;
+          } else {
+            tmp.push(whiteSpace);
+            !count = count + 1;
+          }
+        });
+        nWord = Word(
+          String::fromChars(tmp.toArray()),
+          word.value,
+          word.count,
+          shift,
+          shifted,
+        );
+        !count = count + word.count;
+        tmp.clear();
+        nWord
+      }),
+      this.size,
+    )
+  }
+
+  fun lex(brackets: SortedMap<Int, Array<Char>>): Tokens {
+    tokens = mutable Vector<TokenInfo>[];
+    realOffset = 0;
+    this.value.each(word -> {
+      size = word.space.chars().size();
+      if (size > 0) {
+        tokens.push(
+          TokenInfo(
+            word.space,
+            word.space.chars().size(),
+            KWhiteSpace(),
+            0,
+            word.shifted,
+          ),
+        );
+        !realOffset = realOffset + size
+      };
+      lexer = mutable Lexer{
+        text => word.value.chars(),
+        brackets,
+        tokens,
+        shift => word.shift,
+        realOffset => realOffset - word.shift,
+      };
+      lexer.lex();
+      !realOffset = realOffset + word.count
+    });
+    Tokens(unsafe_chill_trust_me(tokens), this.size);
+  }
+}
+
+base class TokenManager {
+  fun getTokenPaint(token: String): ?Color;
+  fun getKindPaint(kind: Kind): ?Color;
+}
+
+@debug
+fun toWords(text: String): Words {
+  index = 0;
+  chars = text.chars();
+  words = mutable Vector<Word>[];
+  tmp = mutable Vector<Char>[];
+  while (index < chars.size()) {
+    while (index < chars.size() && Char.isWhitespace(chars[index])) {
+      tmp.push(chars[index]);
+      !index = index + 1;
+    };
+    space = String::fromChars(tmp.toArray());
+    tmp.clear();
+    while (index < chars.size() && !Char.isWhitespace(chars[index])) {
+      tmp.push(chars[index]);
+      !index = index + 1;
+    };
+    words.push(Word(space, String::fromChars(tmp.toArray()), tmp.size()));
+    tmp.clear();
+  };
+  Words(unsafe_chill_trust_me(words), chars.size());
+}
+
+module end;

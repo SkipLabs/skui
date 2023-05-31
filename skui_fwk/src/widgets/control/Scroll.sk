@@ -1,0 +1,241 @@
+module Ui;
+
+class ScrollPane{
+  controller: UiScroll.Controller,
+  bars: UiScroll.Bars,
+  viewport: UiScroll.Viewport,
+  sizesHdl: SKFS.Handle<UiScroll.Sizes>,
+} extends StrictWidget uses WithNodeCache {
+  //
+  type Params = UiScroll.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    controller: UiScroll.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Configuration = None(),
+  ): this {
+    hKey = SKFS.IID(0);
+    vKey = SKFS.IID(1);
+    inner = path.makeChild("inner");
+    vpPath = inner.makeChild("viewport");
+    nodeInfoGetter: Ui.Getter<?NodeInfo> = ctx ~>
+      FWKPipeline.maybeGetInfo(ctx, vpPath).map(ni -> ni.info);
+    childInfoGetter: Ui.Getter<?NodeInfo> = ctx ~> {
+      widget = controller.getWidget(ctx);
+      FWKPipeline.maybeGetInfo(ctx, widget.path).map(ni -> ni.info);
+    };
+    sizeGetter: Ui.Getter<?Geometry.Size> = ctx ~>
+      nodeInfoGetter(ctx).map(ns -> ns.size());
+    cSizeGetter: Ui.Getter<?Geometry.Size> = ctx ~>
+      childInfoGetter(ctx).map(ns -> ns.size());
+    mainHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiScroll.widgetDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[
+        (hKey, SKFS.IntFile(0)),
+        (vKey, SKFS.IntFile(0)),
+      ],
+    );
+    sizesHdl = mainHdl.contextWriterKeyMap(
+      UiScroll.Sizes::fromFile,
+      context,
+      UiScroll.widgetDirName(path.makeChild("sizes")),
+      (context, writer, key, _) ~> {
+        optSize = sizeGetter(context);
+        optCSize = cSizeGetter(context);
+        optSizes = (optSize, optCSize) match {
+        | (Some(size), Some(cSize)) ->
+          if (key == hKey) {
+            Some(UiScroll.Sizes(size.width, cSize.width))
+          } else if (key == vKey) {
+            Some(UiScroll.Sizes(size.height, cSize.height))
+          } else {
+            None()
+          }
+        | _ -> None()
+        };
+        optSizes.each(ss -> writer.write(key, ss))
+      },
+    );
+    visibleHdl = sizesHdl.contextWriterKeyMap(
+      SKFS.BoolFile::fromFile,
+      context,
+      UiScroll.widgetDirName(path.makeChild("visible")),
+      (_, writer, key, sizes) ~> {
+        writer.write(key, SKFS.BoolFile(sizes.isVisible()))
+      },
+    );
+    //
+    // create bars widget
+    source = context.timeStamp().value;
+    hBar = UiScroll.Bar{
+      path => inner.makeChild("hBar"),
+      controller => UiScrollBar.LamController{
+        scrollGetter => ctx ~> controller.getHScroll(ctx).get(ctx).toFloat(),
+        scrollSetter => (ctx, scroll) ~> {
+          controller
+            .getHScroll(ctx, true)
+            .set(ctx, Some(scroll.toInt()), source)
+        },
+        viewSize => ctx ~> cSizeGetter(ctx).map(s -> s.width).default(0.0),
+        negative => controller.isNegative,
+        opposite => ctx ~> visibleHdl.getBool(ctx, vKey),
+        focused => ctx ~> ctx.isFocused(path),
+      },
+      tick => context.tick,
+    };
+    vBar = UiScroll.Bar{
+      path => inner.makeChild("vBar"),
+      controller => UiScrollBar.LamController{
+        scrollGetter => ctx ~> controller.getVScroll(ctx).get(ctx).toFloat(),
+        scrollSetter => (ctx, scroll) ~> {
+          controller
+            .getVScroll(ctx, true)
+            .set(ctx, Some(scroll.toInt()), source)
+        },
+        viewSize => ctx ~> cSizeGetter(ctx).map(s -> s.height).default(0.0),
+        negative => controller.isNegative,
+        opposite => ctx ~> visibleHdl.getBool(ctx, hKey),
+        focused => ctx ~> ctx.isFocused(path),
+      },
+      tick => context.tick,
+    };
+    bars = UiScroll.Bars{
+      path => inner.makeChild("bars"),
+      hBar => ctx ~>
+        if (visibleHdl.getBool(ctx, hKey)) {
+          Some(hBar)
+        } else {
+          None()
+        },
+      vBar => ctx ~>
+        if (visibleHdl.getBool(ctx, vKey)) {
+          Some(vBar)
+        } else {
+          None()
+        },
+      tick => context.tick,
+    };
+    viewport = UiScroll.Viewport::create(context, vpPath, controller);
+    static{
+      path,
+      controller,
+      bars,
+      viewport,
+      sizesHdl,
+      optConfiguration,
+      cache,
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    node = this.viewport.getNode(context, constraints);
+    size = constraints.constrain(node.size);
+    Node::reversed(
+      this,
+      size,
+      Array[
+        CLink(
+          this.path.makeChild("vp"),
+          Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, node.size),
+          Opaque(false, false),
+          constraints,
+        ),
+        CLink(
+          this.path.makeChild("scrollBars"),
+          Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, node.size),
+          Opaque(false, false),
+          constraints,
+        ),
+      ],
+    )
+  }
+
+  fun getViewportDefinition(_context: mutable SKFS.Context): ?ViewportDef {
+    Some(
+      ViewportDef(
+        this.path,
+        None(),
+        None(),
+        Array[
+          ViewportDef(
+            this.path.makeChild("vp"),
+            Some(this.path),
+            Some(this.viewport),
+            Array[],
+          ),
+          ViewportDef(
+            this.path.makeChild("scrollBars"),
+            None(),
+            Some(this.bars),
+            Array[],
+          ),
+        ],
+      ),
+    )
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    _nodeSum: NodeSum,
+    _optUserData: ?UserData,
+  ): ?DrawInfo {
+    optHSizes = this.sizesHdl.maybeGet(context, SKFS.IID(0));
+    optVSizes = this.sizesHdl.maybeGet(context, SKFS.IID(1));
+    (optHSizes, optVSizes) match {
+    | (Some(hSizes), Some(vSizes)) ->
+      hScroll = this.controller.getHScroll(context).get(context);
+      vScroll = this.controller.getVScroll(context).get(context);
+      fHScroll = hSizes.clamp(hScroll);
+      fVScroll = vSizes.clamp(vScroll);
+      Some(UiScroll.DrawInfo::compute(-fHScroll, -fVScroll))
+    | _ -> None()
+    };
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKFS.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((ctx, _offset, _ni) ~> {
+      Some(
+        UiScroll.HoverHandler(
+          this.path,
+          this.controller,
+          this.sizesHdl,
+          childGetter(ctx),
+        ),
+      )
+    })
+  }
+
+  fun checkFocusHandlers(
+    _context: mutable SKFS.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    Ui.wrappedFocusHandlers(
+      handlers,
+      optFocusHandler -> {
+        Some(
+          UiScroll.FocusHandler{
+            path => this.path,
+            category => "dropdown",
+            optFocusHandler,
+            controller => this.controller,
+            sizesHdl => this.sizesHdl,
+            parentBefore => false,
+          },
+        )
+      },
+      false,
+    )
+  }
+}
+
+module end;

@@ -1,0 +1,24 @@
+module UiIcon;
+
+class Square(side: Int) extends Ui.Icon {
+  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+    Geometry.Size(this.side.toFloat(), this.side.toFloat());
+  }
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this {
+    static(this.side, optSize, keepRatio)
+  }
+
+  fun fillDrawables(
+    _context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    drawables.push(support.rectangle(offset, size, paint))
+  }
+}
+
+module end;

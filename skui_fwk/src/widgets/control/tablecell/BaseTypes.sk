@@ -1,0 +1,107 @@
+module UiTableCell;
+
+const padding: Float = 16.0;
+const expandIconSize: Float = 16.0;
+const actionPadding: Float = 4.0;
+const radius: Float = 6.0;
+
+class Action(
+  icon: Ui.IconBuilder,
+  messages: Array<FWKMessage.Message>,
+  tooltip: ?Text = None(),
+) extends SKFS.File {}
+
+base class Controller {
+  fun getText(context: mutable SKFS.Context): ?Text;
+  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKFS.Context): ?Text;
+  fun getAlignment(context: mutable SKFS.Context): Text.FixedAlign;
+  fun getFont(context: mutable SKFS.Context): Font.FaceID;
+  fun getFill(context: mutable SKFS.Context): .Color;
+  fun getAction(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Action;
+}
+
+base class State {
+  fun isArmed(context: mutable SKFS.Context): Bool;
+  fun isHover(context: mutable SKFS.Context): Bool;
+
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun emitHover(context: mutable SKFS.Context, value: Bool): void;
+
+  fun emitAll(context: mutable SKFS.Context, armed: Bool, hover: Bool): void;
+}
+
+base class Storage {
+  fun getName(): String;
+  fun getScope(): String;
+
+  fun setArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun setHover(context: mutable SKFS.Context, value: Bool): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+class Layout(
+  optLabel: ?(String, Geometry.Size, Font.FaceID),
+  optIcon: ?(Ui.Icon, Geometry.Size),
+  optAction: ?(Ui.Icon, Geometry.Size),
+  iconTextGap: Float,
+) extends Ui.UserData {
+  //
+  fun computeSize(): Geometry.Size {
+    optTSize = this.optLabel.map(label ->
+      (label.i1.width.toFloat(), label.i1.height.toFloat())
+    );
+    (width, height) = this.optIcon match {
+    | Some((_, iSize)) ->
+      optTSize match {
+      | Some((tWidth, tHeight)) ->
+        this.optAction match {
+        | Some((_, aSize)) ->
+          (
+            tWidth +
+              iSize.width +
+              this.iconTextGap +
+              aSize.width +
+              this.iconTextGap,
+            Math.max(Math.max(tHeight, iSize.height), aSize.height),
+          )
+        | _ ->
+          (
+            tWidth + iSize.width + this.iconTextGap,
+            Math.max(tHeight, iSize.height),
+          )
+        }
+      | _ ->
+        this.optAction match {
+        | Some((_, aSize)) ->
+          (
+            iSize.width + aSize.width + this.iconTextGap,
+            Math.max(aSize.height, iSize.height),
+          )
+        | _ -> (iSize.width, iSize.height)
+        }
+      }
+    | _ ->
+      optTSize match {
+      | Some((tWidth, tHeight)) ->
+        this.optAction match {
+        | Some((_, aSize)) ->
+          (
+            tWidth + aSize.width + this.iconTextGap,
+            Math.max(tHeight, aSize.height),
+          )
+        | _ -> (tWidth, tHeight)
+        }
+      | _ ->
+        this.optAction.map(a -> (a.i1.width, a.i1.height)).default((0.0, 0.0))
+      }
+    };
+    Geometry.Size(width + 2.0 * padding, height + 2.0 * padding)
+  }
+}
+
+module end;

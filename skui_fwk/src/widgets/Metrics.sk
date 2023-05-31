@@ -1,0 +1,250 @@
+module Ui;
+
+class Elem(offset: Float, size: Float) {
+  fun fullSize(): Float {
+    this.offset + this.size;
+  }
+}
+
+base class Scroll(index: Int) extends SKFS.File uses Orderable {
+  children =
+  | Start()
+  | End()
+
+  fun isEnd(): Bool
+  | Start _ -> false
+  | End _ -> true
+}
+
+base class Visible(index: Int, tick: SKFS.Tick) extends SKFS.File {
+  children =
+  | Pos()
+  | Incr()
+}
+
+class MAxis(
+  range: Range,
+  size: Float,
+  main: Float,
+  unity: Float,
+  count: Int,
+  visibleCount: Int,
+  offset: Float,
+  pageCount: Int,
+  optScroll: ?Ui.Scroll = None(),
+) uses Show {
+  static fun compute(
+    context: mutable SKFS.Context,
+    size: Float,
+    count: Int,
+    unity: Float,
+    scroll: Ui.Getter<?Ui.Scroll>,
+  ): this {
+    main = count.toFloat() * unity;
+    optScroll = if (main > size) {
+      scroll(context);
+    } else {
+      None()
+    };
+    visibleCount = Math.ceil(size / unity).toInt();
+    pageCount = Math.floor(size / unity).toInt();
+    (offset, range) = if (optScroll.map(s -> s.isEnd()).default(false)) {
+      rStart = optScroll.map(s -> s.index).default(0);
+      rEnd = Math.min(rStart + visibleCount, count);
+      visibleSize = visibleCount.toFloat() * unity;
+      start = count - rEnd;
+      (size - visibleSize, Range(start, Math.min(start + visibleCount, count)))
+    } else {
+      start = optScroll.map(s -> s.index).default(0);
+      (0.0, Range(start, Math.min(start + visibleCount, count)))
+    };
+    static(range, size, main, unity, count, visibleCount, offset, pageCount)
+  }
+
+  fun checkEnsureVisible(optEV: ?Ui.Visible): this {
+    if (this.main > this.size) {
+      optEV.each(ev -> {
+        position = ev match {
+        | Ui.Pos(p, _) -> Math.clamp(p, 0, this.count)
+        | Ui.Incr(incr, _) ->
+          if (incr > 0) {
+            Math.min(this.range.end + incr, this.count);
+          } else {
+            Math.max(this.range.start + incr, 0);
+          }
+        };
+        visibleSize = this.visibleCount.toFloat() * this.unity;
+        if (
+          position > (this.range.end - 1) ||
+          (position == (this.range.end - 1) && visibleSize > this.size)
+        ) {
+          rPosition = Math.max(0, this.count - (position + 1));
+          !this.optScroll = Some(Ui.End(rPosition));
+          rEnd = Math.min(rPosition + this.visibleCount, this.count);
+          start = this.count - rEnd;
+          !this.offset = this.size - visibleSize;
+          !this.range = Range(
+            start,
+            Math.min(start + this.visibleCount, this.count),
+          );
+        };
+        if (
+          position < this.range.start ||
+          (position == this.range.start && this.offset < 0.0)
+        ) {
+          !this.optScroll = Some(Ui.Start(position));
+          !this.range = Range(
+            position,
+            Math.min(position + this.visibleCount, this.count),
+          );
+          !this.offset = 0.0;
+        };
+      });
+    } else {
+      !this.optScroll = None();
+      !this.offset = 0.0;
+    };
+    this
+  }
+
+  fun toString(): String {
+    `[${this.range.start}, ${this.range.end}] | ${this.size} ${this.main} | ${
+      this.unity
+    } ${this.count} | ${this.visibleCount} ${this.offset}`
+  }
+}
+
+class Metrics(
+  ids: Array<Ui.Path>,
+  sizes: Array<Elem>,
+  reversed: Array<Elem>,
+  offset: Float,
+  range: Range,
+  startOffset: Float,
+  size: Float,
+  main: Float,
+  optScroll: ?Scroll = None(),
+) extends Ui.UserData {
+  //
+  static fun compute(
+    context: mutable SKFS.Context,
+    sizes: Array<Elem>,
+    reversed: Array<Elem>,
+    size: Float,
+    ids: Array<Ui.Path>,
+    scroll: Getter<?Scroll>,
+  ): this {
+    count = sizes.size();
+    main = sizes.reduce((acc, s) ~> s.fullSize() + acc, 0.0);
+    optScroll = if (main > size) {
+      scroll(context);
+    } else {
+      None()
+    };
+    (offset, range, startOffset) = if (
+      optScroll.map(s -> s.isEnd()).default(false)
+    ) {
+      start = optScroll.map(s -> s.index).default(0);
+      (offset, range, startOffset) = static::computeOffsetRange(
+        start,
+        reversed,
+        size,
+      );
+      (
+        size - main + offset,
+        Range(count - range.end, count - range.start),
+        startOffset,
+      )
+    } else {
+      start = optScroll.map(s -> s.index).default(0);
+      (offset, range, _) = static::computeOffsetRange(start, sizes, size);
+      (-offset, range, 0.0)
+    };
+    static(ids, sizes, reversed, offset, range, startOffset, size, main)
+  }
+
+  static fun reverse(elements: Array<Elem>): Array<Elem> {
+    offset = 0.0;
+    elements.map(e -> {
+      ne = Elem(offset, e.size);
+      !offset = e.offset;
+      ne
+    })
+  }
+
+  //
+  fun checkEnsureVisible(optEV: ?Visible): this {
+    if (this.main > this.size) {
+      optEV.each(ev -> {
+        count = this.sizes.size();
+        position = ev match {
+        | Pos(p, _) -> Math.clamp(p, 0, count)
+        | Incr(incr, _) ->
+          if (incr > 0) {
+            Math.min(this.range.end + incr - 1, count);
+          } else {
+            Math.max(this.range.start + incr, 0);
+          }
+        };
+        if (position + 1 > this.range.end) {
+          rPosition = Math.max(0, count - position - 1);
+          !this.optScroll = Some(End(rPosition));
+          (toffset, trange, !this.startOffset) = static::computeOffsetRange(
+            rPosition,
+            this.reversed,
+            this.main,
+          );
+          !this.offset = this.size - this.main + toffset;
+          !this.range = Range(count - trange.end, count - trange.start);
+        };
+        if (position < this.range.start) {
+          !this.optScroll = Some(Start(position));
+          (toffset, !this.range, _) = static::computeOffsetRange(
+            position,
+            this.sizes,
+            this.main,
+          );
+          !this.startOffset = 0.0;
+          !this.offset = -toffset;
+        };
+      });
+    } else {
+      !this.optScroll = None();
+      (toffset, !this.range, _) = static::computeOffsetRange(
+        0,
+        this.sizes,
+        this.main,
+      );
+      !this.startOffset = 0.0;
+      !this.offset = -toffset;
+    };
+    this
+  }
+
+  private static fun computeOffsetRange(
+    start: Int,
+    sizes: Array<Elem>,
+    size: Float,
+  ): (Float, Range, Float) {
+    offset = 0.0;
+    for (idx in Range(0, start)) {
+      elem = sizes[idx];
+      !offset = offset + elem.offset + elem.size
+    };
+    end_ = start;
+    vsize = 0.0;
+    while (end_ < sizes.size() && vsize + sizes[end_].fullSize() < size) {
+      elem = sizes[end_];
+      if (end_ == start) {
+        !offset = offset + elem.offset;
+        !vsize = vsize + elem.size;
+      } else {
+        !vsize = vsize + elem.fullSize();
+      };
+      !end_ = end_ + 1;
+    };
+    (offset, Range(start, end_), size - vsize)
+  }
+}
+
+module end;

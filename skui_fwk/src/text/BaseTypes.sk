@@ -1,0 +1,155 @@
+module Text;
+
+base class Transform uses Hashable, Orderable {
+  /** The transform enum controls the capitalization of text. */
+  children =
+  /** No capitalization. The text renders as it is. This is default. */
+  | NoCapitalization()
+  /** Transforms all characters to uppercase  */
+  | Uppercase()
+  /** Transforms all characters to lowercase */
+  | Lowercase()
+  /** Transforms the first character to uppercase */
+  | UppercaseFirst()
+  /** Transforms the first character of each word to uppercase */
+  | Capitalize()
+
+  fun toCode(): Int
+  | NoCapitalization() -> 0
+  | Uppercase() -> 1
+  | Lowercase() -> 2
+  | UppercaseFirst() -> 3
+  | Capitalize() -> 4
+
+  static fun fromCode(code: Int): Transform {
+    code match {
+    | 1 -> Uppercase()
+    | 2 -> Uppercase()
+    | 3 -> UppercaseFirst()
+    | 4 -> Capitalize()
+    | 0
+    | _ ->
+      NoCapitalization()
+    }
+  }
+}
+
+base class Wrapping uses Hashable, Orderable, Show {
+  children =
+  | NoWrap()
+  | CharWrap()
+  | WordWrap(separator: Separators = Separators())
+
+  fun toString(): String
+  | NoWrap() -> "no-wrap"
+  | CharWrap() -> "char-wrap"
+  | WordWrap(_) -> "word-wrap"
+
+  fun toCode(): Int
+  | NoWrap() -> 0
+  | CharWrap() -> 1
+  | WordWrap _ -> 2
+
+  static fun fromCode(code: Int): Wrapping {
+    code match {
+    | 1 -> CharWrap()
+    | 2 -> WordWrap()
+    | 0
+    | _ ->
+      NoWrap()
+    }
+  }
+}
+
+/**
+ * Whether and how to align text horizontally.
+ */
+base class Align() uses Hashable, Orderable {}
+
+base class FixedAlign() extends Align {
+  children =
+  /**
+   * Align the text in the center of the container.
+   */
+  | Center()
+  /**
+   * Stretch lines of text that end with a soft line break to fill the width of the container.
+   * Lines that end with hard line breaks are aligned towards the start edge.
+   */
+  | Justify()
+  /**
+   * Align the text on the left edge of the container.
+   */
+  | Left()
+  /**
+   * Align the text on the right edge of the container.
+   */
+  | Right()
+
+  fun toCode(): Int
+  | Center() -> 0
+  | Justify() -> 1
+  | Left() -> 2
+  | Right() -> 3
+
+  static fun fromCode(code: Int): FixedAlign {
+    code match {
+    | 0 -> Center()
+    | 1 -> Justify()
+    | 3 -> Right()
+    | 2
+    | _ ->
+      Left()
+    }
+  }
+}
+
+base class DirectionalAlign() extends Align {
+  children =
+  /**
+   * Align the text on the leading edge of the container.
+   * For left-to-right text (Text.Ltr()), this is the left edge.
+   * For right-to-left text (Text.Rtl()), this is the right edge.
+   */
+  | Start()
+  /**
+   * Align the text on the trailing edge of the container.
+   */
+  | End()
+}
+
+/**
+ * Whether and how to align text horizontally.
+ */
+base class VAlign() uses Hashable, Orderable {
+  children =
+  | Top()
+  | Middle()
+  | Bottom()
+
+  fun toCode(): Int
+  | Top() -> 0
+  | Middle() -> 1
+  | Bottom() -> 2
+
+  static fun fromCode(code: Int): VAlign {
+    code match {
+    | 0 -> Top()
+    | 2 -> Bottom()
+    | 1
+    | _ ->
+      Middle()
+    }
+  }
+}
+
+base class Reduction uses Equality {
+  children =
+  | LeadingReduction()
+  | CenterReduction()
+  | EndingReduction()
+}
+
+private const ellipsis: Char = '…';
+
+module end;

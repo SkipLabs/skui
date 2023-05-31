@@ -1,0 +1,11 @@
+module UiDialogs;
+
+class LamController{
+  content: mutable SKFS.Context ~> Ui.Widget,
+} extends Controller {
+  fun getContent(context: mutable SKFS.Context): Ui.Widget {
+    this.content(context)
+  }
+}
+
+module end;

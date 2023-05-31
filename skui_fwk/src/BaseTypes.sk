@@ -1,0 +1,959 @@
+module Ui;
+
+class LinePortion(start: Int, optEnd: ?Int) extends SKFS.File uses Orderable {
+  fun contains(column: Int): Bool {
+    column >= this.start && this.optEnd.map(end -> column < end).default(true)
+  }
+
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ LinePortion _ -> x
+    | _ -> invariant_violation("Must be Ui.LinePortion")
+    }
+  }
+}
+
+class LinePortions(value: Array<LinePortion>) extends SKFS.File {
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ LinePortions _ -> x
+    | _ -> invariant_violation("Must be Ui.LinePortions")
+    }
+  }
+}
+
+base class Location
+
+class LineEnd(line: Int) extends Location
+//**
+//* Text position
+//*/
+class Position(
+  line: Int,
+  column: Int,
+  display: Bool = false,
+) extends Location, SKFS.File uses Orderable, Show {
+  //
+  const zero: Position = Position(0, 0);
+  const one: Position = Position(1, 1);
+
+  fun compare(other: Position): Order {
+    cmp = this.line.compare(other.line);
+    if (cmp == EQ()) {
+      this.column.compare(other.column);
+    } else {
+      cmp
+    }
+  }
+
+  fun +(other: Position): Position {
+    Position(
+      Math.max(this.line + other.line, 0),
+      Math.max(this.column + other.column, 0),
+    )
+  }
+
+  fun -(other: Position): Position {
+    Position(
+      Math.max(this.line - other.line, 0),
+      Math.max(this.column - other.column, 0),
+    )
+  }
+
+  fun sub(portion: Portion): Position {
+    if (this <= portion.start) {
+      this
+    } else if (this > portion.end) {
+      if (portion.end.line == this.line) {
+        !this.column = portion.start.column + (this.column - portion.end.column)
+      } else {
+        !this.line = this.line - (portion.end.line - portion.start.line)
+      };
+      this
+    } else {
+      portion.start
+    };
+  }
+
+  fun min(other: Position): Position {
+    if (this.line == other.line) {
+      if (this.column < other.column) this else other
+    } else if (this.line < other.line) {
+      this
+    } else {
+      other
+    }
+  }
+
+  fun max(other: Position): Position {
+    if (this.line == other.line) {
+      if (this.column > other.column) this else other
+    } else if (this.line > other.line) {
+      this
+    } else {
+      other
+    }
+  }
+
+  fun incr(): Position {
+    Position(this.line + 1, this.column + 1)
+  }
+
+  fun decr(): Position {
+    Position(Math.max(this.line - 1, 0), Math.max(this.column - 1, 0))
+  }
+
+  fun toString(): String {
+    `[${this.line}:${this.column}]`
+  }
+}
+
+//**
+//* Text portion
+//* start: Inclusive position
+//* end: Exclusive position
+//*/
+class Portion(
+  start: Position,
+  end: Position,
+) extends SKFS.File uses HasClassName, Orderable, Show {
+  //
+  const empty: Portion = Portion(Position::zero, Position::zero);
+
+  fun isEmpty(): Bool {
+    this.end <= this.start
+  }
+
+  fun incr(): this {
+    static(this.start.incr(), this.end.incr())
+  }
+
+  fun decr(): this {
+    static(this.start.decr(), this.end.decr())
+  }
+
+  fun diff(): ?Position {
+    if (this.start.line < this.end.line) {
+      Some(Position(this.end.line - this.start.line, this.end.column))
+    } else if (this.start.line == this.end.line) {
+      if (this.end.column > this.start.column) {
+        Some(Position(0, this.end.column - this.start.column))
+      } else {
+        None()
+      }
+    } else {
+      None()
+    }
+  }
+
+  fun toLinePortion(line: Int): ?LinePortion {
+    if (this.start.line <= line && this.end.line >= line) {
+      start = if (this.start.line == line) {
+        this.start.column
+      } else {
+        0
+      };
+      optEnd = if (this.end.line == line) {
+        Some(this.end.column)
+      } else {
+        None()
+      };
+      Some(LinePortion(start, optEnd))
+    } else {
+      None()
+    }
+  }
+
+  fun contains(position: Position, exclusive: Bool = false): Bool {
+    if (exclusive) {
+      this.start.compare(position) == LT() && this.end.compare(position) == GT()
+    } else {
+      this.start.compare(position) != GT() && this.end.compare(position) == GT()
+    }
+  }
+
+  fun toString(): String {
+    `{${this.start}->${this.end}}`
+  }
+
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Portion _ -> x
+    | _ -> invariant_violation("Must be Ui.Portion")
+    }
+  }
+}
+
+base class Indentation(
+  size: Int,
+) extends SKFS.File uses Equality, HasClassName {
+  children =
+  | Space()
+  | Tabulation()
+
+  static fun forFile(obj: SKFS.File): Indentation {
+    obj match {
+    | x @ Indentation _ -> x
+    | _ -> invariant_violation("Invalid Indentation")
+    }
+  }
+}
+
+base class EndLine extends SKFS.File uses Orderable, Show {
+  children =
+  | CR()
+  | LF()
+  | CRLF()
+
+  fun toChars(): Array<Char>
+  | CR() -> Array['\r']
+  | LF() -> Array['\n']
+  | CRLF() -> Array['\r', '\n']
+
+  fun toString(): String
+  | CR() -> "\r"
+  | LF() -> "\n"
+  | CRLF() -> "\r\n"
+
+  fun size(): Int
+  | CR()
+  | LF() ->
+    1
+  | CRLF() -> 2
+
+  static fun check(toCheck: Array<Char>): Bool {
+    toCheck == Array['\r'] ||
+      toCheck == Array['\n'] ||
+      toCheck == Array['\r', '\n']
+  }
+
+  static fun forFile(obj: SKFS.File): EndLine {
+    obj match {
+    | x @ EndLine _ -> x
+    | _ -> invariant_violation("Invalid UiDocument.EndLine")
+    }
+  }
+}
+
+base class Separation(
+  value: Int,
+) extends SKFS.File extends JSONValue uses HasClassName {
+  children =
+  | FromStart()
+  | FromEnd()
+  | Percent()
+
+  fun toOffset(width: Float): Float
+  | FromStart(value) -> value.toFloat()
+  | FromEnd(value) -> width - value.toFloat()
+  | Percent(value) -> width * value.toFloat() / 100.0
+
+  fun update(value: Float, width: Float): Separation
+  | FromStart(_) -> FromStart(value.toInt())
+  | FromEnd(_) -> FromEnd((width - value).toInt())
+  | Percent(_) ->
+    Percent(if (width > 0.0) (value.toFloat() * 100.0 / width).toInt() else 0)
+
+  static fun forFile(obj: SKFS.File): Separation {
+    obj match {
+    | x @ Separation _ -> x
+    | _ -> invariant_violation("Invalid Ui.Separation")
+    }
+  }
+}
+
+class FontSize(
+  width: Float,
+  ascent: Float,
+  descent: Float,
+) extends SKFS.File uses Orderable {
+  fun height(): Float {
+    this.ascent + this.descent
+  }
+
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ FontSize _ -> x
+    | _ -> invariant_violation("Must be Ui.FontSize")
+    }
+  }
+}
+
+base class Dim final (
+  value: Float,
+) uses Hashable, Equality, Show, HasClassName {
+  protected fun unit(): String;
+
+  fun toString(): String {
+    `${this.value} ${this.unit()}`;
+  }
+
+  static fun fromString(str: String): ?Dim {
+    tokens = mutable Vector<Text.TokenInfo>[];
+    lexer = mutable Text.Lexer{
+      text => str.chars(),
+      tokens,
+      splitNumberAndToken => true,
+    };
+    lexer.lex();
+    fTokens = tokens.filter(t -> t.kind != Text.KWhiteSpace());
+    if (
+      fTokens.size() >= 2 &&
+      fTokens[0].kind == Text.KNumber() &&
+      fTokens[1].kind == Text.KSymbol() &&
+      fTokens.maybeGet(2).map(v -> v.kind == Text.KToken()).default(true)
+    ) {
+      value = if (fTokens[0].text.contains(".")) {
+        fTokens[0].text.toFloat()
+      } else {
+        fTokens[0].text.toInt().toFloat()
+      };
+      if (fTokens[1].text == "%") {
+        Some(
+          fTokens
+            .maybeGet(2)
+            .map(v ->
+              v.text.lowercase() match {
+              | "h" -> RHeight(value)
+              | "w" -> RWidth(value)
+              | "max" -> RMax(value)
+              | "min" | _ -> RMin(value)
+              }
+            )
+            .default(RMin(value)),
+        )
+      } else {
+        None()
+      }
+    } else if (
+      fTokens.size() > 1 &&
+      fTokens[0].kind == Text.KNumber() &&
+      fTokens[1].kind == Text.KToken()
+    ) {
+      value = if (fTokens[0].text.contains(".")) {
+        fTokens[0].text.toFloat()
+      } else {
+        fTokens[0].text.toInt().toFloat()
+      };
+      fTokens[1].text.lowercase() match {
+      | "px" -> Some(Px(value))
+      | "pt" -> Some(Pt(value))
+      | "in" -> Some(Inch(value))
+      | "pc" -> Some(Pica(value))
+      | "cm" -> Some(Centimeter(value))
+      | "mm" -> Some(Millimeter(value))
+      | _ -> None()
+      }
+    } else if (fTokens.size() > 0 && fTokens[0].kind == Text.KNumber()) {
+      Some(
+        Px(
+          if (fTokens[0].text.contains(".")) {
+            fTokens[0].text.toFloat()
+          } else {
+            fTokens[0].text.toInt().toFloat()
+          },
+        ),
+      )
+    } else {
+      None()
+    }
+  }
+}
+
+base class FixedSize extends Dim {
+  fun pixels(): Float;
+
+  overridable fun points(): Float {
+    9.0 * this.pixels() / 12.0;
+  }
+
+  overridable fun inches(): Float {
+    this.pixels() / 96.0;
+  }
+
+  overridable fun centimeters(): Float {
+    this.inches() * 2.54;
+  }
+
+  overridable fun millimeters(): Float {
+    this.centimeters() * 10.0;
+  }
+
+  overridable fun picas(): Float {
+    this.points() / 12.0;
+  }
+}
+
+class Px extends FixedSize {
+  fun pixels(): Float {
+    this.value;
+  }
+  protected fun unit(): String {
+    "px"
+  }
+}
+
+class Pt extends FixedSize {
+  fun pixels(): Float {
+    12.0 * this.value / 9.0;
+  }
+  fun pt(): Float {
+    this.value;
+  }
+  protected fun unit(): String {
+    "pt"
+  }
+}
+
+class Inch extends FixedSize {
+  fun pixels(): Float {
+    96.0 * this.value;
+  }
+  fun inches(): Float {
+    this.value;
+  }
+  protected fun unit(): String {
+    "in"
+  }
+}
+
+class Pica extends FixedSize {
+  fun pixels(): Float {
+    16.0 * this.value;
+  }
+  fun pt(): Float {
+    12.0 * this.value;
+  }
+  fun pc(): Float {
+    this.value;
+  }
+  protected fun unit(): String {
+    "pc"
+  }
+}
+
+class Centimeter extends FixedSize {
+  // 1 in = 96px
+  // 1 in	= 96px = 2.54 cm
+  fun pixels(): Float {
+    this.value * 96.0 / 2.54;
+  }
+
+  fun centimeters(): Float {
+    this.value;
+  }
+
+  protected fun unit(): String {
+    "cm"
+  }
+}
+
+class Millimeter extends FixedSize {
+  fun pixels(): Float {
+    this.centimeters() * 96.0 / 2.54;
+  }
+
+  fun centimeters(): Float {
+    this.value / 10.0;
+  }
+
+  fun millimeters(): Float {
+    this.value;
+  }
+
+  protected fun unit(): String {
+    "mm"
+  }
+}
+
+base class RelativeToSize extends Dim {
+  fun pixels(width: Float, height: Float): Float;
+}
+
+class RHeight extends RelativeToSize {
+  fun pixels(_width: Float, height: Float): Float {
+    this.value * height / 100.0;
+  }
+
+  protected fun unit(): String {
+    "%h"
+  }
+}
+
+class RWidth extends RelativeToSize {
+  fun pixels(width: Float, _height: Float): Float {
+    this.value * width / 100.0;
+  }
+
+  protected fun unit(): String {
+    "%w"
+  }
+}
+
+class RMin extends RelativeToSize {
+  fun pixels(width: Float, height: Float): Float {
+    this.value * Math.min(width, height) / 100.0;
+  }
+
+  protected fun unit(): String {
+    "%min"
+  }
+}
+
+class RMax extends RelativeToSize {
+  fun pixels(width: Float, height: Float): Float {
+    this.value * Math.max(width, height) / 100.0;
+  }
+
+  protected fun unit(): String {
+    "%max"
+  }
+}
+
+class Size(width: Dim, height: Dim, keepRatio: Bool) {
+  fun toSize(parent: Geometry.Size): Geometry.Size {
+    width = this.width match {
+    | r @ RelativeToSize _ -> r.pixels(parent.width, parent.height)
+    | f @ FixedSize _ -> f.pixels()
+    };
+    height = this.height match {
+    | r @ RelativeToSize _ -> r.pixels(parent.width, parent.height)
+    | f @ FixedSize _ -> f.pixels()
+    };
+    Geometry.Size(width, height)
+  }
+}
+
+class Frame(optDrawables: ?Array<Drawable>) extends SKFS.File {
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Frame _ -> x
+    | _ -> invariant_violation("Must be Ui.Frame")
+    }
+  }
+}
+
+class FontSupport(
+  faceProps: Ui.GetterOne<SKFS.Future<Font.TypeFace>, Font.FaceID>,
+  glyphProps: Ui.GetterOne<Font.GlyphFile, Font.GlyphID>,
+  msdfProps: Ui.GetterOne<?Font.Msdf, Font.GlyphID>,
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ FontSupport _ -> x
+    | _ -> invariant_violation("Must be Ui.FontSupport")
+    }
+  }
+
+  fun isLoading(context: mutable SKFS.Context, faceId: Font.FaceID): Bool {
+    this.faceProps(context, faceId).isLoading();
+  }
+
+  fun hasError(context: mutable SKFS.Context, faceId: Font.FaceID): Bool {
+    this.faceProps(context, faceId).error().isSome();
+  }
+
+  fun isStrict(context: mutable SKFS.Context, faceId: Font.FaceID): Bool {
+    futur = this.faceProps(context, faceId);
+    futur.maybeGet() match {
+    | Some(typeface) -> typeface.typeface == faceId.typeface
+    | _ -> false
+    };
+  }
+
+  fun getLineHeight(context: mutable SKFS.Context, faceId: Font.FaceID): Float {
+    futur = this.faceProps(context, faceId);
+    futur
+      .maybeGet()
+      .map(typeface -> typeface.face.height())
+      .default(Ui.Pt(faceId.size).pixels());
+  }
+
+  fun getOffset(
+    context: mutable SKFS.Context,
+    char: Char,
+    faceId: Font.FaceID,
+    optPrevious: ?Char = None(),
+  ): Geometry.Offset {
+    glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
+    glyph.offset(glyph.getKern(optPrevious))
+  }
+
+  fun getMetrics(
+    context: mutable SKFS.Context,
+    faceId: Font.FaceID,
+  ): (Float, Float) {
+    this.faceProps(context, faceId)
+      .maybeGet()
+      .map(face -> face.metrics())
+      .default((0.0, 0.0));
+  }
+
+  fun getGlyph(
+    context: mutable SKFS.Context,
+    char: Char,
+    faceId: Font.FaceID,
+  ): Font.GlyphFile {
+    this.glyphProps(context, Font.GlyphID::create(faceId, char));
+  }
+
+  fun getGlyphForId(
+    context: mutable SKFS.Context,
+    gId: Font.GlyphID,
+  ): Font.GlyphFile {
+    this.glyphProps(context, gId);
+  }
+
+  fun getKern(
+    context: mutable SKFS.Context,
+    char: Char,
+    faceId: Font.FaceID,
+    optPrevious: ?Char = None(),
+  ): Float {
+    glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
+    glyph.getKern(optPrevious);
+  }
+
+  fun getWidth(
+    context: mutable SKFS.Context,
+    char: Char,
+    faceId: Font.FaceID,
+  ): Float {
+    glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
+    glyph.width();
+  }
+
+  fun getSize(
+    context: mutable SKFS.Context,
+    char: Char,
+    faceId: Font.FaceID,
+    optPrevious: ?Char = None(),
+  ): Geometry.Size {
+    glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
+    width = glyph.width();
+    height = glyph.height();
+    !width = width + glyph.getKern(optPrevious);
+    Geometry.Size(width, height);
+  }
+
+  fun getTextSize(
+    context: mutable SKFS.Context,
+    chars: Vector<Char>,
+    range: Text.Range,
+    faceId: Font.FaceID,
+  ): Geometry.Size {
+    optPrevious: ?Char = None();
+    width = 0.0;
+    height = 0.0;
+    for (i in range.toRange()) {
+      char = chars[i];
+      glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
+      !height = Math.max(height, glyph.height());
+      !width = width + glyph.width() + glyph.getKern(optPrevious);
+    };
+    Geometry.Size(width, height);
+  }
+
+  fun getMonospaceSize(
+    context: mutable SKFS.Context,
+    count: Int,
+    faceId: Font.FaceID,
+  ): Geometry.Size {
+    glyph = this.glyphProps(context, Font.GlyphID::create(faceId, ' '));
+    gWidth = Math.ceil(glyph.width());
+    Geometry.Size(gWidth * count.toFloat(), glyph.height());
+  }
+
+  fun getMonospaceWidth(
+    context: mutable SKFS.Context,
+    faceId: Font.FaceID,
+  ): Float {
+    glyph = this.glyphProps(context, Font.GlyphID::create(faceId, ' '));
+    Math.ceil(glyph.width());
+  }
+
+  fun getMSDF(context: mutable SKFS.Context, gId: Font.GlyphID): ?Font.Msdf {
+    this.msdfProps(context, gId);
+  }
+}
+
+/** An abstract set of layout constraints.
+ *
+ * Concrete layout models (such as box) will create concrete subclasses to
+ * communicate layout constraints between parents and children.
+ *
+ * ## Writing a Constraints subclass
+ *
+ * When creating a new [RenderObject] subclass with a new layout protocol, one
+ * will usually need to create a new [Constraints] subclass to express the
+ * input to the layout algorithms.
+ *
+ * A [Constraints] subclass should be immutable (all fields final). There are
+ * several members to implement, in addition to whatever fields, constructors,
+ * and helper methods one may find useful for a particular layout protocol:
+ *
+ * * The [isTight] getter, which should return true if the object represents a
+ *   case where the [RenderObject] class has no choice for how to lay itself
+ *   out. For example, [BoxConstraints] returns true for [isTight] when both
+ *   the minimum and maximum widths and the minimum and maximum heights are
+ *   equal.
+ *
+ * * The [isNormalized] getter, which should return true if the object
+ *   represents its data in its canonical form. Sometimes, it is possible for
+ *   fields to be redundant with each other, such that several different
+ *   representations have the same implications.
+ *
+ */
+base class Constraints() {
+  fun isTight(): Bool;
+  fun isNormalized(): Bool;
+}
+
+base class Designer {
+  fun size(context: mutable SKFS.Context): Geometry.Size;
+  fun design(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+  ): Vector<Ui.Drawable>;
+}
+
+base class Icon(optSize: ?Geometry.Size = None(), keepRatio: Bool = false) {
+  protected fun computedSize(context: mutable SKFS.Context): Geometry.Size;
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this;
+
+  fun size(context: mutable SKFS.Context): Geometry.Size {
+    this.optSize match {
+    | Some(size) -> size
+    | _ -> this.computedSize(context)
+    }
+  }
+
+  fun fillDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void;
+}
+
+class Pointer(
+  cursor: Cursor = DefaultCursor(),
+  optImage: ?Image = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Pointer _ -> x
+    | _ -> invariant_violation("Must be Ui.Pointer")
+    }
+  }
+
+  fun isDefault(): Bool {
+    this.cursor == DefaultCursor() && this.optImage.isNone()
+  }
+}
+
+class FontIcon(
+  icon: UiIcon.Icon,
+  collection: String,
+  fontSize: Float,
+) extends Icon {
+  //
+  protected fun computedSize(context: mutable SKFS.Context): Geometry.Size {
+    iconSupport = context.getIconSupport();
+    face = UiIcon.Face::create(this.collection, this.fontSize);
+    size = iconSupport.getSize(context, face);
+    Geometry.Size::square(Math.max(size.width, size.height));
+  }
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this {
+    static(this.icon, this.collection, this.fontSize, optSize, keepRatio)
+  }
+
+  fun fillDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    iconSupport = context.getIconSupport();
+    face = UiIcon.Face::create(this.collection, this.fontSize);
+    iconSupport.getMSDF(context, this.icon, face).each(msdf ->
+      drawables.push(
+        support.msdf(offset, size, msdf.image, msdf.conv, 8, 0.0, paint),
+      )
+    )
+  }
+}
+
+fun thickness(size: Float, isNotBold: Bool = true): Float {
+  if (isNotBold && size < 20.0) {
+    a = -1.0 / 350.0;
+    b = 2.0 / 35.0;
+    a * size + b;
+  } else {
+    0.0
+  };
+}
+
+value class PixColor(blue: UInt8, green: UInt8, red: UInt8) {
+  const white: PixColor = PixColor(
+    UInt8::truncate(255),
+    UInt8::truncate(255),
+    UInt8::truncate(255),
+  );
+}
+
+/**
+ * A container of RGB pixels.
+ */
+class Pixmap(data: Array<PixColor>, width: Int, height: Int) extends SKFS.File {
+  @always_inline
+  static fun build(painter: Ui.Painter, width: Int, height: Int): Pixmap {
+    Pixmap(
+      Array::fillBy(width * height, index ~> {
+        x = index % width;
+        y = index / width;
+        px = painter.getColorAt(x, y);
+        PixColor(px.getBlue(), px.getGreen(), px.getRed())
+      }),
+      width,
+      height,
+    )
+  }
+
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Pixmap _ -> x
+    | _ -> invariant_violation("Must be Ui.Pixmap")
+    }
+  }
+}
+
+mutable base class PixUpdater {
+  mutable fun update(x: Int, y: Int, pix: Pix): void;
+}
+
+base class PixAccessor {
+  fun get(x: Int, y: Int): Pix;
+  overridable macro fun getWidth(): Int {
+    this.width
+  }
+
+  overridable macro fun getHeight(): Int {
+    this.height
+  }
+}
+
+mutable class ArrayUpdater(
+  width: Int,
+  data: mutable Array<Pix>,
+  xShift: Int = 0,
+  yShift: Int = 0,
+) extends PixUpdater {
+  static fun make(
+    width: Int,
+    height: Int,
+    xShift: Int = 0,
+    yShift: Int = 0,
+  ): mutable ArrayUpdater {
+    mutable ArrayUpdater(
+      width,
+      Array::mfill(
+        width * height,
+        Pix(
+          UInt8::truncate(0),
+          UInt8::truncate(0),
+          UInt8::truncate(0),
+          UInt8::truncate(0),
+        ),
+      ),
+      xShift,
+      yShift,
+    )
+  }
+
+  mutable fun update(x: Int, y: Int, pix: Pix): void {
+    idx = index(x - this.xShift, y - this.yShift, this.width);
+    current = this.data.unsafeGet(idx);
+    this.data.unsafeSet(idx, current.under(pix));
+  }
+}
+
+base class ImageSupplier {
+  fun getSize(): (UInt32, UInt32);
+
+  fun getImage(
+    context: mutable SKFS.Context,
+    width: UInt32,
+    height: UInt32,
+  ): ?Ui.Image;
+
+  fun getImageForSize(
+    context: mutable SKFS.Context,
+    size: Geometry.ISize,
+  ): ?Ui.Image {
+    this.getImage(
+      context,
+      UInt32::truncate(size.width),
+      UInt32::truncate(size.height),
+    )
+  }
+}
+
+base class Decoration extends SKFS.File {
+  //
+  fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets;
+
+  fun fillDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    direction: Ui.HorizontalDirection,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void;
+
+  static fun forFile(obj: SKFS.File): Decoration {
+    obj match {
+    | x @ Decoration _ -> x
+    | _ -> invariant_violation("Invalid Decoration")
+    }
+  }
+}
+
+fun gaussianScale(dim: Int, radius: Int): Array<Float> {
+  // Only works right if w==r and h==r ????
+  sigma = radius.toFloat() / 3.0;
+  sigma22 = 2.0 * sigma * sigma;
+  center = (dim + 1) / 2;
+  total = 0.0;
+  kvals = Array::fillBy(dim, (index) -> {
+    d = (center - index).toFloat();
+    !total = total + Math.exp(-(d * d) / sigma22);
+    total;
+  });
+  // total += (kvals[kvals.length-1] - total) * spread;
+  Array::fillBy(dim, (index) -> kvals.unsafeGet(index) / total);
+}
+
+fun md5(value: Array<Ui.Pix>): String {
+  natMd5(value, UInt32::truncate(value.size() * 4))
+}
+
+@cpp_extern("SKIP_Utils_md5")
+native fun natMd5(value: Array<Ui.Pix>, size: UInt32): String;
+
+module end;
+
+fun toadd(description: String): void {
+  print_error(`TODO: ${description}`);
+}

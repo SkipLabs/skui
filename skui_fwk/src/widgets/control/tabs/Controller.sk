@@ -1,0 +1,81 @@
+module UiTabs;
+
+class LamController{
+  tabs: Ui.Getter<Array<String>>,
+  tab: Ui.GetterOne<Tab, String>,
+  active: Ui.Getter<?Ui.StringProperty> = Ui.default(None()),
+  numberOfActions: Ui.Getter<Int> = Ui.default(0),
+  actions: Ui.GetterOne<Action, Int> = (_ctx, _idx) ~>
+    invariant_violation("No actions"),
+  kind: Ui.Getter<Kind> = Ui.default(Scrollable()),
+  mode: Ui.Getter<UiTab.Mode> = Ui.default(UiTab.Basic()),
+  side: Ui.Getter<.UiSide> = Ui.default(UiSide.Top()),
+  minWidth: Ui.Getter<?Int> = Ui.default(None()),
+  maxWidth: Ui.Getter<?Int> = Ui.default(None()),
+  changeMessages: (mutable SKFS.Context, String, Bool, Bool) ~> Array<
+    FWKMessage.Message,
+  > = (_ctx, _value, _selected, _iu) ~> Array[],
+  closeMessages: (mutable SKFS.Context, Array<String>, Bool) ~> Array<
+    FWKMessage.Message,
+  > = (_ctx, _tabs, _iu) ~> Array[],
+} extends Controller {
+  //
+  fun getActive(context: mutable SKFS.Context): ?Ui.StringProperty {
+    this.active(context)
+  }
+
+  fun getKind(context: mutable SKFS.Context): Kind {
+    this.kind(context)
+  }
+
+  fun getMode(context: mutable SKFS.Context): UiTab.Mode {
+    this.mode(context)
+  }
+
+  fun getSide(context: mutable SKFS.Context): .UiSide {
+    this.side(context)
+  }
+
+  fun getTabs(context: mutable SKFS.Context): Array<String> {
+    this.tabs(context)
+  }
+
+  fun getTab(context: mutable SKFS.Context, id: String): Tab {
+    this.tab(context, id)
+  }
+
+  fun getNumberOfActions(context: mutable SKFS.Context): Int {
+    this.numberOfActions(context)
+  }
+
+  fun getAction(context: mutable SKFS.Context, index: Int): Action {
+    this.actions(context, index)
+  }
+
+  fun getMinWidth(context: mutable SKFS.Context): ?Int {
+    this.minWidth(context)
+  }
+
+  fun getMaxWidth(context: mutable SKFS.Context): ?Int {
+    this.maxWidth(context)
+  }
+
+  fun getChangeMessages(
+    context: mutable SKFS.Context,
+    tab: String,
+    selected: Bool,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message> {
+    this.changeMessages(context, tab, selected, isUntracked)
+  }
+
+  fun getCloseMessages(
+    context: mutable SKFS.Context,
+    tabs: Array<String>,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message> {
+    this.closeMessages(context, tabs, isUntracked)
+  }
+}
+
+module end;

@@ -1,0 +1,48 @@
+module UiTableRow;
+
+class LamController{
+  widths: Ui.GetterOne<Array<Float>, Bool>,
+  height: Ui.GetterOne<Float, Bool>,
+  cells: Ui.Getter<Array<Ui.TableCell>>,
+  selected: Ui.Getter<Bool> = Ui.default(false),
+  hover: Ui.Getter<Bool> = Ui.default(false),
+  separators: Ui.Getter<Bool> = Ui.default(false),
+  highlighted: Ui.Getter<Bool> = Ui.default(false),
+} extends Controller {
+  //
+  fun getWidths(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Array<Float> {
+    this.widths(context, isUntracked)
+  }
+
+  fun getHeight(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Float {
+    this.height(context, isUntracked)
+  }
+
+  fun getCells(context: mutable SKFS.Context): Array<Ui.TableCell> {
+    this.cells(context)
+  }
+
+  fun isSelected(context: mutable SKFS.Context): Bool {
+    this.selected(context)
+  }
+
+  fun isHover(context: mutable SKFS.Context): Bool {
+    this.hover(context)
+  }
+
+  fun isHighlighted(context: mutable SKFS.Context): Bool {
+    this.highlighted(context)
+  }
+
+  fun hasSeparators(context: mutable SKFS.Context): Bool {
+    this.separators(context)
+  }
+}
+
+module end;

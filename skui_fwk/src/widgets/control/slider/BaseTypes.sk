@@ -1,0 +1,86 @@
+module UiSlider;
+
+base class Thumb extends SKFS.File uses Equality {
+  children =
+  | Min()
+  | Max()
+}
+
+base class Variable(source: Int) extends SKFS.File uses Orderable {
+  children =
+  | VRange(min: Int, max: Int)
+  | VValue(value: Int)
+
+  static fun forFile(f: SKFS.File): Variable {
+    f match {
+    | x @ Variable _ -> x
+    | _ -> invariant_violation("")
+    }
+  }
+}
+
+base class Value extends SKFS.File {
+  children =
+  | RangeProp(value: Ui.RangeProperty)
+  | IntProp(value: Ui.IntProperty)
+
+  static fun forFile(f: SKFS.File): Variable {
+    f match {
+    | x @ Variable _ -> x
+    | _ -> invariant_violation("")
+    }
+  }
+}
+
+class Step(value: Int, first: Int = 0)
+
+base class Controller extends SKFS.UserData {
+  fun isRange(context: mutable SKFS.Context, isUnkracked: Bool = false): Bool;
+  fun getRange(context: mutable SKFS.Context, isUnkracked: Bool = false): Range;
+  fun getStep(context: mutable SKFS.Context, isUnkracked: Bool = false): Step;
+
+  fun isDisabled(context: mutable SKFS.Context): Bool;
+  fun getDirection(context: mutable SKFS.Context): Ui.Axis;
+  fun isWithLabel(context: mutable SKFS.Context): Bool;
+  fun isSmall(context: mutable SKFS.Context): Bool;
+  fun getTicks(context: mutable SKFS.Context): ?Step;
+
+  fun getValue(context: mutable SKFS.Context, isUnkracked: Bool = false): Value;
+}
+
+base class State {
+  fun getHover(context: mutable SKFS.Context): ?Thumb;
+  fun isArmed(context: mutable SKFS.Context): Bool;
+  fun getValue(context: mutable SKFS.Context): Variable;
+
+  fun emitHover(context: mutable SKFS.Context, optThumb: ?Thumb): void;
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun emitReset(context: mutable SKFS.Context): void;
+  fun emitAll(
+    context: mutable SKFS.Context,
+    commands: readonly Vector<Command>,
+  ): void;
+  fun emitGoTo(
+    context: mutable SKFS.Context,
+    thumb: Thumb,
+    next: Bool,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitSetProportion(
+    context: mutable SKFS.Context,
+    thumb: Thumb,
+    value: Float,
+  ): void;
+}
+
+base class Storage {
+  fun getName(): String;
+  fun getScope(): String;
+  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  fun setArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun setHover(context: mutable SKFS.Context, optThumb: ?Thumb): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+module end;

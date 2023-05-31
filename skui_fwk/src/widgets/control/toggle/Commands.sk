@@ -1,0 +1,39 @@
+module UiToggle;
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHover(hover: Bool)
+  | SetArmed(armed: Bool)
+  | Multiple(values: Array<Command>)
+
+  fun toJSON(): JSON.Value
+  | SetHover(value)
+  | SetArmed(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.Bool(value),
+      ],
+    )
+  | Multiple(values) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "values" => JSON.arrayToJSON(values, v ~> v.toJSON()),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiToggle.SetArmed" -> SetArmed(jso.getBool("value"))
+    | "UiToggle.SetHover" -> SetHover(jso.getBool("value"))
+    | "UiToggle.Multiple" ->
+      Multiple(JSON.arrayFromJSON(jso.getArray("values"), Command::fromJSON))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiToggle.Command`)
+    }
+  }
+}
+
+module end;

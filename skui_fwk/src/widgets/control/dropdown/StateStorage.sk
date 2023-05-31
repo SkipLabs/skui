@@ -1,0 +1,351 @@
+module UiDropdown;
+
+const statePath: String = "ui/dropdown/state";
+const computedPath: String = "ui/dropdown/computed";
+
+base class OptPath(optPath: ?Ui.Path) extends SKFS.BaseName {
+  children =
+  | Path()
+  | FirstPath()
+  | LastPath()
+
+  //
+  fun toString(): String {
+    `${this.optPath}`
+  }
+
+  overridable macro fun sameCompare(other: SKFS.FileName): Order {
+    other match {
+    | oKey @ #ThisClass _ -> this.optPath.compare(oKey.optPath)
+    }
+  }
+}
+
+class Selected(optIndex: ?Int) extends OptPath {
+  fun sameCompare(other: SKFS.FileName): Order {
+    other match {
+    | oKey @ Selected _ ->
+      iComp = this.optIndex.compare(oKey.optIndex);
+      if (iComp == EQ()) this.optPath.compare(oKey.optPath) else iComp
+    | _ -> invariant_violation("Must be a UiDropdown.Selected")
+    }
+  }
+}
+
+base class PathKey(path: Ui.Path) extends SKFS.BaseName {
+  children =
+  | PreviousPath()
+  | NextPath()
+  | Index()
+
+  //
+  fun toString(): String {
+    `${this.path}`
+  }
+
+  macro fun sameCompare(other: SKFS.FileName): Order {
+    other match {
+    | oKey @ #ThisClass _ -> this.path.compare(oKey.path)
+    }
+  }
+}
+
+class Active(optPath: ?Ui.Path, accessor: Accessor) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Active _ -> x
+    | _ -> invariant_violation("Must be UiDropdown.Active")
+    }
+  }
+
+  fun makeChild(menu: Menu): Active {
+    this.optPath match {
+    | Some(path) -> Active(Some(path.makeChild(menu.id)), menu)
+    | _ -> Active(Some(Ui.Path(menu.id)), menu)
+    }
+  }
+}
+
+class HStorage(
+  name: String,
+  handle: SKFS.IHandle<SKFS.File>,
+) extends Storage uses Ui.ScrollingStorage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKFS.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.getDirName().toString()
+  }
+
+  protected fun getHandle(): SKFS.IHandle<SKFS.File> {
+    this.handle
+  }
+
+  fun setHover(context: mutable SKFS.Context, optValue: ?Ui.Path): void {
+    this.handle.writeOrRemove(context, Ui.hoverProp, optValue)
+  }
+
+  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+  }
+}
+
+class HState(
+  storage: SKFS.EHandle<SKFS.File>,
+  splitted: SKFS.EHandle<SKFS.BoolFile>,
+  computed: SKFS.EHandle<SKFS.File>,
+) extends State uses Ui.ScrollingState {
+  //
+
+  protected fun getHandle(): SKFS.EHandle<SKFS.File> {
+    this.storage
+  }
+
+  protected fun getComputed(): SKFS.EHandle<SKFS.File> {
+    this.computed
+  }
+
+  protected fun getStatePath(): String {
+    statePath
+  }
+
+  protected fun setScrollCmd(value: ?Ui.Scroll): FWKMessage.Command {
+    SetScroll(value)
+  }
+
+  protected fun manageScrollingCmd(
+    value: Int,
+    tick: SKFS.Tick,
+  ): FWKMessage.Command {
+    ManageScrolling(value, tick)
+  }
+
+  fun isSelected(context: mutable SKFS.Context, index: Int): Bool {
+    optPath = this.getActive(context).optPath;
+    this.splitted.maybeGet(context, Selected(Some(index), optPath))
+      .map(v -> v.value)
+      .default(false)
+  }
+
+  fun getSelected(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Int {
+    optPath = this.getActive(context, isUntracked).optPath;
+    this.computed.maybeGetProp(
+      context,
+      Selected(None(), optPath),
+      SKFS.IntFile::fromFile,
+      isUntracked,
+    ).map(f ~> f.value);
+  }
+
+  fun isRoot(context: mutable SKFS.Context): Bool {
+    this.getActive(context).optPath.isNone()
+  }
+
+  fun getTitle(context: mutable SKFS.Context): ?Text {
+    this.getActive(context).accessor.getTitle(context)
+  }
+
+  fun getNumberOfItems(context: mutable SKFS.Context): Int {
+    this.getActive(context)
+      .accessor.items(context, false)
+      .getNumberOfItems(context)
+  }
+
+  fun getItem(context: mutable SKFS.Context, index: Int): ItemBase {
+    this.getActive(context)
+      .accessor.items(context, false)
+      .getItem(context, index)
+  }
+
+  fun getHover(context: mutable SKFS.Context): ?Ui.Path {
+    this.storage.maybeGetProp(context, Ui.hoverProp, Ui.Path::fromFile)
+  }
+
+  fun getCurrent(context: mutable SKFS.Context): ?Ui.Path {
+    this.getActive(context).optPath
+  }
+
+  fun emitSelect(
+    context: mutable SKFS.Context,
+    value: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Select(value, optRepeatOn));
+  }
+
+  fun emitGoto(context: mutable SKFS.Context, value: Spot): void {
+    this.emit(context, Goto(value));
+  }
+
+  fun emitClose(context: mutable SKFS.Context): void {
+    this.emit(context, Close());
+  }
+
+  fun emitHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void {
+    this.emit(context, SetHover(optPath));
+  }
+
+  fun emitAll(context: mutable SKFS.Context, commands: Array<Command>): void {
+    this.emit(context, Multiple(commands))
+  }
+
+  fun gotoMessage(value: Spot): FWKMessage.Message {
+    this.message(Goto(value))
+  }
+
+  fun getActive(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Active {
+    this.computed.maybeGetProp(
+      context,
+      Ui.currentProp,
+      Active::fromFile,
+      isUntracked,
+    ).fromSome()
+  }
+
+  private fun message(command: FWKMessage.Command): FWKMessage.Message {
+    FWKMessage.Message(
+      statePath,
+      this.storage.getDirName().toString(),
+      command,
+    );
+  }
+}
+
+@debug
+fun init(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  controller: Controller,
+): Parameters {
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeDir(
+    f ~> f,
+    dirName,
+    Array<(SKFS.BaseName, SKFS.File)>[
+      (Ui.todoProp, Ui.Todo(Init(), context.tick)),
+    ],
+  );
+  computedDirName = SKFS.DirName::make(dirName, "computed/");
+  computedHdl = SKFS.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    stateHdl,
+    Ui.todoProp,
+    Array[Ui.currentProp, Ui.ensureVisibleProp],
+    update,
+    Some(controller),
+  );
+  splittedHdl = computedHdl.contextWriterKeyMap(
+    SKFS.BoolFile::fromFile,
+    context,
+    SKFS.DirName::make(dirName, "splitted/"),
+    (_, writer, key, file) ~> {
+      key match {
+      | Selected(_, optPath) ->
+        sKey = Selected(Some(SKFS.IntFile::fromFile(file).value), optPath);
+        writer.write(sKey, SKFS.BoolFile(true))
+      | _ -> void
+      }
+    },
+  );
+  Parameters(controller, HState(stateHdl, splittedHdl, computedHdl))
+}
+
+@debug
+fun update(
+  context: mutable SKFS.Context,
+  _scope: String,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  todo: SKFS.File,
+  optUtils: ?Controller,
+): void {
+  execute(
+    context,
+    Ui.Todo::fromFile(todo).command as Executable _,
+    values,
+    optUtils.fromSome(),
+  )
+}
+
+@debug
+fun execute(
+  context: mutable SKFS.Context,
+  executable: Executable,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  controller: Controller,
+): void {
+  current = values
+    .get(Ui.currentProp)
+    .map(Active::fromFile)
+    .default(Active(None(), controller));
+  optSelected = values
+    .maybeGet(Selected(None(), current.optPath))
+    .default(None())
+    .map(SKFS.IntFile::fromFile)
+    .map(f ~> f.value);
+  executable match {
+  | Init() -> !current = Active(None(), controller)
+  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values, controller))
+  | ManageScrolling(incr, _) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+  | Goto(stop) ->
+    stop match {
+    | Backward() ->
+      !current = current.optPath.flatMap(p -> p.optParent) match {
+      | Some(parent) -> values.get(Path(Some(parent))).fromSome() as Active _
+      | _ -> Active(None(), controller)
+      }
+    | Forward(idx) ->
+      current.accessor.items(context, true).getItem(context, idx, true) match {
+      | _i @ Item _ -> void
+      | m @ Menu _ -> !current = current.makeChild(m)
+      }
+    }
+  | Close() -> !current = Active(None(), controller)
+  | Select(target, _, _) ->
+    currentNumber = current.accessor
+      .items(context, true)
+      .getNumberOfItems(context, true);
+    newSelected = target match {
+    | Previous() ->
+      optSelected match {
+      | Some(selected) -> if (selected > 0) selected - 1 else currentNumber - 1
+      | _ -> currentNumber - 1
+      }
+    | Next() ->
+      optSelected match {
+      | Some(selected) -> if (selected < currentNumber - 1) selected + 1 else 0
+      | _ -> 0
+      }
+    | Idx(idx) -> Math.clamp(idx, 0, currentNumber - 1)
+    };
+    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(newSelected, context.tick)));
+    values.set(
+      Selected(None(), current.optPath),
+      Some(SKFS.IntFile(newSelected)),
+    )
+  };
+  values.set(Ui.currentProp, Some(current));
+  values.set(Path(current.optPath), Some(current));
+}
+
+module end;

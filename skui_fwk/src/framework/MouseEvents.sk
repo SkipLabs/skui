@@ -1,0 +1,459 @@
+module FWKPipeline;
+
+const mouseStateBeforePath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/state/mouse/before/",
+);
+
+const mouseHoverPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/fwk/state/mouse/hover/",
+);
+
+const preMouseStatePath: SKFS.DirName = FWK.mouseStatePath.pre();
+
+const gMouseHover: SKFS.EHandle<SKFS.BoolFile> = SKFS.EHandle(
+  SKFS.BoolFile::fromFile,
+  mouseHoverPath,
+);
+
+fun isMouseHover(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  isUntracked: Bool = false,
+): Bool {
+  if (FWKEnv.exists(context, mouseHoverPath)) {
+    gMouseHover.getBool(context, path, isUntracked)
+  } else {
+    false
+  }
+}
+
+fun prepareMouse(context: mutable SKFS.Context): SKFS.EHValue<FWK.MouseState> {
+  previousMouseState: Array<(SKFS.BaseName, FWK.MouseState)> = Array[
+    (MainKey(), FWK.MouseState{}),
+  ];
+  previousMouseStateHdl = context.makePreDir(
+    FWK.MouseState::fromFile,
+    FWK.mouseStatePath,
+    previousMouseState,
+  );
+  FWKEnv.declare(context, preMouseStatePath);
+  SKFS.EHValue(previousMouseStateHdl, MainKey())
+}
+
+fun mouseState(
+  context: mutable SKFS.Context,
+  isUntracked: Bool = false,
+): FWK.MouseState {
+  SKFS.EHandle(FWK.MouseState::fromFile, preMouseStatePath).getValue(
+    context,
+    MainKey(),
+    isUntracked,
+  )
+}
+
+fun hasMouseState(context: mutable SKFS.Context): Bool {
+  FWKEnv.exists(context, FWK.mouseStatePath.pre())
+}
+
+fun initMouse(
+  context: mutable SKFS.Context,
+  widgetHdl: SKFS.EHValue<Ui.WidgetFile>,
+  nodeInfoGetter: Ui.NodeInfoGetter,
+  nodeGetter: Ui.NodeGetter,
+  viewportGetter: Ui.ViewportGetter,
+  root: UiRoot.Storage,
+): void {
+  msu = MouseStateUtils(nodeInfoGetter, nodeGetter, viewportGetter);
+  previousMouseStateHdl = SKFS.EHandle(
+    FWK.MouseState::fromFile,
+    FWK.mouseStatePath.pre(),
+  );
+  _ = widgetHdl
+    .mapContext(
+      FWK.MouseState::fromFile,
+      context,
+      mouseStateBeforePath,
+      (context, wf) ~> {
+        widget = wf.widget;
+        optMouseState: ?FWK.MouseState = None();
+        result = FWK.Result(false);
+        context.doProfile("Update mouse states", context -> {
+          mouse = FWKMouse.getMouse(context);
+          current = previousMouseStateHdl.getValue(context, MainKey(), true);
+          node = nodeGetter(context, widget.path, true);
+          wheel = mouse.getWheelValue(context.tick);
+          current.optDragHandler match {
+          | Some(dragHandler) if (wheel == 0) ->
+            optDropHandler = msu.getDropHandler(context, mouse.offset(), node);
+            current.optDropHandler.each(oDph ->
+              optDropHandler match {
+              | Some(cdph) if (!cdph.isSame(oDph)) -> oDph.exit(context)
+              | None() -> oDph.exit(context)
+              | _ -> void
+              }
+            );
+            if (!mouse.isPrimaryDown(context.tick)) {
+              proposed = if (FWK.isControlDown(context)) {
+                FWK.TrCopy()
+              } else if (FWK.isShiftDown(context)) {
+                FWK.TrLink()
+              } else {
+                FWK.TrMove()
+              };
+              optTarget = optDropHandler.flatMap(dropHandler -> {
+                dropHandler.over(context, mouse, dragHandler, proposed) match {
+                | Some(transfer) ->
+                  dropHandler.dropped(context, dragHandler, transfer);
+                  Some((dropHandler, transfer))
+                | _ -> None()
+                }
+              });
+              dragHandler.dropped(context, optTarget);
+              !current.optDragHandler = None();
+              !current.optDropHandler = None();
+              FWKPointer.resetCursor(context);
+            } else {
+              optDropHandler match {
+              | Some(dropHandler) ->
+                proposed = if (FWK.isControlDown(context)) {
+                  FWK.TrCopy()
+                } else if (FWK.isShiftDown(context)) {
+                  FWK.TrLink()
+                } else {
+                  FWK.TrMove()
+                };
+                dropHandler.over(context, mouse, dragHandler, proposed) match {
+                | Some(transfer) ->
+                  FWKPointer.setCursor(
+                    context,
+                    transfer match {
+                    | FWK.TrCopy() -> Ui.DnDCopyCursor()
+                    | FWK.TrLink() -> Ui.DnDLinkCursor()
+                    | FWK.TrMove() -> Ui.DnDMoveCursor()
+                    },
+                  )
+                | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
+                }
+              | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
+              };
+              !current.optDropHandler = optDropHandler;
+            }
+          | Some(_dragHandler) if (wheel != 0) ->
+            msu.getHoverHandler(context, mouse.offset(), node) match {
+            | Some(hoverHandler) ->
+              !result = hoverHandler.manage(context, mouse, None())
+            | _ -> void
+            }
+          | _ ->
+            current.optLockHandler match {
+            | Some(lockHandler) ->
+              lockHandler.i0.update(context, mouse) match {
+              | Some(lh) -> !current.optLockHandler = Some((lh, lockHandler.i1))
+              | _ ->
+                !current.optLockHandler = None();
+                !current.optHoverHandler = lockHandler.i1
+              }
+            | _ ->
+              msu.getLockHandler(context, mouse, node) match {
+              | Some(lockHandler) ->
+                !current.optLockHandler = Some(
+                  (lockHandler, current.optHoverHandler),
+                );
+                !current.optHoverHandler = None()
+              | _ -> void
+              }
+            };
+            if (current.optLockHandler.isNone()) {
+              mouse.checkDrag().flatMap(offset ->
+                msu.getDragHandler(context, offset, node)
+              ) match {
+              | Some(dragHandler) ->
+                !current.optDragHandler = Some(dragHandler);
+                FWKPointer.storeCursor(context)
+              | _ ->
+                offset = current.optMouseLock
+                  .map(v -> v.i1)
+                  .default(mouse.offset());
+                msu.getHoverHandler(context, offset, node) match {
+                | Some(hoverHandler) ->
+                  current.optHoverHandler match {
+                  | Some(previousHh) ->
+                    if (previousHh != hoverHandler) {
+                      previousHh.exit(context);
+                      hoverHandler.enter(context)
+                    }
+                  | _ -> hoverHandler.enter(context)
+                  };
+                  !result = hoverHandler.manage(
+                    context,
+                    mouse,
+                    current.optHoverHandler,
+                  );
+                  !current.optHoverHandler = Some(hoverHandler)
+                | _ ->
+                  current.optHoverHandler.each(hh -> hh.exit(context));
+                  !current.optHoverHandler = None()
+                }
+              }
+            }
+          };
+          if (!result.consumed && current.optHoverHandler.isSome()) {
+            isMenuPressed = mouse.mouse.isSecondaryButtonPressed(context.tick);
+            isMenuReleased = mouse.mouse.isSecondaryButtonReleased(
+              context.tick,
+            );
+            if (current.optArmedMenu.isSome() && isMenuReleased) {
+              if (
+                current.optArmedMenu.map(m -> m.getIdentifier()) ==
+                current.optHoverHandler.map(hh -> hh.getIdentifier())
+              ) {
+                !current.optMenuSupplier = current.optHoverHandler.map(hh ->
+                  (mouse.offset(), hh, context.tick)
+                );
+              } else {
+                !current.optMenuSupplier = None()
+              };
+              !current.optArmedMenu = None();
+            } else if (isMenuPressed) {
+              !current.optArmedMenu = current.optHoverHandler;
+              !current.optMenuSupplier = None();
+            }
+          };
+          current.optHoverHandler match {
+          | Some(hh) ->
+            optPath = current.optMouseLock.map(v -> v.i0);
+            optLocked = result.optLocked match {
+            | Some(true) ->
+              if (optPath != Some(hh.getIdentifier())) {
+                Some(true)
+              } else {
+                None()
+              }
+            | Some(false) -> Some(false)
+            | None() -> Some(optPath == Some(hh.getIdentifier()))
+            };
+            optLocked.each(locked -> {
+              !current.optMouseLock = if (locked) {
+                Some((hh.getIdentifier(), mouse.offset()))
+              } else {
+                None()
+              }
+            })
+          | _ -> !current.optMouseLock = None()
+          };
+          !optMouseState = Some(current);
+        });
+        FWKMouse.emit(context, FWKMouse.Next());
+        optMouseState.fromSome()
+      },
+    )
+    .mapContext(
+      FWK.MouseState::fromFile,
+      context,
+      FWK.mouseStatePath,
+      (context, mouseState) ~> {
+        mouseState.optMenuSupplier.each(_mh -> {
+          if (root.isMenuClosed(context)) {
+            !mouseState.optArmedMenu = None();
+            !mouseState.optMenuSupplier = None();
+          };
+        });
+        mouseState
+      },
+    )
+    .hdl.contextWriterMap(
+      SKFS.BoolFile::fromFile,
+      context,
+      mouseHoverPath,
+      (_context, writer, state) ~> {
+        state.optHoverHandler.each(hh ->
+          hh.browse(id -> writer.write(id, SKFS.BoolFile(true)))
+        )
+      },
+    );
+  FWKEnv.declare(context, mouseHoverPath);
+}
+
+class MouseStateUtils(
+  nodeInfoGetter: Ui.NodeInfoGetter,
+  nodeGetter: Ui.NodeGetter,
+  viewportGetter: Ui.ViewportGetter,
+) {
+  //
+  fun getDragHandler(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    node: Ui.Node,
+  ): ?FWK.DragHandler {
+    childGetter = ctx ~> this.getChildDragHandler(ctx, offset, node);
+    node.widget.getDragHandler(context, childGetter) match {
+    | Some(fn) ->
+      ni = this.nodeInfoGetter(context, node.widget.path, false);
+      fn(context, offset, ni)
+    | _ -> this.getChildDragHandler(context, offset, node)
+    }
+  }
+
+  fun getChildDragHandler(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    node: Ui.Node,
+  ): ?FWK.DragHandler {
+    for (child in node.subNodes) {
+      bounds = child.getBounds();
+      if (bounds.contains(offset)) {
+        (cOffset, cNode, _) = child.getMouseNode(
+          context,
+          this.nodeGetter,
+          this.viewportGetter,
+        );
+        optDragHandler = this.getDragHandler(
+          context,
+          offset - bounds.topLeft() - cOffset,
+          cNode,
+        );
+        if (optDragHandler.isSome()) {
+          break optDragHandler
+        }
+      };
+    } else {
+      None()
+    }
+  }
+
+  fun getDropHandler(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    node: Ui.Node,
+  ): ?FWK.DropHandler {
+    childGetter = ctx ~> this.getChildDropHandler(ctx, offset, node);
+    node.widget.getDropHandler(context, childGetter) match {
+    | Some(fn) ->
+      ni = this.nodeInfoGetter(context, node.widget.path, false);
+      fn(context, offset, ni)
+    | _ -> this.getChildDropHandler(context, offset, node)
+    }
+  }
+
+  fun getChildDropHandler(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    node: Ui.Node,
+  ): ?FWK.DropHandler {
+    for (child in node.subNodes) {
+      bounds = child.getBounds();
+      if (bounds.contains(offset)) {
+        (cOffset, cNode, _) = child.getMouseNode(
+          context,
+          this.nodeGetter,
+          this.viewportGetter,
+        );
+        optDropHandler = this.getDropHandler(
+          context,
+          offset - bounds.topLeft() - cOffset,
+          cNode,
+        );
+        if (optDropHandler.isSome()) {
+          break optDropHandler
+        }
+      };
+    } else {
+      None()
+    }
+  }
+
+  fun getLockHandler(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    node: Ui.Node,
+  ): ?FWK.LockHandler {
+    childGetter = ctx ~> this.getChildLockHandler(ctx, mouse, node);
+    node.widget.getLockHandler(context, childGetter) match {
+    | Some(fn) ->
+      ni = this.nodeInfoGetter(context, node.widget.path, false);
+      fn(context, mouse, ni)
+    | _ -> this.getChildLockHandler(context, mouse, node)
+    }
+  }
+
+  fun getChildLockHandler(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    node: Ui.Node,
+  ): ?FWK.LockHandler {
+    offset = mouse.offset();
+    for (child in node.getEventsNode()) {
+      bounds = child.getBounds();
+      if (bounds.contains(offset)) {
+        (cOffset, cNode, _) = child.getMouseNode(
+          context,
+          this.nodeGetter,
+          this.viewportGetter,
+        );
+        optLockHandler = this.getLockHandler(
+          context,
+          mouse.relativeTo(bounds.topLeft() + cOffset),
+          cNode,
+        );
+        if (optLockHandler.isSome()) {
+          break optLockHandler
+        }
+      };
+    } else {
+      None()
+    }
+  }
+
+  fun getHoverHandler(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    node: Ui.Node,
+  ): ?FWK.HoverHandler {
+    childGetter = ctx ~> this.getChildHoverHandler(ctx, offset, node);
+    node.widget.getHoverHandler(context, childGetter) match {
+    | Some(fn) ->
+      ni = this.nodeInfoGetter(context, node.widget.path, true);
+      fn(context, offset, ni)
+    | _ -> this.getChildHoverHandler(context, offset, node)
+    }
+  }
+
+  fun getChildHoverHandler(
+    context: mutable SKFS.Context,
+    offset: Geometry.Offset,
+    node: Ui.Node,
+  ): ?FWK.HoverHandler {
+    for (child in node.getEventsNode()) {
+      bounds = child.getBounds();
+      if (bounds.contains(offset)) {
+        (cOffset, cNode, opaque) = child.getMouseNode(
+          context,
+          this.nodeGetter,
+          this.viewportGetter,
+          true,
+        );
+        optHH = this.getHoverHandler(
+          context,
+          offset - bounds.topLeft() - cOffset,
+          cNode,
+        );
+        if (opaque || optHH.isSome()) {
+          break optHH;
+        }
+      };
+    } else {
+      None()
+    }
+  }
+
+  fun getCenter(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+  ): ?Geometry.Offset {
+    ni = this.nodeInfoGetter(context, path, true);
+    windowBounds = ni.getWindowBounds(context, true);
+    Some(windowBounds.center())
+  }
+}
+
+module end;

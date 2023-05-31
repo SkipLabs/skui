@@ -1,0 +1,10 @@
+module UiTable;
+
+class Metrics(
+  pages: Range,
+  pageSize: Int,
+  vertical: Ui.MAxis,
+  widths: Array<Float>,
+) extends Ui.UserData
+
+module end;

@@ -1,0 +1,193 @@
+module Text;
+
+mutable class Lexer{
+  text: Vector<Char>,
+  tokens: mutable Vector<TokenInfo>,
+  shift: Int = 0,
+  mutable realOffset: Int = 0,
+  mutable offset: Int = 0,
+  mutable group: KindGroup = KindGroup(0, KWhiteSpace()),
+  mutable init: Bool = true,
+  brackets: SortedMap<Int, Array<Char>> = SortedMap::create(),
+  splitNumberAndToken: Bool = false,
+  allowSymbolBeforeNumber: Bool = false,
+  allowDotStart: Bool = false,
+} {
+  mutable fun step(optKind: ?Kind = None()): void {
+    char = this.text[this.offset];
+    kind = optKind.default(Kind::fromChar(char));
+    this.!group = if (kind == this.group.kind) {
+      this.group
+    } else if (
+      this.group.kind == KNumber() &&
+      kind == KToken() &&
+      !this.splitNumberAndToken
+    ) {
+      this.group with {kind => KToken()}
+    } else {
+      if (this.offset > this.group.index) {
+        token = this.text.slice(this.group.index, this.offset).toArray();
+        strToken = String::fromChars(token);
+        this.tokens.push(
+          TokenInfo(
+            strToken,
+            token.size(),
+            this.group.getKind(),
+            if (this.init) this.shift else 0,
+          ),
+        );
+        this.!init = false;
+      };
+      KindGroup(this.offset, kind)
+    };
+    this.!offset = this.offset + 1;
+    if (char != tabPrefix) this.!realOffset = this.realOffset + 1;
+  }
+
+  mutable fun stepWhile(predicate: Char ~> Bool, kind: Kind): void {
+    while (
+      this.offset < this.text.size() &&
+      predicate(this.text[this.offset])
+    ) {
+      this.step(Some(kind));
+    };
+  }
+
+  mutable fun lex(): void {
+    while (this.offset < this.text.size()) {
+      // warning skipped
+      this.brackets.maybeGet(this.realOffset) match {
+      | Some(bracket) ->
+        for (_idx in .Range(0, bracket.size())) {
+          this.step(Some(KBracket()));
+        };
+        !this.group = this.group.splitted()
+      | _ ->
+        if (
+          (this.isDigit() || (this.allowDotStart && this.isDot())) &&
+          (this.group.kind == KWhiteSpace() ||
+            (this.allowSymbolBeforeNumber && this.group.kind == KSymbol()))
+        ) {
+          this.lexNumber();
+        } else {
+          this.step()
+        }
+      };
+    };
+    if (this.offset > this.group.index) {
+      token = this.text.slice(this.group.index, this.offset).toArray();
+      strToken = String::fromChars(token);
+      this.tokens.push(
+        TokenInfo(
+          strToken,
+          token.size(),
+          this.group.getKind(),
+          if (this.init) this.shift else 0,
+        ),
+      );
+      this.!init = false;
+    };
+  }
+
+  mutable fun lexNumber(): void {
+    appendNext = size ->
+      for (_idx in .Range(0, size)) {
+        this.step(Some(KNumber()));
+      };
+    if (this.isHexadecimalLiteral()) {
+      appendNext(3);
+      while (this.isHexDigit()) {
+        this.step(Some(KNumber()));
+      }
+    } else if (this.isBinaryLiteral()) {
+      appendNext(3);
+      this.stepWhile(char ~> char == '0' || char == '1', KNumber());
+    } else {
+      this.stepWhile(Chars.isDigit, KNumber());
+      if (this.offset < this.text.size()) {
+        if (this.isFractionSuffix()) {
+          appendNext(2);
+          this.stepWhile(Chars.isDigit, KNumber());
+        };
+      };
+      if (this.offset < this.text.size()) {
+        this.checkExponentSuffix().each(size -> {
+          appendNext(size);
+          this.stepWhile(Chars.isDigit, KNumber());
+        });
+      }
+    }
+  }
+
+  readonly fun isHexDigit(): Bool {
+    this.text.maybeGet(this.offset).map(Chars.isHexDigit).default(false)
+  }
+
+  readonly fun isDigit(): Bool {
+    this.text.maybeGet(this.offset).map(Chars.isDigit).default(false)
+  }
+
+  readonly fun isDot(): Bool {
+    this.text.maybeGet(this.offset).map(c -> c == '.').default(false)
+  }
+
+  readonly fun isTab(): Bool {
+    this.text.maybeGet(this.offset).map(c -> c == '\t').default(false)
+  }
+
+  readonly fun getKind(): Kind {
+    this.text.maybeGet(this.offset).map(Kind::fromChar).default(KWhiteSpace())
+  }
+
+  readonly fun isBinaryLiteral(): Bool {
+    this.text[this.offset] == '0' &&
+      this.text.maybeGet(this.offset + 1) match {
+      | Some('b') ->
+        this.text.maybeGet(this.offset + 2)
+          .map(c -> c == '0' || c == '1')
+          .default(false)
+      | _ -> false
+      }
+  }
+
+  readonly fun isHexadecimalLiteral(): Bool {
+    this.text[this.offset] == '0' &&
+      this.text.maybeGet(this.offset + 1) match {
+      | Some('x')
+      | Some('X') ->
+        this.text.maybeGet(this.offset + 2).map(Chars.isHexDigit).default(false)
+      | _ -> false
+      }
+  }
+
+  readonly fun isFractionSuffix(): Bool {
+    this.text[this.offset] == '.' &&
+      this.text.maybeGet(this.offset + 1).map(Chars.isDigit).default(false)
+  }
+
+  readonly fun checkExponentValue(offset: Int): ?Int {
+    this.text.maybeGet(offset).flatMap(char ->
+      if (
+        (char == '+' || char == '-') &&
+        this.text.maybeGet(offset + 1).map(Chars.isDigit).default(false)
+      ) {
+        Some(2)
+      } else if (Chars.isDigit(char)) {
+        Some(1)
+      } else {
+        None()
+      }
+    )
+  }
+
+  readonly fun checkExponentSuffix(): ?Int {
+    char = this.text[this.offset];
+    if (char == 'e' || char == 'E') {
+      this.checkExponentValue(this.offset + 1).map(s -> s + 1)
+    } else {
+      None()
+    }
+  }
+}
+
+module end;

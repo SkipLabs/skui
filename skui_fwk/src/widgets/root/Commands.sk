@@ -1,0 +1,386 @@
+module UiRoot;
+
+base class Layer extends SKFS.BaseName {
+  children =
+  | Main()
+  | Menu()
+  | Tooltip()
+
+  fun toString(): String {
+    this.getClassName();
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    other match {
+    | oLayer @ Layer _ ->
+      (this, oLayer) match {
+      | (Main(), Main()) -> EQ()
+      | (Main(), Menu()) -> LT()
+      | (Main(), Tooltip()) -> LT()
+      | (Menu(), Menu()) -> EQ()
+      | (Menu(), Main()) -> GT()
+      | (Menu(), Tooltip()) -> LT()
+      | (Tooltip(), Tooltip()) -> EQ()
+      | (Tooltip(), Main()) -> GT()
+      | (Tooltip(), Menu()) -> GT()
+      }
+    | _ -> invariant_violation("Must be compared with a UiRoot.Layer")
+    }
+  }
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | CloseMenu()
+  | ShowTooltip(String)
+
+  fun toJSON(): JSON.Value
+  | CloseMenu() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | ShowTooltip(id) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "id" => JSON.String(id),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiRoot.CloseMenu" -> CloseMenu()
+    | "UiRoot.ShowTooltip" -> ShowTooltip(jso.getString("id"))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiRoot.Command`)
+    }
+  }
+}
+
+class HStorage private (
+  state: SKFS.IHandle<SKFS.File>,
+  handle: SKFS.EHandle<SKFS.File>,
+  content: SKFS.EHandle<SKFS.File>,
+) extends Storage, SKFS.File {
+  //
+  static fun forScope(context: mutable SKFS.Context, scope: String): ?this {
+    dirName = SKFS.DirName::create(scope);
+    stateHdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), dirName);
+    contentHdl = SKFS.EHandle(f ~> f, SKFS.DirName::make(dirName, "content/"));
+    rootHdl = SKFS.EHandle(f ~> f, SKFS.DirName::make(dirName, "main/"));
+    stateExists = stateHdl.exists(context);
+    contentExists = contentHdl.exists(context);
+    rootExists = rootHdl.exists(context);
+    if (stateExists && contentExists && rootExists) {
+      Some(HStorage(stateHdl, rootHdl, contentHdl))
+    } else {
+      None()
+    }
+  }
+
+  static fun create(
+    context: mutable SKFS.Context,
+    dirName: SKFS.DirName,
+  ): this {
+    stateHdl = context.makeDir(
+      f ~> f,
+      dirName,
+      Array<(SKFS.BaseName, SKFS.File)>[(Main(), SKFS.IntFile(0))],
+    );
+    contentHdl = context.makeDir(
+      f ~> f,
+      SKFS.DirName::make(dirName, "content/"),
+      Array<(SKFS.BaseName, SKFS.File)>[(Main(), SKFS.IntFile(0))],
+    );
+    rootHdl = context.makeDir(
+      f ~> f,
+      SKFS.DirName::make(dirName, "main/"),
+      Array<(SKFS.BaseName, SKFS.File)>[
+        (Menu(), SKFS.IntFile(0)),
+        (Tooltip(), SKFS.IntFile(0)),
+        (Main(), SKFS.IntFile(0)),
+      ],
+    );
+    static(SKFS.toIHandle(stateHdl), rootHdl, contentHdl)
+  }
+
+  fun manageWidgets(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    widgetGetter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+    mouseMenu: Ui.Getter<FWK.MouseState>,
+    focusMenu: Ui.Getter<FWK.FocusState>,
+  ): SKFS.EHValue<Ui.WidgetFile> {
+    dirName = this.state.getDirName();
+    contentHdl = this.content.contextMap(
+      Ui.WidgetFile::fromFile,
+      context,
+      SKFS.DirName::make(dirName, "widgetcontent/"),
+      (context, _) ~> {
+        Ui.WidgetFile(widgetGetter(context, this))
+      },
+    );
+    widgetSourcesPath = SKFS.DirName::make(dirName, "widgetsources/");
+    preWidgetSourcesHdl = context.makePreDir(
+      SKFS.OptFile::fromFile,
+      widgetSourcesPath,
+      .Array[
+        (Main(), SKFS.OptFile(None())),
+        (Menu(), SKFS.OptFile(None())),
+        (Tooltip(), SKFS.OptFile(None())),
+      ],
+    );
+    widgetSourcesHdl = this.handle.contextWriterKeyMap(
+      SKFS.OptFile::fromFile,
+      context,
+      widgetSourcesPath,
+      (context, writer, key, _) ~> {
+        key match {
+        | Main() ->
+          writer.write(
+            key,
+            SKFS.OptFile(
+              Some(
+                FWK.SourcedWidget(None(), (ctx, _root) ~> {
+                  dialogsPath = path.makeChild("@dialogs");
+                  state = UiDialogs.init(ctx, dialogsPath);
+                  ctx.setDialogsState(state);
+                  Some(
+                    Ui.Dialogs::create(
+                      ctx,
+                      dialogsPath,
+                      UiDialogs.Parameters(
+                        UiDialogs.LamController{
+                          content => ctx ~> contentHdl.get(ctx, Main()).widget,
+                        },
+                        state,
+                      ),
+                    ),
+                  )
+                }),
+              ),
+            ),
+          )
+        | Menu() ->
+          optPreMenu = preWidgetSourcesHdl
+            .getValue(context, Menu(), true)
+            .map(FWK.SourcedWidget::fromFile);
+          optHMS = mouseMenu(context).optMenuSupplier;
+          optHover = optHMS.flatMap(ddh ->
+            ddh.i1.getDropdown(context).map(dd -> (ddh.i0, dd, ddh.i2))
+          );
+          focusState = focusMenu(context);
+          optFocused = focusState.optMenuSupplier.flatMap(ddh ->
+            ddh.i0.getDropdown(context).map(dd -> (dd, ddh.i1))
+          );
+          optDropdown = if (optHover.isSome() && optFocused.isSome()) {
+            h = optHover.fromSome();
+            f = optFocused.fromSome();
+            if (h.i2 > f.i1) {
+              Some((h.i1, Some(h.i0)))
+            } else {
+              Some((f.i0, None()))
+            }
+          } else if (optHover.isSome()) {
+            optHover.map(h -> (h.i1, Some(h.i0)))
+          } else {
+            optFocused.map(f -> (f.i0, None()))
+          };
+          optMenu = optDropdown
+            .map(dd -> dd.i0.toMenu(dd.i1, this.closeMenuMessage()))
+            .map(menu ->
+              optPreMenu match {
+              | Some(preMenu) -> menu with {optFocused => preMenu.optFocused}
+              | _ ->
+                menu with {
+                  optFocused => focusState.optFocused.map(f ->
+                    f.getIdentifier()
+                  ),
+                }
+              }
+            );
+          if (optMenu.isNone()) {
+            optPreMenu.each(preMenu ->
+              preMenu.optFocused.each(path ->
+                SystemProperties.setRequireFocus(context, path)
+              )
+            )
+          };
+          writer.write(key, SKFS.OptFile(optMenu))
+        | Tooltip() ->
+          ms = mouseMenu(context);
+          optSW = if (ms.optDragHandler.isNone()) {
+            ms.optHoverHandler match {
+            | Some(hh) ->
+              hh.getTooltip(context) match {
+              | Some(sw) ->
+                if (
+                  sw.optPath
+                    .map(path -> this.isTooltipShown(context, path))
+                    .default(false)
+                ) {
+                  Some(sw.toTooltip(FWKMouse.getMouse(context, true).offset()))
+                } else {
+                  sw.optPath.each(path ->
+                    this.emit(context, ShowTooltip(path.toString()), Some(500))
+                  );
+                  None()
+                }
+              | _ -> None()
+              }
+            | _ -> None()
+            }
+          } else {
+            None()
+          };
+          writer.write(key, SKFS.OptFile(optSW))
+        | _ -> invariant_violation("Must be a UiRoot.Layer")
+        }
+      },
+    );
+    widgetsHdl = widgetSourcesHdl
+      .contextWriterKeyMap(
+        f ~> f,
+        context,
+        SKFS.DirName::make(dirName, "widgetsbuild/"),
+        (context, writer, key, opt) ~> {
+          opt.map(FWK.SourcedWidget::fromFile).each(sw -> {
+            sw.widget(context, this).each(widget -> {
+              if (key == Menu()) {
+                widget match {
+                | ml @ Ui.MenuLayout _ ->
+                  SystemProperties.setRequireFocus(
+                    context,
+                    ml.controller.getWidget(context).path,
+                  )
+                | _ -> void
+                }
+              };
+              writer.write(key, Ui.WidgetFile(widget));
+              writer.write(SKFS.KKeys(), key);
+            })
+          })
+        },
+      )
+      .contextWriterKeyValues(
+        f ~> f,
+        context,
+        SKFS.DirName::make(dirName, "widgets/"),
+        (_, writer, key, values) ~>
+          key match {
+          | SKFS.KKeys() ->
+            layers = values.map(f -> f as Layer _).sorted();
+            keys = SKFS.Keys(layers);
+            writer.write(key, keys);
+            writer.write(SKFS.KSize(), SKFS.IntFile(values.size()))
+          | _ -> values.maybeGet(0).each(v -> writer.write(key, v))
+          }
+        ,
+      );
+    widgetCollection = Ui.HandledCollection(widgetsHdl);
+    sourceHdl = context.makeDir(
+      f ~> f,
+      SKFS.DirName::make(dirName, "widgetsource/"),
+      Array<(SKFS.BaseName, SKFS.File)>[
+        (FWKPipeline.MainKey(), SKFS.IntFile(0)),
+      ],
+    );
+    SKFS.EHValue(
+      sourceHdl.contextWriterKeyMap(
+        Ui.WidgetFile::fromFile,
+        context,
+        SKFS.DirName::make(dirName, "widget/"),
+        (context, writer, key, _) ~> {
+          stack = Ui.Stack::createForController(
+            context,
+            path.makeChild("@stack"),
+            UiStack.LamController{widgets => widgetCollection},
+          );
+          writer.write(key, Ui.WidgetFile(stack))
+        },
+      ),
+      FWKPipeline.MainKey(),
+    );
+  }
+
+  fun isMenuClosed(context: mutable SKFS.Context): Bool {
+    this.state.maybeGetInt(context, Ui.closedProp)
+      .map(v -> v == context.tick.value)
+      .default(false);
+  }
+
+  fun closeMenu(context: mutable SKFS.Context): void {
+    builtHdl = SKFS.EHandle(
+      f ~> f,
+      SKFS.DirName::make(this.state.getDirName(), "widgetsbuild/"),
+    );
+    if (builtHdl.exists(context)) {
+      conv: SKFS.File ~> Ui.Widget = f ~> Ui.WidgetFile::fromFile(f).widget;
+      builtHdl.maybeGetProp(context, Menu(), conv).each(w ->
+        w match {
+        | ml @ Ui.MenuLayout _ ->
+          ml.controller.getWidget(context) match {
+          | dd @ Ui.Dropdown _ -> dd.state.emitClose(context)
+          | _ -> void
+          }
+        | _ -> void
+        }
+      );
+    };
+    this.state.write(context, Ui.closedProp, SKFS.IntFile(context.tick.value))
+  }
+
+  fun buildDropdown(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    items: Array<UiDropdown.ItemBase>,
+  ): Ui.Dropdown {
+    closeMessage = Ui.defaultOne<FWKMessage.Message, Bool>(
+      this.closeMenuMessage(),
+    );
+    itemsCollection = UiDropdown.ArrayCollection(items);
+    controller = UiDropdown.LamController{
+      items => (_ctx, _iu) ~> itemsCollection,
+      closeMessage,
+    };
+    Ui.Dropdown::create(
+      context,
+      path,
+      UiDropdown.init(context, path, controller),
+    )
+  }
+
+  fun setShownTooltip(context: mutable SKFS.Context, id: String): void {
+    this.state.write(context, Ui.activeProp, SKFS.StringFile(id))
+  }
+
+  fun closeMenuMessage(): FWKMessage.Message {
+    this.message(CloseMenu());
+  }
+
+  fun isTooltipShown(context: mutable SKFS.Context, path: Ui.Path): Bool {
+    this.state.maybeGetString(context, Ui.activeProp)
+      .map(v -> v == path.toString())
+      .default(false);
+  }
+
+  private fun message(command: FWKMessage.Command): FWKMessage.Message {
+    FWKMessage.Message(statePath, this.state.getDirName().toString(), command);
+  }
+
+  private fun emit(
+    context: mutable SKFS.Context,
+    command: FWKMessage.Command,
+    optDelay: ?Int = None(),
+  ): void {
+    FWKMessage.emit(
+      context,
+      statePath,
+      this.state.getDirName().toString(),
+      command,
+      false,
+      optDelay,
+    );
+  }
+}
+
+module end;

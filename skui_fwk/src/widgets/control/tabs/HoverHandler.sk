@@ -1,0 +1,184 @@
+module UiTabs;
+
+class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.tabs.path
+  }
+
+  protected fun isParentBefore(): Bool {
+    false
+  }
+
+  protected fun onMouse(
+    _context: mutable SKFS.Context,
+    _mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    FWK.Result(false)
+  }
+
+  fun getDropdown(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    (getHoverHandlerLeaf(Some(this)) match {
+    | Some(hh) ->
+      hh match {
+      | thh @ UiTab.HoverHandler _ -> Some(thh)
+      | _ -> None()
+      }
+    | _ -> None()
+    }) match {
+    | Some(thh) ->
+      Some(
+        FWK.SourcedWidget(Some(thh.path), (ctx, root) ~> {
+          items = mutable Vector[
+            if (!thh.controller.isPinned(ctx)) {
+              UiDropdown.Item{
+                id => "pin",
+                text => _ctx ~> !"Pin",
+                separator => _ctx ~> Ui.Both(),
+                message => (_ctx, _iu) ~>
+                  Array[this.tabs.state.pinMessage(thh.path.id, true)],
+              }
+            } else {
+              UiDropdown.Item{
+                id => "unpin",
+                text => _ctx ~> !"Unpin",
+                separator => _ctx ~> Ui.Both(),
+                message => (_ctx, _iu) ~>
+                  Array[this.tabs.state.pinMessage(thh.path.id, false)],
+              }
+            },
+          ];
+          closableInfo = this.tabs.state.getClosableInfo(
+            ctx,
+            Some(thh.path.id),
+          );
+          if (!closableInfo.closables.isEmpty()) {
+            items.push(
+              UiDropdown.Item{
+                id => "close",
+                text => _ctx ~> !"Close",
+                shortcut => ctx ~>
+                  if (thh.controller.isActive(ctx)) {
+                    Some(Ui.Shortcut("F4", true, false, false))
+                  } else {
+                    None()
+                  },
+                separator => _ctx ~> Ui.Both(),
+                message => (ctx, iu) ~>
+                  this.tabs.controller.getCloseMessages(
+                    ctx,
+                    Array[thh.path.id],
+                    iu,
+                  ),
+                disabled => ctx ~> !thh.controller.isClosable(ctx),
+              },
+            );
+            items.push(
+              UiDropdown.Item{
+                id => "closeOthers",
+                text => _ctx ~> !"Close others",
+                disabled => _ctx ~>
+                  closableInfo.right.isEmpty() && closableInfo.left.isEmpty(),
+                message => (ctx, iu) ~>
+                  this.tabs.controller.getCloseMessages(
+                    ctx,
+                    Arrays.merge(closableInfo.right, closableInfo.left),
+                    iu,
+                  ),
+              },
+            );
+            items.push(
+              UiDropdown.Item{
+                id => "closeToTheRight",
+                text => _ctx ~> !"Close to the right",
+                disabled => _ctx ~> closableInfo.right.isEmpty(),
+                message => (ctx, iu) ~>
+                  this.tabs.controller.getCloseMessages(
+                    ctx,
+                    closableInfo.right,
+                    iu,
+                  ),
+              },
+            );
+            items.push(
+              UiDropdown.Item{
+                id => "closeToTheLeft",
+                text => _ctx ~> !"Close to the left",
+                disabled => _ctx ~> closableInfo.left.isEmpty(),
+                message => (ctx, iu) ~>
+                  this.tabs.controller.getCloseMessages(
+                    ctx,
+                    closableInfo.left,
+                    iu,
+                  ),
+              },
+            );
+            items.push(
+              UiDropdown.Item{
+                id => "closeAll",
+                text => _ctx ~> !"Close all",
+                separator => _ctx ~> Ui.After(),
+                message => (ctx, iu) ~>
+                  this.tabs.controller.getCloseMessages(
+                    ctx,
+                    closableInfo.closables,
+                    iu,
+                  ),
+              },
+            );
+          };
+          Some(
+            root.buildDropdown(
+              ctx,
+              thh.path.makeChild("@tabsContextMenu"),
+              items.toArray(),
+            ),
+          )
+        }),
+      )
+    | _ ->
+      Some(
+        FWK.SourcedWidget(Some(this.tabs.path), (ctx, root) ~> {
+          closableInfo = this.tabs.state.getClosableInfo(ctx, None());
+          if (!closableInfo.closables.isEmpty()) {
+            items = Array[
+              UiDropdown.Item{
+                id => "closeAll",
+                text => _ctx ~> !"Close all",
+                separator => _ctx ~> Ui.After(),
+                message => (ctx, iu) ~>
+                  this.tabs.controller.getCloseMessages(
+                    ctx,
+                    closableInfo.closables,
+                    iu,
+                  ),
+              },
+            ];
+            Some(
+              root.buildDropdown(
+                ctx,
+                this.tabs.path.makeChild("@tabsContextMenu"),
+                items,
+              ),
+            )
+          } else {
+            None()
+          }
+        }),
+      )
+    }
+  }
+}
+
+fun getHoverHandlerLeaf(optHoverHandler: ?FWK.HoverHandler): ?FWK.HoverHandler {
+  optHoverHandler match {
+  | Some(hh) ->
+    hh match {
+    | hhw @ Ui.HoverHandlerWrapper _ -> getHoverHandlerLeaf(hhw.optHoverHandler)
+    | _ -> Some(hh)
+    }
+  | _ -> None()
+  }
+}
+
+module end;

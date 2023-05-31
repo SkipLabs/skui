@@ -1,0 +1,198 @@
+module UiStack;
+
+base class Fit() uses Hashable, Equality {
+  children =
+  /** The constraints passed to the stack from its parent are loosened. */
+  | Loose()
+  /** The constraints passed to the stack from its parent are tightened to the biggest size allowed. */
+  | Expand()
+  /** The constraints passed to the stack from its parent are passed unmodified to the non-positioned children. */
+  | Passthrough()
+}
+
+/** Whether overflowing children should be clipped, or their overflow be visible. */
+base class Overflow() uses Hashable, Equality {
+  children =
+  /** Overflowing children will be visible. */
+  | Visible()
+  /** Overflowing children will be clipped to the bounds of their parent. */
+  | Clip()
+}
+
+class Configuration{
+  fit: Fit = Passthrough(),
+  overflow: Overflow = Clip(),
+  opaque: Bool = true,
+} extends Ui.Configuration {}
+
+base class Controller extends Ui.WidgetsCollection {}
+
+class LamController{widgets: Ui.WidgetsCollection} extends Controller {
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.widgets.getSize(context)
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+    this.widgets.getWidget(context, index)
+  }
+
+  fun all(context: mutable SKFS.Context): Array<Ui.Widget> {
+    this.widgets.all(context)
+  }
+}
+
+class Parameters{
+  controller: Controller,
+  optFocusManager: ?Ui.FocusManager = None(),
+  optDragHandler: ?Ui.Getter<?Ui.DragHandlerGetter> = None(),
+  optDropHandler: ?Ui.Getter<?Ui.DropHandlerGetter> = None(),
+  optHoverHandler: ?Ui.GetterOne<
+    ?Ui.HoverHandlerGetter,
+    Ui.Getter<?FWK.HoverHandler>,
+  > = None(),
+} extends Ui.Parameters {}
+
+module end;
+
+module Ui;
+
+class Stack protected {
+  controller: UiStack.Controller,
+}
+  extends
+    StrictWidget,
+    WithHoverHandler,
+    WithDragHandler,
+    WithDropHandler,
+    WithFocusManager,
+
+
+  uses WithNodeCache {
+  //
+  type Params = UiStack.Parameters;
+  type Buffer = NodeCache;
+
+  fun getHoverHandler from WithHoverHandler;
+  fun getDragHandler from WithDragHandler;
+  fun getDropHandler from WithDropHandler;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    params: UiStack.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{
+      path,
+      controller => params.controller,
+      optFocusManager => params.optFocusManager,
+      optDragHandler => params.optDragHandler,
+      optDropHandler => params.optDropHandler,
+      optHoverHandler => params.optHoverHandler,
+      cache,
+      optConfiguration,
+      tick => context.tick,
+    }
+  }
+
+  static fun createForController(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    controller: UiStack.Controller,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static::create(
+      context,
+      path,
+      UiStack.Parameters{controller},
+      optConfiguration,
+    )
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    count = this.controller.getSize(context);
+    size = constraints.biggest();
+    childVector = mutable Vector<Ui.NChild>[];
+    for (index in Range(0, count)) {
+      widget = this.controller.getWidget(context, index);
+      childConstraints = this.getFit(widget.optConfiguration) match {
+      | UiStack.Loose() -> constraints.loosen()
+      | UiStack.Expand() -> constraints.expanded()
+      | UiStack.Passthrough() -> constraints
+      };
+      opaque = this.isOpaque(widget.optConfiguration);
+      rect = Geometry.Rect::fromOffsetSize(
+        Geometry.Offset::zero,
+        childConstraints.biggest(),
+      );
+      vpsPath = this.path.makeChild("vps");
+      childVector.push(
+        CLink(
+          vpsPath.add(widget.path),
+          rect,
+          Ui.Opaque(opaque, opaque),
+          childConstraints,
+        ),
+      );
+    };
+    Node(this, size, childVector.toArray(), constUserData(None()), false, true);
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    Some(
+      ViewportDef(
+        this.path,
+        None(),
+        None(),
+        this.controller.all(context).map(wdg -> {
+          childrenVps = wdg
+            .getViewportDefinition(context)
+            .map(vp -> Array[vp])
+            .default(Array[]);
+          ViewportDef(
+            this.path.makeChild("vps").add(wdg.path),
+            None(),
+            Some(wdg),
+            childrenVps,
+          )
+        }),
+      ),
+    );
+  }
+
+  private fun getFit(optConfiguration: ?Ui.Configuration): UiStack.Fit {
+    optConfiguration match {
+    | Some(configuration) ->
+      configuration match {
+      | stack @ UiStack.Configuration _ -> stack.fit
+      | _ -> UiStack.Passthrough()
+      }
+    | _ -> UiStack.Passthrough()
+    }
+  }
+
+  private fun getOverflow(
+    optConfiguration: ?Ui.Configuration,
+  ): UiStack.Overflow {
+    optConfiguration match {
+    | Some(configuration) ->
+      configuration match {
+      | stack @ UiStack.Configuration _ -> stack.overflow
+      | _ -> UiStack.Clip()
+      }
+    | _ -> UiStack.Clip()
+    }
+  }
+
+  private fun isOpaque(optConfiguration: ?Ui.Configuration): Bool {
+    optConfiguration match {
+    | Some(configuration) ->
+      configuration match {
+      | stack @ UiStack.Configuration _ -> stack.opaque
+      | _ -> true
+      }
+    | _ -> true
+    }
+  }
+}

@@ -1,0 +1,17 @@
+module UiDialogs;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+}
+
+base class Command extends FWKMessage.Command {}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | Open(kind: Kind)
+  | SetVisible(dialogId: Int, visible: Bool)
+  | Close(dialogId: Int)
+}
+
+module end;

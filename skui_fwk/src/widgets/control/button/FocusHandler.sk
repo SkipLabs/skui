@@ -1,0 +1,111 @@
+module UiButton;
+
+class FocusHandler{
+  button: Ui.Button,
+} extends FWK.FocusHandler uses FWK.OnlyShortcuts {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.button.path;
+  }
+
+  fun fillSources(path: mutable Set<Ui.Path>): void {
+    path.insert(this.getIdentifier())
+  }
+
+  fun getSource(sources: Set<Ui.Path>): ?Ui.Path {
+    identifier = this.getIdentifier();
+    if (sources.contains(identifier)) {
+      Some(identifier)
+    } else {
+      None()
+    }
+  }
+
+  fun hasSource(source: Ui.Path): Bool {
+    this.getIdentifier() == source;
+  }
+
+  fun isGotoNext(
+    context: mutable SKFS.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    if (source == this.getIdentifier()) {
+      Some(!this.button.state.isArmed(context) && keys.isTab(context.tick))
+    } else {
+      None()
+    }
+  }
+
+  fun isGotoPrevious(
+    context: mutable SKFS.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    if (source == this.getIdentifier()) {
+      Some(!this.button.state.isArmed(context) && keys.isShiftTab(context.tick))
+    } else {
+      None()
+    }
+  }
+
+  fun manage(
+    context: mutable SKFS.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): Bool {
+    if (source != this.getIdentifier()) {
+      return false;
+    };
+    this.onKeys(context, keys);
+  }
+
+  protected fun getShortcuts(
+    context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    if (!this.button.controller.isDisabled(context)) {
+      shortcuts = mutable Vector<FWK.ShortcutAction>[];
+      if (this.button.state.isArmed(context)) {
+        shortcuts.push(
+          FWK.ShortcutAction(
+            "fire",
+            FWK.Shortcut(
+              Array[
+                UiEvent.pureKeyReleased(UiEvent.KeyInfo::enter),
+                UiEvent.pureKeyReleased(UiEvent.KeyInfo::space),
+              ],
+            ),
+            FWK.Standard(ctx ~> {
+              this.button.state.emitArmed(ctx, false);
+              this.button.controller.fire(ctx, None())
+            }),
+          ),
+        );
+        shortcuts.push(
+          FWK.ShortcutAction(
+            "cancel",
+            FWK.Shortcut(Array[UiEvent.keyPressed(UiEvent.KeyInfo::escape)]),
+            FWK.Standard(ctx ~> this.button.state.emitArmed(ctx, false)),
+          ),
+        );
+      };
+      shortcuts.push(
+        FWK.ShortcutAction(
+          "arm",
+          FWK.Shortcut(
+            Array[
+              UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter),
+              UiEvent.pureKeyPressed(UiEvent.KeyInfo::space),
+            ],
+          ),
+          FWK.Standard(ctx ~> this.button.state.emitArmed(ctx, true)),
+        ),
+      );
+      shortcuts.toArray()
+    } else {
+      Array[]
+    }
+  }
+}
+
+module end;

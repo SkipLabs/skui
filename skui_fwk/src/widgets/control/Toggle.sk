@@ -1,0 +1,179 @@
+module Ui;
+
+class Toggle protected {
+  controller: UiToggle.Controller,
+  state: UiToggle.State,
+} extends StrictWidget uses WithNodeCache, NoViewports {
+  //
+  type Params = UiToggle.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    params: UiToggle.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    layout = UiToggle.Layout::create(context, this.controller);
+    size = constraints.constrain(layout.computeSize());
+    Node(this, size, Array[], constUserData(Some(layout)))
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((_, _, _) ~> Some(UiToggle.HoverHandler(this)))
+  }
+
+  fun checkFocusHandlers(
+    context: mutable SKFS.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    if (this.controller.isDisabled(context)) {
+      handlers.chill()
+    } else {
+      Vector[UiToggle.FocusHandler{category => "toggle", toggle => this}]
+    }
+  }
+
+  fun computeDrawInfo(
+    _context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    nodeSum: Ui.NodeSum,
+    optUserData: ?UserData,
+  ): ?DrawInfo {
+    layout = optUserData.map(ud ~> ud as UiToggle.Layout _).fromSome();
+    Some(UiToggle.DrawInfo::compute(layout, nodeSum.size));
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | MainLayer() ->
+      info = node.optDrawInfo.map(ud ~> ud as UiToggle.DrawInfo _).fromSome();
+      this.computeMain(context, support, absolute, info)
+    | BackgroundLayer() ->
+      layout = node.optUserData.map(ud ~> ud as UiToggle.Layout _).fromSome();
+      this.computeBackground(context, support, absolute, node.size(), layout)
+    | ForegroundLayer() ->
+      this.computeForeground(context, support, absolute, node.size())
+    };
+  }
+
+  fun computeMain(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    drawInfo: UiToggle.DrawInfo,
+  ): Array<Ui.Drawable> {
+    drawables = mutable Vector<Ui.Drawable>[];
+    focused = context.isFocused(this.path);
+    color = if (this.controller.isDisabled(context)) {
+      context.getThemeColor(UiTheme.Disabled())
+    } else if (focused) {
+      context.getThemeColor(UiTheme.Primary())
+    } else {
+      context.getThemeColor(UiTheme.Regular())
+    };
+    drawInfo.optSelectionIcons.each(sis -> {
+      isIndeterminate = this.controller.getIndeterminateProp(context)
+        .map(ip -> ip.get(context))
+        .default(false);
+      isSelected = this.controller.getSelectedProp(context).get(context);
+      fn = if (isIndeterminate) {
+        sis.indeterminate
+      } else if (isSelected) {
+        sis.selected
+      } else {
+        sis.unselected
+      };
+      fn(context, support, absolute, color, drawables)
+    });
+    drawInfo.optIcon.each(fn ->
+      fn(context, support, absolute, color, drawables)
+    );
+    drawInfo.optLabel.each(ti ->
+      Ui.drawConstrainedText(
+        context,
+        support,
+        ti.textSupport,
+        ti.text,
+        ti.bounds.shift(absolute),
+        color,
+        ti.faceId,
+        drawables,
+      )
+    );
+    drawables.toArray();
+  }
+
+  fun computeBackground(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    layout: UiToggle.Layout,
+  ): Array<Ui.Drawable> {
+    optBackgound = if (layout.optSelectionIcons.isNone()) {
+      isIndeterminate = this.controller.getIndeterminateProp(context)
+        .map(ip -> ip.get(context))
+        .default(false);
+      isSelected = this.controller.getSelectedProp(context).get(context);
+      if (this.controller.isDisabled(context)) {
+        Some(context.getThemeColor(UiTheme.Disabled()))
+      } else if (isIndeterminate) {
+        Some(context.getThemeColor(UiTheme.Accent()).scaleAlpha(0.2))
+      } else if (isSelected) {
+        Some(context.getThemeColor(UiTheme.Primary()).scaleAlpha(0.2))
+      } else {
+        None()
+      }
+    } else {
+      None()
+    };
+    optBackgound
+      .map(color -> Array[support.roundedRectangle(absolute, size, color, 6.0)])
+      .default(Array[])
+  }
+
+  fun computeForeground(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+  ): Array<Ui.Drawable> {
+    if (this.state.isHover(context)) {
+      Array[
+        support.roundedRectangle(
+          absolute,
+          size,
+          context.getThemeColor(UiTheme.Regular()).scaleAlpha(0.1),
+          6.0,
+        ),
+      ]
+    } else {
+      Array[]
+    }
+  }
+}
+
+module end;

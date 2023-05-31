@@ -1,0 +1,169 @@
+module UiDialog;
+
+base class Builder extends SKFS.File {
+  fun build(
+    context: mutable SKFS.Context,
+    closeMessage: FWKMessage.Message,
+  ): Ui.Dialog;
+
+  static fun forFile(file: SKFS.File): Builder {
+    file match {
+    | x @ Builder _ -> x
+    | _ -> invariant_violation("Invalid UiDialog.Builder file.")
+    }
+  }
+}
+
+class DummyBuilder() extends Builder {
+  fun build(
+    _context: mutable SKFS.Context,
+    _closeMessage: FWKMessage.Message,
+  ): Ui.Dialog {
+    dummy()
+  }
+}
+
+fun widgetDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/dialog/widget/")
+}
+
+fun widgetsDirName(path: Ui.Path): SKFS.DirName {
+  path.toDirName("/ui/dialog/widgets/")
+}
+
+base class Role {
+  children =
+  | Submit()
+  | Exit()
+  | Both()
+
+  fun isSubmit(): Bool
+  | Submit()
+  | Both() ->
+    true
+  | Exit() -> false
+
+  fun isExit(): Bool
+  | Exit()
+  | Both() ->
+    true
+  | Submit() -> false
+}
+
+class Action(
+  id: String,
+  text: Text,
+  perform: mutable SKFS.Context ~> void = _ctx ~> void,
+  optRole: ?Role = None(),
+  disabled: Ui.GetterOne<Bool, Bool> = Ui.defaultOne(false),
+)
+
+class Fireable(
+  perform: mutable SKFS.Context ~> void = _ctx ~> void,
+  disabled: Ui.GetterOne<Bool, Bool> = Ui.defaultOne(false),
+)
+
+class Utils(optSubmit: ?Fireable, optExit: ?Fireable) extends Ui.UserData
+
+base class Kind {
+  children =
+  | Stacked(value: Array<Action>)
+  | LeftRight(left: Array<Action> = Array[], right: Array<Action> = Array[])
+  | Rows(value: Array<Action>)
+  | FullScreen(close: mutable SKFS.Context ~> void, value: Array<Action>)
+
+  fun getSubmitExit(): Utils
+  | Stacked(value) -> this.extractSubmitExit(value)
+  | LeftRight(left, right) ->
+    utils = this.extractSubmitExit(right);
+    if (utils.optSubmit.isNone() || utils.optExit.isNone()) {
+      !utils = this.extractSubmitExit(left, utils.optSubmit, utils.optExit);
+    };
+    utils
+  | Rows(value) -> this.extractSubmitExit(value)
+  | FullScreen(close, value) ->
+    utils = this.extractSubmitExit(value);
+    !utils.optExit = Some(Fireable(close, Ui.defaultOne(false)));
+    utils
+
+  fun getSubmitId(): ?String
+  | Stacked(value) -> this.extractSubmitId(value)
+  | LeftRight(left, right) ->
+    optPath = this.extractSubmitId(right);
+    if (optPath.isNone()) {
+      !optPath = this.extractSubmitId(left);
+    };
+    optPath
+  | Rows(value) -> this.extractSubmitId(value)
+  | FullScreen(_, value) -> this.extractSubmitId(value)
+
+  private fun extractSubmitExit(
+    value: Array<Action>,
+    optSubmit: ?Fireable = None(),
+    optExit: ?Fireable = None(),
+  ): Utils {
+    for (action in value) {
+      action.optRole match {
+      | Some(role) ->
+        if (role.isSubmit() && optSubmit.isNone()) {
+          !optSubmit = Some(Fireable(action.perform, action.disabled))
+        };
+        if (role.isExit() && optExit.isNone()) {
+          !optExit = Some(Fireable(action.perform, action.disabled))
+        }
+      | _ -> void
+      };
+      if (optSubmit.isSome() && optExit.isSome()) {
+        break void;
+      }
+    };
+    Utils(optSubmit, optExit)
+  }
+
+  private fun extractSubmitId(value: Array<Action>): ?String {
+    for (action in value) {
+      action.optRole match {
+      | Some(role) ->
+        if (role.isSubmit()) {
+          break Some(action.id)
+        }
+      | _ -> void
+      };
+    } else {
+      None()
+    };
+  }
+}
+
+base class Controller extends Ui.Parameters {
+  fun getTitle(context: mutable SKFS.Context): ?Text;
+  fun getContent(context: mutable SKFS.Context): Ui.Widget;
+  fun getKind(context: mutable SKFS.Context): Kind;
+  fun getMainFocusable(context: mutable SKFS.Context): ?Ui.Path;
+}
+
+class LamController{
+  kind: mutable SKFS.Context ~> Kind,
+  content: mutable SKFS.Context ~> Ui.Widget,
+  title: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
+  mainFocusable: mutable SKFS.Context ~> ?Ui.Path,
+} extends Controller {
+  //
+  fun getTitle(context: mutable SKFS.Context): ?Text {
+    this.title(context)
+  }
+
+  fun getContent(context: mutable SKFS.Context): Ui.Widget {
+    this.content(context)
+  }
+
+  fun getKind(context: mutable SKFS.Context): Kind {
+    this.kind(context)
+  }
+
+  fun getMainFocusable(context: mutable SKFS.Context): ?Ui.Path {
+    this.mainFocusable(context)
+  }
+}
+
+module end;

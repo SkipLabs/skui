@@ -1,0 +1,89 @@
+module UiMonospace;
+
+class DrawInfo private (
+  optVBar: ?(Geometry.Rect, Geometry.Rect),
+  optHBar: ?(Geometry.Rect, Geometry.Rect),
+) extends Ui.DrawInfo {
+  //
+  static fun compute(
+    context: mutable SKFS.Context,
+    monospace: Ui.Monospace,
+    size: Geometry.Size,
+    metrics: Metrics,
+  ): this {
+    barSize = context.getThemeThickness(UiTheme.ScrollBar()).toFloat();
+    optHEV = monospace.state.getHEnsureVisible(context);
+    optVEV = monospace.state.getVEnsureVisible(context);
+    fMetrics = metrics.checkEnsureVisible(optHEV, optVEV);
+    if (fMetrics.horizontal.optScroll.isSome()) {
+      monospace.state.emitHScroll(context, fMetrics.horizontal.optScroll)
+    };
+    if (fMetrics.vertical.optScroll.isSome()) {
+      monospace.state.emitVScroll(context, fMetrics.vertical.optScroll)
+    };
+    offset = Geometry.Point(0, metrics.vertical.offset.toInt());
+    optHBar = static::axisToBar(
+      metrics.horizontal,
+      size.width,
+      size.height,
+      barSize,
+      metrics.vertical.main > size.height,
+      (main, cross) ~> Geometry.Offset(main, cross),
+      (main, cross) ~> Geometry.Size(main, cross),
+    );
+    optVBar = static::axisToBar(
+      metrics.vertical,
+      size.height,
+      size.width,
+      barSize,
+      metrics.horizontal.main > size.width,
+      (main, cross) ~> Geometry.Offset(cross, main),
+      (main, cross) ~> Geometry.Size(cross, main),
+    );
+    DrawInfo(optVBar, optHBar, offset)
+  }
+
+  private static fun axisToBar(
+    axis: Ui.MAxis,
+    size: Float,
+    cross: Float,
+    barSize: Float,
+    reduced: Bool,
+    buildOffset: (Float, Float) ~> Geometry.Offset,
+    buildSize: (Float, Float) ~> Geometry.Size,
+  ): ?(Geometry.Rect, Geometry.Rect) {
+    if (axis.main > size) {
+      iOffset = axis.offset.toInt();
+      fSize = if (reduced) size - barSize else size;
+      computed = Math.max(20.0, (fSize * fSize) / axis.main);
+      if (computed > fSize) {
+        None()
+      } else {
+        offset =
+          ((axis.range.start.toFloat() * axis.unity) +
+            Math.abs(iOffset).toFloat()) *
+          fSize /
+          axis.main;
+        if (offset + axis.unity > fSize) {
+          !offset = fSize - axis.unity;
+        };
+        Some(
+          (
+            Geometry.Rect::fromOffsetSize(
+              buildOffset(offset, cross - barSize),
+              buildSize(computed, barSize),
+            ),
+            Geometry.Rect::fromOffsetSize(
+              buildOffset(0.0, cross - barSize),
+              buildSize(fSize, barSize),
+            ),
+          ),
+        )
+      }
+    } else {
+      None()
+    }
+  }
+}
+
+module end;

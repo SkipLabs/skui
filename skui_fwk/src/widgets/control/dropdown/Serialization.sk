@@ -1,0 +1,143 @@
+module UiDropdown;
+
+fun toJSON(v: JSONValue): JSON.Value {
+  v.toJSON()
+}
+
+extension base class Command {
+  fun toJSON(): JSON.Value
+  | Close() -> JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | SetHover(optItem) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "item" => optItem.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | SetScroll(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Goto(spot) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "spot" => spot.toJSON(),
+      ],
+    )
+  | Select(target, optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "target" => target.toJSON(),
+        "repeatOn" => optRepeatOn.map(toJSON).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Multiple(commands) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "commands" => JSON.arrayToJSON(commands, toJSON),
+      ],
+    )
+  | ManageScrolling(value, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | CancelScrolling(tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDropdown.Close" -> Close()
+    | "UiDropdown.SetHover" ->
+      SetHover(jso.maybeGet("item").map(Ui.Path::fromJSON))
+    | "UiDropdown.SetScroll" ->
+      SetScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
+    | "UiDropdown.Goto" -> Goto(Spot::fromJSON(jso.get("spot")))
+    | "UiDropdown.Select" ->
+      Select(
+        Target::fromJSON(jso.get("target")),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | "UiDropdown.Multiple" ->
+      Multiple(JSON.arrayFromJSON(jso.getArray("commands"), Command::fromJSON))
+    | "UiDropdown.ManageScrolling" ->
+      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "UiDropdown.CancelScrolling" ->
+      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiDropdown.Command`)
+    }
+  }
+}
+
+extension base class Target extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | Previous()
+  | Next() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | Idx(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Target {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDropdown.Previous" -> Previous()
+    | "UiDropdown.Next" -> Next()
+    | "UiDropdown.Idx" -> Idx(jso.getInt("value"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiDropdown.Target`)
+    }
+  }
+}
+
+extension base class Spot extends JSONValue {
+  //
+  fun toJSON(): JSON.Value
+  | Backward() ->
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  | Forward(idx) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "idx" => JSON.IntNumber(idx),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Spot {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiDropdown.Backward" -> Backward()
+    | "UiDropdown.Forward" -> Forward(jso.getInt("idx"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for UiDropdown.Target`)
+    }
+  }
+}
+
+module end;

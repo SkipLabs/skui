@@ -1,0 +1,57 @@
+module Text;
+
+class Display(
+  faceId: Font.FaceID,
+  fill: Ui.Paint = Colors.black(),
+) extends SKFS.File uses Hashable, Orderable {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Display _ -> x
+    | _ -> invariant_violation("Must be Text.Display")
+    }
+  }
+}
+
+base class StyleBase{faceId: Font.FaceID, fill: Ui.Paint = Colors.black()} {
+  fun toDisplay(): Display {
+    Display(this.faceId, this.fill);
+  }
+}
+
+class GlyphStyle{} extends StyleBase {}
+
+base class LineSpacingSupplier uses Hashable, Orderable, Show {
+  fun getLineSpace(context: mutable SKFS.Context, height: Float): Float;
+}
+
+class ScaledLineSpacing(scale: Float) extends LineSpacingSupplier {
+  fun getLineSpace(_context: mutable SKFS.Context, height: Float): Float {
+    this.scale * height;
+  }
+
+  fun toString(): String {
+    `${(this.scale * 100.0).toInt()}%`
+  }
+}
+
+class ConstLineSpacing(space: Float) extends LineSpacingSupplier {
+  fun getLineSpace(_context: mutable SKFS.Context, _height: Float): Float {
+    this.space;
+  }
+  fun toString(): String {
+    Ui.Px(this.space).toString();
+  }
+}
+
+class Style{
+  hAlignment: Text.FixedAlign = Text.Left(),
+  vAlignment: Text.VAlign = Text.Middle(),
+  decoration: Text.Decoration = Text.Decoration(),
+  lineSpacing: LineSpacingSupplier = ScaledLineSpacing(0.5),
+  wrapping: Text.Wrapping = Text.NoWrap(),
+  overrun: Text.Overrun = Text.EndingChar(),
+  transform: Text.Transform = Text.NoCapitalization(),
+} extends StyleBase uses Hashable, Orderable {}
+
+module end;

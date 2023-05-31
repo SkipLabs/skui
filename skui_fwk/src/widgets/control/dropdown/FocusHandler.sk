@@ -1,0 +1,190 @@
+module UiDropdown;
+
+class IVFocusHandler{
+  path: Ui.Path,
+  state: State,
+  itemPath: Ui.Path,
+  item: ItemBase,
+  idx: Int,
+  optCloseMessage: ?(mutable SKFS.Context, Bool) ~> FWKMessage.Message = None(),
+} extends Ui.TabFocusHandler uses FWK.OnlyShortcuts {
+  fun getIdentifier(): Ui.Path {
+    this.path;
+  }
+
+  protected fun getShortcuts(
+    context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    if (!this.item.disabled(context)) {
+      shortcuts = mutable Vector<FWK.ShortcutAction>[];
+      this.item match {
+      | i @ Item _ ->
+        shortcuts.push(
+          FWK.ShortcutAction(
+            "fire",
+            FWK.Shortcut(
+              Array[
+                UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter),
+                UiEvent.pureKeyPressed(UiEvent.KeyInfo::space),
+              ],
+            ),
+            FWK.Standard(ctx ~> {
+              this.optCloseMessage.each(cm ->
+                FWKMessage.emitMessage(ctx, cm(ctx, true))
+              );
+              i.message(ctx, true).each(message ->
+                FWKMessage.emitMessage(ctx, message)
+              )
+            }),
+          ),
+        )
+      | _m @ Menu _ ->
+        shortcuts.push(
+          FWK.ShortcutAction(
+            "goto",
+            FWK.Shortcut(
+              Array[
+                UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter),
+                UiEvent.pureKeyPressed(UiEvent.KeyInfo::space),
+              ],
+            ),
+            FWK.Standard(ctx ~> this.state.emitGoto(ctx, Forward(this.idx))),
+          ),
+        )
+      };
+      shortcuts.toArray()
+    } else {
+      Array[]
+    }
+  }
+}
+
+class FocusHandler{
+  path: Ui.Path,
+  state: State,
+  optCloseMessage: ?(mutable SKFS.Context, Bool) ~> FWKMessage.Message,
+} extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  protected fun getMainIdentifier(): Ui.Path {
+    this.path;
+  }
+
+  protected fun getShortcuts(
+    context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    shortcuts = mutable Vector<FWK.ShortcutAction>[
+      FWK.ShortcutAction(
+        "up",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowUp)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          this.state.emitSelect(ctx, Previous(), repeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "down",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowDown)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          this.state.emitSelect(ctx, Next(), repeat)
+        ),
+      ),
+      FWK.ShortcutAction(
+        "forward",
+        FWK.Shortcut(
+          Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowRight)],
+        ),
+        FWK.Skipable(ctx ~>
+          this.state.getSelected(ctx, true) match {
+          | Some(selected) ->
+            this.state.emitGoto(ctx, Forward(selected));
+            true
+          | _ -> false
+          }
+        ),
+      ),
+      FWK.ShortcutAction(
+        "fire",
+        FWK.Shortcut(
+          Array[
+            UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter),
+            UiEvent.pureKeyPressed(UiEvent.KeyInfo::space),
+          ],
+        ),
+        FWK.Skipable(ctx ~>
+          this.state.getSelected(ctx, true) match {
+          | Some(selected) ->
+            active = this.state.getActive(ctx, true);
+            active.accessor
+              .items(ctx, true)
+              .getItem(ctx, selected, true) match {
+            | i @ Item _ ->
+              this.optCloseMessage.each(cm ->
+                FWKMessage.emitMessage(ctx, cm(ctx, true))
+              );
+              i.message(ctx, true).each(message ->
+                FWKMessage.emitMessage(ctx, message)
+              )
+            | _m @ Menu _ -> this.state.emitGoto(ctx, Forward(selected))
+            };
+            true
+          | _ -> false
+          }
+        ),
+      ),
+    ];
+    if (!this.state.isRoot(context)) {
+      shortcuts.push(
+        FWK.ShortcutAction(
+          "backward",
+          FWK.Shortcut(
+            Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowLeft)],
+          ),
+          FWK.Standard(ctx ~> this.state.emitGoto(ctx, Backward())),
+        ),
+      )
+    };
+    shortcuts.toArray()
+  }
+}
+
+class SelectFocusHandler{
+  path: Ui.Path,
+  state: State,
+  index: Int,
+} extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  //
+  protected fun getMainIdentifier(): Ui.Path {
+    this.path;
+  }
+
+  protected fun getShortcuts(
+    _context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    Array[]
+  }
+
+  protected fun onEnter(context: mutable SKFS.Context): Bool {
+    this.state.emitSelect(context, Idx(this.index));
+    true
+  }
+}
+
+class FocusManager(path: Ui.Path, state: State) extends Ui.FocusManager {
+  fun checkFocusHandlers(
+    _context: mutable SKFS.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    Ui.wrappedFocusHandlersWithIndex(handlers, (idx, fh) ->
+      Some(
+        SelectFocusHandler{
+          path => this.path,
+          state => this.state,
+          index => idx,
+          category => "dropdownScroll",
+          optFocusHandler => Some(fh),
+        },
+      )
+    );
+  }
+}
+
+module end;

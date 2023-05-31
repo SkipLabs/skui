@@ -1,0 +1,673 @@
+module Ui;
+
+class Monospace protected {
+  controller: UiMonospace.Controller,
+  state: UiMonospace.State,
+  widget: mutable SKFS.Context ~> Widget,
+  numbers: mutable SKFS.Context ~> ?Widget,
+  private bars: UiMonospace.Bars,
+  private indicator: Widget,
+} extends StrictWidget uses WithNodeCache {
+  //
+  type Params = UiMonospace.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    params: UiMonospace.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Configuration = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiMonospace.widgetDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+    );
+    visibleLinesHdl = mainHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiMonospace.widgetDirName(path.makeChild("visible")),
+      (context, writer, _key, _) ~> {
+        keys = mutable Vector<SKFS.BaseName>[];
+        if (
+          FWKPipeline.hasNodeInfos(context) &&
+          !params.state.isFontLoading(context)
+        ) {
+          FWKPipeline.gNodeInfo.maybeGetValue(context, path).each(ni -> {
+            ni.info.optUserData
+              .map(ud ~> ud as UiMonospace.Metrics _)
+              .each(metrics -> {
+                lines = params.state.getLines(context);
+                for (idx in metrics.vertical.range) {
+                  lines.maybeGet(idx).each(line -> {
+                    key = SKFS.IID(line.id);
+                    keys.push(key);
+                    writer.write(key, line);
+                    writer.write(UiMonospace.KIdx(line.id), SKFS.IntFile(idx))
+                  })
+                };
+                writer.write(
+                  UiMonospace.RangeKey(),
+                  SKFS.RangeFile(metrics.vertical.range),
+                );
+                writer.write(
+                  UiMonospace.OffsetKey(),
+                  UiTextLine.Offset(
+                    metrics.horizontal.range.start,
+                    metrics.horizontal.offset,
+                  ),
+                );
+                writer.write(
+                  UiMonospace.CountKey(),
+                  SKFS.IntFile(metrics.horizontal.visibleCount),
+                );
+              })
+          })
+        };
+        writer.write(SKFS.KSize(), SKFS.IntFile(keys.size()));
+        writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
+      },
+    );
+    visibleTokensPath = UiMonospace.widgetDirName(
+      path.makeChild("tokens").makeChild("indexed"),
+    );
+    visibleTokensHdl = visibleLinesHdl.contextWriterKeyMap(
+      Text.Tokens::fromFile,
+      context,
+      visibleTokensPath,
+      (ctx, writer, key, file) ~> {
+        key match {
+        | idd @ SKFS.IID _ ->
+          line = UiMonospace.Line::fromFile(file);
+          indentation = params.controller.getIndentation(ctx).get(ctx);
+          words = Text.Words::fromString(String::fromChars(line.text));
+          spaced = words.toShownSpaceWords(indentation.size);
+          map = SortedMap<Int, Array<Char>>[];
+          line.brackets.each(b -> !map = map.add(b.index, b.value));
+          lexed = spaced.lex(map);
+          writer.write(idd, lexed)
+        | _ -> void
+        }
+      },
+    );
+    blocksColorsPath = UiMonospace.widgetDirName(
+      path.makeChild("blocks").makeChild("colors"),
+    );
+    blockPortionsHdl = mainHdl.contextWriterKeyMap(
+      UiMonospace.LinePortions::fromFile,
+      context,
+      blocksColorsPath,
+      (ctx, writer, _, _) ~> {
+        visibleLinesHdl
+          .maybeGetRange(ctx, UiMonospace.RangeKey())
+          .each(range -> {
+            keys = SKFS.Keys::fromFile(
+              visibleLinesHdl.get(ctx, SKFS.KKeys()),
+            ).value;
+            ranges = params.state.getColorRanges(ctx);
+            index = 0;
+            while (
+              index < ranges.size() &&
+              ranges[index].endLine() < range.start
+            ) {
+              !index = index + 1;
+            };
+            portions = mutable Map<
+              SKFS.BaseName,
+              mutable Vector<UiMonospace.LinePortion>,
+            >[];
+            add = (key, portion) -> {
+              vec = portions.maybeGet(key) match {
+              | Some(vec) -> vec
+              | _ ->
+                vec = mutable Vector<UiMonospace.LinePortion>[];
+                portions.add(key, vec);
+                vec
+              };
+              vec.push(portion);
+            };
+            kIdx = 0;
+            while (index < ranges.size()) {
+              rc = ranges[index];
+              while (
+                kIdx < keys.size() &&
+                range.start + kIdx < rc.startLine()
+              ) {
+                !kIdx = kIdx + 1;
+              };
+              while (kIdx < keys.size() && range.start + kIdx <= rc.endLine()) {
+                optLinePortion = rc.toLinePortion(range.start + kIdx);
+                optLinePortion.each(p -> add(keys[kIdx], p));
+                if (range.start + kIdx != rc.endLine()) !kIdx = kIdx + 1 else {
+                  break void
+                }
+              };
+              !index = index + 1;
+            };
+            portions.each((k, v) ->
+              writer.write(
+                k,
+                UiMonospace.LinePortions(unsafe_chill_trust_me(v)),
+              )
+            )
+          });
+      },
+    );
+    coloredTokensPath = UiMonospace.widgetDirName(
+      path.makeChild("tokens").makeChild("colored"),
+    );
+    coloredTokensHdl = visibleTokensHdl.contextWriterKeyMap(
+      Tokens::fromFile,
+      context,
+      coloredTokensPath,
+      (ctx, writer, key, tokens) ~> {
+        optSupplier = params.controller.getColorSupplier(ctx);
+        optNumberColor = params.controller.getNumberColor(ctx);
+        blockColors = blockPortionsHdl
+          .maybeGet(ctx, key)
+          .map(f ~> f.value)
+          .default(Vector[]);
+        pIdx = 0;
+        optPortion: ?UiMonospace.LinePortion = None();
+        getColor: (Int, ?Color) -> ?Color = (index, optDefault) -> {
+          optPortion match {
+          | Some(portion) if (portion.contains(index)) -> Some(portion.color)
+          | _ ->
+            if (
+              pIdx < blockColors.size() &&
+              blockColors[pIdx].contains(index)
+            ) {
+              portion = blockColors[pIdx];
+              !optPortion = Some(portion);
+              !pIdx = pIdx + 1;
+              Some(portion.color)
+            } else {
+              !optPortion = None();
+              optDefault
+            }
+          }
+        };
+        tIndex = 0;
+        writer.write(
+          key,
+          Tokens(
+            tokens.value.map(info -> {
+              token = Token(
+                info,
+                info.kind match {
+                | Text.KToken() ->
+                  getColor(tIndex, optSupplier.flatMap(s -> s(info.text)))
+                | Text.KNumber() -> getColor(tIndex, optNumberColor)
+                | Text.KWhiteSpace() -> None()
+                | _ -> getColor(tIndex, None())
+                },
+              );
+              !tIndex = tIndex + info.count;
+              token
+            }),
+            tokens.size,
+            tokens.start,
+            tokens.shift,
+          ),
+        )
+      },
+    );
+    lineSelectionHdl = mainHdl.contextWriterKeyMap(
+      LinePortion::fromFile,
+      context,
+      UiMonospace.widgetDirName(path.makeChild("lines").makeChild("selection")),
+      (ctx, writer, _, _) ~> {
+        params.state.getSelection(ctx).each(selection ->
+          for (idx in Range(selection.start.line, selection.end.line + 1)) {
+            selection.toLinePortion(idx).each(lp ->
+              writer.write(SKFS.IID(idx), lp)
+            )
+          }
+        )
+      },
+    );
+    linePositionHdl = mainHdl.contextWriterKeyMap(
+      SKFS.IntFile::fromFile,
+      context,
+      UiMonospace.widgetDirName(path.makeChild("lines").makeChild("position")),
+      (ctx, writer, _, _) ~> {
+        position = params.state.getPosition(ctx);
+        writer.write(SKFS.IID(position.line), SKFS.IntFile(position.column))
+      },
+    );
+    lineTargetHdl = mainHdl.contextWriterKeyMap(
+      SKFS.IntFile::fromFile,
+      context,
+      UiMonospace.widgetDirName(path.makeChild("lines").makeChild("target")),
+      (ctx, writer, _, _) ~> {
+        params.state.getTarget(ctx).each(target ->
+          writer.write(SKFS.IID(target.line), SKFS.IntFile(target.column))
+        )
+      },
+    );
+    textlinesHdl = visibleLinesHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiMonospace.widgetDirName(path.makeChild("widgets")),
+      (ctx, writer, key, file) ~> {
+        key match {
+        | idd @ SKFS.IID _ ->
+          lineId = idd.value;
+          liPath = path.makeChild("lines").makeChild(`line_${lineId}`);
+          writer.write(
+            key,
+            WidgetFile(
+              TextLine::create(
+                ctx,
+                liPath,
+                UiTextLine.Parameters(
+                  path,
+                  UiTextLine.LamController{
+                    fontSize => params.state.getFontSize,
+                    tokens => ctx ~>
+                      coloredTokensHdl
+                        .maybeGet(ctx, idd)
+                        .default(Tokens(Vector[], 0)),
+                    offset => ctx ~>
+                      visibleLinesHdl
+                        .maybeGet(ctx, UiMonospace.OffsetKey())
+                        .map(UiTextLine.Offset::fromFile)
+                        .default(UiTextLine.Offset(0, 0.0)),
+                    count => ctx ~>
+                      visibleLinesHdl
+                        .maybeGet(ctx, UiMonospace.CountKey())
+                        .map(SKFS.IntFile::fromFile)
+                        .map(f ~> f.value)
+                        .default(80),
+                    editable => ctx ~> params.controller.isEditable(ctx),
+                    position => ctx ~> {
+                      visibleLinesHdl
+                        .maybeGetValue(ctx, UiMonospace.KIdx(lineId))
+                        .map(SKFS.IntFile::fromFile)
+                        .map(f -> f.value)
+                        .flatMap(idx ->
+                          linePositionHdl.maybeGet(ctx, SKFS.IID(idx))
+                        )
+                        .map(f ~> f.value)
+                    },
+                    target => (ctx, iu) ~> {
+                      visibleLinesHdl
+                        .maybeGetValue(ctx, UiMonospace.KIdx(lineId), iu)
+                        .map(SKFS.IntFile::fromFile)
+                        .map(f -> f.value)
+                        .flatMap(idx ->
+                          lineTargetHdl.maybeGetValue(ctx, SKFS.IID(idx), iu)
+                        )
+                        .map(f ~> f.value)
+                    },
+                    scrolling => params.state.isScrolling,
+                    spacesVisible => params.controller.isSpacesVisible,
+                    carretVisible => params.state.isCaretVisible,
+                    selection => (ctx, iu) ~> {
+                      visibleLinesHdl
+                        .maybeGetValue(ctx, UiMonospace.KIdx(lineId), iu)
+                        .map(SKFS.IntFile::fromFile)
+                        .map(f -> f.value)
+                        .flatMap(idx ->
+                          lineSelectionHdl.maybeGetValue(ctx, SKFS.IID(idx), iu)
+                        )
+                    },
+                    textCommandsManager => params.state.getLineCommandsManager,
+                    armed => params.state.isArmed,
+                    moveSelection => params.state.isMoveSelection,
+                    line => (ctx, iu) ~>
+                      SKFS.IntFile::fromFile(
+                        visibleLinesHdl.getValue(
+                          ctx,
+                          UiMonospace.KIdx(lineId),
+                          iu,
+                        ),
+                      ).value,
+                    clipboardContent => (ctx, iu) ~> {
+                      endLine = params.controller
+                        .getEndLine(ctx, iu)
+                        .get(ctx, iu);
+                      params.state.computeClipboardContent(ctx, endLine, iu)
+                    },
+                  },
+                ),
+              ),
+            ),
+          )
+        | kkey @ SKFS.KKeys _ -> writer.write(kkey, file)
+        | ksize @ SKFS.KSize _ -> writer.write(ksize, file)
+        | _ -> void
+        }
+      },
+    );
+    indicatorPath = path.makeChild("progress");
+    indicator = Indicator::create(
+      context,
+      indicatorPath,
+      UiProgress.parameters(context, indicatorPath, UiProgress.LamController{}),
+    );
+    widgets = HandledCollection(textlinesHdl);
+    widgetHdl = mainHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      UiMonospace.widgetDirName(path),
+      (context, writer, key, _) ~> {
+        widget = if (params.state.isFontLoading(context)) {
+          indicator
+        } else {
+          subPath = path.makeChild("viewport");
+          UiMonospace.Layout::create(
+            context,
+            subPath,
+            UiMonospace.LayoutParameters(widgets),
+          )
+        };
+        writer.write(key, WidgetFile(widget))
+      },
+    );
+    numbersHdl = mainHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      UiMonospace.widgetDirName(path.makeChild("numbers")),
+      (context, writer, key, _) ~> {
+        if (
+          !params.state.isFontLoading(context) &&
+          params.controller.isLineNumbersVisible(context)
+        ) {
+          subPath = path.makeChild("numbers");
+          widget = UiMonospace.Numbers::create(
+            context,
+            subPath,
+            UiMonospace.LamNumbersController{
+              numberOfLines => params.state.getNumberOfLines,
+              fontLoading => params.state.isFontLoading,
+              fontSize => params.state.getFontSize,
+              activeLine => (ctx, iu) ~> params.state.getPosition(ctx, iu).line,
+              range => (ctx, iu) ~>
+                visibleLinesHdl
+                  .maybeGetRange(ctx, UiMonospace.RangeKey(), iu)
+                  .default(Range(0, 0)),
+              selectLine => (ctx, line) ~>
+                params.state.emitSelectLine(ctx, line),
+            },
+          );
+          writer.write(key, WidgetFile(widget))
+        }
+      },
+    );
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      widget => ctx ~> widgetHdl.get(ctx, SKFS.IID(0)).widget,
+      numbers => ctx ~>
+        numbersHdl.maybeGet(ctx, SKFS.IID(0)).map(f ~> f.widget),
+      tick => context.tick,
+      bars => UiMonospace.Bars{
+        path => path.makeChild("bars"),
+        reference => path,
+        state => params.state,
+        tick => context.tick,
+      },
+      indicator,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    if (this.state.isFontLoading(context)) {
+      node = this.indicator.getNode(context, constraints);
+      Node(
+        this,
+        node.size,
+        Array[CNode(node, Geometry.Offset::zero, constraints)],
+      )
+    } else if (
+      !constraints.hasBoundedWidth() ||
+      !constraints.hasBoundedHeight()
+    ) {
+      this.getNode(context, BoxConstraints::tight(100.0, 100.0))
+    } else {
+      widget = this.widget(context);
+      cConstraints = BoxConstraints::new();
+      node = widget.getNode(context, cConstraints);
+
+      height = node.subNodes
+        .maybeFirst()
+        .flatMap(child ->
+          child match {
+          | cNode @ CNode _ -> Some(cNode.node.size.height)
+          | _ -> None()
+          }
+        )
+        .default(20.0);
+      optNumbers = this.numbers(context);
+      optNumbersNode = optNumbers.map(w -> w.getNode(context, cConstraints));
+      childNodes = mutable Vector<NChild>[];
+
+      cSize = node.size;
+      vpOffset = Geometry.Offset::zero;
+      optNumbersNode.each(nn -> !cSize = cSize.horizontal(nn.size));
+      size = constraints.constrain(cSize);
+      vpSize = size;
+      font = this.state.getFontSize(context);
+      optNumbersNode.each(nn -> {
+        childNodes.push(
+          CLink(
+            this.path.makeChild("numsVp"),
+            Geometry.Rect::fromOffsetSize(
+              Geometry.Offset::zero,
+              Geometry.Size(nn.size.width, size.height),
+            ),
+            Opaque(),
+            cConstraints,
+          ),
+        );
+        !vpOffset = vpOffset.translateX(nn.size.width);
+        !vpSize = Geometry.Size(size.width - nn.size.width, size.height)
+      });
+      childNodes.push(
+        CLink(
+          this.path.makeChild("vp"),
+          Geometry.Rect::fromOffsetSize(vpOffset, vpSize),
+          Opaque(),
+          cConstraints,
+        ),
+      );
+      childNodes.push(
+        CLink(
+          this.path.makeChild("barVp"),
+          Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, size),
+          Opaque(false, false),
+          constraints,
+        ),
+      );
+      //
+      fVpSize = vpSize;
+      Node(this, size, childNodes.toArray(), ctx ~> {
+        metrics = UiMonospace.Metrics::compute(
+          ctx,
+          fVpSize,
+          this.state.getNumberOfLines(ctx),
+          this.state.getNumberOfColumns(ctx),
+          Geometry.Size(font.width, height),
+          this.state.getHScroll,
+          this.state.getVScroll,
+        );
+        Some(metrics)
+      });
+    }
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKFS.Context,
+    _relative: Geometry.Offset,
+    nodeSum: NodeSum,
+    optUserData: ?UserData,
+  ): ?DrawInfo {
+    if (this.state.isFontLoading(context)) {
+      None()
+    } else {
+      optUserData
+        .map(ud ~> ud as UiMonospace.Metrics _)
+        .map(metrics ->
+          UiMonospace.DrawInfo::compute(context, this, nodeSum.size, metrics)
+        )
+    }
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    if (this.state.isFontLoading(context)) {
+      None()
+    } else {
+      vps = mutable Vector<ViewportDef>[];
+      optNumbers = this.numbers(context);
+      optNumbers.each(nums ->
+        vps.push(
+          ViewportDef(
+            this.path.makeChild("numsVp"),
+            Some(this.path),
+            Some(nums),
+            Array[],
+          ),
+        )
+      );
+      vps.push(
+        ViewportDef(
+          this.path.makeChild("vp"),
+          Some(this.path),
+          Some(this.widget(context)),
+          Array[],
+        ),
+      );
+      vps.push(
+        ViewportDef(
+          this.path.makeChild("barVp"),
+          None(),
+          Some(this.bars),
+          Array[],
+        ),
+      );
+      Some(ViewportDef(this.path, None(), None(), vps.toArray()))
+    }
+  }
+
+  fun checkFocusHandlers(
+    context: mutable SKFS.Context,
+    _nodeInfo: Getter<NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    if (this.state.isFontLoading(context, true)) {
+      handlers.chill()
+    } else {
+      Vector[
+        UiMonospace.FocusHandler{category => "monospace", monospace => this},
+      ]
+    }
+  }
+
+  fun getHoverHandler(
+    context: mutable SKFS.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    if (this.state.isFontLoading(context, true)) {
+      None()
+    } else {
+      Some((ctx, offset, ni) ~> {
+        drawInfo = ni.optDrawInfo
+          .map(di ~> di as UiMonospace.DrawInfo _)
+          .fromSome();
+        optHBar = drawInfo.optHBar match {
+        | Some(bar) if (bar.i1.contains(offset)) -> Some(true)
+        | _ ->
+          drawInfo.optVBar match {
+          | Some(bar) if (bar.i1.contains(offset)) -> Some(false)
+          | _ -> None()
+          }
+        };
+        Some(UiMonospace.HoverHandler(this, optHBar, childGetter(ctx)))
+      })
+    }
+  }
+
+  fun getLockHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.LockHandler>,
+  ): ?LockHandlerGetter {
+    Some((ctx, mouse, ni) ~> {
+      offset = mouse.offset();
+      (inHBar, inVBar) = if (mouse.isPrimaryPressed(ctx.tick)) {
+        drawInfo = ni.optDrawInfo
+          .map(di ~> di as UiMonospace.DrawInfo _)
+          .fromSome();
+        drawInfo.optHBar match {
+        | Some(bar) if (bar.i1.contains(offset)) -> (true, false)
+        | _ ->
+          drawInfo.optVBar match {
+          | Some(bar) if (bar.i1.contains(offset)) -> (false, true)
+          | _ -> (false, false)
+          }
+        };
+      } else {
+        (false, false)
+      };
+      if (inHBar || inVBar) {
+        Some(UiMonospace.LockHandler(this, inVBar))
+      } else {
+        None()
+      }
+    })
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: LayerId,
+    node: NodeInfo,
+  ): Array<Drawable> {
+    layer match {
+    | BackgroundLayer() ->
+      this.controller.getColumnsLimit(context)
+        .flatMap(limit ->
+          node.optUserData
+            .map(ud ~> ud as UiMonospace.Metrics _)
+            .flatMap(metrics -> {
+              rel = (limit - metrics.horizontal.range.start);
+              if (rel > 0) {
+                offset = metrics.horizontal.unity * rel.toFloat();
+                Some(
+                  Array[
+                    support.rectangle(
+                      absolute.translateX(metrics.horizontal.offset + offset),
+                      Geometry.Size(2.0, node.size().height),
+                      context.getThemeColor(UiTheme.Primary()).scaleAlpha(0.4),
+                    ),
+                  ],
+                )
+              } else {
+                None()
+              }
+            })
+        )
+        .default(Array[])
+    | MainLayer()
+    | ForegroundLayer() ->
+      Array[]
+    };
+  }
+
+  fun getDropHandler(
+    _context: mutable SKFS.Context,
+    _childGetter: Getter<?FWK.DropHandler>,
+  ): ?DropHandlerGetter {
+    /*Some((ctx, _o, ni) ~>
+      Some(UiMonospace.DropHandler(this, ni, childGetter(ctx)))
+    );*/
+    None()
+  }
+}
+
+module end;

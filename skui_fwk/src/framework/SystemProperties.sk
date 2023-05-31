@@ -1,0 +1,235 @@
+module SystemProperties;
+
+const path: SKFS.DirName = SKFS.DirName::create("/ui/system/properties/");
+
+const handle: SKFS.IHandle<SKFS.File> = SKFS.IHandle(SKFS.Identity(), path);
+const requiredFocus: SKFS.StrID = SKFS.StrID("required-visible");
+const quitManager: SKFS.StrID = SKFS.StrID("quit-manager");
+const horizontalDirection: SKFS.StrID = SKFS.StrID("horizontal-direction");
+
+class Todo(todo: (mutable SKFS.Context) ~> void) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Todo _ -> x
+    | _ -> invariant_violation("Must be SystemProperties.Todo")
+    }
+  }
+}
+
+class QuitManager(manage: Ui.Getter<Bool>) extends SKFS.File
+
+fun exit(context: mutable SKFS.Context): void {
+  FWKEnv.getWindowId(context, true).each(FWK.close);
+}
+
+fun quit(context: mutable SKFS.Context): void {
+  //
+  handle.maybeGet(context, quitManager).map(QuitManager::fromFile) match {
+  | Some(qm) ->
+    if (qm.manage(context)) {
+      exit(context)
+    }
+  | _ -> exit(context)
+  }
+}
+
+base class Command extends FWKMessage.Command {
+  fun toJSON(): JSON.Value
+  | Repeat(toRepeat, optRepeatOn, count) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "toRepeat" => JSON.IntNumber(toRepeat),
+        "repeatOn" => optRepeatOn.map(v -> v.toJSON()).default(JSON.Null()),
+        "count" => JSON.IntNumber(count),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "SystemProperties.Repeat" ->
+      Repeat(
+        jso.getInt("toRepeat"),
+        jso.maybeGet("repeatOn").map(FWK.Repeat::fromJSON),
+        jso.getInt("count"),
+      )
+    | _ ->
+      invariant_violation(
+        `Invalid json object ${cl} for SystemProperties.Command`,
+      )
+    }
+  }
+}
+
+class Repeat(
+  toRepeat: Int,
+  optRepeatOn: ?FWK.Repeat = None(),
+  count: Int = 1,
+) extends Command {
+  fun next(): this {
+    !this.count = this.count + 1;
+    this;
+  }
+}
+
+fun statusFromJSON(jsv: JSON.Value): Status {
+  jso = jsv.expectObject();
+  cl = jso.getString("__class");
+  cl match {
+  | "Running" -> Running(jso.maybeGetInt("progress"))
+  | "KO" -> KO(jso.maybeGet("error").map(Text::fromJSON))
+  | "OK" -> OK()
+  | _ -> invariant_violation(`Invalid json object ${cl} for Status`)
+  }
+}
+
+fun repeat(
+  context: mutable SKFS.Context,
+  todo: mutable SKFS.Context ~> void,
+  optRepeatOn: ?FWK.Repeat = None(),
+): void {
+  todo(context);
+  optRepeatOn.each(repeatOn -> {
+    id = context.timeStamp().value;
+    context.setGlobal(`SystemProperties.Repeat(${id})`, Todo(todo));
+    emit(context, Repeat(id, Some(repeatOn), 1), false, Some(500))
+  })
+}
+
+class Messages()
+  extends FWKMessage.Support
+  uses FWKMessage.WithUpdate<Command> {
+  fun init(_context: mutable SKFS.Context): void {
+    void
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+
+  protected fun execute(
+    context: mutable SKFS.Context,
+    name: String,
+    scope: String,
+    command: Command,
+  ): void {
+    command match {
+    | repeatable @ Repeat _ ->
+      FWKMessage.repeat(
+        context,
+        name,
+        scope,
+        repeatable.next(),
+        ctx ~> {
+          ctx
+            .getGlobal(`SystemProperties.Repeat(${repeatable.toRepeat})`)
+            .map(Todo::fromFile)
+            .each(todo -> todo.todo(ctx))
+        },
+        repeatable.optRepeatOn,
+        false,
+        50,
+        ctx ~>
+          ctx.removeGlobal(`SystemProperties.Repeat(${repeatable.toRepeat})`)
+        ,
+      )
+    }
+  }
+}
+
+fun init(context: mutable SKFS.Context): void {
+  _ = context.makeDir(f ~> f, path, Array[]);
+  context.registerMessageSupport("system", "properties", Messages());
+}
+
+fun emit(
+  context: mutable SKFS.Context,
+  command: Command,
+  asyncMode: Bool = false,
+  optDelay: ?Int = None(),
+): void {
+  FWKMessage.emit(
+    context,
+    "system",
+    "properties",
+    command,
+    asyncMode,
+    optDelay,
+  );
+}
+
+fun message(command: Command): FWKMessage.Message {
+  FWKMessage.Message("system", "properties", command);
+}
+
+fun unsafeEmit(
+  context: readonly SKFS.Context,
+  command: Command,
+  asyncMode: Bool = false,
+  optDelay: ?Int = None(),
+): void {
+  FWKMessage.unsafeEmit(
+    context,
+    "system",
+    "properties",
+    command,
+    asyncMode,
+    optDelay,
+  );
+}
+
+class TPath(path: Ui.Path, tick: SKFS.Tick) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ TPath _ -> x
+    | _ -> invariant_violation("Must be SystemProperties.TPath")
+    }
+  }
+}
+
+fun getRequiredFocus(context: mutable SKFS.Context): ?Ui.Path {
+  handle.maybeGet(context, requiredFocus).map(TPath::fromFile).flatMap(td ->
+    if (td.tick == context.tick) {
+      Some(td.path)
+    } else {
+      None()
+    }
+  )
+}
+
+fun getHorizontalDirection(
+  context: mutable SKFS.Context,
+): Ui.HorizontalDirection {
+  handle
+    .maybeGet(context, horizontalDirection)
+    .map(Ui.HorizontalDirection::forFile)
+    .default(Ui.ToRight());
+}
+
+fun setRequireFocus(context: mutable SKFS.Context, path: Ui.Path): void {
+  handle.write(context, requiredFocus, TPath(path, context.tick));
+}
+
+fun setHorizontalDirection(
+  context: mutable SKFS.Context,
+  direction: Ui.HorizontalDirection,
+): void {
+  handle.write(context, horizontalDirection, direction)
+}
+
+fun setQuitManager(
+  context: mutable SKFS.Context,
+  manage: Ui.Getter<Bool>,
+): void {
+  handle.write(context, quitManager, QuitManager(manage))
+}
+
+module end;

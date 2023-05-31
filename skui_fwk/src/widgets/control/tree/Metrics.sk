@@ -1,0 +1,20 @@
+module UiTree;
+
+class Metrics(axis: Ui.MAxis) extends Ui.UserData {
+  //
+  static fun compute(
+    context: mutable SKFS.Context,
+    unity: Float,
+    count: Int,
+    size: Float,
+    scroll: Ui.Getter<?Ui.Scroll>,
+  ): this {
+    static(Ui.MAxis::compute(context, size, count + 1, unity, scroll))
+  }
+
+  fun checkEnsureVisible(optEV: ?Ui.Visible): this {
+    static(this.axis.checkEnsureVisible(optEV))
+  }
+}
+
+module end;

@@ -1,0 +1,195 @@
+module UiToggle;
+
+class TextInfo(
+  str: String,
+  size: Geometry.Size,
+  face: Font.FaceID,
+  textSupport: Ui.TextSupport,
+) {
+  //
+  fun toDraw(offset: Geometry.Offset, size: Geometry.Size): TextDrawInfo {
+    TextDrawInfo(
+      this.str,
+      Geometry.Rect::fromOffsetSize(offset, size),
+      this.face,
+      this.textSupport,
+    )
+  }
+}
+
+class IconInfo(icon: Ui.Icon, size: Geometry.Size) {
+  static fun create(
+    context: mutable SKFS.Context,
+    builder: Ui.IconBuilder,
+    size: Float,
+  ): ?this {
+    builder.buildIcon(context, size).map(icon ->
+      static(icon, icon.size(context))
+    )
+  }
+
+  fun fillDrawables(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    color: Color,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    top = (size.height - this.size.height) / 2.0;
+    left = (size.width - this.size.width) / 2.0;
+    this.icon.fillDrawables(
+      context,
+      support,
+      absolute.translate(left, top).round(),
+      this.size,
+      color,
+      drawables,
+    );
+  }
+}
+
+class SelectionInfo(
+  selected: IconInfo,
+  unselected: IconInfo,
+  indeterminate: IconInfo,
+) {
+  //
+  static fun create(
+    context: mutable SKFS.Context,
+    selected: Ui.IconBuilder,
+    unselected: Ui.IconBuilder,
+    indeterminate: Ui.IconBuilder,
+    size: Float,
+  ): ?this {
+    IconInfo::create(context, selected, size).flatMap(selectedII ->
+      IconInfo::create(context, unselected, size).flatMap(unselectedII ->
+        IconInfo::create(context, indeterminate, size).map(indeterminateII ->
+          static(selectedII, unselectedII, indeterminateII)
+        )
+      )
+    )
+  }
+
+  fun size(): Geometry.Size {
+    this.selected.size.max(this.unselected.size).max(this.indeterminate.size)
+  }
+
+  fun toDraw(offset: Geometry.Offset, size: Geometry.Size): IconsDrawInfo {
+    conv = iconInfo ->
+      (ctx, support, abs, color, drawables) ~>
+        iconInfo.fillDrawables(
+          ctx,
+          support,
+          abs + offset,
+          size,
+          color,
+          drawables,
+        );
+    IconsDrawInfo(
+      conv(this.selected),
+      conv(this.unselected),
+      conv(this.indeterminate),
+    )
+  }
+}
+
+class Layout(
+  optLabel: ?TextInfo,
+  optSelectionIcons: ?SelectionInfo,
+  optIcon: ?IconInfo,
+  iconTextGap: Float,
+  iconIconGap: Float,
+  hSide: Float,
+  vSide: Float,
+  lineSpacing: Int,
+) extends Ui.UserData {
+  //
+  static fun create(
+    context: mutable SKFS.Context,
+    controller: Controller,
+  ): this {
+    faceId = context.getThemeFont(UiTheme.Action());
+    iconTextGap = context.getThemeThickness(UiTheme.IconTextGap()).toFloat();
+    iconIconGap = context.getThemeThickness(UiTheme.IconIconGap()).toFloat();
+    hSide = context.getThemeThickness(UiTheme.ActionHorizontalSide()).toFloat();
+    vSide = context.getThemeThickness(UiTheme.ActionVerticalSide()).toFloat();
+    lineSpacing = context.getThemeThickness(UiTheme.LineSpacing());
+    optLabel = controller.getText(context).map(text -> {
+      textSupport = context.getTextSupport();
+      str = context.translate(text);
+      size = textSupport.getLinesSize(context, str, None(), faceId, _lh ->
+        lineSpacing.toFloat()
+      );
+      TextInfo(str, size, faceId, textSupport)
+    });
+    optSelectionIcons = controller.getKind(context) match {
+    | Checkbox() ->
+      SelectionInfo::create(
+        context,
+        context.getThemeIcon(UiTheme.Checked()),
+        context.getThemeIcon(UiTheme.Unchecked()),
+        context.getThemeIcon(UiTheme.IndCheck()),
+        faceId.size,
+      )
+    | Radio() ->
+      SelectionInfo::create(
+        context,
+        context.getThemeIcon(UiTheme.Selected()),
+        context.getThemeIcon(UiTheme.Unselected()),
+        context.getThemeIcon(UiTheme.IndSelection()),
+        faceId.size,
+      )
+    | Toggle() -> None()
+    };
+    optIcon = controller.getIcon(context, faceId.size).map(icon ->
+      IconInfo(icon, icon.size(context))
+    );
+    static(
+      optLabel,
+      optSelectionIcons,
+      optIcon,
+      iconTextGap,
+      iconIconGap,
+      hSide,
+      vSide,
+      lineSpacing,
+    )
+  }
+
+  //
+  fun computeSize(): Geometry.Size {
+    width = 0.0;
+    height = 0.0;
+    iconTextGap = this.optLabel.map(_t -> this.iconTextGap).default(0.0);
+    this.optSelectionIcons.each(sis -> {
+      size = sis.size();
+      !width =
+        width +
+        size.width +
+        this.optIcon.map(_i -> this.iconIconGap).default(iconTextGap);
+      !height = size.height;
+    });
+    this.optIcon.each(is -> {
+      !width = width + is.size.width + iconTextGap;
+      !height = Math.max(height, is.size.height);
+    });
+    this.optLabel.each(it -> {
+      !width = width + it.size.width;
+      !height = Math.max(height, it.size.height);
+    });
+    Geometry.Size(width + 2.0 * this.hSide, height + 2.0 * this.vSide)
+  }
+
+  fun computeIconTextWidth(): Float {
+    iconTextGap = this.optLabel.map(_t -> this.iconTextGap).default(0.0);
+    iconTextWidth = 0.0;
+    this.optIcon.each(is ->
+      !iconTextWidth = iconTextWidth + is.size.width + iconTextGap
+    );
+    this.optLabel.each(it -> !iconTextWidth = iconTextWidth + it.size.width);
+    iconTextWidth
+  }
+}
+
+module end;

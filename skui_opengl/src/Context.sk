@@ -1,6 +1,10 @@
 module GL;
 
-class Ctx(id: UInt32) uses Hashable, HasClassName {
+class Ctx(id: UInt32) extends Ui.Ctx uses Hashable, HasClassName {
+  fun getId(): Int {
+    this.id.toInt()
+  }
+
   // UTILS
 
   @debug

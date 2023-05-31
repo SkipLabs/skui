@@ -1,0 +1,40 @@
+module FWKClipboard;
+
+base class Command extends FWKMessage.Command {
+  children =
+  | Copy(content: Content)
+  | Paste(type: Type, target: FWKMessage.Target)
+
+  fun toJSON(): JSON.Value
+  | Copy(content) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "content" => content.toJSON(),
+      ],
+    )
+  | Paste(type, target) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "type" => JSON.String(type.toMime()),
+        "target" => target.toJSON(),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWKClipboard.Copy" -> Copy(Content::fromJSON(jso.get("content")))
+    | "FWKClipboard.Paste" ->
+      Paste(
+        Type::fromMime(jso.getString("type")),
+        FWKMessage.Target::fromJSON(jso.get("target")),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiButton.Command`)
+    }
+  }
+}
+
+module end;

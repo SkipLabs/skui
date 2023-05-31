@@ -1,0 +1,159 @@
+module UiInput;
+
+base class ForStorage
+  extends FWKMessage.Support
+  uses FWKMessage.WithUpdate<Command> {
+  //
+  fun init(_context: mutable SKFS.Context): void {
+    void
+  }
+
+  protected fun executeForStorage(
+    context: mutable SKFS.Context,
+    storage: Storage,
+    command: Command,
+  ): void {
+    name = storage.getName();
+    scope = storage.getScope();
+    command match {
+    | Multiples(commands) ->
+      commands.each(cmd -> this.executeForStorage(context, storage, cmd))
+    | SetHover(value) -> storage.setHover(context, value)
+    | SetArmed(value) -> storage.setArmed(context, value)
+    | SetMoveSelection(value) -> storage.setMoveSelection(context, value)
+    | Reset() ->
+      storage.setHover(context, false);
+      storage.setArmed(context, false);
+      storage.setMoveSelection(context, false)
+    | SetShowing(value) -> storage.setShowing(context, value)
+    | SetBlinking(value) -> storage.setBlinking(context, value)
+    | SetScroll(optScroll) -> storage.setScroll(context, optScroll)
+    | CancelScrolling(tick) ->
+      storage.getScrolling(context).each(sc ->
+        if (sc == tick) {
+          storage.setScrolling(context, None());
+        }
+      )
+    | ToggleHidden(tick) ->
+      (storage.getVisibility(context) match {
+      | Some(visibility) ->
+        if (visibility.tick == tick) {
+          !visibility.visible = !visibility.visible;
+          Some(visibility)
+        } else if (tick > visibility.tick) {
+          Some(Ui.Visibility(tick, false))
+        } else {
+          None()
+        }
+      | _ -> Some(Ui.Visibility(tick, false))
+      }).each(visibility -> {
+        storage.setVisibility(context, Some(visibility));
+        FWKMessage.emit(
+          context,
+          name,
+          scope,
+          ToggleHidden(tick),
+          false,
+          Some(500),
+        );
+      })
+    | executable @ ExecCommand _ ->
+      executable match {
+      | repeatable @ Repeatable _ ->
+        FWKMessage.repeat(
+          context,
+          name,
+          scope,
+          repeatable.next(),
+          ctx ~> storage.setTodo(ctx, repeatable),
+          repeatable.optRepeatOn,
+          false,
+          if (repeatable.count == 1) {
+            500
+          } else {
+            50
+          },
+        )
+      | cmd ->
+        cmd match {
+        | ManageScrolling(_, tick) ->
+          storage.setScrolling(context, Some(tick));
+          FWKMessage.emit(
+            context,
+            name,
+            scope,
+            CancelScrolling(tick),
+            false,
+            Some(200),
+          )
+        | ManageTarget(optValue, scrolling) ->
+          storage.getTodo(context).command match {
+          | ManageTarget(optPos, _) ->
+            if (optPos == optValue) {
+              return void;
+            }
+          | _ -> void
+          };
+          if (scrolling) {
+            tick = context.tick;
+            storage.setScrolling(context, Some(tick));
+            FWKMessage.emit(
+              context,
+              name,
+              scope,
+              CancelScrolling(tick),
+              false,
+              Some(200),
+            )
+          }
+        | _ -> void
+        };
+        storage.setTodo(context, executable)
+      }
+    }
+  }
+}
+
+class Messages(storage: Storage) extends ForStorage {
+  //
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+
+  protected fun execute(
+    context: mutable SKFS.Context,
+    _name: String,
+    _scope: String,
+    command: Command,
+  ): void {
+    this.executeForStorage(context, this.storage, command)
+  }
+}
+
+class AllMessages() extends ForStorage {
+  //
+  protected fun execute(
+    context: mutable SKFS.Context,
+    name: String,
+    scope: String,
+    command: Command,
+  ): void {
+    HStorage::forNameAndScope(context, name, scope).each(storage ->
+      this.executeForStorage(context, storage, command)
+    )
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+}
+
+module end;

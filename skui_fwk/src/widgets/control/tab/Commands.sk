@@ -1,0 +1,63 @@
+module UiTab;
+
+fun toJSON(v: JSONValue): JSON.Value {
+  v.toJSON()
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHover(close: Bool, hover: Bool)
+  | SetArmed(close: Bool, armed: Bool)
+  | SetTargeted(optDrop: ?Ui.Drop)
+  | SetIndeterminate(value: Int)
+  | Multiple(values: Array<Command>)
+
+  fun toJSON(): JSON.Value
+  | SetHover(close, value)
+  | SetArmed(close, value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "close" => JSON.Bool(close),
+        "value" => JSON.Bool(value),
+      ],
+    )
+  | SetIndeterminate(value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => JSON.IntNumber(value),
+      ],
+    )
+  | SetTargeted(optDrop) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "drop" => optDrop.map(toJSON).default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | Multiple(values) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "values" => JSON.arrayToJSON(values, v ~> v.toJSON()),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTab.SetArmed" -> SetArmed(jso.getBool("close"), jso.getBool("value"))
+    | "UiTab.SetHover" -> SetHover(jso.getBool("close"), jso.getBool("value"))
+    | "UiTab.SetTargeted" ->
+      SetTargeted(jso.maybeGet("drop").map(Ui.Drop::fromJSON))
+    | "UiTab.SetIndeterminate" -> SetIndeterminate(jso.getInt("value"))
+    | "UiTab.Multiple" ->
+      Multiple(JSON.arrayFromJSON(jso.getArray("values"), Command::fromJSON))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTab.Command`)
+    }
+  }
+}
+
+module end;

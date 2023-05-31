@@ -1,0 +1,57 @@
+module UiDialog;
+
+class FocusHandler{
+  dialog: Ui.Dialog,
+  nodeInfo: Ui.NodeInfo,
+} extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  //
+  protected fun getMainIdentifier(): Ui.Path {
+    this.dialog.path;
+  }
+
+  protected fun getShortcuts(
+    _context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    utils = this.nodeInfo.optUserData.map(ud ~> ud as Utils _).fromSome();
+    submit = message ->
+      FWK.ShortcutAction(
+        "submit",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter)]),
+        FWK.Standard(ctx ~>
+          if (!message.disabled(ctx, true)) {
+            message.perform(ctx)
+          }
+        ),
+      );
+    prevent = () ->
+      FWK.ShortcutAction(
+        "preventFire",
+        FWK.Shortcut(Array[UiEvent.pureKeyReleased(UiEvent.KeyInfo::enter)]),
+        FWK.Standard(_ctx ~> void),
+      );
+    exit = message ->
+      FWK.ShortcutAction(
+        "exit",
+        FWK.Shortcut(Array[UiEvent.pureKeyReleased(UiEvent.KeyInfo::escape)]),
+        FWK.Standard(ctx ~>
+          if (!message.disabled(ctx, true)) {
+            message.perform(ctx)
+          }
+        ),
+      );
+    utils.optSubmit match {
+    | Some(submitMsg) ->
+      utils.optExit match {
+      | Some(exitMsg) -> Array[submit(submitMsg), prevent(), exit(exitMsg)]
+      | _ -> Array[submit(submitMsg), prevent()]
+      }
+    | _ ->
+      utils.optExit match {
+      | Some(exitMsg) -> Array[exit(exitMsg)]
+      | _ -> Array[]
+      }
+    }
+  }
+}
+
+module end;

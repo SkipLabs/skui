@@ -1,0 +1,222 @@
+module UiDialogs;
+
+const statePath: String = "ui/dialogs/state";
+const computedPath: String = "ui/dialogs/computed";
+
+class Info(id: Int, visible: Bool, optFocused: ?Ui.Path)
+
+class Infos(value: Array<Info> = Array[], next: Int = 0) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Infos _ -> x
+    | _ -> invariant_violation("Must be UiDialogs.Infos")
+    }
+  }
+}
+
+class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+  //
+  static fun forNameAndScope(
+    context: mutable SKFS.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.getDirName().toString()
+  }
+
+  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+  }
+}
+
+class HState(
+  storage: SKFS.EHandle<SKFS.File>,
+  computed: SKFS.EHandle<SKFS.File>,
+) extends State {
+  fun getDialogCount(context: mutable SKFS.Context): Int {
+    this.computed.getInt(context, SKFS.KSize())
+  }
+
+  fun getDialog(context: mutable SKFS.Context, index: Int): Ui.Dialog {
+    this.computed.maybeGetProp(
+      context,
+      SKFS.IID(index),
+      Ui.WidgetFile::fromFile,
+    )
+      .map(f -> f.widget as Ui.Dialog _)
+      .fromSome()
+  }
+
+  fun emitOpen(context: mutable SKFS.Context, kind: Kind): void {
+    this.emit(context, Open(kind))
+  }
+
+  fun emitClose(context: mutable SKFS.Context, id: Int): void {
+    this.emit(context, Close(id))
+  }
+
+  fun emitSetVisible(
+    context: mutable SKFS.Context,
+    id: Int,
+    visible: Bool,
+  ): void {
+    this.emit(context, SetVisible(id, visible))
+  }
+
+  fun openAlertMessage(
+    text: Text,
+    optTitle: ?Text = None(),
+  ): FWKMessage.Message {
+    this.message(Open(Alert{text, optTitle}))
+  }
+
+  fun openConfirmMessage(
+    text: Text,
+    target: FWKMessage.Target,
+    autoClose: Bool = true,
+    type_: UiDialogs.QType = UiDialogs.YesNo(),
+    optTitle: ?Text = None(),
+  ): FWKMessage.Message {
+    this.message(Open(Question{text, target, type_, optTitle, autoClose}))
+  }
+
+  fun openInputMessage(
+    message: Text,
+    target: FWKMessage.Target,
+    autoClose: Bool = true,
+    optTitle: ?Text = None(),
+    settings: Settings = Settings{},
+  ): FWKMessage.Message {
+    this.message(Open(Input{message, target, optTitle, autoClose, settings}))
+  }
+
+  private fun emit(
+    context: mutable SKFS.Context,
+    command: FWKMessage.Command,
+  ): void {
+    FWKMessage.emit(
+      context,
+      statePath,
+      this.storage.getDirName().toString(),
+      command,
+    );
+  }
+
+  private fun message(command: FWKMessage.Command): FWKMessage.Message {
+    FWKMessage.Message(
+      statePath,
+      this.storage.getDirName().toString(),
+      command,
+    );
+  }
+}
+
+fun init(context: mutable SKFS.Context, path: Ui.Path): State {
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeDir(
+    Ui.Todo::fromFile,
+    dirName,
+    Array[(Ui.todoProp, Ui.Todo(Init(), context.tick))],
+  );
+  computedDirName = SKFS.DirName::make(dirName, "computed/");
+  computedHdl = SKFS.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    stateHdl,
+    Ui.todoProp,
+    Array[Ui.keysProp],
+    update,
+    None(),
+  );
+  afterHdl = computedHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    SKFS.DirName::make(dirName, "after/"),
+    (context, writer, key, file) ~> {
+      key match {
+      | iid @ SKFS.IID _ ->
+        dialog = (file as Kind _).toDialog(
+          context,
+          statePath,
+          dirName.toString(),
+          path.makeChild("dialog").makeChild(`k${iid}`),
+          iid.value,
+        );
+        dialog.getMainFocusable(context).each(focusable ->
+          SystemProperties.setRequireFocus(context, focusable)
+        );
+        writer.write(iid, Ui.WidgetFile(dialog))
+      | _ -> void
+      }
+    },
+  );
+  indexedHdl = computedHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    SKFS.DirName::make(dirName, "indexed/"),
+    (context, writer, key, file) ~>
+      if (key == Ui.keysProp) {
+        keys = Infos::fromFile(file);
+        count = 0;
+        for (info in keys.value) {
+          afterHdl.maybeGet(context, SKFS.IID(info.id)) match {
+          | Some(f) if (info.visible) ->
+            writer.write(SKFS.IID(count), f);
+            !count = count + 1
+          | _ -> void
+          }
+        };
+        writer.write(SKFS.KSize(), SKFS.IntFile(count));
+      }
+    ,
+  );
+  HState(stateHdl, indexedHdl)
+}
+
+fun update(
+  context: mutable SKFS.Context,
+  _scope: String,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  todo: Ui.Todo,
+  _optUserData: ?SKFS.UserData,
+): void {
+  keys = values.get(Ui.keysProp).map(Infos::fromFile).default(Infos());
+  todo.command as Executable _ match {
+  | Init() -> void
+  | Open(kind) ->
+    focusState = FWK.getFocusState(context, true);
+    optFocused = focusState.optFocused.map(fh -> fh.getIdentifier());
+    !keys.value = Arrays.add(keys.value, Info(keys.next, true, optFocused));
+    values.set(SKFS.IID(keys.next), Some(kind));
+    !keys.next = keys.next + 1
+  | SetVisible(dialogId, visible) ->
+    !keys.value = keys.value.map(i -> {
+      if (i.id == dialogId) !i.visible = visible;
+      i
+    })
+  | Close(dialogId) ->
+    keys.value.maybeGet(keys.value.size() - 1).each(i ->
+      if (i.id == dialogId) {
+        i.optFocused.each(focused ->
+          SystemProperties.setRequireFocus(context, focused)
+        )
+      }
+    );
+    !keys.value = keys.value.filter(i -> i.id != dialogId);
+    values.remove(SKFS.IID(dialogId))
+  };
+  values.set(Ui.keysProp, Some(keys));
+}
+
+module end;

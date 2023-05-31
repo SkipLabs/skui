@@ -1,0 +1,98 @@
+module Ui;
+
+trait NoViewports {
+  //
+  fun getViewportDefinition(_context: mutable SKFS.Context): ?ViewportDef {
+    None()
+  }
+}
+
+trait WithViewports {
+  //
+  protected fun getPath(): Path;
+  protected fun getWidgets(context: mutable SKFS.Context): Array<Widget>;
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    vector = mutable Vector<ViewportDef>[];
+    this.getWidgets(context).each(w ->
+      w.getViewportDefinition(context).each(vector.push)
+    );
+    vector.size() match {
+    | 0 -> None()
+    | 1 -> Some(vector.first())
+    | _ -> Some(ViewportDef(this.getPath(), None(), None(), vector.toArray()))
+    }
+  }
+}
+
+trait ScrollingStorage {
+  //
+  protected fun getHandle(): SKFS.IHandle<SKFS.File>;
+
+  fun setScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void {
+    this.getHandle().writeOrRemove(context, scrollProp, optScroll)
+  }
+
+  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void {
+    this.getHandle().writeOrRemove(
+      context,
+      scrollingProp,
+      optTick.map(t -> SKFS.IntFile(t.value)),
+    )
+  }
+
+  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick {
+    this.getHandle().maybeGetInt(context, scrollingProp).map(v -> SKFS.Tick(v))
+  }
+}
+
+trait ScrollingState {
+  //
+  protected fun getHandle(): SKFS.EHandle<SKFS.File>;
+  protected fun getComputed(): SKFS.EHandle<SKFS.File>;
+  protected fun getStatePath(): String;
+  protected fun setScrollCmd(?Ui.Scroll): FWKMessage.Command;
+  protected fun manageScrollingCmd(Int, SKFS.Tick): FWKMessage.Command;
+
+  fun getScroll(context: mutable SKFS.Context): ?Ui.Scroll {
+    conv: SKFS.File ~> Ui.Scroll = f ~>
+      f match {
+      | s @ Ui.Scroll _ -> s
+      | _ -> invariant_violation("Must be an Ui.Scroll")
+      };
+    this.getHandle().maybeGetProp(context, Ui.scrollProp, conv);
+  }
+
+  fun getEnsureVisible(context: mutable SKFS.Context): ?Ui.Visible {
+    conv: SKFS.File ~> Ui.Visible = f ~>
+      f match {
+      | v @ Ui.Visible _ -> v
+      | _ -> invariant_violation("Must be an Ui.Visible")
+      };
+    this.getComputed()
+      .maybeGetProp(context, Ui.ensureVisibleProp, conv)
+      .flatMap(v -> if (v.tick == context.tick) Some(v) else None());
+  }
+
+  fun emitScrolling(context: mutable SKFS.Context, value: Int): void {
+    this.emit(context, this.manageScrollingCmd(value, context.tick));
+  }
+
+  fun emitScroll(context: mutable SKFS.Context, value: ?Ui.Scroll): void {
+    this.emit(context, this.setScrollCmd(value));
+  }
+
+  protected fun emit(
+    context: mutable SKFS.Context,
+    command: FWKMessage.Command,
+  ): void {
+    FWKMessage.emit(
+      context,
+      this.getStatePath(),
+      this.getHandle().getDirName().toString(),
+      command,
+    );
+  }
+}
+
+module end;

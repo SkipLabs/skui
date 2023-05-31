@@ -1,0 +1,8 @@
+[package]
+name = "skui_fwk"
+version = "0.1.0"
+format-on-check = true
+auto-remove-state = true
+
+[dependencies]
+skui_mtsdf = {}

@@ -1,0 +1,48 @@
+module SKFS;
+
+extension base class Handle {
+  fun getRange[T: SKFS.File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): .Range {
+    this.getProp(
+      context,
+      property,
+      f ~> SKFS.RangeFile::fromFile(f).value,
+      .Range(0, 0),
+      isUntracked,
+    )
+  }
+
+  fun maybeGetRange[T: SKFS.File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?.Range {
+    this.maybeGetProp(
+      context,
+      property,
+      SKFS.RangeFile::fromFile,
+      isUntracked,
+    ).map(rf -> rf.value)
+  }
+
+  fun getStatus[T: SKFS.File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): Status {
+    this.getProp(context, property, Status::forFile, OK(), isUntracked)
+  }
+
+  fun maybeGetStatus[T: SKFS.File](
+    context: mutable SKFS.Context,
+    property: SKFS.BaseName,
+    isUntracked: Bool = false,
+  ): ?Status {
+    this.maybeGetProp(context, property, Status::forFile, isUntracked)
+  }
+}
+
+module end;

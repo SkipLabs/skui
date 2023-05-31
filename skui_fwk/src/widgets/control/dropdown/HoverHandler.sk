@@ -1,0 +1,87 @@
+module UiDropdown;
+
+class IVHoverHandler(
+  path: Ui.Path,
+  state: State,
+  itemPath: Ui.Path,
+  item: ItemBase,
+  idx: Int,
+  optCloseMessage: ?(mutable SKFS.Context, Bool) ~> FWKMessage.Message = None(),
+) extends FWK.HoverHandler {
+  fun getIdentifier(): Ui.Path {
+    this.path;
+  }
+
+  fun enter(context: mutable SKFS.Context): void {
+    if (!this.item.disabled(context)) {
+      this.state.emitHover(context, Some(this.itemPath));
+      FWKPointer.setCursor(context, Ui.HandCursor());
+    };
+  }
+
+  fun manage(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    if (this.item.disabled(context)) {
+      return FWK.Result(false);
+    };
+    FWK.Result(
+      if (mouse.isPrimaryPressed(context.tick)) true else if (
+        mouse.isPrimaryReleased(context.tick)
+      ) {
+        this.item match {
+        | i @ Item _ ->
+          this.optCloseMessage.each(cm ->
+            FWKMessage.emitMessage(context, cm(context, true))
+          );
+          i.message(context, true).each(message ->
+            FWKMessage.emitMessage(context, message)
+          )
+        | _m @ Menu _ -> this.state.emitGoto(context, Forward(this.idx))
+        };
+        true
+      } else {
+        false
+      },
+    )
+  }
+
+  fun exit(context: mutable SKFS.Context): void {
+    FWKPointer.resetCursor(context);
+    this.state.emitHover(context, None());
+  }
+
+  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+    None()
+  }
+}
+
+class HoverHandler(path: Ui.Path, state: State) extends Ui.HoverHandlerWrapper {
+  fun getIdentifier(): Ui.Path {
+    this.path;
+  }
+
+  protected fun isParentBefore(): Bool {
+    false
+  }
+
+  protected fun onMouse(
+    context: mutable SKFS.Context,
+    mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    wheel = mouse.getWheelValue(context.tick);
+    FWK.Result(
+      if (wheel != 0) {
+        incr = Math.sign(-wheel).toInt();
+        this.state.emitScrolling(context, incr);
+        true
+      } else {
+        false
+      },
+    )
+  }
+}
+
+module end;

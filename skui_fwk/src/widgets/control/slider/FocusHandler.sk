@@ -1,0 +1,69 @@
+module UiSlider;
+
+class FocusHandler{
+  slider: Ui.Slider,
+  thumb: Thumb,
+} extends Ui.TabFocusHandler uses FWK.OnlyShortcuts {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.thumb match {
+    | Min() -> this.slider.path.makeChild("min")
+    | Max() -> this.slider.path.makeChild("max")
+    }
+  }
+
+  protected fun getShortcuts(
+    context: mutable SKFS.Context,
+  ): Array<FWK.ShortcutAction> {
+    if (!this.slider.controller.isDisabled(context)) {
+      this.slider.controller.getDirection(context) match {
+      | Ui.HorizontalAxis() ->
+        Array[
+          FWK.ShortcutAction(
+            "previous",
+            FWK.Shortcut(
+              Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowLeft)],
+            ),
+            FWK.Repeatable((ctx, repeat) ~>
+              this.slider.state.emitGoTo(ctx, this.thumb, false, repeat)
+            ),
+          ),
+          FWK.ShortcutAction(
+            "next",
+            FWK.Shortcut(
+              Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowRight)],
+            ),
+            FWK.Repeatable((ctx, repeat) ~>
+              this.slider.state.emitGoTo(ctx, this.thumb, true, repeat)
+            ),
+          ),
+        ]
+      | Ui.VerticalAxis() ->
+        Array[
+          FWK.ShortcutAction(
+            "previous",
+            FWK.Shortcut(
+              Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowUp)],
+            ),
+            FWK.Repeatable((ctx, repeat) ~>
+              this.slider.state.emitGoTo(ctx, this.thumb, false, repeat)
+            ),
+          ),
+          FWK.ShortcutAction(
+            "next",
+            FWK.Shortcut(
+              Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowDown)],
+            ),
+            FWK.Repeatable((ctx, repeat) ~>
+              this.slider.state.emitGoTo(ctx, this.thumb, true, repeat)
+            ),
+          ),
+        ]
+      }
+    } else {
+      Array[]
+    }
+  }
+}
+
+module end;

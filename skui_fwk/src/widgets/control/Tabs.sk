@@ -1,0 +1,380 @@
+module Ui;
+
+class Tabs protected {
+  controller: UiTabs.Controller,
+  state: UiTabs.State,
+  widgetHdl: SKFS.EHValue<WidgetFile>,
+} extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
+  //
+  type Params = UiTabs.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Path,
+    params: UiTabs.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Configuration = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiTabs.actionsDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+    );
+    actionsKey = SKFS.StrID("actions");
+    fixedKey = SKFS.StrID("fixed");
+    pinnedKey = SKFS.StrID("pinned");
+    tabsKey = SKFS.StrID("tabs");
+    childrenHdl = context.makeDir(
+      SKFS.IntFile::fromFile,
+      UiTabs.widgetsDirName(path.makeChild("source")),
+      Array<(SKFS.BaseName, SKFS.File)>[
+        (pinnedKey, SKFS.IntFile(0)),
+        (tabsKey, SKFS.IntFile(0)),
+        (actionsKey, SKFS.IntFile(0)),
+        (fixedKey, SKFS.IntFile(0)),
+      ],
+    );
+    actionsHdl = mainHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTabs.actionsDirName(path),
+      (context, writer, _key, _file) ~> {
+        count = params.controller.getNumberOfActions(context);
+        keys = mutable Vector<SKFS.StrID>[];
+        for (idx in Range(0, count)) {
+          action = params.controller.getAction(context, idx);
+          writer.write(SKFS.StrID(action.id), action);
+          keys.push(SKFS.StrID(action.id))
+        };
+        writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
+        writer.write(SKFS.KSize(), SKFS.IntFile(count));
+      },
+    );
+    actionsWidgetsHdl = actionsHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTabs.actionsWidgetsDirName(path),
+      (context, writer, key, file) ~> {
+        key match {
+        | SKFS.KKeys()
+        | SKFS.KSize() ->
+          writer.write(key, file)
+        | _ ->
+          writer.write(
+            key,
+            WidgetFile((file as UiTabs.Action _).build(context, path)),
+          )
+        };
+      },
+    );
+    collect = (context, writer, getNumber, getAt) ~> {
+      count = getNumber(context);
+      keys = mutable Vector<SKFS.StrID>[];
+      for (idx in Range(0, count)) {
+        identified = getAt(context, idx);
+        writer.write(SKFS.StrID(identified.id), identified.controller);
+        keys.push(SKFS.StrID(identified.id))
+      };
+      writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
+      writer.write(SKFS.KSize(), SKFS.IntFile(keys.size()));
+    };
+    tabsHdl = mainHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTabs.tabsDirName(path),
+      (context, writer, _key, _file) ~>
+        collect(
+          context,
+          writer,
+          params.state.getNumberOfTabs,
+          params.state.getTab,
+        )
+      ,
+    );
+    buildTab = (context, writer, key, file, pinned) ~> {
+      key match {
+      | SKFS.KKeys()
+      | SKFS.KSize() ->
+        writer.write(key, file)
+      | _ ->
+        controller = (file as UiTab.Controller _);
+        tabPath = path
+          .makeChild("tabs")
+          .makeChild(if (pinned) "left" else "right")
+          .makeChild(key.toString());
+        widget = Tab::create(
+          context,
+          tabPath,
+          UiTab.Parameters(path, controller, UiTab.init(context, tabPath)),
+          if (pinned) {
+            Some(UiFlex.Configuration{flex => 1})
+          } else {
+            params.controller.getKind(context) match {
+            | UiTabs.Fixed() -> Some(UiFlex.Configuration{flex => 1})
+            | UiTabs.Scrollable() -> None()
+            }
+          },
+        );
+        writer.write(key, WidgetFile(widget))
+      };
+    };
+    buildPinned = (context, writer, key, file) ~>
+      buildTab(context, writer, key, file, true);
+    buildNotPinned = (context, writer, key, file) ~>
+      buildTab(context, writer, key, file, false);
+
+    tabsWidgetsHdl = tabsHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTabs.tabsWidgetsDirName(path),
+      buildNotPinned,
+    );
+    pinnedTabsHdl = mainHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTabs.pinnedTabsDirName(path),
+      (context, writer, _key, _file) ~>
+        collect(
+          context,
+          writer,
+          params.state.getNumberOfPinned,
+          params.state.getPinned,
+        )
+      ,
+    );
+    pinnedTabsWidgetsHdl = pinnedTabsHdl.contextWriterKeyMap(
+      f ~> f,
+      context,
+      UiTabs.pinnedTabsWidgetsDirName(path),
+      buildPinned,
+    );
+    actionsCollection = HandledCollection(actionsWidgetsHdl);
+    tabsCollection = HandledCollection(tabsWidgetsHdl);
+    pinnedCollection = HandledCollection(pinnedTabsWidgetsHdl);
+    allCollection = MergeCollection(pinnedCollection, tabsCollection);
+    widgetsPath = UiTabs.widgetsDirName(path);
+    widgetsHdl = childrenHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      widgetsPath,
+      (context, writer, key, _) ~> {
+        subPath = path.makeChild("widgets").makeChild(key.toString());
+        if (key == pinnedKey) {
+          params.controller.getKind(context) match {
+          | UiTabs.Scrollable() ->
+            writer.write(
+              key,
+              WidgetFile(
+                Flex::createForController(
+                  context,
+                  subPath,
+                  UiFlex.LamController{
+                    widgets => pinnedCollection,
+                    direction => params.controller.getDirection,
+                    crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                  },
+                ),
+              ),
+            )
+          | _ -> void
+          }
+        } else if (key == tabsKey) {
+          kind = params.controller.getKind(context);
+          if (kind == UiTabs.Scrollable()) {
+            writer.write(
+              key,
+              WidgetFile(
+                TabsSc::create(
+                  context,
+                  subPath,
+                  UiTabsSc.init(
+                    context,
+                    subPath,
+                    UiTabsSc.LamController{
+                      widgets => tabsCollection,
+                      direction => params.controller.getDirection,
+                    },
+                    path,
+                  ),
+                ),
+              ),
+            )
+          }
+        } else if (key == actionsKey) {
+          if (actionsCollection.getSize(context) > 0) {
+            (widget, optConf) = params.controller.getDirection(context) match {
+            | HorizontalAxis() ->
+              (
+                Flex::createForController(
+                  context,
+                  subPath,
+                  UiFlex.LamController{
+                    widgets => actionsCollection,
+                    mainAxisAlignment => _ctx ~> UiFlex.SpaceBetween(),
+                    crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                  },
+                ),
+                None(),
+              )
+            | VerticalAxis() ->
+              (
+                Wrap::createForController(
+                  context,
+                  subPath,
+                  UiWrap.LamController{
+                    runSpacing => _ctx ~> 8.0,
+                    widgets => actionsCollection,
+                    crossAxisAlignment => _ctx ~> UiWrap.Center(),
+                  },
+                ),
+                Some(UiFlex.Configuration{ignoreCross => true}),
+              )
+            };
+            writer.write(
+              key,
+              WidgetFile(
+                Decorated::create(
+                  context,
+                  subPath.makeChild("padding"),
+                  UiDecorated.LamController{
+                    decoration => _ctx ~> Padding(Geometry.Insets::all(2.0)),
+                    widget => _ctx ~> Some(widget),
+                  },
+                  optConf,
+                ),
+              ),
+            )
+          }
+        } else if (key == fixedKey) {
+          params.controller.getKind(context) match {
+          | UiTabs.Fixed() ->
+            writer.write(
+              key,
+              WidgetFile(
+                Flex::createForController(
+                  context,
+                  subPath,
+                  UiFlex.LamController{
+                    widgets => allCollection,
+                    direction => params.controller.getDirection,
+                    crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                  },
+                ),
+              ),
+            )
+          | _ -> void
+          }
+        }
+      },
+    );
+    getFixed = ctx ~> widgetsHdl.get(ctx, fixedKey).widget;
+    getPinned = ctx ~> widgetsHdl.get(ctx, pinnedKey).widget;
+    getTabs = ctx ~> widgetsHdl.get(ctx, tabsKey).widget;
+    getActions = ctx ~> widgetsHdl.get(ctx, actionsKey).widget;
+    widgetPath = UiTabs.widgetDirName(path);
+    widgetHdl = mainHdl.contextWriterKeyMap(
+      WidgetFile::fromFile,
+      context,
+      widgetPath,
+      (context, writer, key, _) ~> {
+        subPath = path.makeChild("widgets").makeChild("main");
+        numberOfPinneds = pinnedCollection.getSize(context);
+        numberOfActions = actionsCollection.getSize(context);
+        main = params.controller.getKind(context) match {
+        | UiTabs.Fixed() ->
+          if (numberOfActions > 0) {
+            Configured::create(
+              context,
+              subPath.makeChild("configured"),
+              UiConfigured.LamController{widget => getFixed},
+              Some(UiFlex.Configuration{flex => 1}),
+            )
+          } else {
+            getFixed(context)
+          }
+        | UiTabs.Scrollable() ->
+          if (numberOfPinneds > 0) {
+            Splitted::createForController(
+              context,
+              subPath.makeChild("splitted"),
+              UiSplitted.LamController{
+                direction => params.controller.getDirection,
+                firstWidget => getPinned,
+                secondWidget => getTabs,
+              },
+              if (numberOfActions > 0) {
+                Some(UiFlex.Configuration{flex => 1})
+              } else {
+                None()
+              },
+            );
+          } else {
+            if (numberOfActions > 0) {
+              Configured::create(
+                context,
+                subPath.makeChild("configured"),
+                UiConfigured.LamController{widget => getTabs},
+                Some(UiFlex.Configuration{flex => 1}),
+              )
+            } else {
+              getTabs(context)
+            }
+          }
+        };
+        root = if (numberOfActions > 0) {
+          Flex::createForController(
+            context,
+            subPath,
+            UiFlex.LamController{
+              widgets => UiTabs.MainCollection(
+                main,
+                getActions,
+                params.controller.getDirection,
+              ),
+              direction => params.controller.getDirection,
+              crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+            },
+          )
+        } else {
+          main
+        };
+        writer.write(key, WidgetFile(root))
+      },
+    );
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      widgetHdl => SKFS.EHValue(widgetHdl, SKFS.IID(0)),
+      tick => context.tick,
+    }
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    widget = this.widgetHdl.get(context).widget;
+    node = widget.getNode(context, constraints);
+    Node(
+      this,
+      node.size,
+      Array[CNode(node, Geometry.Offset::zero, constraints)],
+    );
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    this.widgetHdl.get(context).widget.getViewportDefinition(context);
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKFS.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((context, _, _) ~>
+      Some(UiTabs.HoverHandler(this, childGetter(context)))
+    )
+  }
+}
+
+module end;

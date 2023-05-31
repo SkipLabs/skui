@@ -1,0 +1,159 @@
+module UiInput;
+
+type Message = (mutable SKFS.Context, String, Bool) ~> Array<
+  FWKMessage.Message,
+>;
+const doNothing: Message = (_ctx, _text, _iu) ~> Array[];
+
+class LamController{
+  disabled: Ui.Getter<Bool> = Ui.default(false),
+  editable: Ui.IUGetter<Bool> = Ui.iUDefault(true),
+  withCounter: Ui.Getter<Bool> = Ui.default(true),
+  withStatus: Ui.Getter<Bool> = Ui.default(true),
+  withLabel: Ui.Getter<Bool> = Ui.default(true),
+  withClear: Ui.Getter<Bool> = Ui.default(true),
+  alignRight: Ui.Getter<Bool> = Ui.default(false),
+  placeholderAsLabel: Ui.Getter<Bool> = Ui.default(true),
+  icon: Ui.GetterOne<?Ui.Icon, Float> = Ui.defaultOne(None()),
+  fireIcon: Ui.GetterOne<?Ui.Icon, Float> = Ui.defaultOne(None()),
+  tooltip: Ui.Getter<?.Text> = Ui.default(None()),
+  label: Ui.Getter<?.Text> = Ui.default(None()),
+  prefix: Ui.Getter<?.Text> = Ui.default(None()),
+  suffix: Ui.Getter<?.Text> = Ui.default(None()),
+  placeHolder: Ui.Getter<?.Text> = Ui.default(None()),
+  actionMessages: Message = doNothing,
+  focusLostMessages: Message = doNothing,
+  maxChars: Ui.Getter<Int> = Ui.default(64),
+  visibleChars: Ui.Getter<Int> = Ui.default(10),
+  kind: Ui.IUGetter<Kind> = Ui.iUDefault(Text()),
+} extends Controller {
+  //
+  fun isDisabled(context: mutable SKFS.Context): Bool {
+    this.disabled(context)
+  }
+
+  fun isEditable(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.editable(context, isUntracked)
+  }
+
+  fun isWithCounter(context: mutable SKFS.Context): Bool {
+    this.withCounter(context)
+  }
+
+  fun isWithStatus(context: mutable SKFS.Context): Bool {
+    this.withStatus(context)
+  }
+
+  fun isWithLabel(context: mutable SKFS.Context): Bool {
+    this.withLabel(context)
+  }
+
+  fun isWithClear(context: mutable SKFS.Context): Bool {
+    this.withClear(context)
+  }
+
+  fun isAlignRight(context: mutable SKFS.Context): Bool {
+    this.alignRight(context)
+  }
+
+  fun isPlaceholderAsLabel(context: mutable SKFS.Context): Bool {
+    this.placeholderAsLabel(context)
+  }
+
+  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+    this.icon(context, fontSize)
+  }
+
+  fun getFireIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+    this.fireIcon(context, fontSize)
+  }
+
+  fun getTooltip(context: mutable SKFS.Context): ?.Text {
+    this.tooltip(context)
+  }
+
+  fun getLabel(context: mutable SKFS.Context): ?.Text {
+    this.label(context)
+  }
+
+  fun getPrefix(context: mutable SKFS.Context): ?.Text {
+    this.prefix(context)
+  }
+
+  fun getSuffix(context: mutable SKFS.Context): ?.Text {
+    this.suffix(context)
+  }
+
+  fun getPlaceHolder(context: mutable SKFS.Context): ?.Text {
+    this.placeHolder(context)
+  }
+
+  fun getActionMessages(
+    context: mutable SKFS.Context,
+    value: String,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message> {
+    this.actionMessages(context, value, isUntracked)
+  }
+
+  fun getFocusLostMessages(
+    context: mutable SKFS.Context,
+    value: String,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message> {
+    this.focusLostMessages(context, value, isUntracked)
+  }
+
+  fun getMaxChars(context: mutable SKFS.Context): Int {
+    this.maxChars(context);
+  }
+
+  fun getVisibleChars(context: mutable SKFS.Context): Int {
+    this.visibleChars(context);
+  }
+
+  fun getKind(context: mutable SKFS.Context, isUntracked: Bool = false): Kind {
+    this.kind(context, isUntracked)
+  }
+}
+
+class LamSupplier{
+  text: Ui.GetterOne<?Ui.StringProperty, Bool> = Ui.defaultOne(None()),
+  position: Ui.GetterOne<?Ui.IntProperty, Bool> = Ui.defaultOne(None()),
+  selection: Ui.GetterOne<?Ui.RangeProperty, Bool> = Ui.defaultOne(None()),
+  status: Ui.GetterOne<?Ui.StatusProperty, Bool> = Ui.defaultOne(None()),
+} extends Supplier {
+  //
+  fun getTextProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.StringProperty {
+    this.text(context, isUntracked)
+  }
+
+  fun getPositionProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.IntProperty {
+    this.position(context, isUntracked)
+  }
+
+  fun getSelectionProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.RangeProperty {
+    this.selection(context, isUntracked)
+  }
+
+  fun getStatusProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.StatusProperty {
+    this.status(context, isUntracked)
+  }
+}
+
+module end;

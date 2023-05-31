@@ -1,0 +1,583 @@
+module UiFlex;
+
+/** */
+/* How much space should be occupied in the main axis. */
+/* */
+/* During a flex layout, available space along the main axis is allocated to */
+/* children. After allocating space, there might be some remaining free space. */
+/* This value controls whether to maximize or minimize the amount of free */
+/* space, subject to the incoming layout constraints. */
+/* */
+base class Size() uses Hashable, Equality {
+  children =
+  /** Minimize the amount of free space along the main axis, subject to the incoming layout constraints. */
+  | Min()
+  /** Maximize the amount of free space along the main axis, subject to the incoming layout constraints. */
+  | Max()
+}
+
+/** How the children should be placed along the main axis in a flex layout. */
+base class Alignment() uses Hashable, Equality {
+  children =
+  /** Place the children as close to the start (according direction) of the main axis as possible. */
+  | Start()
+  /** Place the children as close to the end (according direction) of the main axis as possible. */
+  | End()
+  /** Place the children as close to the middle of the main axis as possible. */
+  | Center()
+  /** Place the free space evenly between the children. */
+  | SpaceBetween()
+  /** Place the free space evenly between the children as well as half of that space before and after the first and last child. */
+  | SpaceAround()
+  /** Place the free space evenly between the children as well as before and  after the first and last child. */
+  | SpaceEvenly()
+}
+
+/** How the children should be placed along the cross axis in a flex layout. */
+base class CrossAlignment() uses Hashable, Equality {
+  children =
+  /** Place the children with their start (according direction) edge aligned with the start side of the cross axis. */
+  | CrossStart()
+  /** Place the children as close to the end (according direction) of the cross axis as possible. */
+  | CrossEnd()
+  /** Place the children so that their centers align with the middle of the cross axis. */
+  | CrossCenter()
+  /** Require the children to fill the cross axis. */
+  | CrossStretch()
+  /** Place the children along the cross axis such that their baselines match. */
+  //| CrossBaseline()
+}
+
+/** How the child is inscribed into the available space. */
+base class Fit() uses Hashable, Equality {
+  children =
+  /** The child is forced to fill the available space. */
+  | Tight()
+  /** The child can be at most as large as the available space (but is allowed to be smaller). */
+  | Loose()
+}
+
+class Configuration{
+  /** The flex factor to use for this child */
+  flex: Int = 0,
+  /** How a flexible child is inscribed into the available space. */
+  fit: Fit = Tight(),
+  /** To ignore the cross size for this child. */
+  ignoreCross: Bool = false,
+} extends Ui.Configuration {}
+
+base class Controller extends Ui.WidgetsCollection {
+  /** The direction to use as the main axis. */
+  fun getDirection(context: mutable SKFS.Context): Ui.Axis;
+
+  /** Determines the order to lay children out vertically and how to interpret `start` and `end` in the vertical direction. */
+  fun getVerticalDirection(context: mutable SKFS.Context): Ui.VerticalDirection;
+
+  /** Determines the order to lay children out horizontally and how to interpret `start` and `end` in the horizontal direction. */
+  fun getHorizontalDirection(
+    context: mutable SKFS.Context,
+  ): Ui.HorizontalDirection;
+
+  fun getMainAxisAlignment(context: mutable SKFS.Context): Alignment;
+
+  fun getCrossAxisAlignment(context: mutable SKFS.Context): CrossAlignment;
+
+  fun getMainAxisSize(context: mutable SKFS.Context): Size;
+}
+
+class Parameters{
+  controller: Controller,
+  optFocusManager: ?Ui.FocusManager = None(),
+  optDragHandler: ?Ui.Getter<?Ui.DragHandlerGetter> = None(),
+  optDropHandler: ?Ui.Getter<?Ui.DropHandlerGetter> = None(),
+  optHoverHandler: ?Ui.GetterOne<
+    ?Ui.HoverHandlerGetter,
+    Ui.Getter<?FWK.HoverHandler>,
+  > = None(),
+} extends Ui.Parameters {}
+
+class LamController{
+  direction: mutable SKFS.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  horizontalDirection: mutable SKFS.Context ~> Ui.HorizontalDirection = _ctx ~>
+    Ui.ToRight(),
+  verticalDirection: mutable SKFS.Context ~> Ui.VerticalDirection = _ctx ~>
+    Ui.Down(),
+  mainAxisAlignment: mutable SKFS.Context ~> Alignment = _ctx ~> Start(),
+  crossAxisAlignment: mutable SKFS.Context ~> CrossAlignment = _ctx ~>
+    CrossCenter(),
+  mainAxisSize: mutable SKFS.Context ~> Size = _ctx ~> Min(),
+  widgets: Ui.WidgetsCollection,
+} extends Controller {
+  //
+  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+    this.direction(context)
+  }
+
+  fun getHorizontalDirection(
+    context: mutable SKFS.Context,
+  ): Ui.HorizontalDirection {
+    this.horizontalDirection(context)
+  }
+
+  fun getVerticalDirection(
+    context: mutable SKFS.Context,
+  ): Ui.VerticalDirection {
+    this.verticalDirection(context)
+  }
+
+  fun getMainAxisAlignment(context: mutable SKFS.Context): Alignment {
+    this.mainAxisAlignment(context)
+  }
+
+  fun getCrossAxisAlignment(context: mutable SKFS.Context): CrossAlignment {
+    this.crossAxisAlignment(context)
+  }
+
+  fun getMainAxisSize(context: mutable SKFS.Context): Size {
+    this.mainAxisSize(context)
+  }
+
+  fun getSize(context: mutable SKFS.Context): Int {
+    this.widgets.getSize(context)
+  }
+
+  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+    this.widgets.getWidget(context, index)
+  }
+
+  fun all(context: mutable SKFS.Context): Array<Ui.Widget> {
+    this.widgets.all(context)
+  }
+}
+
+module end;
+
+module Ui;
+
+class Flex protected {
+  controller: UiFlex.Controller,
+}
+  extends
+    StrictWidget,
+    WithHoverHandler,
+    WithDragHandler,
+    WithDropHandler,
+    WithFocusManager,
+
+
+  uses WithNodeCache, WithViewports {
+  //
+  type Params = UiFlex.Parameters;
+  type Buffer = NodeCache;
+
+  fun getHoverHandler from WithHoverHandler;
+  fun getDragHandler from WithDragHandler;
+  fun getDropHandler from WithDropHandler;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    params: UiFlex.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{
+      path,
+      controller => params.controller,
+      optFocusManager => params.optFocusManager,
+      optDragHandler => params.optDragHandler,
+      optDropHandler => params.optDropHandler,
+      optHoverHandler => params.optHoverHandler,
+      cache,
+      optConfiguration,
+      tick => context.tick,
+    }
+  }
+
+  static fun createForController(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    controller: UiFlex.Controller,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static::create(
+      context,
+      path,
+      UiFlex.Parameters{controller},
+      optConfiguration,
+    )
+  }
+
+  protected fun getWidgets(context: mutable SKFS.Context): Array<Widget> {
+    this.controller.all(context)
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    direction = this.controller.getDirection(context);
+    horizontalDirection = this.controller.getHorizontalDirection(context);
+    verticalDirection = this.controller.getVerticalDirection(context);
+    mainAxisAlignment = this.controller.getMainAxisAlignment(context);
+    crossAxisAlignment = this.controller.getCrossAxisAlignment(context);
+    mainAxisSize = this.controller.getMainAxisSize(context);
+    elements = this.controller.all(context);
+    totalFlex = 0;
+    totalChildren = 0;
+    maxMainSize = direction match {
+    | HorizontalAxis() -> constraints.maxWidth()
+    | VerticalAxis() -> constraints.maxHeight()
+    };
+    canFlex = maxMainSize < Float::inf;
+    lastFlexChild: Int = -1;
+    crossSize = 0.0;
+    sizes = mutable Map<Int, (Node, BoxConstraints)>[];
+    allocatedSize = 0.0;
+    innerConstraints = direction match {
+    | HorizontalAxis() ->
+      BoxConstraints::forHeight(0.0, constraints.maxHeight())
+    | VerticalAxis() -> BoxConstraints::forWidth(0.0, constraints.maxWidth())
+    };
+    elements.eachWithIndex((index, child) -> {
+      !totalChildren = totalChildren + 1;
+      flex = this.getFlex(child.optConfiguration);
+      ignoreCross = this.isIgnoreCross(child.optConfiguration);
+      if (canFlex && flex > 0) {
+        if (!ignoreCross) {
+          cNode = child.getNode(context, innerConstraints);
+          !crossSize = Math.max(
+            crossSize,
+            this.getCrossSize(direction, cNode.size),
+          )
+        };
+        !totalFlex = totalFlex + 1;
+        !lastFlexChild = index;
+      } else {
+        cNode = child.getNode(context, innerConstraints);
+        !allocatedSize =
+          allocatedSize + this.getMainSize(direction, cNode.size);
+        if (!ignoreCross) {
+          !crossSize = Math.max(
+            crossSize,
+            this.getCrossSize(direction, cNode.size),
+          )
+        };
+        sizes.set(index, (cNode, innerConstraints));
+      };
+    });
+    if (crossAxisAlignment == UiFlex.CrossStretch()) {
+      !innerConstraints = direction match {
+      | Ui.HorizontalAxis() ->
+        maxHeight = Math.max(
+          if (constraints.hasBoundedHeight()) {
+            Math.min(crossSize, constraints.maxHeight())
+          } else {
+            crossSize
+          },
+          constraints.minHeight(),
+        );
+        Ui.BoxConstraints::forHeight(maxHeight, maxHeight)
+      | Ui.VerticalAxis() ->
+        maxWidth = Math.max(
+          if (constraints.hasBoundedWidth()) {
+            Math.min(crossSize, constraints.maxWidth())
+          } else {
+            crossSize
+          },
+          constraints.minWidth(),
+        );
+        Ui.BoxConstraints::forWidth(maxWidth, maxWidth)
+      };
+      elements.eachWithIndex((index, child) -> {
+        !totalChildren = totalChildren + 1;
+        flex = this.getFlex(child.optConfiguration);
+        if (!canFlex || flex == 0) {
+          cNode = child.getNode(context, innerConstraints);
+          sizes.set(index, (cNode, innerConstraints));
+        };
+      });
+    };
+    crossSizeRef = crossSize;
+    freeSpace = Math.max(
+      0.0,
+      (if (canFlex) {
+        maxMainSize
+      } else {
+        0.0
+      }) - allocatedSize,
+    );
+    if (totalFlex > 0) {
+      spacePerFlex = if (canFlex && totalFlex > 0) {
+        freeSpace / totalFlex.toFloat()
+      } else {
+        Float::nan
+      };
+      allocatedFlexSpace = 0.0;
+      elements.eachWithIndex((index, child) -> {
+        flex = this.getFlex(child.optConfiguration);
+        if (flex > 0) {
+          maxChildExtent = if (canFlex) {
+            if (lastFlexChild == index) {
+              freeSpace - allocatedFlexSpace
+            } else {
+              spacePerFlex * flex.toFloat()
+            }
+          } else {
+            Float::inf
+          };
+          fit = this.getFit(child.optConfiguration);
+          minChildExtent = fit match {
+          | UiFlex.Tight() -> maxChildExtent
+          | UiFlex.Loose() -> 0.0
+          };
+          !innerConstraints = crossAxisAlignment match {
+          | UiFlex.CrossStretch() ->
+            direction match {
+            | Ui.HorizontalAxis() ->
+              maxHeight = Math.max(
+                if (constraints.hasBoundedHeight()) {
+                  Math.min(crossSizeRef, constraints.maxHeight())
+                } else {
+                  crossSizeRef
+                },
+                constraints.minHeight(),
+              );
+              Ui.BoxConstraints(
+                Ui.Interval::included(minChildExtent, maxChildExtent),
+                Ui.Interval::included(maxHeight, maxHeight),
+              )
+            | Ui.VerticalAxis() ->
+              maxWidth = Math.max(
+                if (constraints.hasBoundedWidth()) {
+                  Math.min(crossSizeRef, constraints.maxWidth())
+                } else {
+                  crossSizeRef
+                },
+                constraints.minWidth(),
+              );
+              Ui.BoxConstraints(
+                Ui.Interval::included(maxWidth, maxWidth),
+                Ui.Interval::included(minChildExtent, maxChildExtent),
+              )
+            }
+          | _ ->
+            direction match {
+            | Ui.HorizontalAxis() ->
+              Ui.BoxConstraints::forWidth(minChildExtent, maxChildExtent)
+            | Ui.VerticalAxis() ->
+              Ui.BoxConstraints::forHeight(minChildExtent, maxChildExtent)
+            }
+          };
+          cNode = child.getNode(context, innerConstraints);
+          childSize = this.getMainSize(direction, cNode.size);
+          !allocatedSize = allocatedSize + childSize;
+          !allocatedFlexSpace = allocatedFlexSpace + childSize;
+          !crossSize = Math.max(
+            crossSize,
+            this.getCrossSize(direction, cNode.size),
+          );
+          sizes.set(index, (cNode, innerConstraints));
+        }
+      });
+    };
+    idealSize = if (canFlex && mainAxisSize == UiFlex.Max()) {
+      maxMainSize;
+    } else {
+      allocatedSize;
+    };
+    size = direction match {
+    | Ui.HorizontalAxis() ->
+      constraints.constrain(Geometry.Size(idealSize, crossSize))
+    | Ui.VerticalAxis() ->
+      constraints.constrain(Geometry.Size(crossSize, idealSize))
+    };
+    childArray = this.computeChildren(
+      elements,
+      size,
+      sizes.chill(),
+      allocatedSize,
+      totalChildren,
+      direction,
+      horizontalDirection,
+      verticalDirection,
+      mainAxisAlignment,
+      crossAxisAlignment,
+    );
+    Node(this, size, childArray);
+  }
+
+  //*************************************
+  //* PRIVATES
+  //*************************************
+
+  /** Compute child offsets */
+  private fun computeChildren(
+    widgets: Array<Widget>,
+    size: Geometry.Size,
+    sizes: Map<Int, (Node, BoxConstraints)>,
+    allocatedSize: Float,
+    totalChildren: Int,
+    direction: Ui.Axis,
+    horizontalDirection: Ui.HorizontalDirection,
+    verticalDirection: Ui.VerticalDirection,
+    mainAxisAlignment: UiFlex.Alignment,
+    crossAxisAlignment: UiFlex.CrossAlignment,
+  ): Array<NChild> {
+    (actualSize, crossSize) = direction match {
+    | Ui.HorizontalAxis() -> (size.width, size.height)
+    | Ui.VerticalAxis() -> (size.height, size.width)
+    };
+    actualSizeDelta = actualSize - allocatedSize;
+    // TODO: manage overflow
+    _overflow = Math.max(0.0, -actualSizeDelta);
+    remainingSpace = Math.max(0.0, actualSizeDelta);
+    // flip is used to decide whether to lay out left-to-right/top-to-bottom (false), or
+    // right-to-left/bottom-to-top (true).
+    flip = !this.startIsTopLeft(
+      direction,
+      horizontalDirection,
+      verticalDirection,
+    );
+    (leadingSpace, betweenSpace) = mainAxisAlignment match {
+    | UiFlex.Start() -> (0.0, 0.0)
+    | UiFlex.End() -> (remainingSpace, 0.0)
+    | UiFlex.Center() -> (remainingSpace / 2.0, 0.0)
+    | UiFlex.SpaceBetween() ->
+      (
+        0.0,
+        if (totalChildren > 1) {
+          remainingSpace / (totalChildren - 1).toFloat()
+        } else {
+          0.0
+        },
+      )
+    | UiFlex.SpaceAround() ->
+      space = if (totalChildren > 0) {
+        remainingSpace / totalChildren.toFloat()
+      } else {
+        0.0
+      };
+      (space / 2.0, space)
+    | UiFlex.SpaceEvenly() ->
+      space = if (totalChildren > 0) {
+        remainingSpace / (totalChildren + 1).toFloat()
+      } else {
+        0.0
+      };
+      (space, space)
+    };
+    // Position elements
+    childMainPosition = if (flip) {
+      actualSize - leadingSpace
+    } else {
+      leadingSpace
+    };
+    childArray = widgets.mapWithIndex((index, _) -> {
+      (childNode, childId) = sizes.get(index);
+      childSize = childNode.size;
+      childCrossPosition = crossAxisAlignment match {
+      | UiFlex.CrossStart()
+      | UiFlex.CrossEnd() ->
+        sitl = this.startIsTopLeft(
+          direction.flip(),
+          horizontalDirection,
+          verticalDirection,
+        );
+        if (sitl == (crossAxisAlignment == UiFlex.CrossStart())) {
+          0.0
+        } else {
+          crossSize - this.getCrossSize(direction, childSize)
+        }
+      | UiFlex.CrossCenter() ->
+        (crossSize - this.getCrossSize(direction, childSize)) / 2.0
+      | UiFlex.CrossStretch() -> 0.0
+      };
+      !childMainPosition = if (flip) {
+        childMainPosition - this.getMainSize(direction, childSize)
+      } else {
+        childMainPosition
+      };
+      offset = direction match {
+      | Ui.HorizontalAxis() ->
+        Geometry.Offset(childMainPosition, childCrossPosition)
+      | Ui.VerticalAxis() ->
+        Geometry.Offset(childCrossPosition, childMainPosition)
+      };
+      !childMainPosition = if (flip) {
+        childMainPosition - betweenSpace;
+      } else {
+        childMainPosition +
+          this.getMainSize(direction, childSize) +
+          betweenSpace;
+      };
+      CNode(childNode, offset, childId);
+    });
+    childArray;
+  }
+
+  private fun getFlex(optConfiguration: ?Ui.Configuration): Int {
+    optConfiguration match {
+    | Some(configuration) ->
+      configuration match {
+      | flex @ UiFlex.Configuration _ -> flex.flex
+      | _ -> 0
+      }
+    | _ -> 0
+    }
+  }
+
+  private fun getFit(optConfiguration: ?Ui.Configuration): UiFlex.Fit {
+    optConfiguration match {
+    | Some(configuration) ->
+      configuration match {
+      | flex @ UiFlex.Configuration _ -> flex.fit
+      | _ -> UiFlex.Tight()
+      }
+    | _ -> UiFlex.Tight()
+    }
+  }
+
+  private fun isIgnoreCross(optConfiguration: ?Ui.Configuration): Bool {
+    optConfiguration match {
+    | Some(configuration) ->
+      configuration match {
+      | flex @ UiFlex.Configuration _ -> flex.ignoreCross
+      | _ -> false
+      }
+    | _ -> false
+    }
+  }
+
+  private fun getCrossSize(direction: Ui.Axis, size: Geometry.Size): Float {
+    direction match {
+    | Ui.HorizontalAxis() -> size.height
+    | Ui.VerticalAxis() -> size.width
+    }
+  }
+
+  private fun getMainSize(direction: Ui.Axis, size: Geometry.Size): Float {
+    direction match {
+    | Ui.HorizontalAxis() -> size.width
+    | Ui.VerticalAxis() -> size.height
+    }
+  }
+
+  private fun startIsTopLeft(
+    direction: Ui.Axis,
+    horizontalDirection: Ui.HorizontalDirection,
+    verticalDirection: Ui.VerticalDirection,
+  ): Bool {
+    direction match {
+    | Ui.HorizontalAxis() ->
+      horizontalDirection match {
+      | Ui.ToRight() -> true
+      | Ui.ToLeft() -> false
+      }
+    | Ui.VerticalAxis() ->
+      verticalDirection match {
+      | Ui.Down() -> true
+      | Ui.Up() -> false
+      }
+    }
+  }
+}
+
+module end;

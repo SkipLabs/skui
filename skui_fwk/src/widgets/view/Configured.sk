@@ -1,0 +1,52 @@
+module UiConfigured;
+
+base class Controller extends Ui.Parameters {
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+}
+
+class LamController{
+  widget: mutable SKFS.Context ~> Ui.Widget,
+} extends Controller {
+  //
+  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+    this.widget(context)
+  }
+}
+
+module end;
+
+module Ui;
+
+class Configured{
+  controller: UiConfigured.Controller,
+} extends StrictWidget uses FWK.NoFocusHandler, WithNodeCache {
+  //
+  type Params = UiConfigured.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    controller: UiConfigured.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{path, controller, optConfiguration, cache, tick => context.tick}
+  }
+
+  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+    widget = this.controller.getWidget(context);
+    node = widget.getNode(context, constraints);
+    Ui.Node(
+      this,
+      node.size,
+      Array[Ui.CNode(node, Geometry.Offset::zero, constraints)],
+    )
+  }
+
+  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+    this.controller.getWidget(context).getViewportDefinition(context)
+  }
+}
+
+module end;

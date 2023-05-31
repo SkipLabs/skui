@@ -1,0 +1,149 @@
+module UiMonospace;
+
+base class ForStorage
+  extends FWKMessage.Support
+  uses FWKMessage.WithUpdate<Command> {
+  //
+  fun init(_context: mutable SKFS.Context): void {
+    void
+  }
+
+  protected fun executeForStorage(
+    context: mutable SKFS.Context,
+    storage: Storage,
+    command: Command,
+  ): void {
+    name = storage.getName();
+    scope = storage.getScope();
+    command match {
+    | Multiples(commands) ->
+      all = mutable Vector<ExecCommand>[];
+      commands.each(cmd ->
+        cmd match {
+        | ec @ ExecCommand _ -> all.push(ec)
+        | _ -> this.executeForStorage(context, storage, cmd)
+        }
+      );
+      if (!all.isEmpty()) {
+        if (all.size() == 1) {
+          storage.setTodo(context, all[0])
+        } else {
+          storage.setTodo(context, All(unsafe_chill_trust_me(all)))
+        }
+      }
+    | SetHover(optValue) -> storage.setHover(context, optValue)
+    | SetArmed(value) -> storage.setArmed(context, value)
+    | SetMoveSelection(value) -> storage.setMoveSelection(context, value)
+    | SetBlinking(value) -> storage.setBlinking(context, value)
+    | SetHScroll(optScroll) -> storage.setHScroll(context, optScroll)
+    | SetVScroll(optScroll) -> storage.setVScroll(context, optScroll)
+    | CancelScrolling(tick) ->
+      storage.getScrolling(context).each(sc ->
+        if (sc == tick) {
+          storage.setScrolling(context, None());
+        }
+      )
+    | ToggleHidden(tick) ->
+      (storage.getVisibility(context) match {
+      | Some(visibility) ->
+        if (visibility.tick == tick) {
+          !visibility.visible = !visibility.visible;
+          Some(visibility)
+        } else if (tick > visibility.tick) {
+          Some(Ui.Visibility(tick, false))
+        } else {
+          None()
+        }
+      | _ -> Some(Ui.Visibility(tick, false))
+      }).each(visibility -> {
+        storage.setVisibility(context, Some(visibility));
+        FWKMessage.emit(
+          context,
+          name,
+          scope,
+          ToggleHidden(tick),
+          false,
+          Some(500),
+        );
+      })
+    | executable @ ExecCommand _ ->
+      executable match {
+      | repeatable @ Repeatable _ ->
+        FWKMessage.repeat(
+          context,
+          name,
+          scope,
+          repeatable.next(),
+          ctx ~> storage.setTodo(ctx, repeatable),
+          repeatable.optRepeatOn,
+          false,
+          if (repeatable.count == 1) {
+            500
+          } else {
+            50
+          },
+        )
+      | cmd ->
+        cmd match {
+        | ManageHScrolling(_, tick)
+        | ManageVScrolling(_, tick) ->
+          storage.setScrolling(context, Some(tick));
+          FWKMessage.emit(
+            context,
+            name,
+            scope,
+            CancelScrolling(tick),
+            false,
+            Some(200),
+          )
+        | _ -> void
+        };
+        storage.setTodo(context, executable)
+      }
+    }
+  }
+}
+
+class Messages(storage: Storage) extends ForStorage {
+  //
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+
+  protected fun execute(
+    context: mutable SKFS.Context,
+    _name: String,
+    _scope: String,
+    command: Command,
+  ): void {
+    this.executeForStorage(context, this.storage, command)
+  }
+}
+
+class AllMessages() extends ForStorage {
+  //
+  protected fun execute(
+    context: mutable SKFS.Context,
+    name: String,
+    scope: String,
+    command: Command,
+  ): void {
+    HStorage::forNameAndScope(context, name, scope).each(storage ->
+      this.executeForStorage(context, storage, command)
+    )
+  }
+
+  protected fun convert(message: JSON.Value): Command {
+    Command::fromJSON(message)
+  }
+
+  protected fun convertCmd(command: FWKMessage.Command): Command {
+    command as Command _;
+  }
+}
+
+module end;

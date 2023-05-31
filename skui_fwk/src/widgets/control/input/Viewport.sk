@@ -1,0 +1,193 @@
+module UiInput;
+
+class Viewport{
+  input: Ui.Input,
+} extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
+  //
+  fun getNode(
+    _context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
+      Ui.Node(this, constraints.biggest(), Array[])
+    } else {
+      Ui.Node(this, constraints.smallest(), Array[])
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    drawables = mutable Vector<Ui.Drawable>[];
+    layer match {
+    | Ui.MainLayer() ->
+      this.fillMain(context, support, absolute, node.size(), drawables)
+    | Ui.BackgroundLayer()
+    | Ui.ForegroundLayer() ->
+      void
+    };
+    drawables.toArray()
+  }
+
+  private fun fillMain(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    nodeWidth = size.width - 2.0;
+    isAlignRight = this.input.controller.isAlignRight(context);
+    textSize = this.input.state.getSize(context);
+    focused = context.isFocused(this.input.path);
+    caretColor = if (this.input.controller.isEditable(context)) {
+      context.getThemeColor(UiTheme.Primary())
+    } else {
+      context.getThemeColor(UiTheme.Information())
+    };
+    if (textSize <= 0) {
+      if (focused && this.input.state.isCaretVisible(context)) {
+        if (isAlignRight) {
+          drawables.push(
+            support.rectangle(
+              absolute.translateX(nodeWidth),
+              size with {width => 2.0},
+              caretColor,
+            ),
+          )
+        } else {
+          drawables.push(
+            support.rectangle(absolute, size with {width => 2.0}, caretColor),
+          )
+        }
+      };
+      return void
+    };
+    textSupport = context.getTextSupport();
+    metrics = this.input.getMetrics(context, nodeWidth);
+    (space, faceId) = (metrics.space, metrics.faceId);
+    color = if (this.input.controller.isDisabled(context)) {
+      context.getThemeColor(UiTheme.Disabled())
+    } else {
+      status = this.input.state.getStatus(context);
+      status match {
+      | KO(_, level) if (level == Error()) ->
+        context.getThemeColor(UiTheme.Error(level))
+      | _ -> context.getThemeColor(UiTheme.Regular())
+      }
+    };
+    if (metrics.optScroll.isSome()) {
+      this.input.state.emitScroll(context, metrics.optScroll)
+    };
+    this.input.state.getSelection(context).each(sel -> {
+      startOffset = 0.0;
+      for (idx in Range(0, sel.start)) {
+        !startOffset = startOffset + metrics.widths[idx];
+      };
+      endOffset = startOffset;
+      for (idx in sel) {
+        !endOffset = endOffset + metrics.widths[idx];
+      };
+      hColor = context.getThemeColor(UiTheme.Highlight(focused));
+      drawables.push(
+        support.rectangle(
+          Geometry.Offset(
+            absolute.dx + startOffset + metrics.offset,
+            absolute.dy,
+          ),
+          size with {width => endOffset - startOffset},
+          hColor,
+        ),
+      )
+    });
+    left = 0.0;
+    metrics.words.each(info -> {
+      (part, word) = info;
+      !left = left + part.spaces.toFloat() * space;
+      tOffset = Geometry.Offset(
+        absolute.dx + left + metrics.offset,
+        absolute.dy,
+      );
+      textSupport
+        .getDrawables(context, part.word, Text.Display(faceId, color))
+        .each(ds -> ds.each(d -> drawables.push(d.translate(tOffset))));
+      !left = left + word;
+    });
+
+    this.input.state.getTarget(context) match {
+    | Some(t) ->
+      this.fillPosition(
+        support,
+        absolute,
+        size,
+        metrics,
+        t,
+        context.getThemeColor(UiTheme.Target()),
+        drawables,
+      )
+    | _ ->
+      if (focused && this.input.state.isCaretVisible(context)) {
+        this.fillPosition(
+          support,
+          absolute,
+          size,
+          metrics,
+          this.input.state.getPosition(context),
+          caretColor,
+          drawables,
+        );
+      }
+    }
+  }
+
+  private fun fillPosition(
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    metrics: Metrics,
+    position: Int,
+    color: Color,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    if (position >= metrics.range.start && position <= metrics.range.end) {
+      positionOffset = 0.0;
+      for (idx in Range(0, position)) {
+        !positionOffset = positionOffset + metrics.widths[idx];
+      };
+      drawables.push(
+        support.rectangle(
+          Geometry.Offset(
+            absolute.dx + positionOffset + metrics.offset,
+            absolute.dy,
+          ),
+          size with {width => 2.0},
+          color,
+        ),
+      )
+    };
+  }
+
+  private fun computeOffsetRange(
+    start: Int,
+    widths: readonly Vector<Float>,
+    width: Float,
+  ): (Float, Range) {
+    offset = 0.0;
+    for (idx in Range(0, start)) {
+      !offset = offset + widths[idx]
+    };
+    end_ = start;
+    vwidth = 0.0;
+    while (end_ < widths.size() && vwidth + widths[end_] < width) {
+      !vwidth = vwidth + widths[end_];
+      !end_ = end_ + 1;
+    };
+    (offset, Range(start, end_))
+  }
+}
+
+module end;

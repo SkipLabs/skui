@@ -1,0 +1,21 @@
+module Ui;
+
+extension base class PropKind extends JSONValue {
+  fun toJSON(): JSON.Value {
+    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+  }
+
+  static fun fromJSON(jsv: JSON.Value): PropKind {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "Ui.PProp" -> PProp()
+    | "Ui.PCombined" -> PCombined()
+    | "Ui.PLoadable" -> PLoadable()
+    | "Ui.PHandle" -> PHandle()
+    | _ -> invariant_violation(`Invalid json object ${cl} for Ui.PropKind`)
+    }
+  }
+}
+
+module end;

@@ -1,0 +1,36 @@
+module UiSlider;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+  | SetValue(value: Variable)
+  | All(value: Vector<Executable>)
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetHover(optHover: ?Thumb)
+  | SetArmed(armed: Bool)
+  | Reset()
+  | Multiples(commands: Array<Command>)
+}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | SetProportion(thumb: Thumb, value: Int)
+}
+
+base class Repeatable(
+  optRepeatOn: ?FWK.Repeat = None(),
+  count: Int = 1,
+) extends ExecCommand {
+  children =
+  | GoTo(thumb: Thumb, isNext: Bool)
+
+  fun next(): this {
+    !this.count = this.count + 1;
+    this;
+  }
+}
+
+module end;

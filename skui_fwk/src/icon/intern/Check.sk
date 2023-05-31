@@ -1,0 +1,32 @@
+module Icon;
+
+class Check(width: Int = 16, optPaint: ?Ui.Paint = None()) extends PathIcon {
+  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+    Geometry.Size::square(this.width.toFloat());
+  }
+
+  fun update(optSize: ?Geometry.Size, keepRatio: Bool): this {
+    static(this.width, this.optPaint, optSize, keepRatio)
+  }
+
+  protected fun getPath(offset: Geometry.Offset): Shape.Path {
+    fWidth = this.width.toFloat();
+    Shape.Path{
+      elements => Array[
+        Shape.MoveTo(offset.translate(3.0 * fWidth / 32.0, fWidth / 2.0)),
+        Shape.LineTo(offset.translate(0.0, 19.0 * fWidth / 32.0)),
+        Shape.LineTo(offset.translate(13.0 * fWidth / 32.0, fWidth)),
+        Shape.LineTo(offset.translate(7.0 * fWidth / 16.0, fWidth)),
+        Shape.LineTo(offset.translate(fWidth, 3.0 * fWidth / 32.0)),
+        Shape.LineTo(offset.translate(fWidth, fWidth / 16.0)),
+        Shape.LineTo(offset.translate(29.0 * fWidth / 32.0, 0.0)),
+        Shape.LineTo(
+          offset.translate(13.0 * fWidth / 32.0, 13.0 * fWidth / 16.0),
+        ),
+        Shape.ClosePath(),
+      ],
+    };
+  }
+}
+
+module end;

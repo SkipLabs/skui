@@ -1,0 +1,16 @@
+module UiTabs;
+
+class Viewport{
+  scroll: Ui.TabsSc,
+} extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
+  //
+  fun getNode(
+    context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    child = this.scroll.viewportChild(context, constraints);
+    Ui.Node(this, child.node.size, Array[child])
+  }
+}
+
+module end;

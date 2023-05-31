@@ -1,0 +1,78 @@
+module UiScroll;
+
+class Viewport{
+  controller: UiScroll.Controller,
+} extends Ui.StrictWidget uses FWK.NoFocusHandler, Ui.WithNodeCache {
+  //
+  type Params = UiScroll.Controller;
+  type Buffer = Ui.NodeCache;
+
+  protected static fun make(
+    context: mutable SKFS.Context,
+    path: Ui.Path,
+    controller: UiScroll.Controller,
+    cache: Ui.NodeCache,
+    optConfiguration: ?Ui.Configuration = None(),
+  ): this {
+    static{path, controller, optConfiguration, cache, tick => context.tick}
+  }
+
+  fun layout(
+    context: mutable SKFS.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    widget = this.controller.getWidget(context);
+    hPolicy = this.controller.getHPolicy(context);
+    vPolicy = this.controller.getVPolicy(context);
+    if (
+      (!constraints.hasBoundedWidth() && !constraints.hasBoundedHeight()) ||
+      (hPolicy == UiScroll.Never() && vPolicy == UiScroll.Never())
+    ) {
+      node = widget.getNode(context, constraints);
+      Ui.Node(
+        this,
+        node.size,
+        Array[Ui.CNode(node, Geometry.Offset::zero, constraints)],
+      )
+    } else {
+      // get natural size of child widget
+      cConstraints = Ui.BoxConstraints::new();
+      iNode = widget.getNode(context, cConstraints);
+      width = iNode.size.width;
+      height = iNode.size.height;
+      optWidth = hPolicy match {
+      | UiScroll.Never() if (constraints.hasBoundedWidth()) ->
+        Some(constraints.constrainWidth(width))
+      | _ -> None()
+      };
+      optHeight = vPolicy match {
+      | UiScroll.Never() if (constraints.hasBoundedHeight()) ->
+        Some(constraints.constrainHeight(height))
+      | _ -> None()
+      };
+      if (
+        optWidth.map(w -> !Math.like(w, width)).default(false) ||
+        optHeight.map(h -> !Math.like(h, height)).default(false)
+      ) {
+        // constaint child node
+        !cConstraints = Ui.BoxConstraints::tightFor{
+          width => optWidth,
+          height => optHeight,
+        };
+        !iNode = widget.getNode(context, cConstraints);
+      };
+      size = constraints.constrain(Geometry.Size(width, height));
+      Ui.Node(
+        this,
+        size,
+        Array[Ui.CNode(iNode, Geometry.Offset::zero, cConstraints)],
+      )
+    }
+  }
+
+  fun getViewportDefinition(_context: mutable SKFS.Context): ?Ui.ViewportDef {
+    None()
+  }
+}
+
+module end;

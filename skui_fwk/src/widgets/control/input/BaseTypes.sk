@@ -1,0 +1,377 @@
+module UiInput;
+
+const vSpace: Int = 16;
+const hSpace: Int = 6;
+const textGap: Int = 6;
+const vTextGap: Int = 4;
+
+class Layout(
+  textOffset: Float,
+  textWidth: Float,
+  textHeight: Float,
+  body: Float,
+  width: Float,
+  height: Float,
+  prefix: Float,
+  suffix: Float,
+  fire: Float,
+  clear: Float,
+  hide: Float,
+  icon: Float,
+) extends Ui.UserData
+
+base class Target uses HasClassName, Equality {
+  children =
+  | TPos(?Int)
+}
+
+base class PredefinedTarget() extends Target {
+  children =
+  | TColumn(next: Bool)
+  | TGroup(optNext: ?Bool)
+  | TLine(optNext: ?Bool)
+}
+
+base class Scroll(index: Int) extends SKFS.File uses Orderable {
+  children =
+  | Left()
+  | Right()
+
+  fun isRight(): Bool
+  | Right _ -> true
+  | Left _ -> false
+}
+
+base class Visible(index: Int, tick: SKFS.Tick) extends SKFS.File {
+  children =
+  | Pos()
+  | Incr()
+}
+
+class Part(spaces: Int, word: String)
+
+class Parts(value: Vector<Part>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Parts _ -> x
+    | _ -> invariant_violation("Must be UiInput.Parts")
+    }
+  }
+}
+
+base class Supplier {
+  fun getTextProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.StringProperty;
+  fun getPositionProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.IntProperty;
+  fun getSelectionProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.RangeProperty;
+  fun getStatusProperty(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.StatusProperty;
+}
+
+base class Controller {
+  fun getKind(context: mutable SKFS.Context, isUntracked: Bool = false): Kind;
+  fun isDisabled(context: mutable SKFS.Context): Bool;
+  fun isEditable(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Bool;
+  fun isWithCounter(context: mutable SKFS.Context): Bool;
+  fun isWithStatus(context: mutable SKFS.Context): Bool;
+  fun isWithLabel(context: mutable SKFS.Context): Bool;
+  fun isWithClear(context: mutable SKFS.Context): Bool;
+  fun isAlignRight(context: mutable SKFS.Context): Bool;
+  fun isPlaceholderAsLabel(context: mutable SKFS.Context): Bool;
+
+  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
+  fun getFireIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKFS.Context): ?.Text;
+  fun getLabel(context: mutable SKFS.Context): ?.Text;
+  fun getPrefix(context: mutable SKFS.Context): ?.Text;
+  fun getSuffix(context: mutable SKFS.Context): ?.Text;
+  fun getPlaceHolder(context: mutable SKFS.Context): ?.Text;
+
+  fun getMaxChars(context: mutable SKFS.Context): Int;
+  fun getVisibleChars(context: mutable SKFS.Context): Int;
+  fun getActionMessages(
+    context: mutable SKFS.Context,
+    value: String,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message>;
+  fun getFocusLostMessages(
+    context: mutable SKFS.Context,
+    value: String,
+    isUntracked: Bool = false,
+  ): Array<FWKMessage.Message>;
+}
+
+base class State {
+  fun getSize(context: mutable SKFS.Context): Int;
+  fun isHover(context: mutable SKFS.Context): Bool;
+  fun isArmed(context: mutable SKFS.Context): Bool;
+  fun getPosition(context: mutable SKFS.Context): Int;
+  fun getSelection(
+    context: mutable SKFS.Context,
+    isUntracker: Bool = false,
+  ): ?.Range;
+  fun getText(context: mutable SKFS.Context, isUntracker: Bool = false): String;
+  fun isShowing(mutable SKFS.Context): Bool;
+  fun getStatus(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Status;
+  fun isMoveSelection(
+    context: mutable SKFS.Context,
+    isUntracker: Bool = false,
+  ): Bool;
+  fun isScrolling(context: mutable SKFS.Context): Bool;
+  fun isCaretVisible(context: mutable SKFS.Context): Bool;
+  fun getTarget(context: mutable SKFS.Context): ?Int;
+  fun getScroll(context: mutable SKFS.Context): ?Scroll;
+  fun getParts(context: mutable SKFS.Context): Parts;
+  fun getEnsureVisible(context: mutable SKFS.Context): ?Visible;
+
+  fun emitHover(context: mutable SKFS.Context, value: Bool): void;
+  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun emitMoveSelection(context: mutable SKFS.Context, value: Bool): void;
+  fun emitReset(context: mutable SKFS.Context): void;
+  fun emitShowing(context: mutable SKFS.Context, value: Bool): void;
+  fun emitDiacritic(context: mutable SKFS.Context, value: Char): void;
+  fun emitUnicode(context: mutable SKFS.Context, optValue: ?Int): void;
+  fun emitUndo(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitRedo(
+    context: mutable SKFS.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitCut(context: mutable SKFS.Context): void;
+  fun emitCopy(context: mutable SKFS.Context): void;
+  fun emitUpper(context: mutable SKFS.Context): void;
+  fun emitLower(context: mutable SKFS.Context): void;
+  fun emitPaste(context: mutable SKFS.Context): void;
+  fun emitInsert(
+    context: mutable SKFS.Context,
+    text: String,
+    ignoreSelection: Bool,
+    optPosition: ?Int,
+  ): void;
+  fun emitTarget(
+    context: mutable SKFS.Context,
+    optTarget: ?Int,
+    scrolling: Bool,
+  ): void;
+  fun emitDeleteTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitGoTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitSelectTo(
+    context: mutable SKFS.Context,
+    target: Target,
+    ensureVisible: Bool = true,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void;
+  fun emitBlinking(context: mutable SKFS.Context, value: Bool): void;
+  fun emitScroll(context: mutable SKFS.Context, value: ?Scroll): void;
+  fun emitScrolling(context: mutable SKFS.Context, value: Int): void;
+  fun emitAll(
+    context: mutable SKFS.Context,
+    commands: readonly Vector<Command>,
+  ): void;
+}
+
+class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
+
+base class Storage {
+  fun getName(): String;
+  fun getScope(): String;
+
+  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick;
+  fun getTodo(context: mutable SKFS.Context): Ui.Todo;
+
+  fun setHover(context: mutable SKFS.Context, value: Bool): void;
+  fun setArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun setBlinking(context: mutable SKFS.Context, value: Bool): void;
+  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void;
+  fun setVisibility(
+    context: mutable SKFS.Context,
+    optVisibility: ?Ui.Visibility,
+  ): void;
+  fun getVisibility(context: mutable SKFS.Context): ?Ui.Visibility;
+
+  fun setShowing(context: mutable SKFS.Context, value: Bool): void;
+
+  fun setMoveSelection(
+    context: mutable SKFS.Context,
+    moveSelection: Bool,
+  ): void;
+
+  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  fun setScroll(context: mutable SKFS.Context, optScroll: ?Scroll): void;
+}
+
+class Behavior(
+  optCharFilter: ?Char ~> Bool = None(),
+  optValidator: ?Vector<Char> ~> Validity = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Behavior _ -> x
+    | _ -> invariant_violation("Must be UiInput.Behavior")
+    }
+  }
+}
+
+base class Kind extends SKFS.File uses Hashable, Equality {
+  children =
+  | Text()
+  | Password()
+  | ASCII()
+  | Integer(optMin: ?Int = None(), optMax: ?Int = None())
+  | Real()
+  | Hex()
+  | Octal()
+  | Binary()
+  | Pattern(pattern: String)
+  | Custom(dirName: SKFS.DirName, key: SKFS.StrID)
+
+  fun toBehavior(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): Behavior
+  | Text _
+  | Password _ ->
+    Behavior()
+  | Integer(optMin, optMax) ->
+    Behavior(
+      Some(c ~> filterInt(c, optMin)),
+      Some(cs ~> validateInteger(cs, optMin, optMax)),
+    )
+  | ASCII() -> Behavior(Some(Unicode.isASCII))
+  | Real() -> Behavior(Some(filterReal), Some(validateReal))
+  | Hex() -> Behavior(Some(Chars.isHexDigit))
+  | Octal() -> Behavior(Some(Chars.isOctalDigit))
+  | Binary() -> Behavior(Some(c ~> c == '0' || c == '1'))
+  | Pattern(pattern) ->
+    !pattern = if (pattern.startsWith("^")) pattern else `^${pattern}`;
+    !pattern = if (pattern.endsWith("$")) pattern else `${pattern}$`;
+    fPattern = pattern;
+    Behavior(
+      None(),
+      Some(vc ~>
+        if (RegExp.test(vc.toArray(), fPattern)) Valid() else {
+          KO(Some(!"Text don't match pattern."))
+        }
+      ),
+    )
+  | Custom(dirName, key) ->
+    SKFS.HValue(SKFS.EHandle(Behavior::fromFile, dirName), key).get(
+      context,
+      isUntracked,
+    )
+}
+
+mutable class Verifier(
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  source: Int,
+) {
+  mutable fun writePosition(pos: Int): void {
+    setPosition(this.values, pos, this.source);
+  }
+
+  mutable fun writeText(text: String): void {
+    setText(this.values, text, this.source);
+  }
+
+  mutable fun writeSelection(optRange: ?Range): void {
+    setSelection(this.values, optRange, this.source)
+  }
+
+  mutable fun writeEnsureVisible(visible: Visible): void {
+    this.values.set(Ui.ensureVisibleProp, Some(visible));
+  }
+
+  mutable fun writeUserStatus(status: Status): void {
+    setUserStatus(this.values, status, this.source);
+  }
+}
+
+base class Undoable() {
+  fun undo(verifier: mutable Verifier, tick: SKFS.Tick): void;
+  fun redo(verifier: mutable Verifier, tick: SKFS.Tick): void;
+}
+
+class LamUndoable(
+  lamUndo: (mutable Verifier, SKFS.Tick) ~> void,
+  lamRedo: (mutable Verifier, SKFS.Tick) ~> void,
+) extends Undoable {
+  fun undo(verifier: mutable Verifier, tick: SKFS.Tick): void {
+    this.lamUndo(verifier, tick)
+  }
+  fun redo(verifier: mutable Verifier, tick: SKFS.Tick): void {
+    this.lamRedo(verifier, tick)
+  }
+}
+
+class History(
+  index: Int = -1,
+  undoables: Array<Undoable> = Array[],
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ History _ -> x
+    | _ -> invariant_violation("Must be UiInput.History")
+    }
+  }
+
+  fun undo(verifier: mutable Verifier, tick: SKFS.Tick): (History, Bool) {
+    this.undoables.maybeGet(this.index) match {
+    | Some(undoable) ->
+      undoable.undo(verifier, tick);
+      !this.index = Math.max(this.index - 1, -1);
+      (this, true)
+    | _ -> (this, false)
+    }
+  }
+
+  fun redo(verifier: mutable Verifier, tick: SKFS.Tick): (History, Bool) {
+    this.undoables.maybeGet(this.index + 1) match {
+    | Some(undoable) ->
+      undoable.redo(verifier, tick);
+      !this.index = Math.min(this.index + 1, this.undoables.size());
+      (this, true)
+    | _ -> (this, false)
+    }
+  }
+
+  fun add(undoable: Undoable): History {
+    undoables = if (this.index < this.undoables.size() - 1) {
+      Vector::mcreateFromItems(this.undoables.slice(0, this.index + 1));
+    } else {
+      Vector::mcreateFromItems(this.undoables)
+    };
+    undoables.push(undoable);
+    History(undoables.size() - 1, undoables.toArray())
+  }
+}
+
+module end;

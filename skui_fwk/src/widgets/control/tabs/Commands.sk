@@ -1,0 +1,84 @@
+module UiTabs;
+
+base class Executable extends Ui.Executable {
+  children =
+  | Init()
+  | All(value: Vector<Executable>)
+}
+
+base class Command extends FWKMessage.Command {
+  children =
+  | SetSelected(optValue: ?String)
+  | Multiple(values: Array<Command>)
+
+  fun toJSON(): JSON.Value
+  | SetSelected(optValue) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "value" => optValue
+          .map(value -> JSON.String(value))
+          .default(JSON.Null()),
+      ].filter((_k, v) -> !v.isNull()),
+    )
+  | ManageActive(tab) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "tab" => JSON.String(tab),
+      ],
+    )
+  | ManageMove(toMove, dstTab, before) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "toMove" => JSON.String(toMove),
+        "dstTab" => JSON.String(dstTab),
+        "before" => JSON.Bool(before),
+      ],
+    )
+  | ManagePinned(tab, value) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "tab" => JSON.String(tab),
+        "value" => JSON.Bool(value),
+      ],
+    )
+  | Multiple(values) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "values" => JSON.arrayToJSON(values, v ~> v.toJSON()),
+      ],
+    )
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "UiTabs.ManageActive" -> ManageActive(jso.getString("tab"))
+    | "UiTabs.ManageMove" ->
+      ManageMove(
+        jso.getString("toMove"),
+        jso.getString("dstTab"),
+        jso.getBool("before"),
+      )
+    | "UiTabs.SetSelected" -> SetSelected(jso.maybeGetString("value"))
+    | "UiTabs.ManagePinned" ->
+      ManagePinned(jso.getString("tab"), jso.getBool("value"))
+    | "UiTabs.Multiple" ->
+      Multiple(JSON.arrayFromJSON(jso.getArray("values"), Command::fromJSON))
+    | _ -> invariant_violation(`Invalid json object ${cl} for UiTab.Command`)
+    }
+  }
+}
+
+base class ExecCommand extends Command, Executable {
+  children =
+  | ManageActive(active: String)
+  | ManageMove(toMove: String, dstTab: String, before: Bool)
+  | ManagePinned(tab: String, value: Bool)
+}
+
+module end;

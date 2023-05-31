@@ -1,0 +1,191 @@
+module FWKClipboard;
+
+base class Type uses Hashable, Equality {
+  children =
+  | Files()
+  | Html()
+  | Rtf()
+  | Plain()
+  | Url()
+  | Mime(value: String)
+
+  fun toMime(): String {
+    this match {
+    | Files() -> "application/file-list"
+    | Html() -> "text/html"
+    | Rtf() -> "text/rtf"
+    | Plain() -> "text/plain; charset=utf-8"
+    | Url() -> "text/uri-list"
+    | Mime(value) -> value
+    }
+  }
+
+  static fun fromMime(mimeType: String): Type {
+    mimeType match {
+    | "application/file-list" -> Files()
+    | "text/html" -> Html()
+    | "text/rtf" -> Rtf()
+    | "text/plain" | "text/plain;charset=utf-8" | "text/plain;charset=utf8"
+    | "text/plain;charset=UTF8" | "text/plain; charset=utf-8" ->
+      Plain()
+    | "text/uri-list" -> Url()
+    | _ -> Mime(mimeType)
+    }
+  }
+}
+
+class Content(values: Map<Type, IO.Data>) extends SKFS.File uses HasClassName {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Content _ -> x
+    | _ -> invariant_violation("Must be FWKClipboard.Content")
+    }
+  }
+
+  static fun plain(text: String): this {
+    Content(Map[Plain() => IO.Text(text)])
+  }
+
+  fun update(type: Type, data: IO.Data): Content {
+    !this.values = Maps.set(this.values, type, data);
+    this;
+  }
+
+  fun toJSON(): JSON.Value {
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "data" => JSON.Array(
+          Vector::createFromIterator(
+            this.values.keys().map(type ->
+              JSON.Object(
+                Map[
+                  "type" => JSON.String(type.toMime()),
+                  "data" => this.values.get(type).toJSON(),
+                ],
+              )
+            ),
+          ),
+        ),
+      ],
+    )
+  }
+
+  static fun fromJSON(jsv: JSON.Value): Content {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWKClipboard.Content" ->
+      values = mutable Map<Type, IO.Data>[];
+      jso.getArray("data").value.each(jsv -> {
+        sjso = jsv.expectObject();
+        values.add(
+          Type::fromMime(sjso.getString("type")),
+          IO.Data::fromJSON(sjso.get("data")),
+        )
+      });
+      Content(unsafe_chill_trust_me(values))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for FWKClipboard.Content`)
+    }
+  }
+
+  fun getPlain(): ?String {
+    this.values.maybeGet(Plain()).flatMap(data ->
+      data match {
+      | IO.Text(text) -> Some(text)
+      | ext @ IO.External _ if (!ext.isBinary()) -> ext.getText()
+      | IO.External _
+      | IO.Binary _
+      | IO.Base64 _ ->
+        None()
+      }
+    )
+  }
+
+  fun getMimeText(mimeType: String): ?String {
+    this.values.maybeGet(Type::fromMime(mimeType)).flatMap(data ->
+      data match {
+      | IO.Text(text) -> Some(text)
+      | ext @ IO.External _ if (!ext.isBinary()) -> ext.getText()
+      | IO.External _
+      | IO.Binary _
+      | IO.Base64 _ ->
+        None()
+      }
+    )
+  }
+
+  fun getMimeBinary(mimeType: String): ?Array<UInt8> {
+    this.values.maybeGet(Type::fromMime(mimeType)).flatMap(data ->
+      data match {
+      | IO.Binary(bin) -> Some(bin)
+      | IO.Base64(base64) -> Some(Base64.decodeString(base64))
+      | ext @ IO.External _ if (ext.isBinary()) -> ext.getBytes()
+      | IO.External _
+      | IO.Text _ ->
+        None()
+      }
+    )
+  }
+
+  fun getHtml(): ?String {
+    this.values.maybeGet(Html()).flatMap(data ->
+      data match {
+      | IO.Text(text) -> Some(text)
+      | ext @ IO.External _ ->
+        if (ext.isBinary()) {
+          None()
+        } else {
+          ext.getText()
+        }
+      | _ -> None()
+      }
+    )
+  }
+
+  fun getRtf(): ?String {
+    this.values.maybeGet(Rtf()).flatMap(data ->
+      data match {
+      | IO.Text(text) -> Some(text)
+      | ext @ IO.External _ ->
+        if (ext.isBinary()) {
+          None()
+        } else {
+          ext.getText()
+        }
+      | _ -> None()
+      }
+    )
+  }
+
+  fun getFiles(): ?Array<String> {
+    this.values.maybeGet(Files()).flatMap(data ->
+      data match {
+      | IO.Text(text) -> Some(text.split(",").toArray())
+      | ext @ IO.External _ ->
+        if (ext.isBinary()) {
+          None()
+        } else {
+          ext.getText().map(txt -> txt.split(",").toArray())
+        }
+      | _ -> None()
+      }
+    )
+  }
+}
+
+fun paste(
+  context: mutable SKFS.Context,
+  type: Type,
+  target: FWKMessage.Target,
+): void {
+  FWKMessage.emit(context, "system", "clipboard", Paste(type, target))
+}
+
+fun copy(context: mutable SKFS.Context, content: Content): void {
+  FWKMessage.emit(context, "system", "clipboard", Copy(content))
+}
+
+module end;
