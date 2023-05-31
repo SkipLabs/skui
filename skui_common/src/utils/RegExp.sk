@@ -76,12 +76,15 @@ fun test(
   natTest(String::fromChars(subject), pattern, caseInsensitive, global)
 }
 
+@wasm_extern
 @cpp_extern("SKIP_RegExp_check")
 native fun natCheck(pattern: String): void;
 
+@wasm_extern
 @cpp_extern("SKIP_RegExp_escape")
 native fun escape(value: String): String;
 
+@wasm_extern
 @cpp_extern("SKIP_RegExp_test")
 native fun natTest(
   subject: String,
@@ -90,6 +93,7 @@ native fun natTest(
   global: Bool,
 ): Bool;
 
+@wasm_extern
 @cpp_extern("SKIP_RegExp_match")
 native fun natMatch(
   subject: String,
@@ -98,6 +102,7 @@ native fun natMatch(
   global: Bool,
 ): ?Array<Range>;
 
+@wasm_extern
 @cpp_extern("SKIP_RegExp_matchAll")
 native fun natMatchAll(
   subject: String,
@@ -106,10 +111,12 @@ native fun natMatchAll(
   global: Bool,
 ): Array<Array<Range>>;
 
+
 @cpp_export("SKIP_RegExp_createRangeArray")
 fun createRangeArray(size: UInt32): mutable Array<Range> {
   Array::mfill(size.toInt(), Range(0, 0));
 }
+
 
 @cpp_export("SKIP_RegExp_setRange")
 fun setRange(

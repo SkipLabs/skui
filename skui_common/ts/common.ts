@@ -1,4 +1,4 @@
-import {int, ptr, Links, Utils, ToWasmManager, Environment, Shared} from "#skui_base/types";
+import {int, ptr, Links, Utils, ToWasmManager, Shared} from "#skui_base/types";
 
 interface ToWasm {
   SKIP_IO_isExternalBinary: (id: int) => boolean;

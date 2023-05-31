@@ -416,7 +416,6 @@ base class DrawableSupport {
   ): void;
 }
 
-
 class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
   //
   static fun fromFile(obj: SKFS.File): this {
@@ -487,7 +486,6 @@ class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
     this.makeChild("__states")
   }
 }
-
 
 @cpp_extern
 private native fun saveImage(
