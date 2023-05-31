@@ -30,13 +30,15 @@ fun rounded(ctx: GL.Ctx, width: Int, height: Int): Context {
   initDrawables(
     ctx,
     Vector[
-      GLDrawable.roundedRectangle(
-        Geometry.Offset(10.0, 10.0),
-        Geometry.Size(width.toFloat() - 20.0, height.toFloat() - 20.0),
+      GLDrawable.RoundedRectangle(
         .Colors.beige(),
-        height.toFloat() / 10.0,
+        (height.toFloat() / 10.0).toInt(),
         2,
         Some((.Colors.black(), 5)),
+        Geometry.Rect::fromOffsetSize(
+          Geometry.Offset(10.0, 10.0),
+          Geometry.Size(width.toFloat() - 20.0, height.toFloat() - 20.0),
+        ),
       ),
     ],
   )

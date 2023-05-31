@@ -29,11 +29,11 @@ const nodeHandlesPath: SKFS.DirName = SKFS.DirName::create(
   "/ui/skuigl/nodeHandles/",
 );
 
-base class DrawableSupport() extends Ui.DrawableSupport {
+class DrawableSupport() extends Ui.DrawableSupport {
   fun init(
     context: mutable SKFS.Context,
-    nodeDrawablesHdl: SKFS.EHandle<Ui.Drawables>
-  ): (mutable SKFS.Context, readonly SKFS.Context ~> void) ~> void {
+    nodeDrawablesHdl: SKFS.EHandle<Ui.Drawables>,
+  ): void {
     webglHdl = context.makeDir(SKFS.IntFile::fromFile, webglPath, Array[]);
     /*context.setGlobal(
       "GL.GetContext",
@@ -197,28 +197,39 @@ base class DrawableSupport() extends Ui.DrawableSupport {
     );
   }
 
-  fun msdf(
-    offset: Geometry.Offset,
-    size: Geometry.Size,
-    image: Ui.Image,
-    conv: (Geometry.Rect, Float) ~> Geometry.Rect,
-    pxRange: Int,
-    thickness: Float,
-    paint: Ui.Paint,
-  ): Ui.Drawable;
-
   fun ellipse(
     offset: Geometry.Offset,
     size: Geometry.Size,
     paint: Ui.Paint,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    paint match {
+    | color @ .Color _ ->
+      GLDrawable.SolidEllipse(
+        color,
+        0.5,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    | _ -> invariant_violation("Not implemented; only Color Fill managed")
+    }
+  }
 
   fun disk(
     offset: Geometry.Offset,
     size: Geometry.Size,
     paint: Ui.Paint,
     thickness: Float,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    paint match {
+    | color @ .Color _ ->
+      GLDrawable.SolidDisk(
+        color,
+        thickness,
+        0.5,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    | _ -> invariant_violation("Not implemented; only Color Fill managed")
+    }
+  }
 
   fun roundedRectangle(
     offset: Geometry.Offset,
@@ -227,13 +238,23 @@ base class DrawableSupport() extends Ui.DrawableSupport {
     radius: Float,
     smooth: Int = 2,
     optBorder: ?(.Color, Int) = None(),
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    GLDrawable.RoundedRectangle(
+      color,
+      radius.toInt(),
+      smooth,
+      optBorder,
+      Geometry.Rect::fromOffsetSize(offset, size),
+    )
+  }
 
   fun rectangle(
     offset: Geometry.Offset,
     size: Geometry.Size,
     paint: Ui.Paint,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    GLDrawable.rectangle(offset, size, paint)
+  }
 
   fun diagonal(
     offset: Geometry.Offset,
@@ -241,14 +262,18 @@ base class DrawableSupport() extends Ui.DrawableSupport {
     fromTopLeft: Bool,
     thickness: Float,
     color: .Color,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    GLDrawable.diagonal(offset, size, fromTopLeft, thickness, color)
+  }
 
   fun triangle(
     offset: Geometry.Offset,
     size: Geometry.Size,
     paint: Ui.Paint,
     side: .UiSide,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    GLDrawable.triangle(offset, size, paint, side)
+  }
 
   fun progress(
     offset: Geometry.Offset,
@@ -257,7 +282,15 @@ base class DrawableSupport() extends Ui.DrawableSupport {
     color1: .Color,
     color2: .Color,
     thickness: Float,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    GLDrawable.Progress(
+      progress,
+      color1,
+      color2,
+      thickness,
+      Geometry.Rect::fromOffsetSize(offset, size),
+    )
+  }
 
   fun loading(
     offset: Geometry.Offset,
@@ -265,20 +298,51 @@ base class DrawableSupport() extends Ui.DrawableSupport {
     color1: .Color,
     color2: .Color,
     step: Int,
-  ): Ui.Drawable;
-
-  fun image(
-    offset: Geometry.Offset,
-    size: Geometry.Size,
-    picture: Ui.Picture,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    GLDrawable.Loading(
+      color1,
+      color2,
+      step,
+      Geometry.Rect::fromOffsetSize(offset, size),
+    )
+  }
 
   fun boxShadow(
     offset: Geometry.Offset,
     size: Geometry.Size,
     sigma: Float,
     paint: Ui.Paint,
-  ): Ui.Drawable;
+  ): Ui.Drawable {
+    paint match {
+    | color @ .Color _ ->
+      GLDrawable.BoxShadow(
+        sigma,
+        color,
+        Geometry.Rect::fromOffsetSize(offset, size),
+      )
+    | _ -> invariant_violation("Not implemented; only Color Fill managed")
+    }
+  }
+
+  fun image(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _picture: Ui.Picture,
+  ): Ui.Drawable {
+    todo("GlDrawable image")
+  }
+
+  fun msdf(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _image: Ui.Image,
+    _conv: (Geometry.Rect, Float) ~> Geometry.Rect,
+    _pxRange: Int,
+    _thickness: Float,
+    _paint: Ui.Paint,
+  ): Ui.Drawable {
+    todo("GlDrawable msdf")
+  }
 }
 
 trait Key {
@@ -710,9 +774,7 @@ fun getValues<T: frozen>(
 @cpp_export("SKIP_SKUIGL_drawAnimationFrame")
 fun drawAnimationFrame(width: UInt32, height: UInt32): void {
   pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~>
-    drawFrame(context, width.toInt(), height.toInt())
-  );
+  SKFS.Context::withoutGc(context ~> drawFrame(context, width, height));
   SKFS.destroyObstack(pos);
 }
 

@@ -112,31 +112,6 @@ fun diagonal(
   )
 }
 
-fun pushDiagonal(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  fromTopLeft: Bool,
-  thickness: Float,
-  color: .Color,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  drawables.push(diagonal(offset, size, fromTopLeft, thickness, color));
-}
-
-fun pushCrux(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  thickness: Float,
-  color: .Color,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  ct = thickness / 2.0;
-  GLDrawable.pushDiagonal(offset, size, true, -ct, color, drawables);
-  GLDrawable.pushDiagonal(offset, size, true, ct, color, drawables);
-  GLDrawable.pushDiagonal(offset, size, false, -ct, color, drawables);
-  GLDrawable.pushDiagonal(offset, size, false, ct, color, drawables);
-}
-
 fun parallelepiped(
   a: Geometry.Offset,
   b: Geometry.Offset,
@@ -152,17 +127,6 @@ fun parallelepiped(
     false,
     Geometry.Rect(min.dx, min.dy, max.dx, max.dy),
   )
-}
-
-fun pushParallelepiped(
-  a: Geometry.Offset,
-  b: Geometry.Offset,
-  c: Geometry.Offset,
-  d: Geometry.Offset,
-  color: .Color,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  drawables.push(parallelepiped(a, b, c, d, color));
 }
 
 fun parallel(
@@ -182,16 +146,6 @@ fun parallel(
     Geometry.Offset(a.dx, dy),
     color,
   )
-}
-
-fun pushParallel(
-  a: Geometry.Offset,
-  b: Geometry.Offset,
-  thickness: Float,
-  color: .Color,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  drawables.push(parallel(a, b, thickness, color));
 }
 
 module end;

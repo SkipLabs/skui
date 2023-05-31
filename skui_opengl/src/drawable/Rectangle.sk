@@ -320,43 +320,6 @@ fun rectangle(
   }
 }
 
-fun pushRectangle(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  paint: Ui.Paint,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  drawables.push(rectangle(offset, size, paint));
-}
-
-fun pushStrokeRectangle(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  thickness: Float,
-  paint: Ui.Paint,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  pushRectangle(offset, Geometry.Size(size.width, thickness), paint, drawables);
-  GLDrawable.pushRectangle(
-    offset.translate(size.width - thickness, thickness),
-    Geometry.Size(thickness, size.height - (2.0 * thickness)),
-    paint,
-    drawables,
-  );
-  GLDrawable.pushRectangle(
-    offset.translateY(size.height - thickness),
-    Geometry.Size(size.width, thickness),
-    paint,
-    drawables,
-  );
-  GLDrawable.pushRectangle(
-    offset.translateY(thickness),
-    Geometry.Size(thickness, size.height - (2.0 * thickness)),
-    paint,
-    drawables,
-  );
-}
-
 fun strokeRectangle(
   offset: Geometry.Offset,
   size: Geometry.Size,
@@ -381,37 +344,6 @@ fun strokeRectangle(
       paint,
     ),
   ]
-}
-
-fun roundedRectangle(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  color: .Color,
-  radius: Float,
-  smooth: Int = 2,
-  optBorder: ?(.Color, Int) = None(),
-): GLDrawable {
-  RoundedRectangle(
-    color,
-    radius.toInt(),
-    smooth,
-    optBorder,
-    Geometry.Rect::fromOffsetSize(offset, size),
-  )
-}
-
-fun pushRoundedRectangle(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  color: .Color,
-  radius: Float,
-  drawables: mutable Vector<Ui.Drawable>,
-  smooth: Int = 2,
-  optBorder: ?(.Color, Int) = None(),
-): void {
-  drawables.push(
-    roundedRectangle(offset, size, color, radius, smooth, optBorder),
-  )
 }
 
 fun pushBoxShadow(

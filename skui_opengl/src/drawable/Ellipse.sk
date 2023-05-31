@@ -70,41 +70,4 @@ class SolidDisk(
   }
 }
 
-fun pushEllipse(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  paint: Ui.Paint,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  paint match {
-  | color @ .Color _ ->
-    drawables.push(
-      SolidEllipse(color, 0.5, Geometry.Rect::fromOffsetSize(offset, size)),
-    )
-  | _ -> invariant_violation("Not implemented; only Color Fill managed")
-  }
-}
-
-fun pushDisk(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  paint: Ui.Paint,
-  thickness: Float,
-  drawables: mutable Vector<Ui.Drawable>,
-): void {
-  paint match {
-  | color @ .Color _ -> drawables.push(disk(offset, size, color, thickness))
-  | _ -> invariant_violation("Not implemented; only Color Fill managed")
-  }
-}
-
-fun disk(
-  offset: Geometry.Offset,
-  size: Geometry.Size,
-  color: .Color,
-  thickness: Float,
-): GLDrawable {
-  SolidDisk(color, thickness, 0.5, Geometry.Rect::fromOffsetSize(offset, size))
-}
-
 module end;
