@@ -1,10 +1,6 @@
 module GL;
 
-class Ctx(id: UInt32) extends Ui.Ctx uses Hashable, HasClassName {
-  fun getId(): Int {
-    this.id.toInt()
-  }
-
+class Ctx(id: UInt32) extends SKFS.File uses Hashable, HasClassName {
   // UTILS
 
   @debug

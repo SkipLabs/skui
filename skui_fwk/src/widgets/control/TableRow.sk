@@ -38,6 +38,7 @@ class TableRow protected {
 
   fun computeDrawInfo(
     _context: mutable SKFS.Context,
+    _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     _nodeSum: Ui.NodeSum,
     _optUserData: ?UserData,

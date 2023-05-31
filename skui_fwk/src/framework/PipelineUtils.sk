@@ -21,7 +21,6 @@ const mouseStatePath: SKFS.DirName = SKFS.DirName::create(
 const previousMouseStatePath: SKFS.DirName = mouseStatePath.pre();
 const keysStatePath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/state/keys/");
 const previousKeysStatePath: SKFS.DirName = keysStatePath.pre();
-const viewportsPath: SKFS.DirName = SKFS.DirName::create("/ui/viewports/");
 
 const fsHandle: SKFS.IHandle<FocusState> = SKFS.IHandle(
   fsConverter,
@@ -37,14 +36,14 @@ fun getFocusState(
   context: mutable SKFS.Context,
   isUntracked: Bool = false,
 ): FocusState {
-  fsHandle.getValue(context, FWKPipeline.MainKey(), isUntracked);
+  fsHandle.getValue(context, Ui.MainKey(), isUntracked);
 }
 
 fun getMouseState(
   context: mutable SKFS.Context,
   isUntracked: Bool = false,
 ): MouseState {
-  msHandle.getValue(context, FWKPipeline.MainKey(), isUntracked);
+  msHandle.getValue(context, Ui.MainKey(), isUntracked);
 }
 
 fun getBounds(
@@ -63,21 +62,7 @@ native fun applyCursor(wId: UInt32, cursor: UInt32): void;
 @cpp_extern("SKIP_FWK_update")
 native fun update(wId: UInt32): void;
 
-@cpp_extern("SKIP_FWK_expose")
-native fun expose(wId: UInt32, time: UInt32): void;
-
 @cpp_extern("SKIP_FWK_close")
 native fun close(wId: UInt32): void;
-
-@cpp_extern("SKIP_FWK_setSubImage")
-native fun setSubImage(
-  src: Array<Ui.Pix>,
-  srcW: UInt32,
-  srcH: UInt32,
-  dst: Array<Ui.Pix>,
-  dstX: UInt32,
-  dstY: UInt32,
-  dstW: UInt32,
-): void;
 
 module end;

@@ -75,6 +75,7 @@ class TreeItem protected {
 
   fun computeDrawInfo(
     context: mutable SKFS.Context,
+    _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
     optUserData: ?UserData,

@@ -323,8 +323,7 @@ base class DrawableSupport {
   fun init(
     context: mutable SKFS.Context,
     drawables: SKFS.EHandle<Ui.Drawables>,
-    dirName: SKFS.DirName,
-  ): SKFS.EHandle<Ui.Handles>;
+  ): void;
 
   fun msdf(
     offset: Geometry.Offset,
@@ -408,12 +407,6 @@ base class DrawableSupport {
     sigma: Float,
     paint: Ui.Paint,
   ): Ui.Drawable;
-
-  fun drawAminationFrame(
-    context: mutable SKFS.Context,
-    width: Int,
-    height: Int,
-  ): void;
 }
 
 class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
@@ -487,6 +480,80 @@ class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
   }
 }
 
+class NViewport(
+  offset: Geometry.Point,
+  window: Geometry.Rectangle,
+  optViewport: ?Path = None(),
+) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ NViewport _ -> x
+    | _ -> invariant_violation("Must be Ui.NViewport")
+    }
+  }
+}
+
+base class LayerId uses Orderable, Show, Hashable {
+  children =
+  | MainLayer()
+  | BackgroundLayer()
+  | ForegroundLayer()
+
+  fun toString(): String
+  | MainLayer() -> "main"
+  | BackgroundLayer() -> "backgound"
+  | ForegroundLayer() -> "foregound"
+}
+
+class MainKey() extends SKFS.BaseName {
+  fun toString(): String {
+    this.getClassName()
+  }
+}
+
+base class ViewportDefinition(
+  path: Path,
+  optReference: ?Path,
+) extends SKFS.File {
+  fun hasContent(): Bool;
+  fun getChildren(): Array<ViewportDefinition>;
+
+  static fun forFile(obj: SKFS.File): ViewportDefinition {
+    obj match {
+    | x @ ViewportDefinition _ -> x
+    | _ -> SKFS.cast_violation("Ui.ViewportDefinition", obj)
+    }
+  }
+}
+
+class KLayer(path: Ui.Path, layer: Ui.LayerId) extends SKFS.BaseName {
+  fun toString(): String {
+    `${this.path}:${this.layer}`
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    oKey = (other as KLayer _);
+    sComp = this.path.compare(oKey.path);
+    if (sComp == EQ()) {
+      this.layer.compare(oKey.layer);
+    } else {
+      sComp
+    }
+  }
+}
+
+const vpInfosPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/common/viewportInfos/",
+);
+const viewportsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/common/viewports/",
+);
+
+const constraintsPath: SKFS.DirName = SKFS.DirName::create(
+  "/ui/common/constraints/",
+);
+
 @cpp_extern
 private native fun saveImage(
   path: String,
@@ -510,6 +577,15 @@ class DummyPaint() extends Paint {
     dummy()
   }
   fun translate(_offset: Geometry.Offset): this {
+    dummy()
+  }
+}
+
+class DummyVpDefinition() extends ViewportDefinition {
+  fun hasContent(): Bool {
+    dummy()
+  }
+  fun getChildren(): Array<ViewportDefinition> {
     dummy()
   }
 }

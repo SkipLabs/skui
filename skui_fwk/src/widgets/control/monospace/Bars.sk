@@ -37,6 +37,7 @@ class Bars{
 
   fun computeDrawInfo(
     context: mutable SKFS.Context,
+    _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     _nodeSum: Ui.NodeSum,
     _optUserData: ?Ui.UserData,

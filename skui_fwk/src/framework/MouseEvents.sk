@@ -29,7 +29,7 @@ fun isMouseHover(
 
 fun prepareMouse(context: mutable SKFS.Context): SKFS.EHValue<FWK.MouseState> {
   previousMouseState: Array<(SKFS.BaseName, FWK.MouseState)> = Array[
-    (MainKey(), FWK.MouseState{}),
+    (Ui.MainKey(), FWK.MouseState{}),
   ];
   previousMouseStateHdl = context.makePreDir(
     FWK.MouseState::fromFile,
@@ -37,7 +37,7 @@ fun prepareMouse(context: mutable SKFS.Context): SKFS.EHValue<FWK.MouseState> {
     previousMouseState,
   );
   FWKEnv.declare(context, preMouseStatePath);
-  SKFS.EHValue(previousMouseStateHdl, MainKey())
+  SKFS.EHValue(previousMouseStateHdl, Ui.MainKey())
 }
 
 fun mouseState(
@@ -46,7 +46,7 @@ fun mouseState(
 ): FWK.MouseState {
   SKFS.EHandle(FWK.MouseState::fromFile, preMouseStatePath).getValue(
     context,
-    MainKey(),
+    Ui.MainKey(),
     isUntracked,
   )
 }
@@ -79,7 +79,7 @@ fun initMouse(
         result = FWK.Result(false);
         context.doProfile("Update mouse states", context -> {
           mouse = FWKMouse.getMouse(context);
-          current = previousMouseStateHdl.getValue(context, MainKey(), true);
+          current = previousMouseStateHdl.getValue(context, Ui.MainKey(), true);
           node = nodeGetter(context, widget.path, true);
           wheel = mouse.getWheelValue(context.tick);
           current.optDragHandler match {

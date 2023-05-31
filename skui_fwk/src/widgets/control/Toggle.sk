@@ -52,6 +52,7 @@ class Toggle protected {
 
   fun computeDrawInfo(
     _context: mutable SKFS.Context,
+    _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
     optUserData: ?UserData,

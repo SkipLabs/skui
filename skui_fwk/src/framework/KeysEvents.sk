@@ -6,14 +6,14 @@ const keysStateBeforePath: SKFS.DirName = SKFS.DirName::create(
 
 fun prepareKeys(context: mutable SKFS.Context): SKFS.EHValue<FWK.FocusState> {
   previousKeysState: Array<(SKFS.BaseName, FWK.FocusState)> = Array[
-    (MainKey(), FWK.FocusState()),
+    (Ui.MainKey(), FWK.FocusState()),
   ];
   previousKeysStateHdl = context.makePreDir(
     FWK.FocusState::fromFile,
     FWK.keysStatePath,
     previousKeysState,
   );
-  SKFS.EHValue(previousKeysStateHdl, MainKey())
+  SKFS.EHValue(previousKeysStateHdl, Ui.MainKey())
 }
 
 fun initKeys(
@@ -24,7 +24,7 @@ fun initKeys(
   root: UiRoot.Storage,
 ): void {
   fsu = FocusStateUtils(nodeInfoGetter, nodeGetter);
-  ksKey = MainKey();
+  ksKey = Ui.MainKey();
   previousKeysStateHdl = SKFS.EHandle(
     FWK.FocusState::fromFile,
     FWK.keysStatePath.pre(),
@@ -72,10 +72,6 @@ fun initKeys(
             context.clearProfile();
           } else if (UiEvent.exit().test(keys, context.tick)) {
             SystemProperties.quit(context)
-          } else if (UiEvent.expose().test(keys, context.tick)) {
-            FWKEnv.getWindowId(context, true).each(wId ->
-              FWK.expose(wId, UInt32::truncate(context.tick.value))
-            )
           } else if (optFocused.isNone()) {
             !optFocused = if (focusables.value.isEmpty()) {
               None()

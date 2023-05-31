@@ -111,12 +111,10 @@ native fun natMatchAll(
   global: Bool,
 ): Array<Array<Range>>;
 
-
 @cpp_export("SKIP_RegExp_createRangeArray")
 fun createRangeArray(size: UInt32): mutable Array<Range> {
   Array::mfill(size.toInt(), Range(0, 0));
 }
-
 
 @cpp_export("SKIP_RegExp_setRange")
 fun setRange(

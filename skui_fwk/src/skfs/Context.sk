@@ -11,16 +11,6 @@ extension class Context {
     Ui.FontSupport::fromFile(this.getGlobal("Ui.FontSupport").fromSome());
   }
 
-  mutable fun initDrawableSupport(support: Ui.DrawableSupport): void {
-    this.setGlobal("Ui.DrawableSupport", DrawableSupportFile(support));
-  }
-
-  readonly fun getDrawableSupport(): ?Ui.DrawableSupport {
-    this.getGlobal("Ui.DrawableSupport").map(f ~>
-      DrawableSupportFile::fromFile(f).value
-    )
-  }
-
   mutable fun setDialogsState(state: UiDialogs.State): void {
     this.setGlobal("UiDialogs.State", state);
   }
@@ -69,8 +59,8 @@ extension class Context {
     );
   }
 
-  mutable fun initTextSupport(): void {
-    this.setGlobal("Ui.TextSupport", Ui.TextSupport::create(this));
+  mutable fun initTextSupport(support: Ui.DrawableSupport): void {
+    this.setGlobal("Ui.TextSupport", Ui.TextSupport::create(this, support));
   }
 
   readonly fun getTextSupport(): Ui.TextSupport {

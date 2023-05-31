@@ -71,6 +71,7 @@ fun drawConstrainedText(
 
 fun themeShadow(
   context: mutable SKFS.Context,
+  support: DrawableSupport,
   offset: Geometry.Offset,
   size: Geometry.Size,
   radius: Float,
@@ -78,20 +79,15 @@ fun themeShadow(
   color = context.getThemeColor(UiTheme.Shadow());
   smooth = context.getThemeThickness(UiTheme.Shadow());
   shift = (smooth * 3 / 4).toFloat();
-  context
-    .getDrawableSupport()
-    .map(support ->
-      Array[
-        support.roundedRectangle(
-          offset.translate(-shift, -shift),
-          size + Geometry.Size::square(2.0 * shift),
-          color,
-          radius + shift,
-          smooth,
-        ),
-      ]
-    )
-    .default(Array[])
+  Array[
+    support.roundedRectangle(
+      offset.translate(-shift, -shift),
+      size + Geometry.Size::square(2.0 * shift),
+      color,
+      radius + shift,
+      smooth,
+    ),
+  ]
 }
 
 module end;

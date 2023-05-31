@@ -888,27 +888,6 @@ mutable class ArrayUpdater(
   }
 }
 
-base class ImageSupplier {
-  fun getSize(): (UInt32, UInt32);
-
-  fun getImage(
-    context: mutable SKFS.Context,
-    width: UInt32,
-    height: UInt32,
-  ): ?Ui.Image;
-
-  fun getImageForSize(
-    context: mutable SKFS.Context,
-    size: Geometry.ISize,
-  ): ?Ui.Image {
-    this.getImage(
-      context,
-      UInt32::truncate(size.width),
-      UInt32::truncate(size.height),
-    )
-  }
-}
-
 base class Decoration extends SKFS.File {
   //
   fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets;

@@ -106,7 +106,10 @@ class TextSupport(
     }
   }
 
-  static fun create(context: mutable SKFS.Context): this {
+  static fun create(
+    context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
+  ): this {
     sizesHdl = SKFS.LHandle::lazy(
       Geometry.Size::fromFile,
       context,
@@ -134,19 +137,17 @@ class TextSupport(
       (context, _self, key) ~> {
         key match {
         | textKey @ TextKey _ ->
-          context.getDrawableSupport().flatMap(support -> {
-            toDrawables(
-              context,
-              support,
-              textKey.value.chars(),
-              textKey.style,
-              thickness(
-                textKey.style.faceId.size,
-                textKey.style.faceId.isNotBold(),
-              ),
-              textKey.pxRange,
-            )
-          })
+          toDrawables(
+            context,
+            support,
+            textKey.value.chars(),
+            textKey.style,
+            thickness(
+              textKey.style.faceId.size,
+              textKey.style.faceId.isNotBold(),
+            ),
+            textKey.pxRange,
+          )
         | _ -> invariant_violation(`Invalid drawables key ${key}`)
         }
       },

@@ -60,6 +60,7 @@ class Numbers{
 
   fun computeDrawInfo(
     context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
     relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
     _optUserData: ?Ui.UserData,
@@ -79,28 +80,26 @@ class Numbers{
       nodeSum.size.width - (2 * padding).toFloat(),
       Math.ceil(fontSize.height()),
     );
-    context.getDrawableSupport().each(support ->
-      for (lineIdx in range) {
-        !top = top + padding.toFloat();
-        str = (lineIdx + 1).toString();
-        fill = if (activeLine == lineIdx) active else color;
-        Ui.drawConstrainedText(
-          context,
-          support,
-          textSupport,
-          str,
-          Geometry.Rect::fromOffsetSize(
-            Geometry.Offset(relative.dx + left, relative.dy + top),
-            size,
-          ),
-          fill,
-          faceId,
-          drawables,
-          Text.Right(),
-        );
-        !top = top + size.height + padding.toFloat();
-      }
-    );
+    for (lineIdx in range) {
+      !top = top + padding.toFloat();
+      str = (lineIdx + 1).toString();
+      fill = if (activeLine == lineIdx) active else color;
+      Ui.drawConstrainedText(
+        context,
+        support,
+        textSupport,
+        str,
+        Geometry.Rect::fromOffsetSize(
+          Geometry.Offset(relative.dx + left, relative.dy + top),
+          size,
+        ),
+        fill,
+        faceId,
+        drawables,
+        Text.Right(),
+      );
+      !top = top + size.height + padding.toFloat();
+    };
     Some(NumbersDrawInfo(drawables.toArray()))
   }
 }

@@ -157,6 +157,7 @@ class TextLine protected {
 
   fun computeDrawInfo(
     context: mutable SKFS.Context,
+    _support: Ui.DrawableSupport,
     relative: Geometry.Offset,
     _nodeSum: Ui.NodeSum,
     _optUserData: ?UserData,

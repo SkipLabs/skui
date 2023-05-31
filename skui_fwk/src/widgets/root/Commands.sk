@@ -280,9 +280,7 @@ class HStorage private (
     sourceHdl = context.makeDir(
       f ~> f,
       SKFS.DirName::make(dirName, "widgetsource/"),
-      Array<(SKFS.BaseName, SKFS.File)>[
-        (FWKPipeline.MainKey(), SKFS.IntFile(0)),
-      ],
+      Array<(SKFS.BaseName, SKFS.File)>[(Ui.MainKey(), SKFS.IntFile(0))],
     );
     SKFS.EHValue(
       sourceHdl.contextWriterKeyMap(
@@ -298,7 +296,7 @@ class HStorage private (
           writer.write(key, Ui.WidgetFile(stack))
         },
       ),
-      FWKPipeline.MainKey(),
+      Ui.MainKey(),
     );
   }
 

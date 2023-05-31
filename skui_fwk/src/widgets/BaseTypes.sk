@@ -75,18 +75,6 @@ base class UserData
 
 base class LayerData
 
-base class LayerId uses Orderable, Show, Hashable {
-  children =
-  | MainLayer()
-  | BackgroundLayer()
-  | ForegroundLayer()
-
-  fun toString(): String
-  | MainLayer() -> "main"
-  | BackgroundLayer() -> "backgound"
-  | ForegroundLayer() -> "foregound"
-}
-
 base class Configuration extends SKFS.File {
   static fun forFile(obj: SKFS.File): Configuration {
     obj match {
@@ -283,6 +271,7 @@ base class Widget protected {
 
   overridable fun computeDrawInfo(
     _context: mutable SKFS.Context,
+    _support: DrawableSupport,
     _relative: Geometry.Offset,
     _nodeSum: NodeSum,
     _optUserData: ?UserData,
@@ -367,20 +356,6 @@ base class Progress extends SKFS.File {
 
   static fun fromInt(value: Int): Progress {
     if (value >= 0) Ui.Progression(value) else Ui.Indeterminate()
-  }
-}
-
-class NViewport(
-  offset: Geometry.Point,
-  window: Geometry.Rectangle,
-  optViewport: ?Path = None(),
-) extends SKFS.File {
-  //
-  static fun fromFile(obj: SKFS.File): this {
-    obj match {
-    | x @ NViewport _ -> x
-    | _ -> invariant_violation("Must be Ui.NViewport")
-    }
   }
 }
 

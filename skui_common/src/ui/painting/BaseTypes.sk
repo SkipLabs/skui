@@ -43,10 +43,6 @@ class Drawables(
   }
 }
 
-base class Ctx {
-  fun getId(): Int;
-}
-
 base class Supplier
 
 base class RectangleDrawable(bounds: Geometry.Rect) extends Drawable {

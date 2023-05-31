@@ -181,6 +181,7 @@ class ScrollPane{
 
   fun computeDrawInfo(
     context: mutable SKFS.Context,
+    _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     _nodeSum: NodeSum,
     _optUserData: ?UserData,

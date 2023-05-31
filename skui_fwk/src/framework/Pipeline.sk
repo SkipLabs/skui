@@ -1,8 +1,5 @@
 module FWKPipeline;
 
-const constraintsPath: SKFS.DirName = SKFS.DirName::create(
-  "/ui/fwk/constraints/",
-);
 const vpConstraintsPath: SKFS.DirName = SKFS.DirName::create(
   "/ui/fwk/vpconstraints/",
 );
@@ -16,9 +13,6 @@ const computedNodeInfosPath: SKFS.DirName = SKFS.DirName::create(
 );
 const visibleNodeInfosPath: SKFS.DirName = SKFS.DirName::create(
   "/ui/fwk/nodeInfos/visible/",
-);
-const vpInfosPath: SKFS.DirName = SKFS.DirName::create(
-  "/ui/fwk/viewportInfos/",
 );
 const vpWindowPath: SKFS.DirName = SKFS.DirName::create(
   "/ui/fwk/viewportWindow/",
@@ -34,20 +28,6 @@ const nodeRelativeLayersPath: SKFS.DirName = SKFS.DirName::create(
 const nodeDrawablesPath: SKFS.DirName = SKFS.DirName::create(
   "/ui/fwk/nodeDrawables/",
 );
-
-const nodeHandlesPath: SKFS.DirName = SKFS.DirName::create(
-  "/ui/fwk/nodeHandles/",
-);
-
-const layerHandlesPath: SKFS.DirName = SKFS.DirName::create(
-  "/ui/fwk/layerHandles/",
-);
-
-class MainKey() extends SKFS.BaseName {
-  fun toString(): String {
-    this.getClassName()
-  }
-}
 
 class KOffsets(path: Ui.Path) extends SKFS.BaseName {
   fun toString(): String {
@@ -110,11 +90,18 @@ class NodeSum(
 
   fun computeNodeInfo(
     context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
     relative: Geometry.Offset,
   ): NodeInfo {
     optUserData = this.userData(context);
     optDrawInfo = this.optWidget.flatMap(widget ->
-      widget.computeDrawInfo(context, relative, this.summary, optUserData)
+      widget.computeDrawInfo(
+        context,
+        support,
+        relative,
+        this.summary,
+        optUserData,
+      )
     );
     NodeInfo(
       this.optWidget,
@@ -138,50 +125,17 @@ class NodeInfo(optWidget: ?Ui.Widget, info: Ui.NodeInfo) extends SKFS.File {
 
   fun computeLayer(
     context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
   ): Array<Ui.Drawable> {
-    this.optWidget.flatMap(widget ->
-      context.getDrawableSupport().map(support ->
-        widget.computeLayer(context, support, absolute, layer, this.info)
-      )
+    this.optWidget.map(widget ->
+      widget.computeLayer(context, support, absolute, layer, this.info)
     ).default(Array[]);
   }
 
   fun isRoot(): Bool {
     this.info.nodeSum.optParent.isNone()
-  }
-}
-
-class KLayer(path: Ui.Path, layer: Ui.LayerId) extends SKFS.BaseName {
-  fun toString(): String {
-    `${this.path}:${this.layer}`
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as KLayer _);
-    sComp = this.path.compare(oKey.path);
-    if (sComp == EQ()) {
-      this.layer.compare(oKey.layer);
-    } else {
-      sComp
-    }
-  }
-}
-
-class CtxLayer(ctxId: Int, layer: KLayer) extends SKFS.BaseName {
-  fun toString(): String {
-    `${this.ctxId}:${this.layer}`
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as CtxLayer _);
-    sComp = this.ctxId.compare(oKey.ctxId);
-    if (sComp == EQ()) {
-      this.layer.compare(oKey.layer);
-    } else {
-      sComp
-    }
   }
 }
 
@@ -196,10 +150,11 @@ class Layer(nodeInfo: NodeInfo, offset: Geometry.Point) extends SKFS.File {
 
   fun computeLayer(
     context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
   ): Array<Ui.Drawable> {
-    this.nodeInfo.computeLayer(context, absolute, layer)
+    this.nodeInfo.computeLayer(context, support, absolute, layer)
   }
 }
 
@@ -218,6 +173,7 @@ fun initPipeline(
   widgetGetter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
   windowHdl: SKFS.EHandle<UiEvent.Size>,
   root: UiRoot.Storage,
+  support: Ui.DrawableSupport,
 ): void {
   // Collect mouse / keys states to manage Dropdrow / Tooltips
   mouseState = prepareMouse(context);
@@ -241,7 +197,7 @@ fun initPipeline(
   constraintsHdl = windowHdl.contextWriterMap(
     Ui.BoxConstraints::fromFile,
     context,
-    constraintsPath,
+    Ui.constraintsPath,
     (context, writer, size) ~> {
       file = widgetHdl.get(context);
       writer.write(
@@ -250,15 +206,10 @@ fun initPipeline(
       )
     },
   );
-  constraintsHdl.register(context, ctx ~>
-    FWKEnv.getROWindowId(ctx).each(wId ->
-      FWK.expose(wId, UInt32::truncate(ctx.tick.value))
-    )
-  );
   viewportsHdl = widgetHdl.hdl.contextWriterMap(
     f ~> f,
     context,
-    FWK.viewportsPath,
+    Ui.viewportsPath,
     (context, writer, wf) ~> {
       widget = wf.widget;
       viewportDef = widget.getViewportDefinition(context) match {
@@ -272,7 +223,7 @@ fun initPipeline(
         }
       | _ -> Ui.ViewportDef(widget.path, None(), Some(widget), Array[])
       };
-      writer.write(MainKey(), viewportDef);
+      writer.write(Ui.MainKey(), viewportDef);
     },
   );
   viewportLeafsHdl = viewportsHdl.contextWriterMap(
@@ -311,7 +262,7 @@ fun initPipeline(
   FWKEnv.declare(context, computedNodeInfosPath.pre());
   previousVpInfosHdl = context.makePreDir(
     Ui.NViewport::fromFile,
-    vpInfosPath,
+    Ui.vpInfosPath,
     Array[],
   );
   nodeSumsHdl = nodesHdl.contextWriterKeyMap(
@@ -372,7 +323,7 @@ fun initPipeline(
         );
         writer.write(
           id,
-          NodeSum::fromFile(file).computeNodeInfo(context, relative),
+          NodeSum::fromFile(file).computeNodeInfo(context, support, relative),
         )
       | _ -> void
       }
@@ -381,7 +332,7 @@ fun initPipeline(
   vpInfosHdl = viewportLeafsHdl.contextWriterKeyMap(
     Ui.NViewport::fromFile,
     context,
-    vpInfosPath,
+    Ui.vpInfosPath,
     (context, writer, key, leaf) ~> {
       offset = leaf.optReference
         .flatMap(iPath -> {
@@ -433,9 +384,9 @@ fun initPipeline(
     nodeLayersPath,
     (_context, writer, key, layer) ~> {
       path = key as Ui.Path _;
-      writer.write(KLayer(path, Ui.MainLayer()), layer);
-      writer.write(KLayer(path, Ui.BackgroundLayer()), layer);
-      writer.write(KLayer(path, Ui.ForegroundLayer()), layer);
+      writer.write(Ui.KLayer(path, Ui.MainLayer()), layer);
+      writer.write(Ui.KLayer(path, Ui.BackgroundLayer()), layer);
+      writer.write(Ui.KLayer(path, Ui.ForegroundLayer()), layer);
     },
   );
   nodeDrawablesHdl = nodeLayersHdl.contextWriterKeyMap(
@@ -443,12 +394,13 @@ fun initPipeline(
     context,
     nodeDrawablesPath,
     (context, writer, key, layer) ~> {
-      kLayer = key as KLayer _;
+      kLayer = key as Ui.KLayer _;
       nodeOffsets = Ui.NodeOffsets::fromFile(
         nodeSumsHdl.get(context, KOffsets(kLayer.path)),
       );
       drawables = layer.computeLayer(
         context,
+        support,
         nodeOffsets.viewport,
         kLayer.layer,
       );
@@ -460,28 +412,8 @@ fun initPipeline(
       }
     },
   );
-  optNodeHandlesHdl = context.getDrawableSupport().map(support ->
-    support.init(context, nodeDrawablesHdl, nodeHandlesPath)
-  );
+  support.init(context, nodeDrawablesHdl);
 
-  optNodeHandlesHdl.each(nodeHandlesHdl -> {
-    _ = nodeHandlesHdl
-      .contextWriterKeyMap(
-        Ui.Handles::fromFile,
-        context,
-        layerHandlesPath,
-        (_context, writer, key, handles) ~> {
-          ctxLayer = key as CtxLayer _;
-          !ctxLayer.layer.path = handles.optViewport.fromSome();
-          writer.write(ctxLayer, handles);
-        },
-      )
-      .register(context, ctx ~>
-        FWKEnv.getROWindowId(ctx).each(wId ->
-          FWK.expose(wId, UInt32::truncate(ctx.tick.value))
-        )
-      );
-  });
   initMouse(
     context,
     widgetHdl,
@@ -580,190 +512,6 @@ fun fillNodeSums(
       )
     }
   });
-}
-
-fun getDrawTick(context: mutable SKFS.Context): ?SKFS.Tick {
-  optContraintsTick = getOnDirectory(
-    context,
-    constraintsPath,
-    constraintsDir -> constraintsDir.getLastTick(),
-  );
-  optHandlesTick = getOnDirectory(context, layerHandlesPath, handlesDir ->
-    handlesDir.getLastTick()
-  );
-  (optContraintsTick, optHandlesTick) match {
-  | (None(), None())
-  | (Some(None()), None())
-  | (None(), Some(None()))
-  | (Some(None()), Some(None())) ->
-    None()
-  | (Some(Some(ct)), Some(Some(ht))) -> Some(Math.max(ct, ht))
-  | (Some(Some(tick)), _)
-  | (_, Some(Some(tick))) ->
-    Some(tick)
-  }
-}
-
-fun drawViewports(
-  gl: Ui.Ctx,
-  context: mutable SKFS.Context,
-  width: Int,
-  height: Int,
-  populateViewport: (
-    gl: Ui.Ctx,
-    viewport: Ui.NViewport,
-    handles: Array<Array<Ui.Handles>>,
-    height: Int,
-  ) -> void,
-): void {
-  doOnDirectory(context, FWK.viewportsPath, viewportsDir ->
-    doOnDirectory(context, layerHandlesPath, layerHandlesDir ->
-      doOnDirectory(context, vpInfosPath, vpInfosDir -> {
-        viewportDef = getValue(
-          viewportsDir,
-          MainKey(),
-          Ui.ViewportDef::fromFile,
-        );
-        drawViewport(
-          gl,
-          context,
-          viewportDef,
-          Ui.NViewport(
-            Geometry.Point(0, 0),
-            Geometry.Rectangle(
-              Geometry.Point(0, 0),
-              Geometry.Point(width.toInt(), height.toInt()),
-            ),
-          ),
-          width.toInt(),
-          height.toInt(),
-          layerHandlesDir,
-          vpInfosDir,
-          populateViewport,
-        );
-      })
-    )
-  )
-}
-
-fun drawViewport(
-  gCtx: Ui.Ctx,
-  context: mutable SKFS.Context,
-  viewportDef: Ui.ViewportDef,
-  absolute: Ui.NViewport,
-  width: Int,
-  height: Int,
-  layerHandlesDir: SKFS.EagerDir,
-  vpInfosDir: SKFS.EagerDir,
-  populateViewport: (
-    gCtx: Ui.Ctx,
-    viewport: Ui.NViewport,
-    handles: Array<Array<Ui.Handles>>,
-    height: Int,
-  ) -> void,
-): void {
-  vpPath = viewportDef.path;
-  if (viewportDef.optWidget.isSome()) {
-    viewport = getValue(vpInfosDir, vpPath, Ui.NViewport::fromFile);
-    currentBounds = viewport.window.translate(absolute.window.min);
-    visibleBounds = currentBounds.intersect(absolute.window);
-    if (!visibleBounds.isEmpty()) {
-      ctxId = gCtx.getId();
-      diff = (currentBounds.min - visibleBounds.min);
-      toPopulate = Ui.NViewport(viewport.offset + diff, visibleBounds);
-      layerHandles = Array[
-        CtxLayer(ctxId, KLayer(vpPath, Ui.BackgroundLayer())),
-        CtxLayer(ctxId, KLayer(vpPath, Ui.MainLayer())),
-        CtxLayer(ctxId, KLayer(vpPath, Ui.ForegroundLayer())),
-      ].map(key -> getValues(layerHandlesDir, key, Ui.Handles::fromFile));
-      populateViewport(gCtx, toPopulate, layerHandles, height);
-      !absolute = Ui.NViewport(diff, visibleBounds);
-    }
-  };
-  viewportDef.children_.each(def ->
-    drawViewport(
-      gCtx,
-      context,
-      def,
-      absolute,
-      width,
-      height,
-      layerHandlesDir,
-      vpInfosDir,
-      populateViewport,
-    )
-  )
-}
-
-fun doOnDirectory(
-  context: mutable SKFS.Context,
-  dirName: SKFS.DirName,
-  todo: SKFS.EagerDir -> void,
-  ignore: Bool = true,
-): void {
-  context.unsafeMaybeGetEagerDir(dirName) match {
-  | Some(dir) -> todo(dir)
-  | _ ->
-    if (!ignore) {
-      invariant_violation(`${dirName} must be defined.`)
-    }
-  };
-}
-
-fun getOnDirectory<T>(
-  context: mutable SKFS.Context,
-  dirName: SKFS.DirName,
-  todo: SKFS.EagerDir -> T,
-  ignore: Bool = true,
-): ?T {
-  context.unsafeMaybeGetEagerDir(dirName) match {
-  | Some(dir) -> Some(todo(dir))
-  | _ ->
-    if (!ignore) {
-      invariant_violation(`${dirName} must be defined.`)
-    };
-    None()
-  };
-}
-
-fun getValue<T: frozen>(
-  dir: SKFS.EagerDir,
-  key: SKFS.BaseName,
-  conv: SKFS.File ~> T,
-): T {
-  conv(dir.getArrayRaw(key).first())
-}
-
-fun maybeGetValue<T: frozen>(
-  dir: SKFS.EagerDir,
-  key: SKFS.BaseName,
-  conv: SKFS.File ~> T,
-): ?T {
-  vs = getValues(dir, key, conv);
-  if (vs.isEmpty()) {
-    None()
-  } else {
-    Some(vs.first())
-  }
-}
-
-fun getValues<T: frozen>(
-  dir: SKFS.EagerDir,
-  key: SKFS.BaseName,
-  conv: SKFS.File ~> T,
-): Array<T> {
-  dir.getArrayRaw(key).map(conv)
-}
-
-@cpp_export("SKIP_FWK_drawFrame")
-fun drawFrame(width: UInt32, height: UInt32): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~>
-    context.getDrawableSupport().each(support ->
-      support.drawAminationFrame(context, width.toInt(), height.toInt())
-    )
-  );
-  SKFS.destroyObstack(pos);
 }
 
 module end;

@@ -199,7 +199,9 @@ class Button protected {
         None()
       | UiButton.Raised() ->
         radius = mode.getRadius(size);
-        Ui.themeShadow(context, absolute, size, radius).each(drawables.push);
+        Ui.themeShadow(context, support, absolute, size, radius).each(
+          drawables.push,
+        );
         this.controller.getKind(context) match {
         | UiButton.Regular() -> Some(context.getThemeColor(UiTheme.Base()))
         | UiButton.Primary() -> Some(context.getThemeColor(UiTheme.Primary()))
