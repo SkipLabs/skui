@@ -111,38 +111,41 @@ extension class Context {
   mutable fun registerMessageSupport(
     name: String,
     scope: String,
-    support: FWKMessage.Support,
+    support: SKUIMessage.Support,
     replace: Bool = true,
   ): void {
-    id = `FWKMessage.Support.${name}.${scope}`;
+    id = `SKUIMessage.Support.${name}.${scope}`;
     if (replace || this.getGlobal(id).isNone()) {
       support.init(this);
-      this.setGlobal(`FWKMessage.Support.${name}.${scope}`, support);
+      this.setGlobal(`SKUIMessage.Support.${name}.${scope}`, support);
     }
   }
 
   readonly fun getMessageSupport(
     name: String,
     scope: String,
-  ): ?FWKMessage.Support {
-    supportId = `FWKMessage.Support.${name}.${scope}`;
-    this.getGlobal(supportId).map(FWKMessage.Support::forFile)
+  ): ?SKUIMessage.Support {
+    supportId = `SKUIMessage.Support.${name}.${scope}`;
+    this.getGlobal(supportId).map(SKUIMessage.Support::forFile)
   }
 
   mutable fun removeMessageSupport(name: String, scope: String): void {
-    this.removeGlobal(`FWKMessage.Support.${name}.${scope}`);
+    this.removeGlobal(`SKUIMessage.Support.${name}.${scope}`);
   }
 
-  mutable fun registerSequence(sequence: FWKMessage.Sequence): RunSequence {
+  mutable fun registerSequence(sequence: SKUIMessage.Sequence): RunSequence {
     time = this.timeStamp();
-    name = `FWKMessage.Sequence[${time}]`;
+    name = `SKUIMessage.Sequence[${time}]`;
     this.setGlobal(name, sequence);
     RunSequence(time.value)
   }
 
-  mutable fun checkSequence(seqId: Int, optCommand: ?FWKMessage.Command): void {
-    name = `FWKMessage.Sequence[${seqId}]`;
-    this.getGlobal(name).map(FWKMessage.Sequence::fromFile) match {
+  mutable fun checkSequence(
+    seqId: Int,
+    optCommand: ?SKUIMessage.Command,
+  ): void {
+    name = `SKUIMessage.Sequence[${seqId}]`;
+    this.getGlobal(name).map(SKUIMessage.Sequence::fromFile) match {
     | Some(sequence) ->
       nSequence = sequence.decr();
       if (nSequence.count == 0) {
@@ -156,40 +159,43 @@ extension class Context {
   }
 
   mutable fun clearSequence(id: Int): void {
-    name = `FWKMessage.Sequence[${id}]`;
-    optSequence = this.getGlobal(name).map(FWKMessage.Sequence::fromFile);
+    name = `SKUIMessage.Sequence[${id}]`;
+    optSequence = this.getGlobal(name).map(SKUIMessage.Sequence::fromFile);
     this.removeGlobal(name);
     optSequence.each(sequence -> sequence.onCancel(this))
   }
 
-  mutable fun addPendingMessage(message: FWKMessage.Message): void {
-    this.getGlobal("FWKMessage.Pedding").map(
-      FWKMessage.Messages::fromFile,
+  mutable fun addPendingMessage(message: SKUIMessage.Message): void {
+    this.getGlobal("SKUIMessage.Pedding").map(
+      SKUIMessage.Messages::fromFile,
     ) match {
     | Some(messages) ->
-      this.setGlobal("FWKMessage.Pedding", messages.add(message))
+      this.setGlobal("SKUIMessage.Pedding", messages.add(message))
     | _ ->
-      this.setGlobal("FWKMessage.Pedding", FWKMessage.Messages(Array[message]))
+      this.setGlobal(
+        "SKUIMessage.Pedding",
+        SKUIMessage.Messages(Array[message]),
+      )
     }
   }
 
   mutable fun checkPendingMessages(): void {
-    this.getGlobal("FWKMessage.Pedding")
-      .map(FWKMessage.Messages::fromFile)
+    this.getGlobal("SKUIMessage.Pedding")
+      .map(SKUIMessage.Messages::fromFile)
       .each(messages -> messages.send(this));
-    this.removeGlobal("FWKMessage.Pedding");
+    this.removeGlobal("SKUIMessage.Pedding");
   }
 
-  mutable fun registerInternalMessage(message: FWKMessage.Message): UInt32 {
-    messageId = UInt32::truncate(this.timeStamp().value);
-    gID = `FWKMessage.Message.${messageId}`;
+  mutable fun registerInternalMessage(message: SKUIMessage.Message): Int {
+    messageId = this.timeStamp().value;
+    gID = `SKUIMessage.Message.${messageId}`;
     this.setGlobal(gID, message);
     messageId;
   }
 
-  mutable fun getInternalMessage(messageId: UInt32): ?FWKMessage.Message {
-    gID = `FWKMessage.Message.${messageId}`;
-    optMessage = this.getGlobal(gID).map(FWKMessage.Message::fromFile);
+  mutable fun getInternalMessage(messageId: Int): ?SKUIMessage.Message {
+    gID = `SKUIMessage.Message.${messageId}`;
+    optMessage = this.getGlobal(gID).map(SKUIMessage.Message::fromFile);
     if (optMessage.isSome()) {
       this.removeGlobal(gID)
     };
@@ -340,7 +346,7 @@ class RunSequence(id: Int) extends JSONValue, File {
 
   fun execute(
     context: mutable SKFS.Context,
-    optCommand: ?FWKMessage.Command,
+    optCommand: ?SKUIMessage.Command,
   ): void {
     context.checkSequence(this.id, optCommand)
   }

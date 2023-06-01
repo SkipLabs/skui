@@ -1,8 +1,8 @@
 module UiTree;
 
 base class ForStorage
-  extends FWKMessage.Support
-  uses FWKMessage.WithUpdate<Command> {
+  extends SKUIMessage.Support
+  uses SKUIMessage.WithUpdate<Command> {
   //
   fun init(_context: mutable SKFS.Context): void {
     void
@@ -21,7 +21,7 @@ base class ForStorage
       storage.setAsking(context, optPath);
       optPath.each(path ->
         if (optAsking != Some(path)) {
-          FWKMessage.emit(
+          SKUIMessage.emit(
             context,
             name,
             scope,
@@ -33,7 +33,7 @@ base class ForStorage
       )
     | CheckAsking(path) ->
       if (storage.getAsking(context) == Some(path)) {
-        FWKMessage.emit(context, name, scope, ToggleExpansion(path))
+        SKUIMessage.emit(context, name, scope, ToggleExpansion(path))
       }
     | SetScroll(optScroll) -> storage.setScroll(context, optScroll)
     | SetHover(hover) -> storage.setHover(context, hover)
@@ -46,7 +46,7 @@ base class ForStorage
     | executable @ ExecCommand _ ->
       executable match {
       | repeatable @ Repeatable _ ->
-        FWKMessage.repeat(
+        SKUIMessage.repeat(
           context,
           name,
           scope,
@@ -64,7 +64,7 @@ base class ForStorage
         cmd match {
         | ManageScrolling(_, tick) ->
           storage.setScrolling(context, Some(tick));
-          FWKMessage.emit(
+          SKUIMessage.emit(
             context,
             name,
             scope,
@@ -86,7 +86,7 @@ class Messages(storage: Storage) extends ForStorage {
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 
@@ -117,7 +117,7 @@ class AllMessages() extends ForStorage {
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 }

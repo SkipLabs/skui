@@ -1,0 +1,13 @@
+[package]
+name = "skui_views"
+version = "0.1.0"
+format-on-check = true
+auto-remove-state = true
+
+[dependencies]
+skui_fwk = {}
+skui_x11gl = {}
+
+[[bin]]
+name = "skuiviews"
+main = "SkuiViews.main"

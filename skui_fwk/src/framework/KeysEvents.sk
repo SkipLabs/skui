@@ -71,7 +71,7 @@ fun initKeys(
             context.printProfile();
             context.clearProfile();
           } else if (UiEvent.exit().test(keys, context.tick)) {
-            SystemProperties.quit(context)
+            SystemProperties.exit(context)
           } else if (optFocused.isNone()) {
             !optFocused = if (focusables.value.isEmpty()) {
               None()
@@ -163,7 +163,7 @@ fun initKeys(
           };
           !optFocusState = Some(focusState);
         });
-        FWKKeys.emit(context, FWKKeys.Next());
+        FWKKeys.execute(context, FWKKeys.Next());
         optFocusState.fromSome();
       },
     )

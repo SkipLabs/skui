@@ -13,24 +13,24 @@ class LamController{
     Array<Ui.Path>,
   > = Ui.defaultTwo(Array[]),
   selectionChange: Ui.GetterTwo<
-    Array<FWKMessage.Message>,
+    Array<SKUIMessage.Message>,
     Array<Ui.Path>,
     Bool,
   > = Ui.defaultTwo(Array[]),
   expansionChange: Ui.GetterThree<
-    Array<FWKMessage.Message>,
+    Array<SKUIMessage.Message>,
     Ui.Path,
     Bool,
     Bool,
   > = Ui.defaultThree(Array[]),
   fire: Ui.GetterThree<
-    Array<FWKMessage.Message>,
+    Array<SKUIMessage.Message>,
     ?Ui.Path,
     Array<Ui.Path>,
     Bool,
   > = Ui.defaultThree(Array[]),
   drop: (mutable SKFS.Context, Ui.Path, Ui.Path, Ui.Drop, Bool) ~> Array<
-    FWKMessage.Message,
+    SKUIMessage.Message,
   > = (_, _, _, _, _) ~> Array[],
 } extends Controller {
   //
@@ -76,7 +76,7 @@ class LamController{
     context: mutable SKFS.Context,
     selections: Array<Ui.Path>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.selectionChange(context, selections, isUntracked)
   }
 
@@ -85,7 +85,7 @@ class LamController{
     path: Ui.Path,
     value: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.expansionChange(context, path, value, isUntracked)
   }
 
@@ -94,7 +94,7 @@ class LamController{
     optCurrent: ?Ui.Path,
     selections: Array<Ui.Path>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.fire(context, optCurrent, selections, isUntracked)
   }
 
@@ -104,7 +104,7 @@ class LamController{
     destination: Ui.Path,
     drop: Ui.Drop,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.drop(context, source, destination, drop, isUntracked)
   }
 }

@@ -125,8 +125,6 @@ class TabsSc protected {
     viewport = this.path.makeChild("vp");
     Some(
       ViewportDef(
-        viewport,
-        Some(this.path),
         Some(
           UiTabs.Viewport{
             path => this.path.makeChild("viewport"),
@@ -135,6 +133,8 @@ class TabsSc protected {
           },
         ),
         Array[],
+        viewport,
+        Some(this.path),
       ),
     )
   }

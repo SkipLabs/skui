@@ -6,7 +6,7 @@ base class Executable extends Ui.Executable {
   | All(value: Vector<Executable>)
 }
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | SetHScroll(optScroll: ?Ui.Scroll)
   | SetVScroll(optScroll: ?Ui.Scroll)

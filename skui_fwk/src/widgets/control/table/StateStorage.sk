@@ -126,7 +126,7 @@ fun execute(
       .default(Array[]);
     info.controller
       .getFireMessages(context, optCurrent, selection, true)
-      .each(msg -> FWKMessage.emitMessage(context, msg))
+      .each(msg -> SKUIMessage.emitMessage(context, msg))
   | ManageSelect _ -> todo("UiTable.execute ManageSelect")
   }
 }

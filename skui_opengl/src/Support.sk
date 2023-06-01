@@ -29,31 +29,39 @@ const nodeHandlesPath: SKFS.DirName = SKFS.DirName::create(
   "/ui/skuigl/nodeHandles/",
 );
 
+const ctxHandle: SKFS.IHandle<Int> = SKFS.IHandle(
+  SKFS.IntConverter(),
+  webglPath,
+);
+
+class Useless()
+
+@wasm_export
+@cpp_export("SKIP_SKUIGL_performFrame")
+fun performFrame(cid: UInt32, width: UInt32, height: UInt32): void {
+  pos = SKFS.newObstack();
+  SKFS.Context::withoutGc(context ~> drawFrame(context, cid, width, height));
+  SKFS.destroyObstack(pos);
+}
+
+@wasm_export
+@cpp_export("SKIP_SKUIGL_setWindowContext")
+fun setWindowContext(window: UInt32, cid: UInt32): void {
+  pos = SKFS.newObstack();
+  win = window.toInt();
+  key = if (win == 0) Ui.MainKey() else SKFS.IID(win);
+  SKFS.Context::withoutGc(context ~>
+    ctxHandle.write(context, key, cid.toInt())
+  );
+  SKFS.destroyObstack(pos);
+}
+
 class DrawableSupport() extends Ui.DrawableSupport {
   fun init(
     context: mutable SKFS.Context,
     nodeDrawablesHdl: SKFS.EHandle<Ui.Drawables>,
   ): void {
     webglHdl = context.makeDir(SKFS.IntFile::fromFile, webglPath, Array[]);
-    /*context.setGlobal(
-      "GL.GetContext",
-      FWK.Ctx(ctx ~>
-        webglHdl.maybeGet(ctx, Ui.MainKey()).map(v ->
-          GL.Ctx(UInt32::truncate(v.value))
-        )
-      ),
-    );
-    wWebglHdl = SKFS.toIHandle(webglHdl);
-    context.setGlobal(
-      "GL.SetContext",
-      FWK.SetCtx((ctx, optValue) ~>
-        wWebglHdl.writeOrRemove(
-          ctx,
-          MainKey(),
-          optValue.map(v -> SKFS.IntFile(v.toInt())),
-        )
-      ),
-    );*/
     webglProgramsHdl = nodeDrawablesHdl.contextWriterKeyMap(
       f ~> f,
       context,
@@ -237,7 +245,7 @@ class DrawableSupport() extends Ui.DrawableSupport {
     color: .Color,
     radius: Float,
     smooth: Int = 2,
-    optBorder: ?(.Color, Int) = None(),
+    optBorder: ?Ui.Border = None(),
   ): Ui.Drawable {
     GLDrawable.RoundedRectangle(
       color,
@@ -566,8 +574,9 @@ fun populateViewport(
 @debug
 fun drawFrame(
   context: mutable SKFS.Context,
-  _width: UInt32,
-  _height: UInt32,
+  cid: UInt32,
+  width: UInt32,
+  height: UInt32,
 ): void {
   optVersion = context
     .getGlobal("SKUIGL.Version")
@@ -582,13 +591,7 @@ fun drawFrame(
   optDrawTick = getDrawTick(context);
   optDrawTick match {
   | Some(tick) if (!optVersion.map(v -> tick.value <= v).default(false)) ->
-    todo("Get current context to draw")
-  /*
-  optGetContext = context.getGlobal("GL.GetContext").map(GL.Ctx::fromFile);
-  optGetContext.each(gtctx -> {
-    optGLContext = gtctx.value(context);
-    optGLContext.each(gl -> drawCtxFrame(context, gl, width, height, tick.value))
-  })*/
+    drawCtxFrame(context, GL.Ctx(cid), width, height, tick.value)
   | _ -> void
   };
 }
@@ -768,14 +771,6 @@ fun getValues<T: frozen>(
   conv: SKFS.File ~> T,
 ): Array<T> {
   dir.getArrayRaw(key).map(conv)
-}
-
-@wasm_export
-@cpp_export("SKIP_SKUIGL_drawAnimationFrame")
-fun drawAnimationFrame(width: UInt32, height: UInt32): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> drawFrame(context, width, height));
-  SKFS.destroyObstack(pos);
 }
 
 module end;

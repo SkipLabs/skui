@@ -1,9 +1,9 @@
 module FWKClipboard;
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | Copy(content: Content)
-  | Paste(type: Type, target: FWKMessage.Target)
+  | Paste(type: Type, target: SKUIMessage.Target)
 
   fun toJSON(): JSON.Value
   | Copy(content) ->
@@ -30,7 +30,7 @@ base class Command extends FWKMessage.Command {
     | "FWKClipboard.Paste" ->
       Paste(
         Type::fromMime(jso.getString("type")),
-        FWKMessage.Target::fromJSON(jso.get("target")),
+        SKUIMessage.Target::fromJSON(jso.get("target")),
       )
     | _ -> invariant_violation(`Invalid json object ${cl} for UiButton.Command`)
     }

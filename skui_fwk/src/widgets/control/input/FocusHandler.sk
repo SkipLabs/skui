@@ -73,7 +73,7 @@ fun emitMessage(
   send = () -> {
     text = state.getText(context, true);
     msgs = messages(context, text, true);
-    msgs.each(msg -> FWKMessage.emitMessage(context, msg));
+    msgs.each(msg -> SKUIMessage.emitMessage(context, msg));
     !msgs.isEmpty();
   };
   state.getStatus(context, true) match {

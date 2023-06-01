@@ -107,12 +107,12 @@ base class Controller {
     context: mutable SKFS.Context,
     value: String,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
   fun getFocusLostMessages(
     context: mutable SKFS.Context,
     value: String,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 }
 
 base class State {

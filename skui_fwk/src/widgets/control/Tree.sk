@@ -172,23 +172,23 @@ class Tree protected {
   fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
     Some(
       ViewportDef(
-        this.path,
-        None(),
         None(),
         Array[
           ViewportDef(
-            this.path.makeChild("vp"),
-            Some(this.path),
             Some(this.widget(context)),
             Array[],
+            this.path.makeChild("vp"),
+            Some(this.path),
           ),
           ViewportDef(
-            this.path.makeChild("barVp"),
-            None(),
             Some(this.bar),
             Array[],
+            this.path.makeChild("barVp"),
+            None(),
           ),
         ],
+        this.path,
+        None(),
       ),
     );
   }

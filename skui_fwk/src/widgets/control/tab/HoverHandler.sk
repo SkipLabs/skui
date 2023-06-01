@@ -37,11 +37,11 @@ class HoverHandler(
         this.state.emitArmed(context, this.close, false);
         if (this.close) {
           this.controller.getCloseMessages(context, true).each(message ->
-            FWKMessage.emitMessage(context, message)
+            SKUIMessage.emitMessage(context, message)
           )
         } else {
           this.controller.getFireMessages(context, true).each(message ->
-            FWKMessage.emitMessage(context, message)
+            SKUIMessage.emitMessage(context, message)
           )
         };
         true

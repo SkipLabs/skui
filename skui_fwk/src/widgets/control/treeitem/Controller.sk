@@ -14,12 +14,12 @@ class LamController{
   depth: Ui.Getter<Int> = Ui.default(0),
   contextMenuItems: Ui.Getter<Array<UiDropdown.ItemBase>> = Ui.default(Array[]),
   selectMessages: Ui.GetterThree<
-    Array<FWKMessage.Message>,
+    Array<SKUIMessage.Message>,
     Bool,
     Bool,
     Bool,
   > = Ui.defaultThree(Array[]),
-  fireMessages: Ui.GetterOne<Array<FWKMessage.Message>, Bool> = Ui.defaultOne(
+  fireMessages: Ui.GetterOne<Array<SKUIMessage.Message>, Bool> = Ui.defaultOne(
     Array[],
   ),
   dropMessages: (
@@ -28,7 +28,7 @@ class LamController{
     Ui.Path,
     Ui.Drop,
     Bool,
-  ) ~> Array<FWKMessage.Message> = (_, _, _, _, _) ~> Array[],
+  ) ~> Array<SKUIMessage.Message> = (_, _, _, _, _) ~> Array[],
 } extends Controller {
   //
   fun isAllowExpansion(context: mutable SKFS.Context): Bool {
@@ -86,14 +86,14 @@ class LamController{
     toggle: Bool,
     keep: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.selectMessages(context, toggle, keep, isUntracked)
   }
 
   fun getFireMessages(
     context: mutable SKFS.Context,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.fireMessages(context, isUntracked)
   }
 
@@ -103,7 +103,7 @@ class LamController{
     destination: Ui.Path,
     drop: Ui.Drop,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.dropMessages(context, source, destination, drop, isUntracked)
   }
 }
@@ -172,8 +172,8 @@ class DerivedController(
     toggle: Bool,
     keep: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
-    default: Array<FWKMessage.Message> = Array[];
+  ): Array<SKUIMessage.Message> {
+    default: Array<SKUIMessage.Message> = Array[];
     this.get(
       context,
       c -> c.getSelectMessages(context, toggle, keep, isUntracked),
@@ -185,8 +185,8 @@ class DerivedController(
   fun getFireMessages(
     context: mutable SKFS.Context,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
-    default: Array<FWKMessage.Message> = Array[];
+  ): Array<SKUIMessage.Message> {
+    default: Array<SKUIMessage.Message> = Array[];
     this.get(
       context,
       c -> c.getFireMessages(context, isUntracked),
@@ -201,8 +201,8 @@ class DerivedController(
     destination: Ui.Path,
     drop: Ui.Drop,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
-    default: Array<FWKMessage.Message> = Array[];
+  ): Array<SKUIMessage.Message> {
+    default: Array<SKUIMessage.Message> = Array[];
     this.get(
       context,
       c -> c.getDropMessages(context, source, destination, drop, isUntracked),

@@ -158,23 +158,23 @@ class ScrollPane{
   fun getViewportDefinition(_context: mutable SKFS.Context): ?ViewportDef {
     Some(
       ViewportDef(
-        this.path,
-        None(),
         None(),
         Array[
           ViewportDef(
-            this.path.makeChild("vp"),
-            Some(this.path),
             Some(this.viewport),
             Array[],
+            this.path.makeChild("vp"),
+            Some(this.path),
           ),
           ViewportDef(
-            this.path.makeChild("scrollBars"),
-            None(),
             Some(this.bars),
             Array[],
+            this.path.makeChild("scrollBars"),
+            None(),
           ),
         ],
+        this.path,
+        None(),
       ),
     )
   }

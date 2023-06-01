@@ -19,7 +19,7 @@ class HoverHandler(
     mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
-    commands = mutable Vector<FWKMessage.Command>[];
+    commands = mutable Vector<SKUIMessage.Command>[];
     controller = this.textline.controller;
     tcm = controller.getTextCommandsManager(context, true);
     count = mouse.getPrimaryClickCount();

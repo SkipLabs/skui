@@ -51,8 +51,9 @@ extern "C"
   {
     TXT(skTitle, strTitle);
     skui::SKIPEventManager eManager;
-    skui::GLWindowManager manager(environment, wId, x, y, width, height, screen, framePerSecond, &eManager);
-    Display * display = supplier.init(manager);
+    skui::WindowInfo info{x, y, width, height};
+    skui::GLWindowManager manager(environment, wId, screen, framePerSecond, &eManager, [](uint64_t wid, uint64_t cId){});
+    Display * display = supplier.init(manager, &info);
     manager.setTitle(strTitle);
     while (1)
     {

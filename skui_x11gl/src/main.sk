@@ -5,10 +5,13 @@ class Context(handles: Vector<Ui.Handle>)
 class Env(fn: (GL.Ctx, Int, Int) ~> Context)
 
 fun main(): void {
-  available = mutable Vector[];
-  #forEachFunction (@draw, #function, #functionName) {
+  available = mutable Vector[
+    ("rounded", SkuiX11gl.rounded),
+    ("rounded", SkuiX11gl.rectangle),
+  ];
+  /*#forEachFunction (@draw, #function, #functionName) {
     available.push((#functionName.split(".").last(), #function))
-  };
+  };*/
   perform(available);
 }
 

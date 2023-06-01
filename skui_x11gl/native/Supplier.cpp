@@ -13,6 +13,8 @@
 #include <math.h>
 #include <map>
 #include <memory>
+#include <X11/Xcursor/Xcursor.h>
+#include "X11/cursorfont.h"
 
 const long kEventMask = ExposureMask | StructureNotifyMask |
                         KeyPressMask | KeyReleaseMask |
@@ -25,10 +27,51 @@ const long kEventMask = ExposureMask | StructureNotifyMask |
 
 namespace skui
 {
-  Display *WindowSupplier::init(WindowManager &vManager)
+  void WindowSupplier::applyCursor(uint32_t wId, uint32_t cursor) {
+    auto it = this->windows.find(wId);
+    if (it != this->windows.end()) {
+      it->second->applyCursor(this->cursors[cursor]);
+    }
+  }
+
+  void WindowSupplier::sendClientMessage(uint32_t wId, Atom type, uint32_t param1, uint32_t param2) {
+    auto it = this->windows.find(wId);
+    if (it != this->windows.end()) {
+      it->second->sendClientMessage(type, param1, param2);
+    }
+  }
+
+  Display *WindowSupplier::init(WindowManager &vManager, WindowInfo* info)
   {
     XInitThreads();
     auto display = XOpenDisplay(nullptr);
+    this->cursors[0] = XCreateFontCursor(display, XC_arrow);                //NoneCursor // TODO
+    this->cursors[2] = XCreateFontCursor(display, XC_hand2);                //HandCursor
+    this->cursors[3] = XCreateFontCursor(display, XC_hand2);                //OpenHandCursor
+    this->cursors[4] = XCreateFontCursor(display, XC_hand2);                //ClosedHandCursor
+    this->cursors[5] = XCreateFontCursor(display, XC_crosshair);            //CrosshairCursor
+    this->cursors[6] = XCreateFontCursor(display, XC_arrow);                //DisappearCursor // TODO
+    this->cursors[7] = XcursorLibraryLoadCursor(display, "move");           //MoveCursor
+    this->cursors[8] = XCreateFontCursor(display, XC_top_side);             //NorthResizeCursor
+    this->cursors[9] = XCreateFontCursor(display, XC_top_right_corner);     //NorthEastResizeCursor
+    this->cursors[10] = XCreateFontCursor(display, XC_right_side);          //EastResizeCursor
+    this->cursors[11] = XCreateFontCursor(display, XC_bottom_right_corner); //SouthEastResizeCursor
+    this->cursors[12] = XCreateFontCursor(display, XC_bottom_side);         //SouthResizeCursor
+    this->cursors[13] = XCreateFontCursor(display, XC_bottom_left_corner);  //SouthWestResizeCursor
+    this->cursors[14] = XCreateFontCursor(display, XC_left_side);           //WestResizeCursor
+    this->cursors[15] = XCreateFontCursor(display, XC_top_left_corner);     //NorthWestResizeCursor
+    this->cursors[16] = XCreateFontCursor(display, XC_sb_h_double_arrow);   //HorizontalResizeCursor
+    this->cursors[17] = XCreateFontCursor(display, XC_sb_v_double_arrow);   //VerticalResizeCursor
+    this->cursors[18] = XCreateFontCursor(display, XC_xterm);               //TextCursor
+    this->cursors[19] = XCreateFontCursor(display, XC_watch);               //WaitCursor
+    this->cursors[20] = XCreateFontCursor(display, XC_circle);              //ForbiddenCursor
+    this->cursors[21] = XCreateFontCursor(display, XC_plus);                //PlusCursor
+    this->cursors[22] = XCreateFontCursor(display, XC_question_arrow);      //QuestionCursor
+    this->cursors[23] = XcursorLibraryLoadCursor(display, "dnd-copy");      //DnDCopyCursor
+    this->cursors[24] = XcursorLibraryLoadCursor(display, "dnd-link");      //DnDLinkCursor
+    this->cursors[25] = XcursorLibraryLoadCursor(display, "dnd-move");      //DnDMoveCursor
+    this->cursors[26] = XcursorLibraryLoadCursor(display, "dnd-none");      //DnDNoneCursor
+    this->cursors[27] = XcursorLibraryLoadCursor(display, "dnd-ask");       //DnDAskCursor
     auto config = vManager.configuration();
     if (display == nullptr)
     {
@@ -41,8 +84,8 @@ namespace skui
       config.screen = 0;
     }
     auto screen = XScreenOfDisplay(display, config.screen);
-    int width = XWidthOfScreen(screen);
-    int height = XHeightOfScreen(screen);
+    u_int64_t width = XWidthOfScreen(screen);
+    u_int64_t height = XHeightOfScreen(screen);
     auto wId = config.wId;
     // Attempt to create a window that supports GL
     XVisualInfo *fVisualInfo = vManager.initializeDisplay(display, config.screen);
@@ -50,11 +93,17 @@ namespace skui
     XSetWindowAttributes swa;
     swa.colormap = colorMap;
     swa.event_mask = kEventMask;
+    WindowInfo wInfo;
+    if (info != nullptr) {
+      wInfo = *info;
+    } else {
+      wInfo = {0, 0, width, height};
+    }
     auto fWindow = XCreateWindow(
         display,
         RootWindow(display, fVisualInfo->screen),
-        config.x, config.y,
-        config.width, config.height,
+        wInfo.x, wInfo.y,
+        wInfo.width, wInfo.height,
         0, // border width
         fVisualInfo->depth,
         InputOutput,
@@ -279,7 +328,7 @@ namespace skui
     };
   }
 
-  void sendClientMessage(Display *disp, Window window, Atom type, uint32_t param1, uint32_t param2)
+  void sendXClientMessage(Display *disp, Window window, Atom type, uint32_t param1, uint32_t param2)
   {
     if (disp != nullptr)
     {

@@ -48,9 +48,6 @@ export interface Exported {
   I18N_format: (formatPtr: ptr, parameters: ptr) => ptr;
   I18N_textVector: () => ptr;
   I18N_pushText: (vector: ptr, txtPtr: ptr) => void;
-  SKIP_FWKMessage_manageInternalMessage: (msgId: int) => void;
-  SKIP_FWKMessage_manageMessage: (strMsgPointer: ptr) => void;
-  SKIP_FWKMessage_messageFailure: (strMsgPointer: ptr) => void;
   SKIP_createByteArray: (size: int) => ptr;
   SKIP_setByte: (skArray: ptr, index: int, value: int) => ptr;
   SKIP_chillByteArray: (skArray: ptr) => ptr;
@@ -196,23 +193,7 @@ export class Utils {
       );
     }
   }
-  manageInternalMessage = (msgId: int) => {
-    this.runWithGc(() => {
-      this.exports.SKIP_FWKMessage_manageInternalMessage(msgId);
-    });
-  }
-  manageMessage = (msg: string) => {
-    this.runWithGc(() => {
-      let skMessage = this.exportString(msg);
-      this.exports.SKIP_FWKMessage_manageInternalMessage(skMessage);
-    });
-  }
-  messageFailure = (msg: string) => {
-    this.runWithGc(() => {
-      let skMessage = this.exportString(msg);
-      this.exports.SKIP_FWKMessage_messageFailure(skMessage);
-    });
-  }
+  
   etry = (f: ptr, exn_handler: ptr) => {
     this.lastCall = f;
     try {

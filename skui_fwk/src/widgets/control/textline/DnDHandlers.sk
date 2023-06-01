@@ -22,7 +22,7 @@ class DragHandler{
     context: mutable SKFS.Context,
     optInfo: ?(FWK.DropHandler, FWK.TransferMode),
   ): void {
-    commands = mutable Vector<FWKMessage.Command>[];
+    commands = mutable Vector<SKUIMessage.Command>[];
     tcm = this.textline.controller.getTextCommandsManager(context, true);
     commands.push(tcm.getTargetCommand(None()));
     commands.push(tcm.getSetMoveSelectionCommand(false));
@@ -68,7 +68,7 @@ class DropHandler(
     if (optTextPlain.isNone() || !mode.isCopyOrMove()) {
       return None();
     };
-    commands = mutable Vector<FWKMessage.Command>[];
+    commands = mutable Vector<SKUIMessage.Command>[];
     tcm = this.textline.controller.getTextCommandsManager(context, true);
     position = this.textline.getTextPostionFor(
       context,
@@ -103,7 +103,7 @@ class DropHandler(
     dragHandler: FWK.DragHandler,
     transfer: FWK.TransferMode,
   ): void {
-    commands = mutable Vector<FWKMessage.Command>[];
+    commands = mutable Vector<SKUIMessage.Command>[];
     tcm = this.textline.controller.getTextCommandsManager(context, true);
     same = dragHandler match {
     | dh @ DragHandler _ -> this.textline.reference == dh.textline.reference

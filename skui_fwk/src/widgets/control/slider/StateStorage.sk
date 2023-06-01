@@ -101,9 +101,9 @@ class HState(
 
   private fun emit(
     context: mutable SKFS.Context,
-    command: FWKMessage.Command,
+    command: SKUIMessage.Command,
   ): void {
-    FWKMessage.emit(
+    SKUIMessage.emit(
       context,
       statePath,
       this.storage.getDirName().toString(),

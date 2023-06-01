@@ -4,7 +4,6 @@ const path: SKFS.DirName = SKFS.DirName::create("/ui/system/properties/");
 
 const handle: SKFS.IHandle<SKFS.File> = SKFS.IHandle(SKFS.Identity(), path);
 const requiredFocus: SKFS.StrID = SKFS.StrID("required-visible");
-const quitManager: SKFS.StrID = SKFS.StrID("quit-manager");
 const horizontalDirection: SKFS.StrID = SKFS.StrID("horizontal-direction");
 
 class Todo(todo: (mutable SKFS.Context) ~> void) extends SKFS.File {
@@ -18,23 +17,28 @@ class Todo(todo: (mutable SKFS.Context) ~> void) extends SKFS.File {
 }
 
 class QuitManager(manage: Ui.Getter<Bool>) extends SKFS.File
+class ExitManager(exit: Ui.Getter<void>) extends SKFS.File
+
+fun initOnExit(context: mutable SKFS.Context, exit: Ui.Getter<void>): void {
+  context.setGlobal("FWK.Exit", ExitManager(exit))
+}
 
 fun exit(context: mutable SKFS.Context): void {
-  FWKEnv.getWindowId(context, true).each(FWK.close);
+  context.getGlobal("FWK.Exit").map(ExitManager::fromFile).each(m ->
+    m.exit(context)
+  )
 }
 
-fun quit(context: mutable SKFS.Context): void {
+fun quit(context: mutable SKFS.Context, wId: Int): Bool {
   //
-  handle.maybeGet(context, quitManager).map(QuitManager::fromFile) match {
-  | Some(qm) ->
-    if (qm.manage(context)) {
-      exit(context)
-    }
-  | _ -> exit(context)
-  }
+  context
+    .getGlobal(`FWK.Quit[${wId}]`)
+    .map(QuitManager::fromFile)
+    .map(m -> m.manage(context))
+    .default(true)
 }
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   fun toJSON(): JSON.Value
   | Repeat(toRepeat, optRepeatOn, count) ->
     JSON.Object(
@@ -100,8 +104,8 @@ fun repeat(
 }
 
 class Messages()
-  extends FWKMessage.Support
-  uses FWKMessage.WithUpdate<Command> {
+  extends SKUIMessage.Support
+  uses SKUIMessage.WithUpdate<Command> {
   fun init(_context: mutable SKFS.Context): void {
     void
   }
@@ -110,7 +114,7 @@ class Messages()
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 
@@ -122,7 +126,7 @@ class Messages()
   ): void {
     command match {
     | repeatable @ Repeat _ ->
-      FWKMessage.repeat(
+      SKUIMessage.repeat(
         context,
         name,
         scope,
@@ -155,7 +159,7 @@ fun emit(
   asyncMode: Bool = false,
   optDelay: ?Int = None(),
 ): void {
-  FWKMessage.emit(
+  SKUIMessage.emit(
     context,
     "system",
     "properties",
@@ -165,24 +169,8 @@ fun emit(
   );
 }
 
-fun message(command: Command): FWKMessage.Message {
-  FWKMessage.Message("system", "properties", command);
-}
-
-fun unsafeEmit(
-  context: readonly SKFS.Context,
-  command: Command,
-  asyncMode: Bool = false,
-  optDelay: ?Int = None(),
-): void {
-  FWKMessage.unsafeEmit(
-    context,
-    "system",
-    "properties",
-    command,
-    asyncMode,
-    optDelay,
-  );
+fun message(command: Command): SKUIMessage.Message {
+  SKUIMessage.Message("system", "properties", command);
 }
 
 class TPath(path: Ui.Path, tick: SKFS.Tick) extends SKFS.File {
@@ -228,8 +216,9 @@ fun setHorizontalDirection(
 fun setQuitManager(
   context: mutable SKFS.Context,
   manage: Ui.Getter<Bool>,
+  wId: Int,
 ): void {
-  handle.write(context, quitManager, QuitManager(manage))
+  handle.write(context, SKFS.StrID(`quit-manager${wId}`), QuitManager(manage))
 }
 
 module end;

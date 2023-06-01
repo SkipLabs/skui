@@ -1,7 +1,7 @@
 module UiMonospace;
 
 type BoolMessages = (mutable SKFS.Context, Bool, Bool) ~> Array<
-  FWKMessage.Message,
+  SKUIMessage.Message,
 >;
 const doNothing: BoolMessages = (_ctx, _v, _iu) ~> Array[];
 
@@ -96,7 +96,7 @@ class LamController{
     context: mutable SKFS.Context,
     value: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.editingMessages(context, value, isUntracked)
   }
 

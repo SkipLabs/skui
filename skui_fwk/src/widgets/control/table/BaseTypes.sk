@@ -174,21 +174,21 @@ base class Controller {
     context: mutable SKFS.Context,
     selections: Array<String>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 
   fun getFireMessages(
     context: mutable SKFS.Context,
     optCurrent: ?String,
     selections: Array<String>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 
   fun getSortMessages(
     context: mutable SKFS.Context,
     column: String,
     sort: Sort,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 }
 
 base class State {

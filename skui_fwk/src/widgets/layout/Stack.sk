@@ -142,8 +142,6 @@ class Stack protected {
   fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
     Some(
       ViewportDef(
-        this.path,
-        None(),
         None(),
         this.controller.all(context).map(wdg -> {
           childrenVps = wdg
@@ -151,12 +149,14 @@ class Stack protected {
             .map(vp -> Array[vp])
             .default(Array[]);
           ViewportDef(
-            this.path.makeChild("vps").add(wdg.path),
-            None(),
             Some(wdg),
             childrenVps,
+            this.path.makeChild("vps").add(wdg.path),
+            None(),
           )
         }),
+        this.path,
+        None(),
       ),
     );
   }

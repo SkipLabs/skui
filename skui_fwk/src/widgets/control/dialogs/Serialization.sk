@@ -98,7 +98,7 @@ extension base class Kind extends JSONValue {
     | "UiDialogs.Question" ->
       Question{
         text => Text::fromJSON(jso.get("text")),
-        target => FWKMessage.Target::fromJSON(jso.get("target")),
+        target => SKUIMessage.Target::fromJSON(jso.get("target")),
         type_ => QType::fromJSON(jso.get("type")),
         optTitle => jso.maybeGet("title").map(Text::fromJSON),
         autoClose => jso.getBool("autoClose"),
@@ -106,7 +106,7 @@ extension base class Kind extends JSONValue {
     | "UiDialogs.Input" ->
       Input{
         message => Text::fromJSON(jso.get("message")),
-        target => FWKMessage.Target::fromJSON(jso.get("target")),
+        target => SKUIMessage.Target::fromJSON(jso.get("target")),
         optTitle => jso.maybeGet("title").map(Text::fromJSON),
         autoClose => jso.getBool("autoClose"),
         settings => Settings::fromJSON(jso.get("settings")),

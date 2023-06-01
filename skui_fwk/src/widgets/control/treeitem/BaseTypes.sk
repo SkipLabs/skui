@@ -24,12 +24,12 @@ base class Controller extends SKFS.UserData, SKFS.File {
     toggle: Bool,
     keep: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 
   fun getFireMessages(
     context: mutable SKFS.Context,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 
   fun getDropMessages(
     context: mutable SKFS.Context,
@@ -37,7 +37,7 @@ base class Controller extends SKFS.UserData, SKFS.File {
     destination: Ui.Path,
     drop: Ui.Drop,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 }
 
 base class State {

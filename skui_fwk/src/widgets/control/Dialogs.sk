@@ -78,7 +78,7 @@ class Dialogs protected {
   fun confirm(
     context: mutable SKFS.Context,
     text: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
     autoClose: Bool = true,
@@ -92,7 +92,7 @@ class Dialogs protected {
   fun input(
     context: mutable SKFS.Context,
     message: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     optTitle: ?Text = None(),
     autoClose: Bool = true,
     settings: UiDialogs.Settings = UiDialogs.Settings{},

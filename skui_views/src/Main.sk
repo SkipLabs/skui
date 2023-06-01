@@ -1,0 +1,112 @@
+module SkuiViews;
+
+const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/views/");
+
+fun initUiWidget(
+  context: mutable SKFS.Context,
+  wId: Int,
+  getter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+): void {
+  FWKEnv.init(context);
+  context.initFontSupport();
+  context.initIconSupport();
+  support: Ui.DrawableSupport = SKUIGL.DrawableSupport();
+  context.initTextSupport(support);
+  root = UiRoot.HStorage::create(context, SKFS.DirName::create("/ui/root/"));
+  context.setGlobal("FWK.Root", root);
+  windowHdl = initSizeManager(context);
+  SystemProperties.init(context);
+  Ui.init(context);
+  FWKPipeline.initPipeline(context, getter, windowHdl, root, support);
+  context.!optPreOnChanged = Some(_ctx ~> FWK.update(uint32(wId)));
+  context.clearProfile();
+}
+
+fun initSizeManager(context: mutable SKFS.Context): SKFS.EHandle<UiEvent.Size> {
+  windowHdl = context.makeDir(
+    UiEvent.Size::fromFile,
+    SKFS.DirName::create("/ui/window/"),
+  );
+  iWindowHdl = SKFS.toIHandle(windowHdl);
+  context.setGlobal(
+    "FWK.Window.Size",
+    FWK.Sizer((ctx, wId, w, h) ~>
+      iWindowHdl.write(ctx, SKFS.IID(wId), UiEvent.Size(w, h))
+    ),
+  );
+  windowHdl;
+}
+
+fun main(): void {
+  available = mutable Vector[SKUIViews.buttons()];
+  /*#forEachFunction (@skuiview, #function, #functionName) {
+    available.push(#function())
+  };*/
+  perform(available);
+}
+
+fun perform(
+  available: readonly Vector<
+    (Cli.Command, Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>),
+  >,
+): void {
+  command = Cli.Command("skuiviews")
+    .about("Skip UI's Viewer")
+    .arg(
+      Cli.BoolArg("version")
+        .short("V")
+        .long("version")
+        .about("Print version info and exit"),
+    )
+    .arg(
+      Cli.StringArg("screen")
+        .short("s")
+        .long("screen")
+        .about("The screen where to open the window")
+        .default("0"),
+    )
+    .arg(
+      Cli.StringArg("fps")
+        .about("The frame per second refresh rate")
+        .default("60"),
+    )
+    .help();
+  available.each(v -> !command = command.subcommand(v.i0));
+  args = command.parseArgs();
+  if (args.getBool("version")) {
+    print_string("skuix11gl " + SkargoVersion.kVersion);
+  } else {
+    args.maybeGetSubcommand() match {
+    | Some(subcmd) ->
+      available.filter(v -> v.i0.name == subcmd).maybeGet(0) match {
+      | Some((cmd, fn)) ->
+        screen = args.getString("screen").toIntOption().default(0);
+        fps = args.getString("fps").toIntOption().default(60);
+        if (SkargoVersion.kTarget.startsWith("wasm32")) {
+          void
+        } else {
+          wId = 0;
+          title = cmd._about match {
+          | Some(t) -> t
+          | _ -> command._about.fromSome()
+          };
+          _ = SKFS.initMainContext(SKFS.Context{});
+          SKFS.Context::withGc(context ~> {
+            initUiWidget(context, wId, fn(args));
+            context.initPre();
+          });
+          SKUIX11.launch(wId, title, screen, fps);
+        }
+      | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
+      }
+    | None() -> print_string(Cli.usage(args.cmd, true))
+    }
+  }
+}
+
+@cpp_export("SKIP_SkuiViews_update")
+fun update(): void {
+  SKFS.Context::withoutGc(context ~> context.updateIfRoot());
+}
+
+module end;

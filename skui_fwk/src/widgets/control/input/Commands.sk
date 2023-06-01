@@ -10,7 +10,7 @@ base class Executable extends Ui.Executable {
   | All(value: Vector<Executable>)
 }
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | SetHover(value: Bool)
   | SetArmed(value: Bool)

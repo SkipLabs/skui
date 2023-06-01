@@ -528,30 +528,30 @@ class Monospace protected {
       optNumbers.each(nums ->
         vps.push(
           ViewportDef(
-            this.path.makeChild("numsVp"),
-            Some(this.path),
             Some(nums),
             Array[],
+            this.path.makeChild("numsVp"),
+            Some(this.path),
           ),
         )
       );
       vps.push(
         ViewportDef(
-          this.path.makeChild("vp"),
-          Some(this.path),
           Some(this.widget(context)),
           Array[],
+          this.path.makeChild("vp"),
+          Some(this.path),
         ),
       );
       vps.push(
         ViewportDef(
-          this.path.makeChild("barVp"),
-          None(),
           Some(this.bars),
           Array[],
+          this.path.makeChild("barVp"),
+          None(),
         ),
       );
-      Some(ViewportDef(this.path, None(), None(), vps.toArray()))
+      Some(ViewportDef(None(), vps.toArray(), this.path, None()))
     }
   }
 

@@ -21,7 +21,7 @@ base class Change {
   | Clear()
 }
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | Set(key: JSONValue, value: Change)
   | SetAll(values: Array<Set>)

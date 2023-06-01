@@ -5,7 +5,7 @@ fun write(context: mutable SKFS.Context, key: JSONValue, value: Change): void;
 
 class Messages(
 property: Property,
-) extends FWKMessage.Support uses FWKMessage.WithUpdate<Command> {
+) extends SKUIMessage.Support uses SKUIMessage.WithUpdate<Command> {
 //
 static fun fromFile(obj: SKFS.File): this {
 obj match {
@@ -22,7 +22,7 @@ protected fun convert(message: JSON.Value): Command {
 Command::fromJSON(message)
 }
 
-protected fun convertCmd(command: FWKMessage.Command): Command {
+protected fun convertCmd(command: SKUIMessage.Command): Command {
 command as Command _;
 }
 

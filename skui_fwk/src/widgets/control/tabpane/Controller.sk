@@ -21,10 +21,10 @@ class LamController{
   minWidth: mutable SKFS.Context ~> ?Int = _ctx ~> None(),
   maxWidth: mutable SKFS.Context ~> ?Int = _ctx ~> None(),
   changeMessages: (mutable SKFS.Context, String, Bool, Bool) ~> Array<
-    FWKMessage.Message,
+    SKUIMessage.Message,
   > = (_ctx, _value, _selected, _iu) ~> Array[],
   closeMessages: (mutable SKFS.Context, Array<String>, Bool) ~> Array<
-    FWKMessage.Message,
+    SKUIMessage.Message,
   > = (_ctx, _value, _iu) ~> Array[],
 } extends Controller {
   //
@@ -101,7 +101,7 @@ class LamController{
     tab: String,
     selected: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.changeMessages(context, tab, selected, isUntracked)
   }
 
@@ -109,7 +109,7 @@ class LamController{
     context: mutable SKFS.Context,
     tabs: Array<String>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.closeMessages(context, tabs, isUntracked)
   }
 }

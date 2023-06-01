@@ -5,7 +5,7 @@ base class Executable extends Ui.Executable {
   | Init()
 }
 
-base class Command extends FWKMessage.Command {}
+base class Command extends SKUIMessage.Command {}
 
 base class ExecCommand extends Command, Executable {
   children =

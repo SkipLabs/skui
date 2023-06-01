@@ -20,7 +20,7 @@ trait WithViewports {
     vector.size() match {
     | 0 -> None()
     | 1 -> Some(vector.first())
-    | _ -> Some(ViewportDef(this.getPath(), None(), None(), vector.toArray()))
+    | _ -> Some(ViewportDef(None(), vector.toArray(), this.getPath(), None()))
     }
   }
 }
@@ -51,8 +51,8 @@ trait ScrollingState {
   protected fun getHandle(): SKFS.EHandle<SKFS.File>;
   protected fun getComputed(): SKFS.EHandle<SKFS.File>;
   protected fun getStatePath(): String;
-  protected fun setScrollCmd(?Ui.Scroll): FWKMessage.Command;
-  protected fun manageScrollingCmd(Int, SKFS.Tick): FWKMessage.Command;
+  protected fun setScrollCmd(?Ui.Scroll): SKUIMessage.Command;
+  protected fun manageScrollingCmd(Int, SKFS.Tick): SKUIMessage.Command;
 
   fun getScroll(context: mutable SKFS.Context): ?Ui.Scroll {
     conv: SKFS.File ~> Ui.Scroll = f ~>
@@ -84,9 +84,9 @@ trait ScrollingState {
 
   protected fun emit(
     context: mutable SKFS.Context,
-    command: FWKMessage.Command,
+    command: SKUIMessage.Command,
   ): void {
-    FWKMessage.emit(
+    SKUIMessage.emit(
       context,
       this.getStatePath(),
       this.getHandle().getDirName().toString(),

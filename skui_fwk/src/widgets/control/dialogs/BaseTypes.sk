@@ -94,14 +94,14 @@ base class Kind extends SKFS.File {
   | Alert{text: Text, optTitle: ?Text = None()}
   | Question{
     text: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     type_: QType = YesNo(),
     optTitle: ?Text = None(),
     autoClose: Bool = true,
   }
   | Input{
     message: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     optTitle: ?Text = None(),
     autoClose: Bool = true,
     settings: Settings = Settings{},
@@ -121,21 +121,21 @@ base class Kind extends SKFS.File {
       path.makeChild("alert"),
       text,
       ctx ~>
-        FWKMessage.emitMessage(
+        SKUIMessage.emitMessage(
           ctx,
-          FWKMessage.Message(module_, scope, Close(id)),
+          SKUIMessage.Message(module_, scope, Close(id)),
         ),
       optTitle,
     )
   | Question{text, target, type_, optTitle, autoClose} ->
-    closeMessage = FWKMessage.Message(module_, scope, Close(id));
+    closeMessage = SKUIMessage.Message(module_, scope, Close(id));
     confirm(
       context,
       path.makeChild("confirm"),
       text,
       type_,
       ctx ~>
-        FWKMessage.emitMessage(
+        SKUIMessage.emitMessage(
           ctx,
           target.toMessage(
             if (autoClose) Map["value" => JSON.Bool(true)] else {
@@ -144,7 +144,7 @@ base class Kind extends SKFS.File {
           ),
         ),
       ctx ~>
-        FWKMessage.emitMessage(
+        SKUIMessage.emitMessage(
           ctx,
           target.toMessage(
             if (autoClose) Map["value" => JSON.Bool(false)] else {
@@ -152,12 +152,12 @@ base class Kind extends SKFS.File {
             },
           ),
         ),
-      Some(ctx ~> FWKMessage.emitMessage(ctx, closeMessage)),
+      Some(ctx ~> SKUIMessage.emitMessage(ctx, closeMessage)),
       optTitle,
       autoClose,
     )
   | Input{message, target, optTitle, autoClose, settings} ->
-    closeMessage = FWKMessage.Message(module_, scope, Close(id));
+    closeMessage = SKUIMessage.Message(module_, scope, Close(id));
     input(
       context,
       path.makeChild("input"),
@@ -166,7 +166,7 @@ base class Kind extends SKFS.File {
       (ctx, optStr) ~>
         optStr match {
         | Some(value) ->
-          FWKMessage.emitMessage(
+          SKUIMessage.emitMessage(
             ctx,
             target.toMessage(
               if (autoClose) Map["value" => JSON.String(value)] else {
@@ -178,7 +178,7 @@ base class Kind extends SKFS.File {
             ),
           )
         | _ ->
-          FWKMessage.emitMessage(
+          SKUIMessage.emitMessage(
             ctx,
             target.toMessage(
               if (autoClose) Map[] else {
@@ -188,14 +188,14 @@ base class Kind extends SKFS.File {
           )
         },
       if (autoClose) {
-        ctx ~> FWKMessage.emitMessage(ctx, closeMessage)
+        ctx ~> SKUIMessage.emitMessage(ctx, closeMessage)
       } else {
         _ctx ~> void
       },
       optTitle,
     )
   | Custom(dirName, key) ->
-    closeMessage = FWKMessage.Message(module_, scope, Close(id));
+    closeMessage = SKUIMessage.Message(module_, scope, Close(id));
     handle = SKFS.EHandle<UiDialog.Builder>(UiDialog.Builder::forFile, dirName);
     handle.get(context, SKFS.StrID(key)).build(context, closeMessage)
 }
@@ -219,23 +219,23 @@ base class State extends SKFS.File {
   fun openAlertMessage(
     text: Text,
     optTitle: ?Text = None(),
-  ): FWKMessage.Message;
+  ): SKUIMessage.Message;
 
   fun openConfirmMessage(
     text: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     autoClose: Bool = true,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
-  ): FWKMessage.Message;
+  ): SKUIMessage.Message;
 
   fun openInputMessage(
     message: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     autoClose: Bool = true,
     optTitle: ?Text = None(),
     settings: Settings = Settings{},
-  ): FWKMessage.Message;
+  ): SKUIMessage.Message;
 }
 
 base class Storage {

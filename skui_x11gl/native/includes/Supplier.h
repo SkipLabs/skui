@@ -10,6 +10,15 @@
 namespace skui
 {
 
+
+struct WindowInfo final
+{
+  u_int64_t x;
+  u_int64_t y;
+  u_int64_t width;
+  u_int64_t height;
+};
+
 struct MouseLocation
 {
   bool changed;
@@ -51,14 +60,16 @@ class WindowSupplier
 {
 public:
   bool handleWindowEvents(Display * display);
-  Display* init(WindowManager& vManager);
+  Display* init(WindowManager& vManager, WindowInfo* info);
   void sendCloseMessage(uint32_t wId);
+  void applyCursor(uint32_t wId, uint32_t cursor);
+  void sendClientMessage(uint32_t wId, Atom type, uint32_t param1, uint32_t param2);
 
 private:
   std::map<uint64_t, WindowManager*> windows;
+  std::map<u_int64_t, Cursor> cursors;
 };
 
-void sendClientMessage(Display *disp, Window window, Atom type, uint32_t param1, uint32_t param2);
 void sendExposeMessage(Display *disp, Window fWindow);
 
 }

@@ -14,18 +14,18 @@ class LamController{
   tooltip: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
   badge: mutable SKFS.Context ~> ?Ui.Badge = _ctx ~> None(),
   progress: mutable SKFS.Context ~> ?Ui.Progress = _ctx ~> None(),
-  fireMessage: (mutable SKFS.Context, Bool) ~> Array<FWKMessage.Message> = (
+  fireMessage: (mutable SKFS.Context, Bool) ~> Array<SKUIMessage.Message> = (
     _ctx,
     _iu,
   ) ~>
     Array[],
-  closeMessages: (mutable SKFS.Context, Bool) ~> Array<FWKMessage.Message> = (
+  closeMessages: (mutable SKFS.Context, Bool) ~> Array<SKUIMessage.Message> = (
     _ctx,
     _iu,
   ) ~>
     Array[],
   dropMessages: (mutable SKFS.Context, String, String, Bool, Bool) ~> Array<
-    FWKMessage.Message,
+    SKUIMessage.Message,
   > = (_ctx, _src, _dst, _b, _iu) ~> Array[],
 } extends Controller {
   //
@@ -84,14 +84,14 @@ class LamController{
   fun getFireMessages(
     context: mutable SKFS.Context,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.fireMessage(context, isUntracked)
   }
 
   fun getCloseMessages(
     context: mutable SKFS.Context,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.closeMessages(context, isUntracked)
   }
   fun getDropMessages(
@@ -100,7 +100,7 @@ class LamController{
     destination: String,
     before: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.dropMessages(context, source, destination, before, isUntracked)
   }
 }
@@ -172,8 +172,8 @@ class DerivedController(
   fun getFireMessages(
     context: mutable SKFS.Context,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
-    default: Array<FWKMessage.Message> = Array[];
+  ): Array<SKUIMessage.Message> {
+    default: Array<SKUIMessage.Message> = Array[];
     this.get(
       context,
       c -> c.getFireMessages(context, isUntracked),
@@ -185,8 +185,8 @@ class DerivedController(
   fun getCloseMessages(
     context: mutable SKFS.Context,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
-    default: Array<FWKMessage.Message> = Array[];
+  ): Array<SKUIMessage.Message> {
+    default: Array<SKUIMessage.Message> = Array[];
     this.get(
       context,
       c -> c.getCloseMessages(context, isUntracked),
@@ -201,8 +201,8 @@ class DerivedController(
     destination: String,
     before: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
-    default: Array<FWKMessage.Message> = Array[];
+  ): Array<SKUIMessage.Message> {
+    default: Array<SKUIMessage.Message> = Array[];
     this.get(
       context,
       c -> c.getDropMessages(context, source, destination, before, isUntracked),

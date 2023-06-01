@@ -400,7 +400,7 @@ class HState(
     FWKClipboard.paste(
       context,
       FWKClipboard.Plain(),
-      FWKMessage.Target::forClass(
+      SKUIMessage.Target::forClass(
         statePath,
         this.storage.getDirName().toString(),
         "UiMonospace.Paste",
@@ -501,9 +501,9 @@ class HState(
 
   private fun emit(
     context: mutable SKFS.Context,
-    command: FWKMessage.Command,
+    command: SKUIMessage.Command,
   ): void {
-    FWKMessage.emit(
+    SKUIMessage.emit(
       context,
       statePath,
       this.storage.getDirName().toString(),
@@ -512,11 +512,11 @@ class HState(
   }
 
   fun emitOpenGoToLine(context: mutable SKFS.Context): void {
-    FWKMessage.emitMessage(
+    SKUIMessage.emitMessage(
       context,
       context.openInputMessage(
         !"What is the line number?",
-        FWKMessage.Target::forClass(
+        SKUIMessage.Target::forClass(
           statePath,
           this.storage.getDirName().toString(),
           "UiMonospace.GoToLine",
@@ -539,35 +539,35 @@ class TextCommandsManager(state: HState) extends Ui.TextCommandsManager {
     SystemProperties.setRequireFocus(context, this.state.path);
   }
 
-  fun getSelectToPosCommand(position: Ui.Position): FWKMessage.Command {
+  fun getSelectToPosCommand(position: Ui.Position): SKUIMessage.Command {
     SelectTo(TPos(Some(position)))
   }
 
-  fun getGoToPosCommand(position: Ui.Position): FWKMessage.Command {
+  fun getGoToPosCommand(position: Ui.Position): SKUIMessage.Command {
     GoTo(TPos(Some(position)))
   }
 
-  fun getSetMoveSelectionCommand(move: Bool): FWKMessage.Command {
+  fun getSetMoveSelectionCommand(move: Bool): SKUIMessage.Command {
     SetMoveSelection(move)
   }
 
-  fun getSetArmedCommand(armed: Bool): FWKMessage.Command {
+  fun getSetArmedCommand(armed: Bool): SKUIMessage.Command {
     SetArmed(armed)
   }
 
-  fun getSelectGroupCommand(): FWKMessage.Command {
+  fun getSelectGroupCommand(): SKUIMessage.Command {
     SelectTo(TGroup(None()))
   }
 
-  fun getSelectLineCommand(): FWKMessage.Command {
+  fun getSelectLineCommand(): SKUIMessage.Command {
     SelectTo(TInLine(None()))
   }
 
-  fun getSelectAllCommand(): FWKMessage.Command {
+  fun getSelectAllCommand(): SKUIMessage.Command {
     SelectTo(TAll())
   }
 
-  fun getDeleteSelectionCommand(): FWKMessage.Command {
+  fun getDeleteSelectionCommand(): SKUIMessage.Command {
     DeleteTo(TPos(None()))
   }
 
@@ -575,17 +575,17 @@ class TextCommandsManager(state: HState) extends Ui.TextCommandsManager {
     str: String,
     ignoreSelection: Bool,
     position: Ui.Position,
-  ): FWKMessage.Command {
+  ): SKUIMessage.Command {
     Insert(str, ignoreSelection, Some(position))
   }
 
-  fun getTargetCommand(optPosition: ?Ui.Position): FWKMessage.Command {
+  fun getTargetCommand(optPosition: ?Ui.Position): SKUIMessage.Command {
     DnDTarget(optPosition)
   }
 
   fun emitAll(
     context: mutable SKFS.Context,
-    commands: readonly Vector<FWKMessage.Command>,
+    commands: readonly Vector<SKUIMessage.Command>,
   ): void {
     this.state.emitAll(context, commands.map(cmd -> cmd as Command _));
   }
@@ -876,7 +876,7 @@ fun init(
               caretVisibleTimeProp,
               SKFS.IntFile(context.tick.value),
             );
-            FWKMessage.emit(
+            SKUIMessage.emit(
               context,
               statePath,
               dirName.toString(),

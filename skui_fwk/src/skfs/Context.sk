@@ -18,7 +18,7 @@ extension class Context {
   readonly fun openAlertMessage(
     text: Text,
     optTitle: ?Text = None(),
-  ): FWKMessage.Message {
+  ): SKUIMessage.Message {
     state = this.getGlobal("UiDialogs.State")
       .map(f ~> f as UiDialogs.State _)
       .fromSome();
@@ -27,11 +27,11 @@ extension class Context {
 
   readonly fun openConfirmMessage(
     text: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     autoClose: Bool = true,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
-  ): FWKMessage.Message {
+  ): SKUIMessage.Message {
     state = this.getGlobal("UiDialogs.State")
       .map(f ~> f as UiDialogs.State _)
       .fromSome();
@@ -40,12 +40,12 @@ extension class Context {
 
   readonly fun openInputMessage(
     message: Text,
-    target: FWKMessage.Target,
+    target: SKUIMessage.Target,
     autoClose: Bool = true,
     optTitle: ?Text = None(),
     settings: UiDialogs.Settings = UiDialogs.Settings{},
     //optSupplier: ?UiDialogs.InputSupplier = None(),
-  ): FWKMessage.Message {
+  ): SKUIMessage.Message {
     state = this.getGlobal("UiDialogs.State")
       .map(f ~> f as UiDialogs.State _)
       .fromSome();

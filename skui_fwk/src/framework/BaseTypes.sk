@@ -332,7 +332,7 @@ class SourcedWidget(
 
   fun toMenu(
     optOffset: ?Geometry.Offset,
-    closeMessage: FWKMessage.Message,
+    closeMessage: SKUIMessage.Message,
   ): this {
     path = this.optPath.map(p -> p.makeChild("@contextmenu")).default(
       Ui.Path("@contextmenu"),
@@ -357,7 +357,7 @@ class SourcedWidget(
           UiMenuLayout.LamController{
             widget => _ctx ~> menu,
             offset => _ctx ~> offset,
-            closeMessage => Ui.defaultOne<FWKMessage.Message, Bool>(
+            closeMessage => Ui.defaultOne<SKUIMessage.Message, Bool>(
               closeMessage,
             ),
           },

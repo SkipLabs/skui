@@ -11,7 +11,7 @@ const iHandle: SKFS.IHandle<Pointer> = SKFS.IHandle(
 const storedId: SKFS.BaseName = SKFS.StrID("stored");
 const mainId: SKFS.BaseName = SKFS.StrID("main");
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | SetCursor(cursor: Ui.Cursor)
   | StoreCursor()
@@ -58,8 +58,8 @@ class Pointer(pointer: Ui.Pointer = Ui.Pointer()) extends SKFS.File {
 }
 
 class Messages()
-  extends FWKMessage.Support
-  uses FWKMessage.WithUpdate<Command> {
+  extends SKUIMessage.Support
+  uses SKUIMessage.WithUpdate<Command> {
   //
   fun init(_context: mutable SKFS.Context): void {
     void
@@ -69,7 +69,7 @@ class Messages()
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 
@@ -101,6 +101,7 @@ class Messages()
   }
 }
 
+@skuiinitializer
 fun init(context: mutable SKFS.Context): void {
   _ = context.makeDir(
     Pointer::fromFile,
@@ -111,7 +112,7 @@ fun init(context: mutable SKFS.Context): void {
 }
 
 fun emit(context: mutable SKFS.Context, command: Command): void {
-  FWKMessage.emit(context, "system", "cursor", command);
+  SKUIMessage.emit(context, "system", "cursor", command);
 }
 
 fun setCursor(context: mutable SKFS.Context, cursor: Ui.Cursor): void {

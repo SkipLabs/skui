@@ -8,7 +8,7 @@ base class Repeat(
   ctrl: Bool,
   shift: Bool,
   alt: Bool,
-) extends FWKMessage.Repeat, JSONValue {
+) extends SKUIMessage.Repeat, JSONValue {
   children =
   | KeysRepeat(keys: Array<KeyDown>)
   | MouseRepeat(buttons: Array<MouseDown>)
@@ -117,12 +117,14 @@ fun isScrolling(context: mutable SKFS.Context): Bool {
   FWKMouse.getMouse(context).isScrolling()
 }
 
-class Sizer(value: (mutable SKFS.Context, Int, Int) ~> void) extends SKFS.File {
+class Sizer(
+  value: (mutable SKFS.Context, Int, Int, Int) ~> void,
+) extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Sizer _ -> x
-    | _ -> invariant_violation("Must be FWK.Sizer")
+    | _ -> SKFS.cast_violation("FWK.Sizer", obj)
     }
   }
 }

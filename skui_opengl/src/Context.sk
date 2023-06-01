@@ -54,15 +54,6 @@ class Ctx(id: UInt32) extends SKFS.File uses Hashable, HasClassName {
     )
   }
 
-  fun saveTexture(
-    path: String,
-    ref: TextureRef,
-    width: UInt32,
-    height: UInt32,
-  ): Bool {
-    saveTexture(path, ref, width, height, this.id)
-  }
-
   fun bindTexture2D(texture: TextureRef): void {
     bindTexture2D(texture, this.id)
   }

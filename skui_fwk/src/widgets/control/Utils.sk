@@ -91,24 +91,24 @@ fun controllerDirName(path: Ui.Path): SKFS.DirName {
 
 base class TextCommandsManager {
   fun manageAcquire(context: mutable SKFS.Context): void;
-  fun getSelectToPosCommand(position: Position): FWKMessage.Command;
-  fun getGoToPosCommand(position: Position): FWKMessage.Command;
-  fun getSetMoveSelectionCommand(move: Bool): FWKMessage.Command;
-  fun getSetArmedCommand(armed: Bool): FWKMessage.Command;
-  fun getSelectGroupCommand(): FWKMessage.Command;
-  fun getSelectLineCommand(): FWKMessage.Command;
-  fun getSelectAllCommand(): FWKMessage.Command;
-  fun getDeleteSelectionCommand(): FWKMessage.Command;
+  fun getSelectToPosCommand(position: Position): SKUIMessage.Command;
+  fun getGoToPosCommand(position: Position): SKUIMessage.Command;
+  fun getSetMoveSelectionCommand(move: Bool): SKUIMessage.Command;
+  fun getSetArmedCommand(armed: Bool): SKUIMessage.Command;
+  fun getSelectGroupCommand(): SKUIMessage.Command;
+  fun getSelectLineCommand(): SKUIMessage.Command;
+  fun getSelectAllCommand(): SKUIMessage.Command;
+  fun getDeleteSelectionCommand(): SKUIMessage.Command;
   fun getInsertCommand(
     str: String,
     ignoreSelection: Bool,
     position: Ui.Position,
-  ): FWKMessage.Command;
-  fun getTargetCommand(optPosition: ?Position): FWKMessage.Command;
+  ): SKUIMessage.Command;
+  fun getTargetCommand(optPosition: ?Position): SKUIMessage.Command;
 
   fun emitAll(
     context: mutable SKFS.Context,
-    commands: readonly Vector<FWKMessage.Command>,
+    commands: readonly Vector<SKUIMessage.Command>,
   ): void;
 }
 

@@ -67,15 +67,6 @@ class Texture extends WithExtern<TextureRef>, SKFS.File {
     this.ctx.bindTexture2D(TextureRef::noTexture)
   }
 
-  fun save(path: String, width: Int, height: Int): Bool {
-    this.ctx.saveTexture(
-      path,
-      this.ref,
-      UInt32::truncate(width),
-      UInt32::truncate(height),
-    )
-  }
-
   fun copy(
     toCopy: Texture,
     srcX: Int,

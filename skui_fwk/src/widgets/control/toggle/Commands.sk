@@ -1,6 +1,6 @@
 module UiToggle;
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | SetHover(hover: Bool)
   | SetArmed(armed: Bool)

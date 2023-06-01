@@ -230,10 +230,10 @@ class Table protected {
     if (valid) {
       Some(
         ViewportDef(
-          this.path.makeChild("vp"),
-          Some(this.path),
           Some(this.viewport),
           Array[],
+          this.path.makeChild("vp"),
+          Some(this.path),
         ),
       )
     } else {

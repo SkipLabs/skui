@@ -8,7 +8,7 @@ const mfHandle: SKFS.IHandle<UiEvent.MouseFile> = SKFS.IHandle(
   statePath,
 );
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | Next()
 
@@ -182,41 +182,13 @@ class Wheel(delta: Int) extends Event {
   }
 }
 
-class Messages()
-  extends FWKMessage.Support
-  uses FWKMessage.WithUpdate<Command> {
-  fun init(context: mutable SKFS.Context): void {
-    _ = context.makeDir(
-      UiEvent.MouseFile::fromFile,
-      statePath,
-      Array[(propKey, UiEvent.MouseFile(UiEvent.Mouse::new(), SKFS.Tick(0)))],
-    );
-  }
-
-  protected fun convert(message: JSON.Value): Command {
-    Command::fromJSON(message)
-  }
-
-  protected fun convertCmd(command: FWKMessage.Command): Command {
-    command as Command _;
-  }
-
-  protected fun execute(
-    context: mutable SKFS.Context,
-    _name: String,
-    _scope: String,
-    command: Command,
-  ): void {
-    execute(context, command)
-  }
-}
-
+@skuiinitializer
 fun init(context: mutable SKFS.Context): void {
-  context.registerMessageSupport("system", "mouse", Messages());
-}
-
-fun emit(context: mutable SKFS.Context, command: Command): void {
-  FWKMessage.emit(context, "system", "mouse", command)
+  _ = context.makeDir(
+    UiEvent.MouseFile::fromFile,
+    statePath,
+    Array[(propKey, UiEvent.MouseFile(UiEvent.Mouse::new(), SKFS.Tick(0)))],
+  );
 }
 
 fun execute(context: mutable SKFS.Context, command: Command): void {

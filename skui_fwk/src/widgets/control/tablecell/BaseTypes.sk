@@ -7,7 +7,7 @@ const radius: Float = 6.0;
 
 class Action(
   icon: Ui.IconBuilder,
-  messages: Array<FWKMessage.Message>,
+  messages: Array<SKUIMessage.Message>,
   tooltip: ?Text = None(),
 ) extends SKFS.File {}
 

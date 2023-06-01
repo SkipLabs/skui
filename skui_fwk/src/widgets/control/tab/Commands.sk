@@ -4,7 +4,7 @@ fun toJSON(v: JSONValue): JSON.Value {
   v.toJSON()
 }
 
-base class Command extends FWKMessage.Command {
+base class Command extends SKUIMessage.Command {
   children =
   | SetHover(close: Bool, hover: Bool)
   | SetArmed(close: Bool, armed: Bool)

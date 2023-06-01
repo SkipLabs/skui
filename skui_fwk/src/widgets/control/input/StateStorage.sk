@@ -259,7 +259,7 @@ class HState(
     FWKClipboard.paste(
       context,
       FWKClipboard.Plain(),
-      FWKMessage.Target::forClass(
+      SKUIMessage.Target::forClass(
         statePath,
         this.storage.getDirName().toString(),
         "UiInput.Paste",
@@ -345,9 +345,9 @@ class HState(
 
   private fun emit(
     context: mutable SKFS.Context,
-    command: FWKMessage.Command,
+    command: SKUIMessage.Command,
   ): void {
-    FWKMessage.emit(
+    SKUIMessage.emit(
       context,
       statePath,
       this.storage.getDirName().toString(),
@@ -619,7 +619,7 @@ fun init(
       if (key == Ui.positionProp) {
         if (stateHdl.getBool(context, Ui.blinkingProp)) {
           writer.write(Ui.caretVisibleProp, SKFS.IntFile(context.tick.value));
-          FWKMessage.emit(
+          SKUIMessage.emit(
             context,
             statePath,
             dirName.toString(),

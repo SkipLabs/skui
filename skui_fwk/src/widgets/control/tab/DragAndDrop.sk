@@ -68,7 +68,7 @@ class DropHandler(tab: Ui.Tab, drop: Ui.Drop) extends FWK.DropHandler {
         this.tab.path.id,
         this.drop == Ui.DropBefore(),
         true,
-      ).each(message -> FWKMessage.emitMessage(context, message))
+      ).each(message -> SKUIMessage.emitMessage(context, message))
     | _ -> void
     };
     this.tab.state.emitTargeted(context, None());

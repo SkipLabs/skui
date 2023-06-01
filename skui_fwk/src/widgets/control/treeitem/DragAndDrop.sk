@@ -73,7 +73,7 @@ class DropHandler(
         this.treeItem.id,
         this.drop,
         true,
-      ).each(message -> FWKMessage.emitMessage(context, message))
+      ).each(message -> SKUIMessage.emitMessage(context, message))
     | _ -> void
     };
     this.treeItem.state.emitTargeted(context, None());

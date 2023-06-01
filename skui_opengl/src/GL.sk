@@ -21,15 +21,6 @@ private native fun copyTexture(
 ): void;
 
 @cpp_extern
-private native fun saveTexture(
-  path: String,
-  ref: TextureRef,
-  width: UInt32,
-  height: UInt32,
-  ctx: UInt32,
-): Bool;
-
-@cpp_extern
 private native fun bindTexture2D(texture: TextureRef, ctx: UInt32): void;
 @cpp_extern
 private native fun activeTexture(index: UInt32, ctx: UInt32): void;

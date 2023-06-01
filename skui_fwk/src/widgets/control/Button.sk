@@ -233,7 +233,7 @@ class Button protected {
           Colors.transparent(),
           mode.getRadius(size),
           2,
-          Some((color, 1)),
+          Some(Ui.Border(color, 1)),
         ),
       )
     | _ -> void

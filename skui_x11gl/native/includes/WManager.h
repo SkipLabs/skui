@@ -18,13 +18,11 @@ namespace skui
   struct WindowConfig final
   {
     u_int64_t wId;
-    u_int64_t x;
-    u_int64_t y;
-    u_int64_t width;
-    u_int64_t height;
     u_int64_t screen;
     u_int64_t framePerSecond;
   };
+
+  void sendXClientMessage(Display *disp, Window window, Atom type, uint32_t param1, uint32_t param2);
 
   class WindowManager
   {
@@ -60,6 +58,23 @@ namespace skui
       if (!this->gc && this->display != nullptr) {
         this->gc = XCreateGC(this->display, this->window, 0, nullptr);
       }
+    }
+
+
+    void applyCursor(Cursor cursor) {
+      if (this->display == nullptr) return;
+      if (cursor == 0)
+      {
+        XUndefineCursor(this->display, this->window);
+      }
+      else
+      {
+        XDefineCursor(this->display, this->window, cursor);
+      }
+    }
+
+    void sendClientMessage(Atom type, uint32_t param1, uint32_t param2) {
+      sendXClientMessage(this->display, this->window, type, param1, param2);
     }
 
     XIC xic;

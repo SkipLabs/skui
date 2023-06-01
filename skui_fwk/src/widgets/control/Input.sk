@@ -262,8 +262,6 @@ class Input protected {
   fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
     Some(
       ViewportDef(
-        this.path.makeChild("vp"),
-        None(),
         Some(
           UiInput.Viewport{
             path => this.path.makeChild("viewport"),
@@ -272,6 +270,8 @@ class Input protected {
           },
         ),
         Array[],
+        this.path.makeChild("vp"),
+        None(),
       ),
     )
   }

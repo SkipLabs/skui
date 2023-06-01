@@ -9,13 +9,13 @@ base class Controller extends Ui.Parameters {
   fun getCloseMessage(
     context: mutable SKFS.Context,
     isUntracked: Bool,
-  ): FWKMessage.Message;
+  ): SKUIMessage.Message;
 }
 
 class LamController{
   offset: Ui.Getter<Geometry.Offset>,
   widget: Ui.Getter<Ui.Widget>,
-  closeMessage: Ui.GetterOne<FWKMessage.Message, Bool>,
+  closeMessage: Ui.GetterOne<SKUIMessage.Message, Bool>,
 } extends Controller {
   //
   fun getOffset(context: mutable SKFS.Context): Geometry.Offset {
@@ -29,14 +29,14 @@ class LamController{
   fun getCloseMessage(
     context: mutable SKFS.Context,
     isUntracked: Bool,
-  ): FWKMessage.Message {
+  ): SKUIMessage.Message {
     this.closeMessage(context, isUntracked)
   }
 }
 
 class FocusHandler{
   path: Ui.Path,
-  message: (mutable SKFS.Context, Bool) ~> FWKMessage.Message,
+  message: (mutable SKFS.Context, Bool) ~> SKUIMessage.Message,
 } extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
   protected fun getMainIdentifier(): Ui.Path {
     this.path;
@@ -50,7 +50,7 @@ class FocusHandler{
         "exit",
         FWK.Shortcut(Array[UiEvent.pureKeyReleased(UiEvent.KeyInfo::escape)]),
         FWK.Standard(ctx ~>
-          FWKMessage.emitMessage(ctx, this.message(ctx, true))
+          SKUIMessage.emitMessage(ctx, this.message(ctx, true))
         ),
       ),
     ]
@@ -59,7 +59,7 @@ class FocusHandler{
 
 class HoverHandler(
   path: Ui.Path,
-  message: (mutable SKFS.Context, Bool) ~> FWKMessage.Message,
+  message: (mutable SKFS.Context, Bool) ~> SKUIMessage.Message,
 ) extends Ui.HoverHandlerWrapper {
   //
   fun getIdentifier(): Ui.Path {
@@ -76,7 +76,7 @@ class HoverHandler(
   ): FWK.Result {
     FWK.Result(
       if (mouse.isPrimaryPressed(context.tick)) {
-        FWKMessage.emitMessage(context, this.message(context, true));
+        SKUIMessage.emitMessage(context, this.message(context, true));
         true
       } else {
         false

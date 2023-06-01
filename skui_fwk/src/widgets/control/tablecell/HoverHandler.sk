@@ -34,7 +34,9 @@ class HoverHandler(
         ) {
           this.state.emitArmed(context, false);
           this.controller.getAction(context, true).each(a ->
-            a.messages.each(message -> FWKMessage.emitMessage(context, message))
+            a.messages.each(message ->
+              SKUIMessage.emitMessage(context, message)
+            )
           );
           true
         } else {

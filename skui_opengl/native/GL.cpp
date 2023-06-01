@@ -174,8 +174,6 @@ void displayBlendState() {
   std::cout << "Blend: " << (blendEnabled ? "true" : "false") << " " << blendSrc << " " << blendDst << std::endl;
 }
 
-bool saveImage(std::string &strPath, const char *data, uint32_t width, uint32_t height);
-
 void GL_deleteTexture(uint32_t ident)
 {
   auto it = kept.find(ident);
@@ -665,17 +663,6 @@ extern "C"
         gState.color.b,
         gState.color.a);
     gStates.pop();
-  }
-
-  bool SKIP_GL_saveTexture(char *path, uint32_t texture, uint32_t width, uint32_t height, uint32_t ctx)
-  {
-    TXT(path, strPath);
-    GLubyte pixels[width * height * 4];
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    auto res = saveImage(strPath, (const char *)pixels, width, height);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return res;
   }
 
   uint32_t SKIP_GL_cloneTexture(uint32_t texture, uint32_t width, uint32_t height, uint32_t ctx)

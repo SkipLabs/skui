@@ -55,7 +55,7 @@ extern "C"
   void SKIP_setByte(char *, int32_t, uint8_t);
   char *SKIP_chillByteArray(char *);
 
-  bool SKIP_SysFS_isExternalBinary(uint32_t id)
+  bool SKIP_IO_isExternalBinary(uint32_t id)
   {
     auto it = skui::gData.find(id);
     if (it == skui::gData.end())
@@ -65,7 +65,7 @@ extern "C"
     return it->second.binary;
   }
 
-  char *SKIP_SysFS_getExternalText(uint32_t id)
+  char *SKIP_IO_getExternalText(uint32_t id)
   {
     auto it = skui::gData.find(id);
     if (it == skui::gData.end())
@@ -76,7 +76,7 @@ extern "C"
     return sk_string_create(txt.c_str(), txt.size());
   }
 
-  void SKIP_SysFS_deleteExternalData(uint32_t id)
+  void SKIP_IO_deleteExternalData(uint32_t id)
   {
     auto it = skui::gData.find(id);
     if (it == skui::gData.end())
@@ -86,7 +86,7 @@ extern "C"
     skui::gData.erase(id);
   }
 
-  char *SKIP_SysFS_getExternalBytes(uint32_t id)
+  char *SKIP_IO_getExternalBytes(uint32_t id)
   {
     auto it = skui::gData.find(id);
     if (it == skui::gData.end())

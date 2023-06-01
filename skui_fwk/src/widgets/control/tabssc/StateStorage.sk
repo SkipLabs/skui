@@ -67,14 +67,14 @@ class HState(
     statePath
   }
 
-  protected fun setScrollCmd(value: ?Ui.Scroll): FWKMessage.Command {
+  protected fun setScrollCmd(value: ?Ui.Scroll): SKUIMessage.Command {
     SetScroll(value)
   }
 
   protected fun manageScrollingCmd(
     value: Int,
     tick: SKFS.Tick,
-  ): FWKMessage.Command {
+  ): SKUIMessage.Command {
     ManageScrolling(value, tick)
   }
 

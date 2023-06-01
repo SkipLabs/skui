@@ -84,11 +84,11 @@ class FocusHandler{
               this.state.emitArmed(ctx, this.close, false);
               if (this.close) {
                 this.controller.getCloseMessages(ctx, true).each(message ->
-                  FWKMessage.emitMessage(ctx, message)
+                  SKUIMessage.emitMessage(ctx, message)
                 )
               } else {
                 this.controller.getFireMessages(ctx, true).each(message ->
-                  FWKMessage.emitMessage(ctx, message)
+                  SKUIMessage.emitMessage(ctx, message)
                 )
               }
             }),

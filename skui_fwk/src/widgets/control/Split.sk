@@ -161,23 +161,23 @@ class Split protected {
     optFSecondVp = second.getViewportDefinition(context);
     Some(
       ViewportDef(
-        this.path,
-        None(),
         None(),
         Array[
           ViewportDef(
-            this.path.makeChild("firstVp"),
-            None(),
             Some(first),
             optFirstVp.map(def -> Array[def]).default(Array[]),
+            this.path.makeChild("firstVp"),
+            None(),
           ),
           ViewportDef(
-            this.path.makeChild("secondVp"),
-            None(),
             Some(second),
             optFSecondVp.map(def -> Array[def]).default(Array[]),
+            this.path.makeChild("secondVp"),
+            None(),
           ),
         ],
+        this.path,
+        None(),
       ),
     )
   }

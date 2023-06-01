@@ -7,8 +7,26 @@ std::string utf8datatype("text/plain; charset=utf-8");
 
 namespace skui
 {
-
   void sendClientMessage(Display *disp, Window window, Atom type, uint32_t param1, uint32_t param2);
+
+  /**
+   * @brief returns the window that currently has inputfocus
+   */
+  Window getActiveWindow(Display * display)
+  {
+      unsigned char *data;
+      int format;
+      unsigned long extra, n, window;
+      Atom type;
+      Atom property = XInternAtom(display, "_NET_ACTIVE_WINDOW", False);
+      Window root = XDefaultRootWindow(display);
+      if (!XGetWindowProperty(display, root, property, 0, ~0, False,AnyPropertyType, &type, &format, &n, &extra, &data))
+          return 0;
+      Window result = *(unsigned long *) data;
+      XFree(data);
+      return result;
+  }
+
 
   XVisualInfo *GLWindowManager::initializeDisplay(Display *disp, uint32_t screen)
   {
@@ -210,6 +228,7 @@ namespace skui
   void GLWindowManager::initiliazed(XIC xic, std::function<void(Display *disp, Window fWindow)> expose)
   {
     this->xic = xic;
+    this->onContextChange(this->config.wId, this->config.wId);
     this->animationFrame.start([this, expose]()
                                { expose(this->display, this->window); },
                                this->config.framePerSecond);
@@ -224,12 +243,17 @@ namespace skui
     else if (xclient.message_type == this->messages.fCloseMessage)
     {
       return true;
+    } else {
+      auto it  = this->customMessages.find((Atom)xclient.data.l[0]);
+      if (it != this->customMessages.end()) {
+        it->second((uint32_t)xclient.data.l[1], (uint32_t)xclient.data.l[2]);
+      }
+      return false;
     }
-    return false;
   }
 
   void GLWindowManager::sendCloseRequest()
   {
-    sendClientMessage(this->display, this->window, this->messages.fCloseMessage, 0, 0);
+    sendXClientMessage(this->display, this->window, this->messages.fCloseMessage, 0, 0);
   }
 }

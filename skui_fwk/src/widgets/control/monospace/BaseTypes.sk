@@ -235,7 +235,7 @@ base class Controller {
     context: mutable SKFS.Context,
     value: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 }
 
 base class NumbersController extends Ui.Parameters {

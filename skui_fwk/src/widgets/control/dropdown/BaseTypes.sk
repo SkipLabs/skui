@@ -36,7 +36,7 @@ base class ItemBase{
   children =
   | Item{
     shortcut: mutable SKFS.Context ~> ?Ui.Shortcut = _ ~> None(),
-    message: (mutable SKFS.Context, Bool) ~> Array<FWKMessage.Message> = (
+    message: (mutable SKFS.Context, Bool) ~> Array<SKUIMessage.Message> = (
       _ctx,
       _iu,
     ) ~>
@@ -109,7 +109,7 @@ base class Controller extends Accessor, SKFS.UserData {
   fun getCloseMessage(
     context: mutable SKFS.Context,
     isUntracked: Bool,
-  ): FWKMessage.Message;
+  ): SKUIMessage.Message;
 
   fun getTitle(_context: mutable SKFS.Context): ?Text {
     None()
@@ -143,7 +143,7 @@ base class State extends Ui.StateWithScroll {
   fun emitAll(context: mutable SKFS.Context, commands: Array<Command>): void;
   fun emitClose(context: mutable SKFS.Context): void;
 
-  fun gotoMessage(value: Spot): FWKMessage.Message;
+  fun gotoMessage(value: Spot): SKUIMessage.Message;
 }
 
 base class Storage extends Ui.StorageWithScroll {

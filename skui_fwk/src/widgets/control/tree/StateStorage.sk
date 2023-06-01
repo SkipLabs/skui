@@ -158,14 +158,14 @@ class HState(
     statePath
   }
 
-  protected fun setScrollCmd(value: ?Ui.Scroll): FWKMessage.Command {
+  protected fun setScrollCmd(value: ?Ui.Scroll): SKUIMessage.Command {
     SetScroll(value)
   }
 
   protected fun manageScrollingCmd(
     value: Int,
     tick: SKFS.Tick,
-  ): FWKMessage.Command {
+  ): SKUIMessage.Command {
     ManageScrolling(value, tick)
   }
 
@@ -216,7 +216,7 @@ class HState(
     path: Ui.Path,
     toogle: Bool,
     keep: Bool,
-  ): FWKMessage.Message {
+  ): SKUIMessage.Message {
     target = if (keep) {
       SToPath(path, toogle)
     } else {
@@ -225,16 +225,16 @@ class HState(
     this.message(ManageSelect(target))
   }
 
-  fun toggleExpansionMessage(path: Ui.Path): FWKMessage.Message {
+  fun toggleExpansionMessage(path: Ui.Path): SKUIMessage.Message {
     this.message(ToggleExpansion(path))
   }
 
-  fun fireMessage(path: Ui.Path): FWKMessage.Message {
+  fun fireMessage(path: Ui.Path): SKUIMessage.Message {
     this.message(Fire(Some(path)))
   }
 
-  private fun message(command: FWKMessage.Command): FWKMessage.Message {
-    FWKMessage.Message(
+  private fun message(command: SKUIMessage.Command): SKUIMessage.Message {
+    SKUIMessage.Message(
       statePath,
       this.storage.getDirName().toString(),
       command,
@@ -354,7 +354,7 @@ fun init(
         selection = Items::fromFile(file).value;
         info.controller
           .getSelectionChangeMessages(context, selection, true)
-          .each(msg -> FWKMessage.emitMessage(context, msg));
+          .each(msg -> SKUIMessage.emitMessage(context, msg));
         writer.write(key, file)
       }
     ,
@@ -568,7 +568,7 @@ fun execute(
         .default(Array[]);
       info.controller
         .getFireMessages(context, optCurrent, selection, true)
-        .each(msg -> FWKMessage.emitMessage(context, msg));
+        .each(msg -> SKUIMessage.emitMessage(context, msg));
     };
     optCurrent match {
     | Some(path) ->

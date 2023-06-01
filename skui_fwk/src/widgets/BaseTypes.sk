@@ -193,11 +193,16 @@ class Layer(layer: Int, pixelable: Bool) uses Show, Orderable, Hashable {
 }
 
 class ViewportDef(
-  path: Path,
-  optReference: ?Path,
   optWidget: ?Widget,
   children_: Array<ViewportDef>,
-) extends SKFS.File {
+) extends ViewportDefinition, SKFS.File {
+  fun hasContent(): Bool {
+    this.optWidget.isSome()
+  }
+
+  fun getChildren(): Array<ViewportDefinition> {
+    this.children_;
+  }
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {

@@ -179,13 +179,13 @@ class Content(values: Map<Type, IO.Data>) extends SKFS.File uses HasClassName {
 fun paste(
   context: mutable SKFS.Context,
   type: Type,
-  target: FWKMessage.Target,
+  target: SKUIMessage.Target,
 ): void {
-  FWKMessage.emit(context, "system", "clipboard", Paste(type, target))
+  SKUIMessage.emit(context, "system", "clipboard", Paste(type, target))
 }
 
 fun copy(context: mutable SKFS.Context, content: Content): void {
-  FWKMessage.emit(context, "system", "clipboard", Copy(content))
+  SKUIMessage.emit(context, "system", "clipboard", Copy(content))
 }
 
 module end;

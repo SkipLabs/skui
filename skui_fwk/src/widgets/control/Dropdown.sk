@@ -217,7 +217,7 @@ class Dropdown protected {
                 kind => _ctx ~> UiButton.Regular(),
                 mode => _ctx ~> UiButton.Icon(),
                 onFire => (ctx, _) ~>
-                  FWKMessage.emitMessage(
+                  SKUIMessage.emitMessage(
                     ctx,
                     params.state.gotoMessage(UiDropdown.Backward()),
                   ),
@@ -396,10 +396,10 @@ class Dropdown protected {
   fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
     this.widgetsHdl.maybeGet(context, SKFS.StrID("body")).map(body ->
       ViewportDef(
-        this.path.makeChild("vp"),
-        Some(this.path),
         Some(body.widget),
         Array[],
+        this.path.makeChild("vp"),
+        Some(this.path),
       )
     )
   }

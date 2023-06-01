@@ -58,13 +58,13 @@ base class Controller extends Ui.Parameters {
     tab: String,
     selected: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 
   fun getCloseMessages(
     context: mutable SKFS.Context,
     tabs: Array<String>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 }
 
 class MainCollection(

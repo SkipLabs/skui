@@ -8,7 +8,7 @@ base class Storage {
   fun isMenuClosed(context: mutable SKFS.Context): Bool;
   fun isTooltipShown(context: mutable SKFS.Context, path: Ui.Path): Bool;
 
-  fun closeMenuMessage(): FWKMessage.Message;
+  fun closeMenuMessage(): SKUIMessage.Message;
 
   fun manageWidgets(
     context: mutable SKFS.Context,

@@ -1,7 +1,7 @@
 module UiInput;
 
 type Message = (mutable SKFS.Context, String, Bool) ~> Array<
-  FWKMessage.Message,
+  SKUIMessage.Message,
 >;
 const doNothing: Message = (_ctx, _text, _iu) ~> Array[];
 
@@ -95,7 +95,7 @@ class LamController{
     context: mutable SKFS.Context,
     value: String,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.actionMessages(context, value, isUntracked)
   }
 
@@ -103,7 +103,7 @@ class LamController{
     context: mutable SKFS.Context,
     value: String,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.focusLostMessages(context, value, isUntracked)
   }
 

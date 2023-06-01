@@ -1,0 +1,121 @@
+module SKUIViews;
+
+@skuiview
+fun buttons(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("buttons").about("View that display buttons samples."),
+    _args ~> {
+      path = Ui.Path::create("buttons");
+      (context, _root) ~> widget(context, path)
+    },
+  )
+}
+
+fun widget(context: mutable SKFS.Context, path: Ui.Path): Ui.Widget {
+  lines = UiButton.Mode::all()
+    .map(mode -> line(context, path, mode))
+    .mapWithIndex((idx, line) -> {
+      wrap = Ui.Wrap::createForController(
+        context,
+        path.makeChild(`wrap${idx}`),
+        UiWrap.LamController{
+          spacing => _ctx ~> 20.0,
+          runSpacing => _ctx ~> 10.0,
+          widgets => Ui.WidgetsArray(line),
+          crossAxisAlignment => _ctx ~> UiWrap.Center(),
+        },
+      );
+      Ui.Decorated::create(
+        context,
+        path.makeChild(`decorated${idx}`),
+        UiDecorated.LamController{
+          decoration => _ctx ~> Ui.Padding(Geometry.Insets::all(5.0)),
+          widget => _ctx ~> Some(wrap),
+        },
+      )
+    });
+  Ui.Flex::createForController(
+    context,
+    path,
+    UiFlex.LamController{
+      widgets => Ui.WidgetsArray(lines),
+      direction => _ctx ~> Ui.VerticalAxis(),
+      mainAxisAlignment => _ctx ~> UiFlex.Center(),
+    },
+  )
+}
+
+private fun button(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  mode: UiButton.Mode,
+  kind: UiButton.Kind,
+): Ui.Widget {
+  bPath = path.makeChild(mode.toString()).makeChild(kind.toString());
+  state = UiButton.init(context, bPath);
+  Ui.Button::create(
+    context,
+    bPath,
+    UiButton.Parameters(
+      UiButton.LamController{
+        text => _ctx ~> Some(Raw(kind.toString())),
+        kind => _ctx ~> kind,
+        mode => _ctx ~> mode,
+        icon => (ctx, size) ~>
+          Ui.FromIconSupport(UiIcon.Heart()).buildIcon(ctx, size),
+      },
+      state,
+    ),
+  )
+}
+
+private fun disabled(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  mode: UiButton.Mode,
+): Ui.Widget {
+  bPath = path.makeChild(mode.toString()).makeChild("disabled");
+  state = UiButton.init(context, bPath);
+  Ui.Button::create(
+    context,
+    bPath,
+    UiButton.Parameters(
+      UiButton.LamController{
+        text => _ctx ~> Some(Raw("Disabled")),
+        disabled => _ctx ~> true,
+        icon => (ctx, size) ~>
+          Ui.FromIconSupport(UiIcon.Heart()).buildIcon(ctx, size),
+        mode => _ctx ~> mode,
+      },
+      state,
+    ),
+  )
+}
+
+private fun line(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  mode: UiButton.Mode,
+): Array<Ui.Widget> {
+  widgets = mutable Vector<Ui.Widget>[
+    Ui.Label::create(
+      context,
+      path.makeChild(mode.toString()).makeChild("label"),
+      UiLabel.LamController{
+        text => _ctx ~> Some(Raw(mode.toString())),
+        icon => (ctx, size) ~>
+          Ui.FromIconSupport(UiIcon.Bookmark()).buildIcon(ctx, size),
+      },
+    ),
+  ];
+  UiButton.Kind::all()
+    .map(kind -> button(context, path, mode, kind))
+    .each(widgets.push);
+  widgets.push(disabled(context, path, mode));
+  widgets.toArray()
+}
+
+module end;

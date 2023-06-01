@@ -98,9 +98,9 @@ class HState(handle: SKFS.Handle<SKFS.File>) extends State {
 
   private fun emit(
     context: mutable SKFS.Context,
-    command: FWKMessage.Command,
+    command: SKUIMessage.Command,
   ): void {
-    FWKMessage.emit(
+    SKUIMessage.emit(
       context,
       statePath,
       this.handle.getDirName().toString(),

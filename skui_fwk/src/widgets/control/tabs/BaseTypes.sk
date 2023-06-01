@@ -85,7 +85,7 @@ class Tab{
   iconOnTop: Ui.Getter<Bool> = Ui.default(false),
   badge: Ui.Getter<?Ui.Badge> = Ui.default(None()),
   progress: Ui.Getter<?Ui.Progress> = Ui.default(None()),
-  fireMessage: Ui.GetterOne<Array<FWKMessage.Message>, Bool> = Ui.defaultOne(
+  fireMessage: Ui.GetterOne<Array<SKUIMessage.Message>, Bool> = Ui.defaultOne(
     Array[],
   ),
 } extends SKFS.File {
@@ -164,13 +164,13 @@ base class Controller extends SKFS.UserData {
     tab: String,
     selected: Bool,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 
   fun getCloseMessages(
     context: mutable SKFS.Context,
     tabs: Array<String>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 
   fun getNumberOfTabs(context: mutable SKFS.Context): Int {
     this.getTabs(context).size()
@@ -202,12 +202,12 @@ base class State {
 
   fun emitPinned(context: mutable SKFS.Context, tab: String, value: Bool): void;
   fun emitSelected(context: mutable SKFS.Context, optTab: ?String): void;
-  fun pinMessage(tab: String, pinned: Bool): FWKMessage.Message;
+  fun pinMessage(tab: String, pinned: Bool): SKUIMessage.Message;
   fun moveMessage(
     toMove: String,
     dstTab: String,
     before: Bool,
-  ): FWKMessage.Message;
+  ): SKUIMessage.Message;
 }
 
 base class Storage {

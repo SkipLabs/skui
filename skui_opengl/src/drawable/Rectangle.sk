@@ -91,7 +91,7 @@ class RoundedRectangle(
   color: .Color,
   radius: Int,
   smooth: Int,
-  optBorder: ?(.Color, Int),
+  optBorder: ?Ui.Border,
 ) extends GLRectangleDrawable {
   //
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
@@ -124,7 +124,7 @@ class RoundedRectangle(
             this.bounds.size(),
             this.color,
             this.radius,
-            this.optBorder.map(b -> GLProgram.Border(b.i0, b.i1)),
+            this.optBorder,
             this.smooth,
           ),
           GLProgram.RectangleParameters(bounds.shift(shift.toOffset()), buffer),

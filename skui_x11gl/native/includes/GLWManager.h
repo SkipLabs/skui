@@ -6,6 +6,8 @@
 #include <GL/glx.h>
 #include "AnimationFrame.h"
 #include "EManager.h"
+#include <map>
+
 
 namespace skui
 {
@@ -46,17 +48,19 @@ namespace skui
     GLWindowManager(
         void* enviroment,
         uint64_t wId,
-        uint64_t x, uint64_t y,
-        uint64_t width, uint64_t height,
         uint64_t screen, uint64_t framePerSecond,
-        EventManager *eventManager)
-        : userEnviroment(enviroment), config{wId, x, y, width, height, screen, framePerSecond}, 
-          gLXFBConfig(nullptr), eventManager(eventManager), userContext(nullptr)
+        EventManager *eventManager,
+        std::function<void(uint64_t, uint64_t)> onContextChange)
+        : userEnviroment(enviroment), config{wId, screen, framePerSecond}, 
+          gLXFBConfig(nullptr), eventManager(eventManager), userContext(nullptr),
+          onContextChange(std::move(onContextChange))
     {
       display = nullptr;
     };
 
     WindowConfig configuration() { return config; }
+
+    std::map<Atom,std::function<void(uint32_t, uint32_t)>> customMessages;
 
   private:
     void requestClose();
@@ -69,8 +73,10 @@ namespace skui
     std::string utf8;
     AnimationFrame animationFrame;
     EventManager *eventManager;
+    std::function<void(u_int64_t, u_int64_t)> onContextChange;
     void* userEnviroment;
     void* userContext;
+
   };
 
   class CreateContextException : public std::exception

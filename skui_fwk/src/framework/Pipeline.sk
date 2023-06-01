@@ -185,7 +185,6 @@ fun initPipeline(
     ctx ~> mouseState.get(ctx),
     ctx ~> keysState.get(ctx),
   );
-  FWKClipboard.init(context);
   FWKKeys.init(context);
   FWKMouse.init(context);
   FWKPointer.init(context);
@@ -215,13 +214,13 @@ fun initPipeline(
       viewportDef = widget.getViewportDefinition(context) match {
       | Some(definition) ->
         if (definition.path != widget.path || definition.optWidget.isSome()) {
-          Ui.ViewportDef(widget.path, None(), Some(widget), Array[definition])
+          Ui.ViewportDef(Some(widget), Array[definition], widget.path, None())
         } else if (definition.path == widget.path) {
           definition with {optWidget => Some(widget)}
         } else {
           definition;
         }
-      | _ -> Ui.ViewportDef(widget.path, None(), Some(widget), Array[])
+      | _ -> Ui.ViewportDef(Some(widget), Array[], widget.path, None())
       };
       writer.write(Ui.MainKey(), viewportDef);
     },

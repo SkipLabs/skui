@@ -22,18 +22,18 @@ class LamController{
     Array<String>,
   > = Ui.defaultTwo(Array[]),
   selectionChange: Ui.GetterTwo<
-    Array<FWKMessage.Message>,
+    Array<SKUIMessage.Message>,
     Array<String>,
     Bool,
   > = Ui.defaultTwo(Array[]),
   fire: Ui.GetterThree<
-    Array<FWKMessage.Message>,
+    Array<SKUIMessage.Message>,
     ?String,
     Array<String>,
     Bool,
   > = Ui.defaultThree(Array[]),
   sort: Ui.GetterThree<
-    Array<FWKMessage.Message>,
+    Array<SKUIMessage.Message>,
     String,
     Sort,
     Bool,
@@ -113,7 +113,7 @@ class LamController{
     context: mutable SKFS.Context,
     selections: Array<String>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.selectionChange(context, selections, isUntracked)
   }
 
@@ -122,7 +122,7 @@ class LamController{
     optCurrent: ?String,
     selections: Array<String>,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.fire(context, optCurrent, selections, isUntracked)
   }
 
@@ -131,7 +131,7 @@ class LamController{
     column: String,
     sort: Sort,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.sort(context, column, sort, isUntracked)
   }
 }

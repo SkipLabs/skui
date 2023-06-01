@@ -1,4 +1,4 @@
-module FWKMessage;
+module SKUIMessage;
 
 type Supplier = mutable SKFS.Context ~> Message;
 
@@ -7,6 +7,15 @@ base class Repeat {
 }
 
 class MessagesChecker(fn: () ~> void) extends SKFS.File
+
+class Sender(
+  fn: (
+    readonly SKFS.Context,
+    message: String,
+    asyncMode: Bool,
+    delay: UInt32,
+  ) ~> Bool,
+) extends SKFS.File
 
 base class Command extends JSONValue uses HasClassName {
   overridable fun isExternal(): Bool {
@@ -55,7 +64,7 @@ base class Support extends SKFS.File uses HasClassName {
   static fun forFile(obj: SKFS.File): Support {
     obj match {
     | x @ Support _ -> x
-    | _ -> invariant_violation("Invalid FWKMessage.Support")
+    | _ -> invariant_violation("Invalid SKUIMessage.Support")
     }
   }
 }
@@ -140,13 +149,12 @@ trait WithUpdate<T: Command> extends HasClassName {
   }
 }
 
-fun executeMessage(context: mutable SKFS.Context, jsv: JSON.Value): void {
-  jso = jsv.expectObject();
-  (strModule, strScope, jsCommand) = jso.maybeGetString("__class") match {
-  | Some("FWKMessage.Message") ->
-    (jso.getString("name"), jso.getString("scope"), jso.get("command"))
-  | _ -> (jso.getString("module"), jso.getString("scope"), jso.get("message"))
-  };
+fun performMessage(
+  context: mutable SKFS.Context,
+  strModule: String,
+  strScope: String,
+  jsCommand: JSON.Value,
+): void {
   context.getMessageSupport(strModule, strScope) match {
   | Some(support) -> support.manage(context, strModule, strScope, jsCommand)
   | _ ->
@@ -163,10 +171,37 @@ fun executeMessage(context: mutable SKFS.Context, jsv: JSON.Value): void {
   }
 }
 
+fun executeMessage(context: mutable SKFS.Context, jsv: JSON.Value): void {
+  jsv match {
+  | jso @ JSON.Object _ ->
+    (strModule, strScope, jsCommand) = jso.maybeGetString("__class") match {
+    | Some("SKUIMessage.Message") ->
+      (jso.getString("name"), jso.getString("scope"), jso.get("command"))
+    | _ -> (jso.getString("module"), jso.getString("scope"), jso.get("message"))
+    };
+    performMessage(context, strModule, strScope, jsCommand)
+  | JSON.IntNumber(v) ->
+    context.getInternalMessage(v) match {
+    | Some(message) ->
+      performMessage(
+        context,
+        message.name,
+        message.scope,
+        message.command.toJSON(),
+      )
+    | _ ->
+      print_error(
+        `Missed message[${context.tick}]: (Unknown internal message) ${v}`,
+      )
+    }
+  | _ -> SKFS.cast_violation("JSON.Object | JSON.IntNumber", jsv)
+  }
+}
+
 fun cancelMessage(context: mutable SKFS.Context, message: String): void {
   jso = JSON.decode(message).expectObject();
   (strModule, strScope, jsCommand) = jso.maybeGetString("__class") match {
-  | Some("FWKMessage.Message") ->
+  | Some("SKUIMessage.Message") ->
     (jso.getString("name"), jso.getString("scope"), jso.get("command"))
   | _ -> (jso.getString("module"), jso.getString("scope"), jso.get("message"))
   };
@@ -186,40 +221,9 @@ fun cancelMessage(context: mutable SKFS.Context, message: String): void {
   }
 }
 
-fun executeInternalMessage(
-  context: mutable SKFS.Context,
-  messageId: UInt32,
-): void {
-  context.getInternalMessage(messageId) match {
-  | Some(message) ->
-    context.getMessageSupport(message.name, message.scope) match {
-    | Some(support) ->
-      support.run(context, message.name, message.scope, message.command)
-    | _ ->
-      context.getMessageSupport(message.name, "*") match {
-      | Some(support) ->
-        support.run(context, message.name, message.scope, message.command)
-      | _ ->
-        //TODO manage missed message log ???
-        print_error(
-          `Missed message[${context.tick}]: (No message support) for ${
-            message.name
-          } ${message.scope} => ${message.command.getClassName()}`,
-        )
-      }
-    }
-  | _ ->
-    print_error(
-      `Missed message[${
-        context.tick
-      }]: (Unknown internal message) ${messageId}`,
-    )
-  };
-}
-
 @wasm_export
-@cpp_export
-fun manageMessage(message: String): void {
+@cpp_export("SKIP_SKUIMessage_manage")
+fun manage(message: String): void {
   SKFS.Context::withoutGc(context ~> {
     jsv = vtry<JSON.Value>(
       () -> JSON.decode(message),
@@ -234,7 +238,7 @@ fun manageMessage(message: String): void {
         throw e
       },
     );
-    catchErrors = context.getBoolGlobal("FWKMessage.catchErrors");
+    catchErrors = context.getBoolGlobal("SKUIMessage.catchErrors");
     if (catchErrors) {
       vtry<void>(
         () -> executeMessage(context, jsv),
@@ -255,35 +259,12 @@ fun manageMessage(message: String): void {
   });
 }
 
-@wasm_export
-@cpp_export
-fun manageInternalMessage(message: UInt32): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> {
-    catchErrors = context.getBoolGlobal("FWKMessage.catchErrors");
-    if (catchErrors) {
-      vtry<void>(
-        () -> executeInternalMessage(context, message),
-        e ->
-          //TODO manage missed message log ???
-          print_error(
-            `Missed message[${context.tick}]: (${e.getMessage()}) ${message}`,
-          )
-        ,
-      )
-    } else {
-      executeInternalMessage(context, message)
-    }
-  });
-  SKFS.destroyObstack(pos);
-}
-
 @debug
 @wasm_export
 @cpp_export
 fun messageFailure(message: String): void {
   SKFS.Context::withoutGc(context ~> {
-    catchErrors = context.getBoolGlobal("FWKMessage.catchErrors");
+    catchErrors = context.getBoolGlobal("SKUIMessage.catchErrors");
     if (catchErrors) {
       vtry<void>(
         () -> cancelMessage(context, message),
@@ -302,23 +283,18 @@ fun messageFailure(message: String): void {
   });
 }
 
-@debug
-@cpp_extern("SKIP_FWK_sendInternalMessage")
-native fun sendInternalMessage(
-  wId: UInt32,
-  message: UInt32,
-  asyncMode: Bool,
-  delay: UInt32,
-): void;
-
-@debug
-@cpp_extern("SKIP_FWK_sendMessage")
-native fun sendMessage(
-  wId: UInt32,
+fun send(
+  context: readonly SKFS.Context,
   message: String,
   asyncMode: Bool,
   delay: UInt32,
-): void;
+): Bool {
+  context
+    .getGlobal("SKUIMessage.Sender")
+    .map(Sender::fromFile)
+    .map(sender -> sender.fn(context, message, asyncMode, delay))
+    .default(false)
+}
 
 class Message(
   name: String,
@@ -330,7 +306,7 @@ class Message(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Message _ -> x
-    | _ -> SKFS.cast_violation("FWKMessage.Message", obj)
+    | _ -> SKFS.cast_violation("SKUIMessage.Message", obj)
     }
   }
 
@@ -352,7 +328,7 @@ class Message(
     jso = jsv.expectObject();
     cl = jso.getString("__class");
     cl match {
-    | "FWKMessage.Message" ->
+    | "SKUIMessage.Message" ->
       Message(
         jso.getString("name"),
         jso.getString("scope"),
@@ -360,7 +336,7 @@ class Message(
         jso.maybeGetInt("delay"),
       )
     | _ ->
-      invariant_violation(`Invalid json object ${cl} for FWKMessage.Message`)
+      invariant_violation(`Invalid json object ${cl} for SKUIMessage.Message`)
     }
   }
 }
@@ -370,7 +346,7 @@ class Messages(messages: Array<Message>) extends SKFS.File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Messages _ -> x
-    | _ -> SKFS.cast_violation("FWKMessage.Messages", obj)
+    | _ -> SKFS.cast_violation("SKUIMessage.Messages", obj)
     }
   }
 
@@ -394,7 +370,7 @@ class Target(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Target _ -> x
-    | _ -> SKFS.cast_violation("FWKMessage.Target", obj)
+    | _ -> SKFS.cast_violation("SKUIMessage.Target", obj)
     }
   }
 
@@ -460,7 +436,7 @@ class Target(
     jso = jsv.expectObject();
     cl = jso.getString("__class");
     cl match {
-    | "FWKMessage.Target" ->
+    | "SKUIMessage.Target" ->
       Target(
         jso.getString("name"),
         jso.getString("scope"),
@@ -468,7 +444,7 @@ class Target(
         jso.getBool("async"),
       )
     | _ ->
-      invariant_violation(`Invalid json object ${cl} for FWKMessage.Target`)
+      invariant_violation(`Invalid json object ${cl} for SKUIMessage.Target`)
     }
   }
 }
@@ -482,7 +458,7 @@ class Sequence private (
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Sequence _ -> x
-    | _ -> SKFS.cast_violation("FWKMessage.Sequence", obj)
+    | _ -> SKFS.cast_violation("SKUIMessage.Sequence", obj)
     }
   }
 
@@ -573,54 +549,8 @@ fun emit(
   allowPending: Bool = true,
 ): void {
   message = Message(name, scope, command, optDelay);
-  allExternal = context.getBoolGlobal("FWKMessage.allExternal");
-  getChannelId(context) match {
-  | Some(mId) ->
-    if (command.isExternal() || allExternal) {
-      sendMessage(
-        mId,
-        JSON.Object(
-          Map[
-            "module" => JSON.String(name),
-            "scope" => JSON.String(scope),
-            "message" => command.toJSON(),
-          ],
-        ).toString(),
-        asyncMode,
-        UInt32::truncate(Math.max(optDelay.default(0), 0)),
-      )
-    } else {
-      messageId = context.registerInternalMessage(message);
-      sendInternalMessage(
-        mId,
-        messageId,
-        asyncMode,
-        UInt32::truncate(Math.max(optDelay.default(0), 0)),
-      )
-    }
-  | _ ->
-    if (allowPending) {
-      context.addPendingMessage(message)
-    } else {
-      print_error(
-        `Unsent message[${context.tick}]: ${name} ${scope} ${command.toJSON()}`,
-      )
-    }
-  };
-}
-
-fun unsafeEmit(
-  context: readonly SKFS.Context,
-  name: String,
-  scope: String,
-  command: Command,
-  asyncMode: Bool = false,
-  optDelay: ?Int = None(),
-): void {
-  getChannelId(context) match {
-  | Some(mId) ->
-    sendMessage(
-      mId,
+  optMessage = if (command.isExternal()) {
+    Some(
       JSON.Object(
         Map[
           "module" => JSON.String(name),
@@ -628,14 +558,35 @@ fun unsafeEmit(
           "message" => command.toJSON(),
         ],
       ).toString(),
-      asyncMode,
-      UInt32::truncate(Math.max(optDelay.default(0), 0)),
     )
-  | _ ->
-    print_error(
-      `Unsent message[${context.tick}]: ${name} ${scope} ${command.toJSON()}`,
-    )
+  } else if (optDelay.default(0) > 0) {
+    messageId = context.registerInternalMessage(message);
+    Some(messageId.toString())
+  } else {
+    None()
   };
+  optMessage match {
+  | Some(msg) ->
+    if (
+      !send(
+        context,
+        msg,
+        asyncMode,
+        UInt32::truncate(Math.max(optDelay.default(0), 0)),
+      )
+    ) {
+      if (allowPending) {
+        context.addPendingMessage(message)
+      } else {
+        print_error(
+          `Unsent message[${
+            context.tick
+          }]: ${name} ${scope} ${command.toJSON()}`,
+        )
+      }
+    }
+  | _ -> performMessage(context, message.name, message.scope, command.toJSON())
+  }
 }
 
 fun emitJSON(
@@ -646,27 +597,23 @@ fun emitJSON(
   asyncMode: Bool = false,
   optDelay: ?Int = None(),
 ): void {
-  getChannelId(context) match {
-  | Some(mId) ->
-    sendMessage(
-      mId,
-      JSON.Object(
-        Map[
-          "module" => JSON.String(name),
-          "scope" => JSON.String(scope),
-          "message" => jsv,
-        ],
-      ).toString(),
-      asyncMode,
-      UInt32::truncate(Math.max(optDelay.default(0), 0)),
-    )
-  | _ -> print_error(`Unsent message[${context.tick}]: ${name} ${scope} ${jsv}`)
-  };
+  _ = send(
+    context,
+    JSON.Object(
+      Map[
+        "module" => JSON.String(name),
+        "scope" => JSON.String(scope),
+        "message" => jsv,
+      ],
+    ).toString(),
+    asyncMode,
+    UInt32::truncate(Math.max(optDelay.default(0), 0)),
+  )
 }
 
 fun getChannelId(context: readonly SKFS.Context): ?UInt32 {
   context
-    .getGlobal("FWKMessage.Channel")
+    .getGlobal("SKUIMessage.Channel")
     .map(SKFS.UInt32File::fromFile)
     .map(f -> f.value)
 }

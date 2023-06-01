@@ -62,7 +62,4 @@ native fun applyCursor(wId: UInt32, cursor: UInt32): void;
 @cpp_extern("SKIP_FWK_update")
 native fun update(wId: UInt32): void;
 
-@cpp_extern("SKIP_FWK_close")
-native fun close(wId: UInt32): void;
-
 module end;

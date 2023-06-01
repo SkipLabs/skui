@@ -164,7 +164,7 @@ class HState(
     )
   }
 
-  fun pinMessage(tab: String, value: Bool): FWKMessage.Message {
+  fun pinMessage(tab: String, value: Bool): SKUIMessage.Message {
     this.message(ManagePinned(tab, value))
   }
 
@@ -172,15 +172,15 @@ class HState(
     toMove: String,
     dstTab: String,
     before: Bool,
-  ): FWKMessage.Message {
+  ): SKUIMessage.Message {
     this.message(ManageMove(toMove, dstTab, before))
   }
 
   private fun emit(
     context: mutable SKFS.Context,
-    command: FWKMessage.Command,
+    command: SKUIMessage.Command,
   ): void {
-    FWKMessage.emit(
+    SKUIMessage.emit(
       context,
       statePath,
       this.handle.getDirName().toString(),
@@ -188,8 +188,12 @@ class HState(
     );
   }
 
-  private fun message(command: FWKMessage.Command): FWKMessage.Message {
-    FWKMessage.Message(statePath, this.handle.getDirName().toString(), command);
+  private fun message(command: SKUIMessage.Command): SKUIMessage.Message {
+    SKUIMessage.Message(
+      statePath,
+      this.handle.getDirName().toString(),
+      command,
+    );
   }
 }
 
@@ -516,7 +520,7 @@ fun init(
                 controller.getCloseMessages(ctx, Array[id], iu),
               dropMessages => (_ctx, toMove, dstTab, before, _iu) ~>
                 Array[
-                  FWKMessage.Message(
+                  SKUIMessage.Message(
                     statePath,
                     stateHdl.getDirName().toString(),
                     ManageMove(toMove, dstTab, before),
@@ -536,7 +540,7 @@ fun init(
                 msgs = tab.fireMessage(ctx, iu);
                 Arrays.add(
                   msgs,
-                  FWKMessage.Message(
+                  SKUIMessage.Message(
                     statePath,
                     dirName.toString(),
                     ManageActive(id),

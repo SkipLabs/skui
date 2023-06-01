@@ -95,14 +95,20 @@ class IVParameters(
   settings: Settings,
   state: State,
   idx: Int,
-  optCloseMessage: ?(mutable SKFS.Context, Bool) ~> FWKMessage.Message = None(),
+  optCloseMessage: ?(
+    mutable SKFS.Context,
+    Bool,
+  ) ~> SKUIMessage.Message = None(),
 ) extends Ui.Parameters
 
 class ItemView protected {
   settings: Settings,
   state: State,
   idx: Int,
-  optCloseMessage: ?(mutable SKFS.Context, Bool) ~> FWKMessage.Message = None(),
+  optCloseMessage: ?(
+    mutable SKFS.Context,
+    Bool,
+  ) ~> SKUIMessage.Message = None(),
 } extends Ui.StrictWidget uses Ui.WithNodeCache, Ui.NoViewports {
   //
   type Params = IVParameters;

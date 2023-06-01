@@ -1,8 +1,8 @@
 module UiToggle;
 
 base class ForStorage
-  extends FWKMessage.Support
-  uses FWKMessage.WithUpdate<Command> {
+  extends SKUIMessage.Support
+  uses SKUIMessage.WithUpdate<Command> {
   //
   fun init(_context: mutable SKFS.Context): void {
     void
@@ -36,7 +36,7 @@ class Messages(storage: Storage) extends ForStorage {
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 }
@@ -58,7 +58,7 @@ class AllMessages() extends ForStorage {
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 }

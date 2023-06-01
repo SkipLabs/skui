@@ -1,8 +1,10 @@
 module SKFS;
 
 @always_inline
-fun cast_violation<T:frozen>(name: String, casted: T): _ {
-  invariant_violation(`Cast violation: expected ${name}, got ${Utils.toString(casted)}`)
+fun cast_violation<T: frozen>(name: String, casted: T): _ {
+  invariant_violation(
+    `Cast violation: expected ${name}, got ${Utils.toString(casted)}`,
+  )
 }
 
 extension base class BaseName uses HasClassName {

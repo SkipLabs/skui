@@ -318,6 +318,8 @@ class Image(
   }
 }
 
+class Border(color: .Color = Colors.transparent(), thickness: Int = 0)
+
 base class DrawableSupport {
   //
   fun init(
@@ -354,7 +356,7 @@ base class DrawableSupport {
     color: .Color,
     radius: Float,
     smooth: Int = 2,
-    optBorder: ?(.Color, Int) = None(),
+    optBorder: ?Ui.Border = None(),
   ): Ui.Drawable;
 
   fun rectangle(

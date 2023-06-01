@@ -20,70 +20,9 @@ const mdHandle: SKFS.EHandle<SKFS.BoolFile> = SKFS.EHandle(
   modifiersPath,
 );
 
-base class Command extends FWKMessage.Command {
+base class Command {
   children =
   | Next()
-
-  fun toJSON(): JSON.Value
-  | KeyPressed(code, symbol, optKeyValue, locks, timeStamp, tick) ->
-    JSON.Object(
-      Map[
-        "__class" => JSON.String(this.getClassName()),
-        "code" => JSON.String(code),
-        "symbol" => JSON.String(symbol),
-        "keyValue" => optKeyValue.map(v -> JSON.String(v)).default(JSON.Null()),
-        "locks" => locks.toJSON(),
-        "timeStamp" => timeStamp.toJSON(),
-        "tick" => JSON.IntNumber(tick.value),
-      ].filter((_k, v) -> !v.isNull()),
-    )
-  | KeyReleased(code, timeStamp, tick) ->
-    JSON.Object(
-      Map[
-        "__class" => JSON.String(this.getClassName()),
-        "code" => JSON.String(code),
-        "timeStamp" => timeStamp.toJSON(),
-        "tick" => JSON.IntNumber(tick.value),
-      ],
-    )
-  | Clear(timeStamp, tick) ->
-    JSON.Object(
-      Map[
-        "__class" => JSON.String(this.getClassName()),
-        "timeStamp" => timeStamp.toJSON(),
-        "tick" => JSON.IntNumber(tick.value),
-      ],
-    )
-  | Next() -> JSON.Object(Map["__class" => JSON.String(this.getClassName())])
-
-  static fun fromJSON(jsv: JSON.Value): Command {
-    jso = jsv.expectObject();
-    cl = jso.getString("__class");
-    cl match {
-    | "FWKKeys.Next" -> Next()
-    | "FWKKeys.KeyPressed" ->
-      KeyPressed(
-        jso.getString("code"),
-        jso.getString("symbol"),
-        jso.maybeGetString("keyValue"),
-        UiEvent.Locks::fromJSON(jso.get("locks")),
-        System.TimeStamp::fromJSON(jso.get("timeStamp")),
-        SKFS.Tick(jso.getInt("tick")),
-      )
-    | "FWKKeys.KeyReleased" ->
-      KeyReleased(
-        jso.getString("code"),
-        System.TimeStamp::fromJSON(jso.get("timeStamp")),
-        SKFS.Tick(jso.getInt("tick")),
-      )
-    | "FWKKeys.Clear" ->
-      Clear(
-        System.TimeStamp::fromJSON(jso.get("timeStamp")),
-        SKFS.Tick(jso.getInt("tick")),
-      )
-    | _ -> invariant_violation(`Invalid json object ${cl} for FWKKeys.Command`)
-    }
-  }
 }
 
 base class Event(timeStamp: System.TimeStamp, tick: SKFS.Tick) extends Command {
@@ -218,12 +157,27 @@ class Clear() extends Event {
   }
 }
 
+@skuiinitializer
 fun init(context: mutable SKFS.Context): void {
-  context.registerMessageSupport("system", "keys", Messages());
-}
-
-fun emit(context: mutable SKFS.Context, command: Command): void {
-  FWKMessage.emit(context, "system", "keys", command)
+  _ = context
+    .makeDir(
+      UiEvent.KeysFile::fromFile,
+      statePath,
+      Array[(propKey, UiEvent.KeysFile(Array[], false, false, false, false))],
+    )
+    .contextWriterKeyMap(
+      SKFS.BoolFile::fromFile,
+      context,
+      modifiersPath,
+      (ctx, writer, _, file) ~> {
+        ctrlDown = file.isControlDown(ctx.tick);
+        shiftDown = file.isShiftDown(ctx.tick);
+        altDown = file.isAltDown(ctx.tick);
+        writer.write(ctrlKey, SKFS.BoolFile(ctrlDown));
+        writer.write(shiftKey, SKFS.BoolFile(shiftDown));
+        writer.write(altKey, SKFS.BoolFile(altDown));
+      },
+    )
 }
 
 fun getKeys(
@@ -251,72 +205,12 @@ fun isAltDown(context: mutable SKFS.Context, isUntracked: Bool = false): Bool {
   mdHandle.getBool(context, altKey, isUntracked);
 }
 
-class Messages()
-  extends FWKMessage.Support
-  uses FWKMessage.WithUpdate<Command> {
-  fun init(context: mutable SKFS.Context): void {
-    _ = context
-      .makeDir(
-        UiEvent.KeysFile::fromFile,
-        statePath,
-        Array[(propKey, UiEvent.KeysFile(Array[], false, false, false, false))],
-      )
-      .contextWriterKeyMap(
-        SKFS.BoolFile::fromFile,
-        context,
-        modifiersPath,
-        (ctx, writer, _, file) ~> {
-          ctrlDown = file.isControlDown(ctx.tick);
-          shiftDown = file.isShiftDown(ctx.tick);
-          altDown = file.isAltDown(ctx.tick);
-          writer.write(ctrlKey, SKFS.BoolFile(ctrlDown));
-          writer.write(shiftKey, SKFS.BoolFile(shiftDown));
-          writer.write(altKey, SKFS.BoolFile(altDown));
-        },
-      )
-  }
-
-  protected fun convert(message: JSON.Value): Command {
-    Command::fromJSON(message)
-  }
-
-  protected fun convertCmd(command: FWKMessage.Command): Command {
-    command as Command _;
-  }
-
-  protected fun execute(
-    context: mutable SKFS.Context,
-    _name: String,
-    _scope: String,
-    command: Command,
-  ): void {
-    execute(context, command)
-  }
-}
-
 fun execute(context: mutable SKFS.Context, command: Command): void {
   keysFile = kfHandle.get(context, propKey);
   command match {
   | Next() -> kfHandle.write(context, propKey, keysFile.next())
   | event @ Event _ ->
     kfHandle.write(context, propKey, event.compute(keysFile, context.tick))
-  }
-}
-
-fun check(
-  context: mutable SKFS.Context,
-  altKey: Bool,
-  ctrlKey: Bool,
-  shiftKey: Bool,
-  _metaKey: Bool,
-): void {
-  keysFile = kfHandle.getValue(context, propKey, true);
-  if (
-    keysFile.isControlDown(context.tick) != ctrlKey ||
-    keysFile.isShiftDown(context.tick) != shiftKey ||
-    keysFile.isAltDown(context.tick) != altKey
-  ) {
-    FWKKeys.emit(context, FWKKeys.Clear(System.TimeStamp(0, 0), context.tick));
   }
 }
 

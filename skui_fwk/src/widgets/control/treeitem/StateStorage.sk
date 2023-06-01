@@ -109,9 +109,9 @@ class HState(
 
   private fun emit(
     context: mutable SKFS.Context,
-    command: FWKMessage.Command,
+    command: SKUIMessage.Command,
   ): void {
-    FWKMessage.emit(context, statePath, this.stateDirName.toString(), command);
+    SKUIMessage.emit(context, statePath, this.stateDirName.toString(), command);
   }
 }
 
@@ -132,7 +132,7 @@ fun init(
         value = SKFS.IntFile::fromFile(file).value;
         controller.getProgress(context) match {
         | Some(Ui.Indeterminate()) ->
-          FWKMessage.emit(
+          SKUIMessage.emit(
             context,
             statePath,
             dirName.toString(),

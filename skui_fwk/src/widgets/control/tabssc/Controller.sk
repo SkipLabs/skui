@@ -5,7 +5,7 @@ class LamController{
   visible: mutable SKFS.Context ~> ?Ui.Visible = _ctx ~> None(),
   widgets: Ui.WidgetsCollection,
   dropMessages: (mutable SKFS.Context, String, Bool) ~> Array<
-    FWKMessage.Message,
+    SKUIMessage.Message,
   > = (_ctx, _src, _iu) ~> Array[],
 } extends Controller {
   //
@@ -29,7 +29,7 @@ class LamController{
     context: mutable SKFS.Context,
     source: String,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message> {
+  ): Array<SKUIMessage.Message> {
     this.dropMessages(context, source, isUntracked)
   }
 

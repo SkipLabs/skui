@@ -161,13 +161,11 @@ class TriangleShader(side: .UiSide) extends RectangleBaseShader {
   }
 }
 
-class Border(color: .Color = Colors.transparent(), thickness: Int = 0)
-
 class RoundedRectangleParameters(
   size: Geometry.Size,
   color: .Color,
   radius: Int,
-  optBorder: ?Border,
+  optBorder: ?Ui.Border,
   smooth: Int,
 ) extends Parameters {
   static fun fromParams(obj: Parameters): this {
@@ -217,7 +215,7 @@ class RoundedRectangleShader() extends FragmentShaderBuilder {
       ctx.uniform1f(radiusUniform, rrParams.radius.toFloat() / size);
       smooth = rrParams.smooth.toFloat() / size;
       ctx.uniform1f(smoothUniform, smooth);
-      border = rrParams.optBorder.default(Border());
+      border = rrParams.optBorder.default(Ui.Border());
       ctx.uniform4f(
         bColorUniform,
         border.color.red,

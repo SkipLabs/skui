@@ -42,7 +42,7 @@ base class Controller extends Ui.WidgetsCollection {
     context: mutable SKFS.Context,
     source: String,
     isUntracked: Bool = false,
-  ): Array<FWKMessage.Message>;
+  ): Array<SKUIMessage.Message>;
 }
 
 base class State extends Ui.StateWithScroll {

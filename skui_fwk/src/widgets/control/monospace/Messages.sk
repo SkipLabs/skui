@@ -1,8 +1,8 @@
 module UiMonospace;
 
 base class ForStorage
-  extends FWKMessage.Support
-  uses FWKMessage.WithUpdate<Command> {
+  extends SKUIMessage.Support
+  uses SKUIMessage.WithUpdate<Command> {
   //
   fun init(_context: mutable SKFS.Context): void {
     void
@@ -57,7 +57,7 @@ base class ForStorage
       | _ -> Some(Ui.Visibility(tick, false))
       }).each(visibility -> {
         storage.setVisibility(context, Some(visibility));
-        FWKMessage.emit(
+        SKUIMessage.emit(
           context,
           name,
           scope,
@@ -69,7 +69,7 @@ base class ForStorage
     | executable @ ExecCommand _ ->
       executable match {
       | repeatable @ Repeatable _ ->
-        FWKMessage.repeat(
+        SKUIMessage.repeat(
           context,
           name,
           scope,
@@ -88,7 +88,7 @@ base class ForStorage
         | ManageHScrolling(_, tick)
         | ManageVScrolling(_, tick) ->
           storage.setScrolling(context, Some(tick));
-          FWKMessage.emit(
+          SKUIMessage.emit(
             context,
             name,
             scope,
@@ -110,7 +110,7 @@ class Messages(storage: Storage) extends ForStorage {
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 
@@ -141,7 +141,7 @@ class AllMessages() extends ForStorage {
     Command::fromJSON(message)
   }
 
-  protected fun convertCmd(command: FWKMessage.Command): Command {
+  protected fun convertCmd(command: SKUIMessage.Command): Command {
     command as Command _;
   }
 }
