@@ -116,7 +116,7 @@ class Slider protected {
     drawables = mutable Vector<Ui.Drawable>[];
     layer match {
     | MainLayer() ->
-      this.fillMain(context, absolute, node.size(), di, drawables)
+      this.fillMain(context, support, absolute, node.size(), di, drawables)
     | BackgroundLayer() ->
       this.fillBackground(
         context,
@@ -164,6 +164,7 @@ class Slider protected {
 
   private fun fillMain(
     context: mutable SKFS.Context,
+    support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     _size: Geometry.Size,
     di: UiSlider.DrawInfo,
@@ -176,17 +177,17 @@ class Slider protected {
       (text, tBounds, _, _) = info;
       color = context.getThemeColor(UiTheme.TooltipText());
       faceId = context.getThemeFont(UiTheme.Tooltip());
-      tSize = tBounds.size();
-      context
-        .getTextSupport()
-        .getDrawables(context, text, Text.Display(faceId, color))
-        .each(ds ->
-          ds.each(d -> {
-            dSize = d.size();
-            toMove = (tSize - dSize) / 2.0;
-            drawables.push(d.translate(absolute + toMove.toOffset()))
-          })
-        );
+      Ui.drawConstrainedText(
+        context,
+        support,
+        context.getTextSupport(),
+        text,
+        tBounds.shift(absolute),
+        color,
+        faceId,
+        drawables,
+        Text.Center(),
+      )
     })
   }
 

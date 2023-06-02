@@ -1,0 +1,158 @@
+module SKUIViewsSliders;
+
+@skuiview
+fun view(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("sliders")
+      .arg(
+        Cli.StringArg("number")
+          .short("n")
+          .long("number")
+          .about("The number of slider to show [1,5].")
+          .default("5"),
+      )
+      .arg(
+        Cli.BoolArg("vertical")
+          .short("vr")
+          .long("vertical")
+          .about("Show the sliver in vertical direction."),
+      )
+      .about("View that display sliders samples."),
+    args ~> {
+      path = Ui.Path::create("sliders");
+      v = args.getBool("vertical");
+      number = args.getString("number").toIntOption().default(5);
+      (context, _root) ~> widget(context, path, v, Some(number))
+    },
+  )
+}
+
+fun widget(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  v: Bool,
+  optNumber: ?Int,
+  optConfiguration: ?Ui.Configuration = None(),
+): Ui.Widget {
+  slider1 = slider{
+    context,
+    path,
+    range => Range(0, 200),
+    disabled => true,
+    values => Array[100],
+    direction => if (v) Ui.VerticalAxis() else Ui.HorizontalAxis(),
+  };
+  slider2 = slider{
+    context,
+    path,
+    range => Range(0, 200),
+    disabled => false,
+    ticks => Some(UiSlider.Step(10)),
+    values => Array[50],
+    direction => if (v) Ui.VerticalAxis() else Ui.HorizontalAxis(),
+  };
+  slider3 = slider{
+    context,
+    path,
+    range => Range(0, 200),
+    disabled => true,
+    small => true,
+    values => Array[25],
+    direction => if (v) Ui.VerticalAxis() else Ui.HorizontalAxis(),
+  };
+  slider4 = slider{
+    context,
+    path,
+    range => Range(0, 200),
+    disabled => false,
+    small => true,
+    ticks => Some(UiSlider.Step(10)),
+    values => Array[75],
+    direction => if (v) Ui.VerticalAxis() else Ui.HorizontalAxis(),
+  };
+  slider5 = slider{
+    context,
+    path,
+    range => Range(0, 200),
+    disabled => false,
+    values => Array[10, 160],
+    ticks => Some(UiSlider.Step(10)),
+    withLabel => true,
+    direction => if (v) Ui.VerticalAxis() else Ui.HorizontalAxis(),
+  };
+  sliders = Array[slider2, slider3, slider4, slider5, slider1];
+  number = optNumber.default(sliders.size());
+  fSliders = if (number < sliders.size()) {
+    sliders.slice(0, number)
+  } else {
+    sliders
+  };
+  wrap = Ui.Wrap::createForController(
+    context,
+    path,
+    UiWrap.LamController{
+      widgets => Ui.WidgetsArray(fSliders),
+      direction => _ctx ~> if (v) Ui.HorizontalAxis() else Ui.VerticalAxis(),
+      spacing => _ctx ~> 10.0,
+      runSpacing => _ctx ~> 10.0,
+      crossAxisAlignment => _ctx ~> UiWrap.Center(),
+    },
+  );
+  Ui.Flex::createForController(
+    context,
+    path.makeChild("centered"),
+    UiFlex.LamController{
+      widgets => Ui.WidgetsArray(Array[wrap]),
+      mainAxisAlignment => _ctx ~> UiFlex.Center(),
+    },
+    optConfiguration,
+  )
+}
+
+private fun slider{
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  range: Range,
+  values: Array<Int>,
+  step: UiSlider.Step = UiSlider.Step(1),
+  ticks: ?UiSlider.Step = None(),
+  disabled: Bool = false,
+  small: Bool = false,
+  withLabel: Bool = false,
+  direction: Ui.Axis = Ui.HorizontalAxis(),
+}: Ui.Widget {
+  value: UiSlider.Value = if (values.size() > 1) {
+    UiSlider.RangeProp(
+      UiRangeProp.Property::create(
+        context,
+        None(),
+        Some(Range(values[0], values[1])),
+      ),
+    )
+  } else {
+    v = if (values.isEmpty()) range.start else values[0];
+    UiSlider.IntProp(UiIntProp.Property::create(context, None(), Some(v)))
+  };
+  bPath = path.makeChild(`s_${UUID::randomUUID(context)}`);
+  controller = UiSlider.LamController{
+    range => (_ctx, _) ~> range,
+    disabled => _ctx ~> disabled,
+    small => _ctx ~> small,
+    step => (_ctx, _) ~> step,
+    ticks => _ctx ~> ticks,
+    value => (_ctx, _) ~> value,
+    rangeKind => (_ctx, _) ~>
+      value match {
+      | UiSlider.RangeProp _ -> true
+      | _ -> false
+      },
+    direction => _ctx ~> direction,
+    withLabel => _ctx ~> withLabel,
+  };
+  Ui.Slider::create(context, bPath, UiSlider.init(context, bPath, controller));
+}
+
+module end;

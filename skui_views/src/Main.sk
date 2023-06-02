@@ -1,5 +1,13 @@
 module SkuiViews;
 
+fun main(): void {
+  available = mutable Vector[SKUIViewsButtons.view(), SKUIViewsSliders.view()];
+  /*#forEachFunction (@skuiview, #function, #functionName) {
+    available.push(#function())
+  };*/
+  perform(available);
+}
+
 const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/views/");
 
 fun initUiWidget(
@@ -46,14 +54,6 @@ fun initSizeManager(context: mutable SKFS.Context): SKFS.EHandle<UiEvent.Size> {
     ),
   );
   windowHdl;
-}
-
-fun main(): void {
-  available = mutable Vector[SKUIViewsButtons.view()];
-  /*#forEachFunction (@skuiview, #function, #functionName) {
-    available.push(#function())
-  };*/
-  perform(available);
 }
 
 fun perform(
