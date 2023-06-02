@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 #include "GLWManager.h"
 #include "GLUtils.h"
+#include <fstream>
 
 std::string utf8datatype("text/plain; charset=utf-8");
 
@@ -68,8 +69,8 @@ namespace skui
   {
     this->messages = {
         XInternAtom(this->display, "WM_DELETE_WINDOW", False),
-        XInternAtom(this->display, "PERFORM_ANIMATION_FRAME", False),
         XInternAtom(this->display, "CLOSE_WINDOW", False),
+        XInternAtom(this->display, "CHECK_RESOURCES", False),
     };
     this->context = glXCreateContext(display, visualInfo, NULL, GL_TRUE);
     glXMakeCurrent(this->display, window, this->context);
@@ -104,7 +105,6 @@ namespace skui
 
   void GLWindowManager::onIdle()
   {
-    GL_checkTextureToDelete();
   }
 
   void GLWindowManager::checkClipboard(XSelectionEvent *s)
@@ -232,28 +232,43 @@ namespace skui
     this->animationFrame.start([this, expose]()
                                { expose(this->display, this->window); },
                                this->config.framePerSecond);
+    this->resourceTimer.setInterval(
+      [this]() {sendXClientMessage(this->display, this->window, this->messages.fCheckResources, 0, 0);},
+      10000
+    );
   }
 
   bool GLWindowManager::manageCustomEvent(XClientMessageEvent xclient)
   {
-    if ((Atom)xclient.data.l[0] == this->messages.fWmDeleteMessage)
+    Atom messageType = xclient.data.l[0];
+    if (this->messages.fWmDeleteMessage == messageType)
     {
       this->requestClose();
     }
+    else if (this->messages.fCheckResources == messageType)
+    {
+      GL_checkTextureToDelete();
+    }
     else if (xclient.message_type == this->messages.fCloseMessage)
     {
+      this->animationFrame.stop();
       return true;
     } else {
-      auto it  = this->customMessages.find((Atom)xclient.data.l[0]);
+      auto it  = this->customMessages.find(messageType);
       if (it != this->customMessages.end()) {
         it->second((uint32_t)xclient.data.l[1], (uint32_t)xclient.data.l[2]);
       }
-      return false;
     }
+    return false;
   }
 
   void GLWindowManager::sendCloseRequest()
   {
     sendXClientMessage(this->display, this->window, this->messages.fCloseMessage, 0, 0);
+  }
+
+
+  void GLWindowManager::print(std::ostream & buffer) {
+    this->animationFrame.print(buffer);
   }
 }

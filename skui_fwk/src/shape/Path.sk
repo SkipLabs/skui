@@ -39,7 +39,7 @@ extension class Path {
         bounds.topLeft(),
         bounds.size(),
         image,
-        conv,
+        r ~> conv(r, 1.0),
         pxRange,
         0.0,
         paint,

@@ -2,6 +2,7 @@
 #include "GLWManager.h"
 #include "Timer.h"
 #include <atomic>
+#include <iostream>
 
 skui::WindowSupplier supplier;
 
@@ -165,5 +166,7 @@ extern "C"
         break;
       }
     }
+    manager.print(std::cout);
+    std::cout << std::endl;
   }
 }

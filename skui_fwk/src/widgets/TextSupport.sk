@@ -26,28 +26,26 @@ class Line(offset: Geometry.Offset, glyphs: Vector<Glyph>) extends SKFS.File {
     paint: Ui.Paint,
     drawables: mutable Vector<Ui.Drawable>,
   ): void {
-    if (FWKEnv.getWindowId(context).isSome()) {
-      fontSupport = context.getFontSupport();
-      offset = absolute.move(this.offset);
-      this.glyphs.each(glyph -> {
-        size = glyph.glyph.glyph.optPath
-          .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
-          .default(Geometry.Size(0.0, 0.0));
-        fontSupport.getMSDF(context, glyph.gid).each(msdf ->
-          drawables.push(
-            support.msdf(
-              offset.move(glyph.offset),
-              size,
-              msdf.image,
-              msdf.conv,
-              glyph.gid.pxRange,
-              thickness(glyph.gid.fid.size, glyph.gid.fid.isNotBold()),
-              paint,
-            ),
-          )
-        );
-      })
-    };
+    fontSupport = context.getFontSupport();
+    offset = absolute.move(this.offset);
+    this.glyphs.each(glyph -> {
+      size = glyph.glyph.glyph.optPath
+        .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
+        .default(Geometry.Size(0.0, 0.0));
+      fontSupport.getMSDF(context, glyph.gid).each(msdf ->
+        drawables.push(
+          support.msdf(
+            offset.move(glyph.offset),
+            size,
+            msdf.image,
+            msdf.conv,
+            glyph.gid.pxRange,
+            thickness(glyph.gid.fid.size, glyph.gid.fid.isNotBold()),
+            paint,
+          ),
+        )
+      );
+    })
   }
 }
 
@@ -449,41 +447,37 @@ fun toDrawables(
   thickness: Float,
   pxRange: Int = 8,
 ): ?Ui.Drawables {
-  if (FWKEnv.getWindowId(context).isSome()) {
-    drawables = mutable Vector<Ui.Drawable>[];
-    fontSupport = context.getFontSupport();
-    top = 0.0;
-    left = 0.0;
-    optPrevious: ?Char = None();
-    for (char in text) {
-      gid = Font.GlyphID::create(style.faceId, char, pxRange);
-      glyph = fontSupport.getGlyphForId(context, gid);
-      kern = glyph.getKern(optPrevious);
-      width = glyph.width() + kern;
-      offset = Geometry.Offset(left, top).move(glyph.offset(kern));
-      size = glyph.glyph.optPath
-        .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
-        .default(Geometry.Size(0.0, 0.0));
-      fontSupport.getMSDF(context, gid).each(msdf ->
-        drawables.push(
-          support.msdf(
-            offset,
-            size,
-            msdf.image,
-            msdf.conv,
-            gid.pxRange,
-            thickness,
-            style.fill,
-          ),
-        )
-      );
-      !left = left + width;
-      !optPrevious = Some(char);
-    };
-    Some(Ui.Drawables(drawables.toArray()))
-  } else {
-    None()
-  }
+  drawables = mutable Vector<Ui.Drawable>[];
+  fontSupport = context.getFontSupport();
+  top = 0.0;
+  left = 0.0;
+  optPrevious: ?Char = None();
+  for (char in text) {
+    gid = Font.GlyphID::create(style.faceId, char, pxRange);
+    glyph = fontSupport.getGlyphForId(context, gid);
+    kern = glyph.getKern(optPrevious);
+    width = glyph.width() + kern;
+    offset = Geometry.Offset(left, top).move(glyph.offset(kern));
+    size = glyph.glyph.optPath
+      .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
+      .default(Geometry.Size(0.0, 0.0));
+    fontSupport.getMSDF(context, gid).each(msdf ->
+      drawables.push(
+        support.msdf(
+          offset,
+          size,
+          msdf.image,
+          msdf.conv,
+          gid.pxRange,
+          thickness,
+          style.fill,
+        ),
+      )
+    );
+    !left = left + width;
+    !optPrevious = Some(char);
+  };
+  Some(Ui.Drawables(drawables.toArray()))
 }
 
 fun buildGlyphs(

@@ -11,8 +11,8 @@ namespace skui
   struct Messages final
   {
     Atom fWmDeleteMessage;
-    Atom fPerformAnimationFrame;
     Atom fCloseMessage;
+    Atom fCheckResources;
   };
 
   struct WindowConfig final

@@ -1,7 +1,7 @@
-module SKUIViews;
+module SKUIViewsButtons;
 
 @skuiview
-fun buttons(): (
+fun view(): (
   Cli.Command,
   Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
 ) {

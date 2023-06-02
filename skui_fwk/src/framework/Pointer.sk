@@ -95,7 +95,7 @@ class Messages()
     pointer: Pointer,
   ): void {
     iHandle.write(context, mainId, pointer);
-    FWKEnv.getWindowId(context, true).each(wId ->
+    FWKEnv.getRootId(context).each(wId ->
       FWK.applyCursor(wId, UInt32::truncate(pointer.pointer.cursor.code()))
     );
   }

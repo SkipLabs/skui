@@ -1,67 +1,13 @@
 module GLDrawable;
 
-base class Resizable {
-  fun getTexture(gCtx: GL.Ctx, size: Geometry.ISize): ?GL.Texture;
-  fun getSize(): Geometry.ISize;
-}
-
-class MsdfTex(
-  tex: Resizable,
-  conv: Geometry.Rect ~> Geometry.Rect,
-  pxRange: Int,
-) extends SKFS.File
-
-class Bilinear(image: Ui.Image) extends GLRectangleDrawable {
-  //
-  static fun create(image: Ui.Image, offset: Geometry.Offset): this {
-    static(
-      image,
-      Geometry.Rect::fromOffsetSize(
-        offset,
-        Geometry.Size(image.width.toFloat(), image.height.toFloat()),
-      ),
-    )
-  }
-
-  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
-    initializer.billinear();
-  }
-
-  fun build(
-    gl: GL.Ctx,
-    data: GLProgram.Data,
-    supplier: GLProgram.Supplier,
-  ): ?Ui.Handle {
-    array = data as GLProgram.VertexArray _;
-    supplier.bilinearDrawer().map(drawer -> {
-      glImage = GLTexture.Image(
-        Some(this.image.data),
-        true,
-        this.image.width,
-        this.image.height,
-      );
-      texture = glImage.asTexture(gl);
-      Ui.LambdaHandle((shift, window, _height) ~> {
-        bounds = this.bounds.shift(shift.toOffset());
-        this.image.optShift.each(s -> !bounds = bounds.shift(s.toOffset()));
-        drawer.run(
-          GLProgram.TextureParameters(texture),
-          GLProgram.BoundsParameters(bounds, array),
-          window.size(),
-        )
-      })
-    })
-  }
-}
-
-class BilinearText(tex: Resizable) extends GLRectangleDrawable {
+class Bilinear(texture: GL.Ctx ~> ?GL.Texture) extends GLRectangleDrawable {
   //
   static fun create(
-    tex: Resizable,
+    texture: GL.Ctx ~> ?GL.Texture,
     offset: Geometry.Offset,
     size: Geometry.Size,
   ): this {
-    static(tex, Geometry.Rect::fromOffsetSize(offset, size))
+    static(texture, Geometry.Rect::fromOffsetSize(offset, size))
   }
 
   fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
@@ -73,10 +19,9 @@ class BilinearText(tex: Resizable) extends GLRectangleDrawable {
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
-    size = this.bounds.size().floor().toISize();
     array = data as GLProgram.VertexArray _;
     supplier.bilinearDrawer().flatMap(drawer -> {
-      this.tex.getTexture(gl, size).map(texture ->
+      this.texture(gl).map(texture -> {
         Ui.LambdaHandle((shift, window, _height) ~> {
           bounds = this.bounds.shift(shift.toOffset());
           drawer.run(
@@ -85,32 +30,33 @@ class BilinearText(tex: Resizable) extends GLRectangleDrawable {
             window.size(),
           )
         })
-      )
+      })
     })
   }
 }
 
 class Msdf(
-  optChar: ?Char,
-  getter: GL.Ctx ~> ?MsdfTex,
+  texture: GL.Ctx ~> ?GL.Texture,
+  pxRange: Int,
   color: .Color,
   thickness: Float,
 ) extends GLRectangleDrawable {
   //
   static fun create(
-    optChar: ?Char,
-    getter: GL.Ctx ~> ?MsdfTex,
+    texture: GL.Ctx ~> ?GL.Texture,
+    conv: Geometry.Rect ~> Geometry.Rect,
+    pxRange: Int,
     color: .Color,
     thickness: Float,
     offset: Geometry.Offset,
     size: Geometry.Size,
   ): this {
     static(
-      optChar,
-      getter,
+      texture,
+      pxRange,
       color,
       thickness,
-      Geometry.Rect::fromOffsetSize(offset, size),
+      conv(Geometry.Rect::fromOffsetSize(offset, size)),
     )
   }
 
@@ -123,37 +69,26 @@ class Msdf(
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
-    this.getter(gl).flatMap(msdf -> {
-      tSize = msdf.tex.getSize();
-      array = data as GLProgram.VertexArray _;
-      bounds = msdf.conv(this.bounds);
-      supplier.msdfDrawer().flatMap(drawer -> {
-        msdf.tex.getTexture(gl, tSize).map(texture ->
-          Ui.LambdaHandle((shift, window, _height) ~> {
-            drawer.run(
-              GLProgram.MsdfParameters(
-                texture,
-                msdf.pxRange,
-                this.color,
-                this.thickness,
-              ),
-              GLProgram.BoundsParameters(bounds.shift(shift.toOffset()), array),
-              window.size(),
-            )
-          })
-        )
-      })
-    })
-  }
-}
-
-class FixedImage(image: GLTexture.Image) extends Resizable {
-  fun getSize(): Geometry.ISize {
-    Geometry.ISize(this.image.width, this.image.height)
-  }
-
-  fun getTexture(gCtx: GL.Ctx, _size: Geometry.ISize): ?GL.Texture {
-    Some(this.image.asTexture(gCtx))
+    array = data as GLProgram.VertexArray _;
+    supplier.msdfDrawer().flatMap(drawer ->
+      this.texture(gl).map(texture ->
+        Ui.LambdaHandle((shift, window, _height) ~> {
+          drawer.run(
+            GLProgram.MsdfParameters(
+              texture,
+              this.pxRange,
+              this.color,
+              this.thickness,
+            ),
+            GLProgram.BoundsParameters(
+              this.bounds.shift(shift.toOffset()),
+              array,
+            ),
+            window.size(),
+          )
+        })
+      )
+    )
   }
 }
 

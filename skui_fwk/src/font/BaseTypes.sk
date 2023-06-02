@@ -450,14 +450,15 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
 
 class Msdf(
   image: Ui.Image,
-  conv: (Geometry.Rect, Float) ~> Geometry.Rect,
+  conv: Geometry.Rect ~> Geometry.Rect,
 ) extends SKFS.File {
   //
   static fun make(
     _char: Char,
     info: (Ui.Image, (Geometry.Rect, Float) ~> Geometry.Rect),
+    scale: Float = 1.0,
   ): this {
-    static(info.i0, info.i1)
+    static(info.i0, r ~> info.i1(r, scale))
   }
 }
 

@@ -32,6 +32,8 @@ fun defaultThree<T: frozen, P1, P2, P3>(t: T): GetterThree<T, P1, P2, P3> {
 
 const full: UInt8 = UInt8::truncate(255);
 
+class Resizer(fn: (Image, Int, Int) ~> ?Image) extends SKFS.File
+
 class Shift(x: Int, y: Int) uses Hashable, Equality, Show {
   fun toOffset(): Geometry.Offset {
     Geometry.Offset(this.x.toFloat(), this.y.toFloat())
@@ -188,8 +190,18 @@ value class Pix(
 base class Picture {
   //
   fun getSize(): Geometry.ISize;
-
   fun resized(width: Int, height: Int): ?Picture;
+}
+
+class EmptyPicture() extends Picture {
+  //
+  fun getSize(): Geometry.ISize {
+    Geometry.ISize(0, 0)
+  }
+
+  fun resized(_width: Int, _height: Int): ?Picture {
+    Some(this)
+  }
 }
 
 class Image(
@@ -197,7 +209,7 @@ class Image(
   width: Int,
   height: Int,
   optShift: ?Shift = None(),
-) extends SKFS.File {
+) extends Ui.Picture, SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {
@@ -236,6 +248,10 @@ class Image(
       width,
       height,
     )
+  }
+
+  fun getSize(): Geometry.ISize {
+    Geometry.ISize(this.width, this.height)
   }
 
   fun size(): Geometry.Size {
@@ -316,6 +332,14 @@ class Image(
       UInt32::truncate(this.height),
     )
   }
+
+  fun resized(width: Int, height: Int): ?Picture {
+    SKFS.getWorkingContext().flatMap(ctx ->
+      ctx.getGlobal("Ui.Resizer").map(Resizer::fromFile).flatMap(r ->
+        r.fn(this, width, height)
+      )
+    )
+  }
 }
 
 class Border(color: .Color = Colors.transparent(), thickness: Int = 0)
@@ -330,8 +354,8 @@ base class DrawableSupport {
   fun msdf(
     offset: Geometry.Offset,
     size: Geometry.Size,
-    image: Image,
-    conv: (Geometry.Rect, Float) ~> Geometry.Rect,
+    picture: Picture,
+    conv: Geometry.Rect ~> Geometry.Rect,
     pxRange: Int,
     thickness: Float,
     paint: Ui.Paint,

@@ -7,10 +7,10 @@ fun initUiWidget(
   wId: Int,
   getter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
 ): void {
-  FWKEnv.init(context);
+  FWKEnv.init(context, wId);
   context.initFontSupport();
   context.initIconSupport();
-  support: Ui.DrawableSupport = SKUIGL.DrawableSupport();
+  support = SKUIGL.DrawableSupport(pictureToTexturable);
   context.initTextSupport(support);
   root = UiRoot.HStorage::create(context, SKFS.DirName::create("/ui/root/"));
   context.setGlobal("FWK.Root", root);
@@ -20,6 +20,17 @@ fun initUiWidget(
   FWKPipeline.initPipeline(context, getter, windowHdl, root, support);
   context.!optPreOnChanged = Some(_ctx ~> FWK.update(uint32(wId)));
   context.clearProfile();
+}
+
+fun pictureToTexturable(
+  picture: Ui.Picture,
+  linear: Bool = true,
+): ?GL.Texturable {
+  picture match {
+  | img @ Ui.Image _ ->
+    Some(GLTexture.Image(Some(img.data), linear, img.width, img.height))
+  | Ui.EmptyPicture _ -> None()
+  }
 }
 
 fun initSizeManager(context: mutable SKFS.Context): SKFS.EHandle<UiEvent.Size> {
@@ -38,7 +49,7 @@ fun initSizeManager(context: mutable SKFS.Context): SKFS.EHandle<UiEvent.Size> {
 }
 
 fun main(): void {
-  available = mutable Vector[SKUIViews.buttons()];
+  available = mutable Vector[SKUIViewsButtons.view()];
   /*#forEachFunction (@skuiview, #function, #functionName) {
     available.push(#function())
   };*/

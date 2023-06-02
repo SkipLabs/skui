@@ -56,7 +56,9 @@ fun setWindowContext(window: UInt32, cid: UInt32): void {
   SKFS.destroyObstack(pos);
 }
 
-class DrawableSupport() extends Ui.DrawableSupport {
+class DrawableSupport(
+  conv: (Ui.Picture, Bool) ~> ?GL.Texturable,
+) extends Ui.DrawableSupport {
   fun init(
     context: mutable SKFS.Context,
     nodeDrawablesHdl: SKFS.EHandle<Ui.Drawables>,
@@ -333,23 +335,39 @@ class DrawableSupport() extends Ui.DrawableSupport {
   }
 
   fun image(
-    _offset: Geometry.Offset,
-    _size: Geometry.Size,
-    _picture: Ui.Picture,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    picture: Ui.Picture,
   ): Ui.Drawable {
-    todo("GlDrawable image")
+    GLDrawable.Bilinear::create(
+      ctx ~> this.conv(picture, true).map(t -> t.asTexture(ctx)),
+      offset,
+      size,
+    )
   }
 
   fun msdf(
-    _offset: Geometry.Offset,
-    _size: Geometry.Size,
-    _image: Ui.Image,
-    _conv: (Geometry.Rect, Float) ~> Geometry.Rect,
-    _pxRange: Int,
-    _thickness: Float,
-    _paint: Ui.Paint,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    picture: Ui.Picture,
+    conv: Geometry.Rect ~> Geometry.Rect,
+    pxRange: Int,
+    thickness: Float,
+    paint: Ui.Paint,
   ): Ui.Drawable {
-    todo("GlDrawable msdf")
+    paint match {
+    | color @ .Color _ ->
+      GLDrawable.Msdf::create(
+        ctx ~> this.conv(picture, true).map(t -> t.asTexture(ctx)),
+        conv,
+        pxRange,
+        color,
+        thickness,
+        offset,
+        size,
+      )
+    | _ -> invariant_violation("Not implemented; only Color Fill managed")
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 
-SKARGO_INCLUDEDIRS64 ?= ../skui_opengl/native/includes native/includes
+SKARGO_INCLUDEDIRS64 ?= ../skui_opengl/native/includes ../skui_base/native/includes  native/includes
 CC				= clang
 CPP				= clang++
 BCLINK		= llvm-link

@@ -97,7 +97,7 @@ namespace skui
     if (info != nullptr) {
       wInfo = *info;
     } else {
-      wInfo = {0, 0, width, height};
+      wInfo = {0, 0, std::min(width, (u_int64_t)1920), std::max(height - 100, (u_int64_t)600)};
     }
     auto fWindow = XCreateWindow(
         display,
@@ -151,11 +151,12 @@ namespace skui
     MouseLocation location;
     XSelectionRequestEvent *sev;
     bool closed = false;
-
+    uint64_t current = -1;
+    WindowManager *wManager = nullptr;
     //($state, $icon_window) = X11::Protocol::WM::get_wm_state ($X, $window)
     // Handle all pending XEvents (if any) and flush the input
     // Only handle a finite number of events before finishing resize and paint..
-    count = XEventsQueued(display, QueuedAfterReading);
+    count = XEventsQueued(display, QueuedAfterFlush);
     if (count > 0)
     {
       // collapse any Expose and Resize events.
@@ -163,14 +164,16 @@ namespace skui
       {
         XEvent event;
         XNextEvent(display, &event);
-        uint64_t current = -1;
-        WindowManager *wManager = nullptr;
-        for (auto it = this->windows.begin(); it != this->windows.end(); ++it)
-        {
-          if (it->second->is(event.xany.window))
+        if (wManager == nullptr || !wManager->is(event.xany.window)) {
+          wManager = nullptr;
+          current = -1;
+          for (auto it = this->windows.begin(); it != this->windows.end(); ++it)
           {
-            current = it->first;
-            wManager = it->second;
+            if (it->second->is(event.xany.window))
+            {
+              current = it->first;
+              wManager = it->second;
+            }
           }
         }
         if (current < 0 || wManager == nullptr)
@@ -283,14 +286,24 @@ namespace skui
           assert(event.type != Expose && event.type != ConfigureNotify);
           break;
         }
+      };
+      if (wManager != nullptr) {
+        if (location.changed) {
+          wManager->manageMouseLocation(
+              location.x, location.y,
+              location.screenX, location.screenY);
+          location.reset();
+        }
+        wManager->onIdle();
       }
-      location.reset();
     }
     else
     {
       // Idle main window
       // We are only really "idle" when the timer went off with zero events.
-      usleep(IDLE_TIME);
+      if (wManager != nullptr) {
+        wManager->onIdle();
+      }
     }
     return closed;
   }

@@ -1,5 +1,6 @@
 #include "Supplier.h"
 #include "GLWManager.h"
+#include <iostream>
 
 skui::WindowSupplier supplier;
 
@@ -62,5 +63,7 @@ extern "C"
         break;
       }
     }
+    manager.print(std::cout);
+    std::cout << std::endl;
   }
 }

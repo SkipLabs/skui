@@ -5,6 +5,7 @@
 #include <exception>
 #include <GL/glx.h>
 #include "AnimationFrame.h"
+#include "Timer.h"
 #include "EManager.h"
 #include <map>
 
@@ -44,6 +45,7 @@ namespace skui
     void manageKeyReleased(uint32_t code);
     bool manageCustomEvent(XClientMessageEvent xclient);
     void sendCloseRequest();
+    void print(std::ostream & buffer);
 
     GLWindowManager(
         void* enviroment,
@@ -72,6 +74,7 @@ namespace skui
     XVisualInfo *visualInfo;
     std::string utf8;
     AnimationFrame animationFrame;
+    Timer resourceTimer;
     EventManager *eventManager;
     std::function<void(u_int64_t, u_int64_t)> onContextChange;
     void* userEnviroment;
