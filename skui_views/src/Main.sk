@@ -1,7 +1,11 @@
 module SkuiViews;
 
 fun main(): void {
-  available = mutable Vector[SKUIViewsButtons.view(), SKUIViewsSliders.view()];
+  available = mutable Vector[
+    SKUIViewsButtons.view(),
+    SKUIViewsSliders.view(),
+    SKUIViewsSplit.view(),
+  ];
   /*#forEachFunction (@skuiview, #function, #functionName) {
     available.push(#function())
   };*/

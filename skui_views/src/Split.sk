@@ -1,0 +1,81 @@
+module SKUIViewsSplit;
+
+@skuiview
+fun view(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("split").about("View that display sliders samples."),
+    _args ~> {
+      path = Ui.Path::create("split");
+      (context, _root) ~> {
+        pPath = context.timeStamp().toString();
+        UiSeparationProp.Property::initValues(
+          context,
+          Some(pPath),
+          Array[
+            (SKFS.StrID("vertical"), Some(Ui.FromEnd(200))),
+            (SKFS.StrID("horizontal"), Some(Ui.FromStart(200))),
+          ],
+        );
+        verticalProp = UiSeparationProp.Property::forName(
+          context,
+          Some(pPath),
+          "vertical",
+        );
+        horizontalProp = UiSeparationProp.Property::forName(
+          context,
+          Some(pPath),
+          "horizontal",
+        );
+        first = Ui.Decorated::create(
+          context,
+          path.makeChild("first"),
+          UiDecorated.LamController{
+            decoration => _ctx ~> Ui.Background(Colors.red()),
+            widget => _ctx ~> None(),
+          },
+        );
+        second = Ui.Decorated::create(
+          context,
+          path.makeChild("second"),
+          UiDecorated.LamController{
+            decoration => _ctx ~> Ui.Background(Colors.green()),
+            widget => _ctx ~> None(),
+          },
+        );
+        third = Ui.Decorated::create(
+          context,
+          path.makeChild("third"),
+          UiDecorated.LamController{
+            decoration => _ctx ~> Ui.Background(Colors.blue()),
+            widget => _ctx ~> None(),
+          },
+        );
+        splitV = Ui.Split::create(
+          context,
+          path.makeChild("vertical"),
+          UiSplit.LamController{
+            first => Ui.default(second),
+            second => Ui.default(third),
+            axis => Ui.defaultOne(Ui.VerticalAxis()),
+            separation => Ui.defaultOne(verticalProp),
+          },
+        );
+        Ui.Split::create(
+          context,
+          path.makeChild("horizontal"),
+          UiSplit.LamController{
+            first => Ui.default(first),
+            second => Ui.default(splitV),
+            axis => Ui.defaultOne(Ui.HorizontalAxis()),
+            separation => Ui.defaultOne(horizontalProp),
+          },
+        );
+      }
+    },
+  )
+}
+
+module end;
