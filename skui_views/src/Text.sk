@@ -1,0 +1,68 @@
+module SKUIViewsText;
+
+@skuiview
+fun view(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("text")
+      .arg(
+        Cli.StringArg("text")
+          .short("t")
+          .long("text")
+          .about("The text to display")
+          .default("Hello World, It's amazing!!!"),
+      )
+      .arg(
+        Cli.StringArg("size")
+          .about("The font size in pt")
+          .default("20"),
+      )
+      .arg(
+        Cli.BoolArg("bold").short("b").long("bold").about("Display bold text"),
+      )
+      .arg(
+        Cli.BoolArg("italic")
+          .short("i")
+          .long("italic")
+          .about("Display italic text"),
+      )
+      .about("View that display text sample."),
+    args ~> {
+      path = Ui.Path::create("text");
+      text = args.getString("text").replace("·", " ");
+      size = args.getString("size").toIntOption().default(20);
+      bold = args.getBool("bold");
+      italic = args.getBool("italic");
+      if (size < 6) {
+        !size = 6;
+      };
+      style = Text.Style{
+        faceId => Font.FaceID::create(
+          Font.TypefaceInfo::create(
+            UiTheme.family,
+            if (bold) Font.Weight::bold else Font.Weight::normal,
+            if (italic) Font.Italic() else Font.Normal(),
+          ),
+          size.toFloat(),
+        ),
+        hAlignment => Text.Center(),
+        vAlignment => Text.Middle(),
+        wrapping => Text.WordWrap(),
+        overrun => Text.EndingChar(),
+      };
+      (context, _root) ~>
+        Ui.VText::create(
+          context,
+          path,
+          UiText.Parameters(
+            UiText.LamController{text => _ctx ~> !text, style => _ctx ~> style},
+            8,
+          ),
+        )
+    },
+  )
+}
+
+module end;
