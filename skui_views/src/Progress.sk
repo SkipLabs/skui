@@ -1,0 +1,36 @@
+module SKUIViewsProgress;
+
+@skuiview
+fun view(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("progress")
+      .arg(
+        Cli.StringArg("progress")
+          .short("p")
+          .long("progress")
+          .about("The progress value [0, 100]"),
+      )
+      .about("View that display progress indidator sample."),
+    args ~> {
+      optProgress = args.maybeGetString("progress").flatMap(str ->
+        str.toIntOption().map(p -> Math.clamp(p, 0, 100))
+      );
+      path = Ui.Path::create("progress");
+      (context, _root) ~>
+        Ui.Indicator::create(
+          context,
+          path,
+          UiProgress.parameters(
+            context,
+            path,
+            UiProgress.LamController{progress => _ctx ~> optProgress},
+          ),
+        )
+    },
+  )
+}
+
+module end;

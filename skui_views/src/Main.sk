@@ -5,6 +5,7 @@ fun main(): void {
     SKUIViewsButtons.view(),
     SKUIViewsSliders.view(),
     SKUIViewsSplit.view(),
+    SKUIViewsProgress.view(),
   ];
   /*#forEachFunction (@skuiview, #function, #functionName) {
     available.push(#function())

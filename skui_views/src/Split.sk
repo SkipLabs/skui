@@ -6,7 +6,7 @@ fun view(): (
   Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
 ) {
   (
-    Cli.Command("split").about("View that display sliders samples."),
+    Cli.Command("split").about("View that display split pane sample."),
     _args ~> {
       path = Ui.Path::create("split");
       (context, _root) ~> {
