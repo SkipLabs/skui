@@ -18,7 +18,6 @@ extern "C"
 
 char* createBuffer(uint8_t* start, uint8_t* end) {
   uint64_t size = end - start;
-  std::cout << "Size: " <<  size << std::endl;
   char* buffer = SKIP_createByteArray(size);
   uint32_t idx = 0;
   for (uint8_t *byte = start; byte < end; ++byte) {

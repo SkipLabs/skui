@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "outDir": "js",
+    "baseUrl": ".",
+    "paths": {
+      "#skui_base/*": ["../../skui_base/ts/*"],
+      "#skui_opengl/*": ["./*"]
+    },
+    "strictNullChecks":true
+  }
+}

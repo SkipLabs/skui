@@ -2,7 +2,7 @@
 import {int, float, ptr, Environment, Utils} from "#skui_base/types";
 import { Loading } from "#skui_opengl/glloading";
 
-export interface Env extends Environment {
+interface Env {
   window: () => Window; 
   canvas: () => HTMLCanvasElement;
   render: () => void;
@@ -76,20 +76,6 @@ const getContext = (canvas: HTMLCanvasElement) => {
     return Promise.reject(new Error("WebGl2 must be supported"));
   }
   return Promise.resolve(gl);
-}
-
-export function init(env: Env) {
-  Factory.init(env);
-}
-
-class Data {
-  canvas: HTMLCanvasElement;
-  gl: WebGL2RenderingContext;
-
-  constructor(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext) {
-    this.canvas = canvas;
-    this.gl = gl;
-  }
 }
 
 export class Factory {
