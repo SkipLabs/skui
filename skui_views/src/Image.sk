@@ -1,0 +1,64 @@
+module SKUIViewsImage;
+
+@skuiview
+fun view(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("image")
+      .arg(Cli.BoolArg("small").about("Use the small version of the image."))
+      .arg(
+        Cli.StringArg("ratio").about(
+          "The aspect ratio if width/height format (default keep image ration)",
+        ),
+      )
+      .about("View that display image view sample."),
+    args ~> {
+      small = args.getBool("small");
+      ratio = args
+        .maybeGetString("ratio")
+        .map(str -> {
+          elems = str
+            .split("/")
+            .map(e -> e.trim().toIntOption())
+            .filter(i -> i.isSome() && i.fromSome() > 0);
+          if (elems.size() >= 2) {
+            elems[0].fromSome().toFloat() / elems[1].fromSome().toFloat()
+          } else {
+            0.0
+          }
+        })
+        .default(0.0);
+      path = Ui.Path::create("image");
+      (context, _root) ~> {
+        image = image(context, path, small);
+        Ui.AspectRatio::create(
+          context,
+          path.makeChild("ratio"),
+          UiAspectRatio.LamController{
+            widget => Ui.default(image),
+            aspectRatio => Ui.default(ratio),
+          },
+        )
+      }
+    },
+  )
+}
+
+fun image(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  small: Bool = false,
+): Ui.ImageView {
+  image = if (small) SKIP_SKUIViewsRes.smallImage() else {
+    SKIP_SKUIViewsRes.bigImage()
+  };
+  Ui.ImageView::create(
+    context,
+    path,
+    UiImage.LamController{image => _ctx ~> Some(image)},
+  );
+}
+
+module end;

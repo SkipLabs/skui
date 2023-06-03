@@ -1,0 +1,15 @@
+module SKIP_SKUIViewsRes;
+
+@cpp_extern("SKIP_SKUIViewsRes_bigData")
+native fun bigData(): Array<Ui.Pix>;
+
+@cpp_extern("SKIP_SKUIViewsRes_smallData")
+native fun smallData(): Array<Ui.Pix>;
+
+fun bigImage(): Ui.Image {
+  Ui.Image(bigData(), 4000, 2250)
+}
+
+fun smallImage(): Ui.Image {
+  Ui.Image(smallData(), 400, 225)
+}

@@ -14,11 +14,7 @@ fun view(): (
           .about("The text to display")
           .default("Hello World, It's amazing!!!"),
       )
-      .arg(
-        Cli.StringArg("size")
-          .about("The font size in pt")
-          .default("20"),
-      )
+      .arg(Cli.StringArg("size").about("The font size in pt").default("20"))
       .arg(
         Cli.BoolArg("bold").short("b").long("bold").about("Display bold text"),
       )

@@ -8,6 +8,7 @@ fun main(): void {
     SKUIViewsProgress.view(),
     SKUIViewsTabpane.view(),
     SKUIViewsText.view(),
+    SKUIViewsImage.view(),
   ];
   /*#forEachFunction (@skuiview, #function, #functionName) {
     available.push(#function())
