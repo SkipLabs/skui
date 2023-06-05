@@ -5,16 +5,16 @@ interface ToWasm {
   SKIP_FWK_update: (wId: int) => void;
 }
 
-interface Env {
+interface Env extends Environment {
   canvas: () => HTMLCanvasElement;
   update: () => void;
 }
 
 class LinksImpl implements Links, ToWasm {
   
-  env: Env; 
+  env: Env | undefined; 
 
-  constructor(env: Env) {
+  constructor(env?: Env) {
     this.env = env;
   }
 
@@ -50,22 +50,30 @@ class LinksImpl implements Links, ToWasm {
       case 26: cursor = "no-drop"; break;
       case 27: cursor = "help"; break;
     };
-    this.env.canvas().style.cursor = cursor;
+    if (this.env) {
+      this.env.canvas().style.cursor = cursor;
+    } else {
+      console.log(["Apply cursor", cursor])
+    }
   }
   SKIP_FWK_update: (wId: int) => void;
   
   complete = (utils: Utils, exports: object) => {
     this.SKIP_FWK_update = (wId: int) => {
-      this.env.update()
+      if (this.env) {
+        this.env.update()
+      } else {
+        console.log("Update")
+      }
     };
     return null;
   }
 }
 
 class Manager implements ToWasmManager {
-  env:  Env;
+  env:  Env | undefined;
 
-  constructor(env:  Env) {
+  constructor(env?:  Env) {
     this.env = env;
   }
 
@@ -78,7 +86,6 @@ class Manager implements ToWasmManager {
   }
 }
 
-export async function init(env: Environment) {
-  return new Manager(env as Env);
+export function init(env?: Environment) {
+  return Promise.resolve(new Manager(env ? env as Env : undefined));
 }
-

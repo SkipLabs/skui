@@ -1,5 +1,7 @@
 module SkuiViews;
 
+const kWasm: Bool = SkargoVersion.kTarget.startsWith("wasm32");
+
 fun main(): void {
   available = mutable Vector[
     SKUIViewsButtons.view(),
@@ -9,6 +11,7 @@ fun main(): void {
     SKUIViewsTabpane.view(),
     SKUIViewsText.view(),
     SKUIViewsImage.view(),
+    SKUIViewsDropdown.view(),
   ];
   /*#forEachFunction (@skuiview, #function, #functionName) {
     available.push(#function())
@@ -76,19 +79,23 @@ fun perform(
         .short("V")
         .long("version")
         .about("Print version info and exit"),
-    )
-    .arg(
-      Cli.StringArg("screen")
-        .short("s")
-        .long("screen")
-        .about("The screen where to open the window")
-        .default("0"),
-    )
-    .arg(
-      Cli.StringArg("fps")
-        .about("The frame per second refresh rate")
-        .default("60"),
-    )
+    );
+  if (!kWasm) {
+    !command = command
+      .arg(
+        Cli.StringArg("screen")
+          .short("s")
+          .long("screen")
+          .about("The screen where to open the window")
+          .default("0"),
+      )
+      .arg(
+        Cli.StringArg("fps")
+          .about("The frame per second refresh rate")
+          .default("60"),
+      )
+  };
+  !command = command
     .help()
     .subcommand(
       Cli.Command("help").extra().about("Displays help for a subcommand"),
@@ -118,19 +125,19 @@ fun perform(
         | Some((cmd, fn)) ->
           screen = args.getString("screen").toIntOption().default(0);
           fps = args.getString("fps").toIntOption().default(60);
-          if (SkargoVersion.kTarget.startsWith("wasm32")) {
-            void
+          wId = 0;
+          title = cmd._about match {
+          | Some(t) -> t
+          | _ -> command._about.fromSome()
+          };
+          _ = SKFS.initMainContext(SKFS.Context{});
+          SKFS.Context::withGc(context ~> {
+            initUiWidget(context, wId, fn(args));
+            context.initPre();
+          });
+          if (kWasm) {
+            SKUIJS.init(uint32(wId), title);
           } else {
-            wId = 0;
-            title = cmd._about match {
-            | Some(t) -> t
-            | _ -> command._about.fromSome()
-            };
-            _ = SKFS.initMainContext(SKFS.Context{});
-            SKFS.Context::withGc(context ~> {
-              initUiWidget(context, wId, fn(args));
-              context.initPre();
-            });
             SKUIX11.launch(wId, title, screen, fps);
           }
         | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
@@ -141,6 +148,7 @@ fun perform(
   }
 }
 
+@wasm_export
 @cpp_export("SKIP_SkuiViews_update")
 fun update(): void {
   SKFS.Context::withoutGc(context ~> context.updateIfRoot());

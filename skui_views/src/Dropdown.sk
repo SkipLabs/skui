@@ -1,0 +1,105 @@
+module SKUIViewsDropdown;
+
+@skuiview
+fun view(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("dropdown")
+      .arg(
+        Cli.StringArg("number").about("The number of additonal items to show"),
+      )
+      .about("View that display dropdown view sample."),
+    args ~> {
+      optNumber = args.maybeGetString("number").flatMap(v -> v.toIntOption());
+      path = Ui.Path::create("dropdown");
+      (context, _root) ~> dropdown(context, path, optNumber)
+    },
+  )
+}
+
+fun dropdown(
+  context: mutable SKFS.Context,
+  path: Ui.Path,
+  optNumber: ?Int,
+  optConfiguration: ?Ui.Configuration = None(),
+): Ui.Widget {
+  number = Math.max(0, optNumber.default(0));
+  subVec = mutable Vector[
+    UiDropdown.Item{
+      id => "selectAll",
+      text => _ctx ~> !"Select all",
+      shortcut => _ctx ~> Some(Ui.Shortcut("A", true, false, false)),
+      separator => _ctx ~> Ui.After(),
+    },
+    UiDropdown.Item{
+      id => "cut",
+      text => _ctx ~> !"Cut",
+      shortcut => _ctx ~> Some(Ui.Shortcut("X", true, false, false)),
+      icon => _ctx ~> Some(UiIcon.Description(UiIcon.KTheme(), "cut", None())),
+    },
+    UiDropdown.Item{
+      id => "copy",
+      text => _ctx ~> !"Copy",
+      shortcut => _ctx ~> Some(Ui.Shortcut("C", true, false, false)),
+      icon => _ctx ~> Some(UiIcon.Description(UiIcon.KTheme(), "copy", None())),
+    },
+    UiDropdown.Item{
+      id => "paste",
+      text => _ctx ~> !"Paste",
+      shortcut => _ctx ~> Some(Ui.Shortcut("V", true, false, false)),
+      icon => _ctx ~>
+        Some(UiIcon.Description(UiIcon.KTheme(), "paste", None())),
+    },
+  ];
+  if (number > 0) {
+    for (idx in Range(0, number)) {
+      id = `sub_item_${idx + 1}`;
+      text = !`Sub item ${idx + 1}`;
+      subVec.push(UiDropdown.Item{id, text => _ctx ~> text})
+    }
+  };
+  edition = UiDropdown.ArrayCollection(subVec.toArray());
+  vec = mutable Vector[
+    UiDropdown.Item{
+      id => "undo",
+      text => _ctx ~> !"Undo",
+      shortcut => _ctx ~> Some(Ui.Shortcut("Z", true, false, false)),
+    },
+    UiDropdown.Item{
+      id => "redo",
+      text => _ctx ~> !"Redo",
+      shortcut => _ctx ~> Some(Ui.Shortcut("Y", true, false, false)),
+    },
+    UiDropdown.Menu{
+      id => "edition",
+      text => _ctx ~> !"Edition",
+      items => (_ctx, _iu) ~> edition,
+      separator => _ctx ~> Ui.Both(),
+    },
+  ];
+  if (number > 0) {
+    for (idx in Range(0, number)) {
+      id = `item_${idx + 1}`;
+      text = !`Item ${idx + 1}`;
+      vec.push(UiDropdown.Item{id, text => _ctx ~> text})
+    }
+  };
+  items = vec.toArray();
+  ddPath = path.makeChild("elements");
+  ddBuild = (ctx, root) ~> root.buildDropdown(ctx, ddPath, items);
+  label = Ui.Label::create(
+    context,
+    path.makeChild("label"),
+    UiLabel.LamController{text => _ctx ~> Some(!"Menued panel")},
+  );
+  Ui.Menued::create(
+    context,
+    path,
+    UiMenued.LamController{widget => _ctx ~> label, menu => ddBuild},
+    optConfiguration,
+  )
+}
+
+module end;

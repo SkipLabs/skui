@@ -26,7 +26,7 @@ native fun sendMessage(
 ): void;
 
 @cpp_export("SKIP_SKUIX11_windowInitialized")
-private fun windowInitialized(wId: Int): void {
+fun windowInitialized(wId: Int): void {
   pos = SKFS.newObstack();
   SKFS.Context::withoutGc(context ~> {
     context.setGlobal(

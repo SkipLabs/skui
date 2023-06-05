@@ -21,14 +21,18 @@ export class Exception {
   }
 }
 
-export interface Env {
-  modules: Array<string>;
-  path: string;
-  run: (utils: Utils, exports: object, state: object) => void
+export interface Shared {
+  getName: () => string;
 }
 
-export interface Environment {}
-export interface Shared {}
+export interface Environment {
+  timestamp: () => float;
+  readData: (url: URL) => Promise<ArrayBuffer>;
+  decodeUTF8: (utf8: Uint8Array) => string;
+  onException: () => void;
+  complete(exports: object, shared: Map<string,Shared>)
+}
+
 
 export interface Exported {
   SKIP_String_byteSize: (strPtr: ptr) => int;
@@ -64,26 +68,20 @@ export interface WasmSupplier {
 export class Utils {
   exports: Exported;
   memory: WebAssembly.Memory;
-  decodeUTF8: (utf8: Uint8Array) => string;
   lastCall: ptr;
-  onException: () => void;
-  now: () => float;
+  env: Environment;
   state: State;
 
   constructor(
     exports: WebAssembly.Exports,
     memory: WebAssembly.Memory,
-    decodeUTF8: (utf8: Uint8Array) => string,
-    onException: () => void, now: () => float,
-    state: object,
+    env: Environment,
   ) {
     this.exports = exports as any as Exported;
     this.memory = memory;
-    this.decodeUTF8 = decodeUTF8;
     this.lastCall = 0;
-    this.onException = onException;
-    this.now = now;
-    this.state = state as State;
+    this.env = env;
+    this.state = new State();
   }
   log = (strPtr: ptr) => {
     let toDisplay = this.importString(strPtr).trim();
@@ -100,7 +98,7 @@ export class Utils {
   importString = (strPtr: ptr) => {
     let size = this.exports.SKIP_String_byteSize(strPtr);
     let utf8 = new Uint8Array(this.memory.buffer, strPtr, size);
-    return this.decodeUTF8(utf8);
+    return this.env.decodeUTF8(utf8);
   };
   exportString: (s: string) => ptr = (s: string) => {
     var data = new Uint8Array(this.memory.buffer);
@@ -193,7 +191,6 @@ export class Utils {
       );
     }
   }
-  
   etry = (f: ptr, exn_handler: ptr) => {
     this.lastCall = f;
     try {
@@ -204,9 +201,21 @@ export class Utils {
     }
   }
   ethrow = (strPtr: ptr) => {
-    this.onException();
+    this.env.onException();
     let message = strPtr != null && strPtr != 0 ? this.importString(strPtr) : "SKFS Internal error";
     throw new Error(message);
+  }
+  deleteException = (actor: int) => {
+    this.state.exceptions.delete(actor);
+  }
+  getExceptionMessage = (actor: int) => {
+    let msg : string;
+    if (this.state.exceptions.has(actor)) {
+      msg = this.state.exceptions.get(actor)!.err.message;
+    } else {
+      msg = "No message supplied"
+    }
+    return this.exportString(msg);
   }
 }
 
@@ -215,7 +224,7 @@ export interface Links {
 }
 
 export interface ToWasmManager {
-  prepare: (wasm: object) => Links;
+  prepare: (wasm: object) => Links | null;
 }
 
 enum I18N {
@@ -321,26 +330,43 @@ export function humanSize(bytes: int) {
   return bytes.toFixed(1) + ' ' + units[u];
 }
 
-export var loadWasm = (
-  buffer: ArrayBuffer, 
-  managers: Array<ToWasmManager>, 
-  decodeUTF8: (utf8: Uint8Array) => string,
-  onException: () => void,  
-  now: () => float, 
-  state: object,
-  run: (utils: Utils, exports: object, state: object) => void
+var loadWasm = (
+  buffer: ArrayBuffer,
+  managers: Array<ToWasmManager>,
+  environment: Environment,
 ) => {
   let wasm = {};
   let links = managers.map(manager => manager.prepare(wasm));
-  WebAssembly.instantiate(buffer, { env: wasm }).then(
+  return WebAssembly.instantiate(buffer, { env: wasm }).then(
     result => {
       let instance = result.instance;
       let exports = instance.exports as any;
-      let utils = new Utils(instance.exports, exports.memory, decodeUTF8, onException, now, state);
-      links.forEach(link => link.complete(utils, exports));
+      let utils = new Utils(instance.exports, exports.memory, environment);
+      let shared = new Map<string, Shared>();
+      links.forEach(link => {
+        if (link) {
+          let s = link.complete(utils, exports);
+          if (s) {
+            shared.set(s.getName(), s);
+          }          
+        }
+      });
       utils.init();
-      run(utils, exports, state);
+      environment.complete(exports, shared);
     }
   );
+}
+
+export async function start(modules: Array<string>, path: URL, environment: Environment, managers?: Array<ToWasmManager>) {
+  managers = managers ? managers : new Array<ToWasmManager>();
+  for (let i = 0; i < modules.length; i++) {
+    let evnModule = await import(modules[i]);
+    if (evnModule.init) {
+        managers.push(await evnModule.init());
+    }
+  }
+  let data = await environment.readData(path);
+  let buffer = new Uint8Array(data);
+  await loadWasm(buffer, managers, environment);
 }
 

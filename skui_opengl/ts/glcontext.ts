@@ -2,7 +2,7 @@
 import {int, float, ptr, Environment, Utils} from "#skui_base/types";
 import { Loading } from "#skui_opengl/glloading";
 
-interface Env {
+interface Env extends Environment {
   window: () => Window; 
   canvas: () => HTMLCanvasElement;
   render: () => void;

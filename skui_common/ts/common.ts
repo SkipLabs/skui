@@ -1,4 +1,4 @@
-import {int, ptr, Links, Utils, ToWasmManager, Shared} from "#skui_base/types";
+import {int, ptr, Links, Utils, ToWasmManager, Shared, Environment} from "#skui_base/types";
 
 interface ToWasm {
   SKIP_IO_isExternalBinary: (id: int) => boolean;
@@ -7,7 +7,8 @@ interface ToWasm {
   SKIP_IO_getExternalBytes: (id: int) => ptr | null;
 }
 
-class SharedImpl implements Shared {
+export class CommonShared implements Shared {
+  getName = () => "common";
   registerData: (data: string | Uint8Array) => void;
   constructor(registerData: (data: string | Uint8Array) => void) {
     this.registerData = registerData;
@@ -79,7 +80,7 @@ class LinksImpl implements Links, ToWasm {
       }
       return null;
     }
-    return new SharedImpl(this.state.registerData)
+    return new CommonShared(this.state.registerData)
   }
 }
 
@@ -95,4 +96,7 @@ class Manager implements ToWasmManager {
   }
 }
 
-export var init = () => new Manager();
+
+export function init(env?: Environment) {
+  return Promise.resolve(new Manager());
+}

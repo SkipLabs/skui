@@ -151,3 +151,27 @@ trait Equivalent {
 fun isLike<T: Equivalent>(a: T, b: T, precision: Float): Bool {
   a.like(b, precision)
 }
+
+class JSException(private eptr: SKFS.ExternalPointer) extends Exception {
+  //
+  static fun make(id: UInt32): this {
+    static(SKFS.ExternalPointer::create(id, deleteJSException))
+  }
+
+  fun getMessage(): String {
+    getJSExceptionMessage(this.eptr.value)
+  }
+}
+
+@wasm_export
+@cpp_export
+fun callWithException(f: () -> void, exc: UInt32): void {
+  saveExn(JSException::make(exc));
+  f();
+}
+
+@cpp_extern("SKIP_JS_getExceptionMessage")
+native fun getJSExceptionMessage(actor: UInt32): String;
+
+@cpp_extern("SKIP_JS_deleteException")
+native fun deleteJSException(actor: UInt32): void;

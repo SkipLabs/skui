@@ -4,12 +4,12 @@
 extern "C"
 {
 
-  extern uint8_t small_start[]      asm("_binary_native_resources_small_bin_start");
-  extern uint8_t small_end[]  asm("_binary_native_resources_small_bin_end");
+  extern uint8_t small_start[]      asm("_binary_resources_small_bin_start");
+  extern uint8_t small_end[]  asm("_binary_resources_small_bin_end");
 
 
-  extern uint8_t big_start[]      asm("_binary_native_resources_big_bin_start");
-  extern uint8_t big_end[]  asm("_binary_native_resources_big_bin_end");
+  extern uint8_t big_start[]      asm("_binary_resources_big_bin_start");
+  extern uint8_t big_end[]  asm("_binary_resources_big_bin_end");
 
   char *SKIP_createByteArray(int32_t);
   void SKIP_setByte(char *, int32_t, uint8_t);

@@ -1,17 +1,35 @@
-import {int, float, ptr, toBeDefined, Links, Utils, ToWasmManager} from "#skui_base/types";
+import {int, float, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_base/types";
+
+interface Env extends Environment {
+  window: () => Window | null;
+}
 
 class LinksImpl implements Links {
-  SKIP_print_error = (strPtr: ptr) => toBeDefined("SKIP_print_error");
-  SKIP_print_raw = (strPtr: ptr) => toBeDefined("SKIP_print_raw");
-  SKIP_print_char = (code: int) => toBeDefined("SKIP_print_char");
-  SKIP_print_string = (strPtr: ptr) => toBeDefined("SKIP_print_string");
-  SKIP_etry: (f: ptr, exn_handler: ptr) => ptr = (f: ptr, exn_handler: ptr) => {toBeDefined("SKIP_etry"); return 0;};
-  __cxa_throw = (strPtr: ptr) => toBeDefined("SKIP_print_error");
-  JS_timeStamp = () => {toBeDefined("SKIP_print_error"); return 0.0;};
+  env: Env | undefined;
+  constructor(env?: Env) {
+    this.env = env;
+  }
+
+  SKIP_print_error: (strPtr: ptr) => void;
+  SKIP_print_raw: (strPtr: ptr) => void;
+  SKIP_print_char: (code: int) => void;
+  SKIP_print_string: (strPtr: ptr) => void;
+  SKIP_etry: (f: ptr, exn_handler: ptr) => ptr;
+  __cxa_throw: (strPtr: ptr) => void;
+  JS_timeStamp: () => float;
+
+  SKIP_JS_deleteException: (actor: int) => void;
+  SKIP_JS_getExceptionMessage: (actor: int) => ptr;
   
   complete = (utils: Utils, exports: object) => {
     this.SKIP_etry = utils.etry;
-    this.SKIP_print_error = utils.log;
+    this.SKIP_print_error = (msg: ptr) => {
+      utils.log(msg);
+      let window = this.env ? this.env.window() : null;
+      if (window) {
+        window.alert("An error occurs, please check the console.");
+      }
+    };
     this.SKIP_print_raw = utils.log;
     this.SKIP_print_string = utils.log;
     this.__cxa_throw = (strPtr: ptr) => {
@@ -29,22 +47,22 @@ class LinksImpl implements Links {
         consoleBuffer += str;
       }
     };
-    this.JS_timeStamp = utils.now;
+    this.JS_timeStamp = () => this.env ? this.env.timestamp() : 0.0;
+    this.SKIP_JS_deleteException = utils.deleteException;
+    this.SKIP_JS_getExceptionMessage = utils.getExceptionMessage;
     return null;
   }
 }
 
-interface ToWasm {
-  SKIP_getArgc: () => int;
-  SKIP_getArgN: (n: int) => ptr;
-} {
-
-}
-
 class Manager implements ToWasmManager {
+  env: Env |  undefined;
+  constructor(env?: Env) {
+    this.env = env;
+  }
+
   prepare = (wasm: object) => {
     let toWasm = wasm as ToWasm;
-    let links = new LinksImpl();
+    let links = new LinksImpl(this.env);
     toWasm._ZSt9terminatev = () => {
         throw new Error("_ZSt9terminatev");
     };
@@ -88,6 +106,8 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_print_char =  (strPtr: ptr) => links.SKIP_print_char(strPtr);
     toWasm.SKIP_print_string =  (strPtr: ptr) => links.SKIP_print_string(strPtr);
     toWasm.SKIP_etry =  (f: ptr, exn_handler: ptr) => links.SKIP_etry(f, exn_handler);
+    toWasm.SKIP_JS_deleteException = (actor: int) => links.SKIP_JS_deleteException(actor);
+    toWasm.SKIP_JS_getExceptionMessage = (actor: int) => links.SKIP_JS_getExceptionMessage(actor);
     return links;
   }
 }
@@ -122,6 +142,10 @@ interface ToWasm {
   SKIP_print_char: (strPtr: ptr) => void;
   SKIP_print_string: (strPtr: ptr) => void;
   SKIP_etry: (f: ptr, exn_handler: ptr) => ptr;
+  SKIP_JS_deleteException: (actor: int) => void;
+  SKIP_JS_getExceptionMessage: (actor: int) => ptr;
 }
 
-export var init = () => new Manager();
+export function init(env?: Environment) {
+  return Promise.resolve(new Manager(env ? env as Env : undefined));
+}

@@ -21,13 +21,17 @@ SKREP 			?= $(shell dirname $(CURDIR))
 
 BUILDDIR 		?= .build
 
-SKDEBUGLIBRAIRIES ?= $(SKREP)/skui_base/lib/libskui_base_64_debug.a $(SKREP)/skui_common/lib/libskui_common_64_debug.a \
-	$(SKREP)/skui_x11gl/lib/libskui_x11gl_64_debug.a $(SKREP)/skui_opengl/lib/libskui_opengl_64_debug.a \
-	$(CURDIR)/lib/libskui_views_64_debug.a 
+SKDEBUGLIBRAIRIES ?= $ $(CURDIR)/lib/libskui_views_64_debug.a \
+	$(SKREP)/skui_common/lib/libskui_common_64_debug.a \
+	$(SKREP)/skui_base/lib/libskui_base_64_debug.a \
+	$(SKREP)/skui_x11gl/lib/libskui_x11gl_64_debug.a \
+	$(SKREP)/skui_opengl/lib/libskui_opengl_64_debug.a
 
-SKLIBRAIRIES ?= $(SKREP)/skui_base/lib/libskui_base_64_release.a $(SKREP)/skui_common/lib/libskui_common_64_release.a \
-	$(SKREP)/skui_x11gl/lib/libskui_x11gl_64_release.a $(SKREP)/skui_opengl/lib/libskui_opengl_64_release.a \
-	$(CURDIR)/lib/libskui_views_64_release.a 
+SKLIBRAIRIES ?= $(CURDIR)/lib/libskui_views_64_release.a \
+	$(SKREP)/skui_common/lib/libskui_common_64_release.a \
+	$(SKREP)/skui_base/lib/libskui_base_64_release.a \
+	$(SKREP)/skui_x11gl/lib/libskui_x11gl_64_release.a \
+	$(SKREP)/skui_opengl/lib/libskui_opengl_64_release.a
 
 .PHONY: clean
 clean:
@@ -70,7 +74,7 @@ $(SKREP)/skui_x11gl/lib/libskui_x11gl_64_debug.a:
 $(BUILDDIR)/$(SKNAME)_debug: $(SKDEBUGLIBRAIRIES) $(BUILDDIR)/preamble_$(SKNAME)64.ll
 	$(CPP) -no-pie -O0 -g -mllvm -inline-threshold=0 \
 	$(BUILDDIR)/preamble_$(SKNAME)64.ll $(LIBDIR)/skip_preamble64.ll $(LIBDIR)/libskip_runtime64.a $(LIBDIR)/libbacktrace.a \
-	$(SKDEBUGLIBRAIRIES) -lrt -lpthread -lGL -lGLEW -lGLU -lX11 -lcrypto -lglut -lpcre -lssl -lstdc++fs \
+	$(SKDEBUGLIBRAIRIES) -lGL -lGLEW -lGLU -lX11 -lXcursor -lXext -lcrypto -lglut -lpcre -lssl -lstdc++fs \
 	-o $(BUILDDIR)/$(SKNAME)_debug
 
 .PHONY: $(CURDIR)/lib/libskui_views_64_release.a
@@ -95,9 +99,8 @@ $(SKREP)/skui_x11gl/lib/libskui_x11gl_64_release.a:
 
 $(BUILDDIR)/$(SKNAME): $(SKLIBRAIRIES) $(BUILDDIR)/preamble_$(SKNAME)64.ll
 	$(CPP) -no-pie -O3 -mllvm -inline-threshold=0 \
-	$(BUILDDIR)/preamble_$(SKNAME)64.ll $(LIBDIR)/libskip_runtime64.a $(LIBDIR)/libbacktrace.a \
-	$(SKLIBRAIRIES) -lrt -lpthread -lGL -lGLEW -lGLU -lX11 -lcrypto -lglut -lpcre -lssl -lstdc++fs \
-	-o $(BUILDDIR)/$(SKNAME)
+	-lrt -lpthread  $(BUILDDIR)/preamble_$(SKNAME)64.ll -o $(BUILDDIR)/$(SKNAME) $(LIBDIR)/libskip_runtime64.a $(LIBDIR)/libbacktrace.a \
+	$(SKLIBRAIRIES) -lGL -lGLEW -lGLU -lX11 -lXcursor -lXext -lcrypto -lglut -lpcre -lssl -lstdc++fs
 
 .PHONY: check
 check:

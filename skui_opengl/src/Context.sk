@@ -128,7 +128,7 @@ class Ctx(id: UInt32) extends SKFS.File uses Hashable, HasClassName {
   }
 
   fun getShaderInfoLog(shader: ShaderRef): String {
-    getShaderInfoLog(shader, this.id)
+    getShaderInfoLog(shader, this.id).default("")
   }
 
   /// PROGRAL FUNCTIONS
@@ -173,7 +173,7 @@ class Ctx(id: UInt32) extends SKFS.File uses Hashable, HasClassName {
   }
 
   fun getProgramInfoLog(program: ProgramRef): String {
-    getProgramInfoLog(program, this.id)
+    getProgramInfoLog(program, this.id).default("")
   }
 
   fun useProgram(program: ProgramRef): void {

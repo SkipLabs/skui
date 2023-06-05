@@ -10,6 +10,7 @@ BUILDDIR	?= target/$(VERSION)
 BINARCH		?= i386:x86-64
 ELFARCH		?= elf64-x86-64
 OBCOPY		?= objcopy
+TSDIR			?= $(BUILDDIR)/ts
 
 
 ifdef DEBUG
@@ -26,6 +27,12 @@ CFLAG		 ?= $(OLEVEL) --target=wasm32 -emit-llvm
 CPPFLAG	 ?= $(OLEVEL)
 endif #DEBUG
 
+ifndef RESOURCES
+ifneq ("$(wildcard resources)","")
+RESOURCES := $(shell find -L resources -name "*.bin")
+endif #("$(wildcard resources)","")
+endif #RESOURCES
+
 ifneq ("$(wildcard native)","")
 
 ifndef SKARGO_INCLUDEDIRS64
@@ -34,28 +41,24 @@ SKARGO_INCLUDEDIRS64 := native/includes
 endif #("$(wildcard native/includes)","")
 endif #SKARGO_INCLUDEDIRS64
 
-ifndef RESOURCES64
-ifneq ("$(wildcard native/resources)","")
-RESOURCES64 := $(shell find -L native/resources -name "*.bin")
-endif #("$(wildcard native/resources)","")
-endif #RESOURCES64
 IFILES64  		:= $(foreach dir,$(SKARGO_INCLUDEDIRS64),$(shell find -L $(dir) -name "*.h"))
 SOURCES64			:= $(shell find -L native -name "*.cpp")
 FILES64				:= $(addprefix $(BUILDDIR)/,$(SOURCES64:.cpp=$(SKSUFFIX).o))
 RULE64				:= $(LIBDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
 INC64     		:= $(foreach dir,$(SKARGO_INCLUDEDIRS64),"-I$(dir)")
-ORESOURCES64	:= $(addprefix $(BUILDDIR)/,$(RESOURCES64:.bin=.bin.o))
+ORESOURCES64	:= $(addprefix $(BUILDDIR)/,$(RESOURCES:.bin=.bin.o))
 endif #("$(wildcard native)","")
 
 ifneq ("$(wildcard wasm)","")
-SOURCES32	:= $(shell find -L wasm -name "*.c")
-FILES32		:= $(addprefix $(BUILDDIR)/,$(SOURCES32:.c=.bc))
-RULE32		:= $(LIBDIR)/lib$(SKNAME)_32.bc
+SOURCES32			:= $(shell find -L wasm -name "*.c")
+FILES32				:= $(addprefix $(BUILDDIR)/,$(SOURCES32:.c=.bc))
+RULE32				:= $(LIBDIR)/lib$(SKNAME)_32.bc
 endif #("$(wildcard native)","")
+RESOURCES32  	:= $(foreach file,$(RESOURCES), $(TSDIR)/$(SKNAME)_$(shell basename $(file) .bin).ts)
 
 default: build
 
-$(BUILDDIR)/native/resources/%.bin.o: native/resources/%.bin
+$(BUILDDIR)/resources/%.bin.o: resources/%.bin
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	${OBCOPY} -B $(BINARCH) -I binary -O $(ELFARCH) $< $@
 
@@ -75,15 +78,52 @@ $(BUILDDIR)/wasm/%.bc: wasm/%.c
 	$(CC) $(CFLAG) -o $@ -c $<
 
 $(BUILDDIR)/lib$(SKNAME)_32.bc: $(FILES32)
-	$(BCLINK) $(FILES32) -o $(BUILDDIR)/lib$(SKNAME)_32.bc
+	$(BCLINK) $(FILES32) -o $@
 
 $(LIBDIR)/lib$(SKNAME)_32.bc: $(BUILDDIR)/lib$(SKNAME)_32.bc
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	cp $(BUILDDIR)/lib$(SKNAME)_32.bc $(LIBDIR)/lib$(SKNAME)_32.bc
+	cp $@ $(LIBDIR)/lib$(SKNAME)_32.bc
 
+$(TSDIR)/$(SKNAME)_%.ts: resources/%.bin
+	[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	$(eval VARNAME := $(shell basename $@ .ts))
+	@echo 'var $(VARNAME) = `' >> $@
+	@base64 $< >> $@
+	@echo '`;' >> $@
+	@echo '' >> $@
+	@echo 'interface ToWasm {' >> $@
+	@echo ' SKIP_SKUIViewsRes_$(VARNAME): () => number;' >> $@
+	@echo '}' >> $@
+	@echo '' >> $@
+	@echo 'interface Utils {' >> $@
+	@echo '  exportString: (s: string) => number;' >> $@
+	@echo '}' >> $@
+	@echo '' >> $@
+	@echo 'class LinksImpl implements ToWasm {' >> $@
+	@echo '  SKIP_SKUIViewsRes_$(VARNAME): () => number;' >> $@
+	@echo '' >> $@
+	@echo '  complete = (utils: Utils, exports: object) => {' >> $@
+	@echo '    this.SKIP_SKUIViewsRes_$(VARNAME) = () => {' >> $@
+	@echo '      return utils.exportString($(VARNAME));' >> $@
+	@echo '    }' >> $@
+	@echo '    return null;' >> $@
+	@echo '  }' >> $@
+	@echo '}' >> $@
+	@echo '' >> $@
+	@echo 'class Manager {' >> $@
+	@echo '  prepare = (wasm: object) => {' >> $@
+	@echo '    let toWasm = wasm as ToWasm;' >> $@
+	@echo '    let links = new LinksImpl();' >> $@
+	@echo '    toWasm.SKIP_SKUIViewsRes_$(VARNAME) =  () => links.SKIP_SKUIViewsRes_$(VARNAME)();' >> $@
+	@echo '    return links;' >> $@
+	@echo '  }' >> $@
+	@echo '}' >> $@
+	@echo '' >> $@
+	@echo 'export var init = () => new Manager();' >> $@
+	@echo '' >> $@
 
 .PHONY: build
-build: $(RULE64) $(RULE32)
+build: $(RULE64) $(RULE32) $(RESOURCES32) 
 
 .PHONY: check
 check:

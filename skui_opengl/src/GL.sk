@@ -73,7 +73,7 @@ private native fun isCompiled(shader: ShaderRef, ctx: UInt32): Bool;
 @cpp_extern
 private native fun deleteShader(shader: UInt32, ctx: UInt32): void;
 @cpp_extern
-private native fun getShaderInfoLog(shader: ShaderRef, ctx: UInt32): String;
+private native fun getShaderInfoLog(shader: ShaderRef, ctx: UInt32): ?String;
 
 /// PROGRAL FUNCTIONS
 @cpp_extern
@@ -106,7 +106,7 @@ private native fun detachShader(
 ): void;
 
 @cpp_extern
-private native fun getProgramInfoLog(program: ProgramRef, ctx: UInt32): String;
+private native fun getProgramInfoLog(program: ProgramRef, ctx: UInt32): ?String;
 @cpp_extern
 private native fun useProgram(program: ProgramRef, ctx: UInt32): void;
 @cpp_extern

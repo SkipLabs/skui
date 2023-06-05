@@ -1,4 +1,4 @@
-import {int, ptr, Links, Utils, ToWasmManager} from "#skui_base/types";
+import {int, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_base/types";
 
 interface Exported {
   SKIP_RegExp_createRangeArray: (size: int) => ptr;
@@ -126,5 +126,6 @@ class Manager implements ToWasmManager {
   }
 }
 
-export var init = () => new Manager();
-
+export function init(env?: Environment) {
+  return Promise.resolve(new Manager());
+}
