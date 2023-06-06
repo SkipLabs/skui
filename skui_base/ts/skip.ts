@@ -2,12 +2,17 @@ import {int, float, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_b
 
 interface Env extends Environment {
   window: () => Window | null;
+  arguments: Array<string>;
+  appendTextTo: (name: string, content: string) => void;
 }
 
 class LinksImpl implements Links {
   env: Env | undefined;
+  arguments: Array<string>;
+
   constructor(env?: Env) {
     this.env = env;
+    this.arguments = env ? env.arguments : new Array();
   }
 
   SKIP_print_error: (strPtr: ptr) => void;
@@ -20,6 +25,10 @@ class LinksImpl implements Links {
 
   SKIP_JS_deleteException: (actor: int) => void;
   SKIP_JS_getExceptionMessage: (actor: int) => ptr;
+  SKIP_getArgN: (index: int) => ptr;
+  SKIP_FileSystem_appendTextFile: (path: ptr, contents: ptr) => void;
+
+  SKIP_getArgc = () => this.arguments.length;
 
   complete = (utils: Utils, exports: object) => {
     this.SKIP_etry = utils.etry;
@@ -50,6 +59,15 @@ class LinksImpl implements Links {
     this.JS_timeStamp = () => this.env ? this.env.timestamp() : 0.0;
     this.SKIP_JS_deleteException = utils.deleteException;
     this.SKIP_JS_getExceptionMessage = utils.getExceptionMessage;
+
+    this.SKIP_getArgN = (index: int) => utils.exportString(this.arguments[index]);
+    this.SKIP_FileSystem_appendTextFile = (path: ptr, contents: ptr) => {
+      let strPath = utils.importString(path);
+      let strContents = utils.importString(contents);
+      if (this.env) {
+        this.env.appendTextTo(strPath, strContents);
+      }
+    }
     return null;
   }
 }
@@ -108,6 +126,9 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_etry =  (f: ptr, exn_handler: ptr) => links.SKIP_etry(f, exn_handler);
     toWasm.SKIP_JS_deleteException = (actor: int) => links.SKIP_JS_deleteException(actor);
     toWasm.SKIP_JS_getExceptionMessage = (actor: int) => links.SKIP_JS_getExceptionMessage(actor);
+    toWasm.SKIP_getArgc = () => links.SKIP_getArgc();
+    toWasm.SKIP_getArgN = (index: int) => links.SKIP_getArgN(index);
+    toWasm.SKIP_FileSystem_appendTextFile = (path: ptr, contents: ptr) => links.SKIP_FileSystem_appendTextFile(path, contents);
     return links;
   }
 }
@@ -144,6 +165,9 @@ interface ToWasm {
   SKIP_etry: (f: ptr, exn_handler: ptr) => ptr;
   SKIP_JS_deleteException: (actor: int) => void;
   SKIP_JS_getExceptionMessage: (actor: int) => ptr;
+  SKIP_getArgc: () => int;
+  SKIP_getArgN: (index: int) => ptr;
+  SKIP_FileSystem_appendTextFile: (path: ptr, contents: ptr) => void;
 }
 
 export function init(env?: Environment) {

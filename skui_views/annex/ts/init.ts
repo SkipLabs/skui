@@ -1,4 +1,4 @@
-import {int, Environment, start, toBeDefined, Shared} from "#skui_base/types";
+import {Environment, start, toBeDefined, Shared} from "#skui_base/types";
 
 var textDecoder = new TextDecoder('utf8');
 
@@ -26,11 +26,11 @@ class Env implements Environment {
   }
 }
 
-var modules = ["./skip.mjs", "./common.mjs", "./regexp.mjs", "./webgl.mjs"];
+var modules = [];
 
 //base64 | tr '/+' '_-' | tr -d '=' | tr -d \\n
 
-var path = new URL("./sui_views.wasm");
+var path = new URL("");
 var env = new Env();
 
 start(modules, path, env);

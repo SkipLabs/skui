@@ -206,4 +206,14 @@ extern "C"
     fs::remove(filename);
     return res;
   }
+
+
+  char * SKIP_JS_getExceptionMessage(uint32_t actor) {
+    char * message = "SKIP_JS_getExceptionMessage shall not be used here;";
+    return sk_string_create(message, strlen(message));
+  }
+
+  void SKIP_JS_deleteException(uint32_t actor) {
+    // Nothing
+  }
 }
