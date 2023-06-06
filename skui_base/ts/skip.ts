@@ -20,7 +20,7 @@ class LinksImpl implements Links {
 
   SKIP_JS_deleteException: (actor: int) => void;
   SKIP_JS_getExceptionMessage: (actor: int) => ptr;
-  
+
   complete = (utils: Utils, exports: object) => {
     this.SKIP_etry = utils.etry;
     this.SKIP_print_error = (msg: ptr) => {

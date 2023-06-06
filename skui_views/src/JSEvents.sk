@@ -1,6 +1,6 @@
 module SKUIJS;
 
-@wasm_export
+@wasm_export("SKIP_SKUIJS_manageMouseEvent")
 fun manageMouseEvent(
   _wId: UInt32,
   evtType: UInt32,
@@ -56,7 +56,7 @@ fun manageMouseEvent(
   SKFS.destroyObstack(pos);
 }
 
-@wasm_export
+@wasm_export("SKIP_SKUIJS_manageWheelEvent")
 fun manageWheelEvent(
   _wId: UInt32,
   _deltaX: Float,
@@ -79,12 +79,12 @@ fun manageWheelEvent(
   SKFS.destroyObstack(pos);
 }
 
-@wasm_export
+@wasm_export("SKIP_SKUIJS_manageResize")
 fun manageResize(wId: UInt32, width: UInt32, height: UInt32): void {
   SKUIX11.manageResize(wId.toInt(), width.toInt(), height.toInt())
 }
 
-@wasm_export
+@wasm_export("SKIP_SKUIJS_clearKeyboardEvent")
 fun clearKeyboardEvent(_wId: UInt32): void {
   SKFS.Context::withoutGc(context ~> {
     FWKKeys.execute(
@@ -95,7 +95,7 @@ fun clearKeyboardEvent(_wId: UInt32): void {
   });
 }
 
-@wasm_export
+@wasm_export("SKIP_SKUIJS_manageKeyboardEvent")
 fun manageKeyboardEvent(
   _wId: UInt32,
   evtType: UInt32,
@@ -144,12 +144,12 @@ fun manageKeyboardEvent(
   });
 }
 
-@wasm_export
+@wasm_export("SKIP_SKUIJS_windowInitialized")
 fun windowInitialized(wId: UInt32): void {
   SKUIX11.windowInitialized(wId.toInt())
 }
 
-@wasm_export
+@wasm_export("SKIP_SKUIJS_performPaste")
 fun performPaste(wid: Int, mimeType: String, data: String): void {
   SKUIX11.performPaste(wid, mimeType, data)
 }

@@ -221,7 +221,7 @@ fun cancelMessage(context: mutable SKFS.Context, message: String): void {
   }
 }
 
-@wasm_export
+@wasm_export("SKIP_SKUIMessage_manage")
 @cpp_export("SKIP_SKUIMessage_manage")
 fun manage(message: String): void {
   SKFS.Context::withoutGc(context ~> {
@@ -260,8 +260,8 @@ fun manage(message: String): void {
 }
 
 @debug
-@wasm_export
-@cpp_export
+@wasm_export("SKIP_SKUIMessage_messageFailure")
+@cpp_export("SKIP_SKUIMessage_messageFailure")
 fun messageFailure(message: String): void {
   SKFS.Context::withoutGc(context ~> {
     catchErrors = context.getBoolGlobal("SKUIMessage.catchErrors");

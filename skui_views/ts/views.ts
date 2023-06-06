@@ -1,4 +1,4 @@
-import {int, ptr, Environment, Links, Utils, ToWasmManager} from "#skui_base/types";
+import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/types";
 
 type MouseEventManager = (
   wId: int, type: int,
@@ -23,13 +23,21 @@ type WheelEventManager = (
 ) => void;
 
 interface Env extends Environment {
-  manageMessage: (msg: string) => void;
   clipboard: () => Clipboard | null | undefined;
   storage: () => Storage;
 }
 
+export class ViewsShared implements Shared {
+  getName = () => "views";
+  update: () => void;
+
+  constructor(update: () => void) {
+    this.update = update;
+  }
+}
+
 export interface Exported {
-  SKIP_SkuiViews_update: () => {}
+  SKIP_SkuiViews_update: () => void;
   SKIP_SKUIJS_windowInitialized: (wId: int) => void;
   SKIP_SKUIJS_manageMouseEvent: MouseEventManager
   SKIP_SKUIJS_manageWheelEvent: WheelEventManager
@@ -64,7 +72,7 @@ class LinksImpl implements Links, ToWasm {
       delay = delay ? delay : 0;
       // TODO manage async
       if (this.env) {
-        setTimeout(this.env.manageMessage, Math.max(delay, 0), strMessage);
+        setTimeout(utils.manageMessage, Math.max(delay, 0), strMessage);
       } else {
         console.log(["Message sent", strMessage, delay]);
       }
@@ -105,7 +113,7 @@ class LinksImpl implements Links, ToWasm {
         localStorage.setItem("clipboard:" + strMimeType, strData);
       }
     };
-    return null;
+    return new ViewsShared(exported.SKIP_SkuiViews_update);
   }
 }
 

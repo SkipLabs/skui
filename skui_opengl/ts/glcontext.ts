@@ -5,8 +5,6 @@ import { Loading } from "#skui_opengl/glloading";
 interface Env extends Environment {
   window: () => Window; 
   canvas: () => HTMLCanvasElement;
-  render: () => void;
-  setGlContext: (id: int) => void;
 }
 
 const uniforms = [
@@ -84,6 +82,11 @@ export class Factory {
   private contexts: Map<int, Context> = new Map();
   private env: Env;
   private loading: Loading;
+  private wId : int;
+
+  render?: (id: int, width: int, height: int) => void;
+  setGlContext?: (wId: int, cId: int) => void;
+
 
   private constructor() {}
 
@@ -100,7 +103,7 @@ export class Factory {
     });
   }
 
-  createContext = () => {
+  createContext = (wId: int) => {
     let id = this.nextId + 1;
     this.nextId++;
     let canvas: HTMLCanvasElement;
@@ -113,8 +116,11 @@ export class Factory {
       canvas = this.env.canvas();
       glPr = getContext(canvas);
     }
+    this.wId = wId;
     return glPr.then(gl => {
-      let context = new Context(id, canvas, gl, this.env, this.onLost, loading ? this.onMainBinding : nothing);
+      let context = new Context(
+        id, canvas, gl, this.env, this.onLost, loading ? this.onMainBinding : nothing, 
+        this.render, this.setGlContext ? (cId: int) => this.setGlContext!(wId, cId) : undefined);
       this.contexts.set(id, context);
       context.start(this.onRestore);
       return context;
@@ -122,7 +128,7 @@ export class Factory {
   }
   onRestore = (ev: Event) => {
     ev.preventDefault();
-    this.createContext().catch(
+    this.createContext(this.wId).catch(
       err => this.env.window().alert("Context cannot be restored: " + err)
     )
   };
@@ -331,12 +337,16 @@ export class Context {
   private lostCall: (context: Context, ev?: Event) => void;
   private onMainBinding: () => void;
   private animationFrameRequest: int;
+  private render?: (id: int, width: int, height: int) => void;
+  private setGlContext?: (id: int) => void;
   
 
   constructor(
     id: int, canvas: HTMLCanvasElement, gl: WebGL2RenderingContext, 
     env: Env, lostCall: (context: Context, ev?: Event) => void, 
-    onMainBinding: () => void
+    onMainBinding: () => void,
+    render?: (id: int, width: int, height: int) => void,
+    setGlContext?: (id: int) => void,
   ) {
     this.id = id;
     this.canvas = canvas;
@@ -355,11 +365,15 @@ export class Context {
       false,
       nothing
     );
+    this.render = render;
+    this.setGlContext = setGlContext;
   };
   start = (restoreCall: (ev?: Event) => void) => {
     this.canvas.addEventListener('webglcontextlost', this.onLost);
     this.canvas.addEventListener('webglcontextrestored', restoreCall);
-    this.env.setGlContext(this.id);
+    if (this.setGlContext) {
+      this.setGlContext(this.id);
+    }
     this.animationFrameRequest = requestAnimationFrame(this.onAnimationFrame);
   }
   stop = (restoreCall: (ev?: Event) => void) => {
@@ -372,8 +386,8 @@ export class Context {
   }
   onAnimationFrame = () => {
     if (!this.gl.isContextLost()) {
-      if (this.env.render) {
-        this.env.render();
+      if (this.render) {
+        this.render(this.id, this.canvas.width, this.canvas.height);
       }
       this.animationFrameRequest = requestAnimationFrame(this.onAnimationFrame)
     }

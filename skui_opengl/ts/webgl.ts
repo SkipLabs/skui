@@ -1,5 +1,10 @@
 import {int, ptr, Links, Utils, ToWasmManager, Environment, Shared} from "#skui_base/types";
-import {Factory, Context} from "#skui_opengl/glcontext";
+import {Factory} from "#skui_opengl/glcontext";
+
+interface Exported {
+  SKIP_SKUIGL_performFrame: (cid: int, width: int, height: int) => void;
+  SKIP_SKUIGL_setWindowContext: (wId: int, cid: int) => void;
+}
 
 interface ToWasm {
   SKIP_GL_activateTextureAt:(texture: int, location: int, index: int, ctxId: int) => void;
@@ -125,10 +130,10 @@ interface ToWasm {
 
 export class WebglShared implements Shared {
   getName = () => "webgl";
-  start: () => Promise<int>;
+  start: (wId: int) => Promise<int>;
 
   constructor(factory:  Factory) {
-    this.start = () => factory.createContext().then(ctx => ctx.id);
+    this.start = (wId: int) => factory.createContext(wId).then(ctx => ctx.id);
   }
 }
 
@@ -139,7 +144,12 @@ export class LinksImpl implements Links {
     this.factory = factory;
   }
 
-  complete = (utils: Utils, exports: object) => new WebglShared(this.factory);
+  complete = (utils: Utils, exports: object) => {
+    let exported = exports as Exported;
+    this.factory.render = exported.SKIP_SKUIGL_performFrame;
+    this.factory.setGlContext = exported.SKIP_SKUIGL_setWindowContext;
+    return new WebglShared(this.factory);
+  }
 }
 
 class Manager implements ToWasmManager {

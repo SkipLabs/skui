@@ -21,14 +21,8 @@ class Env implements Environment {
   }
   storage = () => localStorage;
   update : () => void;
-  render : () => void;
-  setGlContext : (id: int) => void;
-  manageMessage : (msg: string) => void;
   complete(exports: object, shared: Map<string,Shared>) {
     this.update = () => toBeDefined("Env.update");
-    this.render = () => toBeDefined("Env.render");
-    this.setGlContext = (id: int) => toBeDefined("Env.setGlContext");
-    this.manageMessage = (msg: string) => toBeDefined("Env.manageMessage");
   }
 }
 

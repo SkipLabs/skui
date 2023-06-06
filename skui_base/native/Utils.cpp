@@ -17,6 +17,7 @@
 typedef uint64_t SkipInt;
 namespace fs = std::experimental::filesystem;
 
+uint8_t initialized = 0;
 
 #define TXT(from, to) std::string to(from, SKIP_String_byteSize(from))
 #define STR(text) sk_string_create(text, strlen(text))
@@ -81,6 +82,9 @@ extern "C"
   void *SKIP_System_createTimeStamp(int32_t seconds, int32_t microseconds);
   char *sk_string_create(const char *buffer, uint32_t size);
   void SKIP_FileSystem_throwError(char *, char *);
+
+  void *SKIP_new_Obstack();
+  void SKIP_destroy_Obstack(void *saved);
 }
 
 
@@ -121,6 +125,22 @@ char* md5sum(std::string & strPath) {
 
 extern "C"
 {
+  void* SKIP_SKUI_checkObstack() {
+    if (initialized == 0) {
+      void* saved = SKIP_new_Obstack();
+      initialized = 1;
+      return saved;
+    }
+    return NULL;
+  }
+
+  void SKIP_SKUI_cleanObstack(void* saved) {
+    if (saved != NULL && initialized > 0) {
+      SKIP_destroy_Obstack(saved);
+      initialized = 0;
+    }
+  }
+
   void SKIP_SKFS_setMainContext(char * context) {
     mainContext = context;
   }

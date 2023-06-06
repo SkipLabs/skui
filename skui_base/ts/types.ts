@@ -34,7 +34,7 @@ export interface Environment {
 }
 
 
-export interface Exported {
+interface Exported {
   SKIP_String_byteSize: (strPtr: ptr) => int;
   SKIP_Obstack_alloc: (size: int) => ptr;
   sk_string_create: (addr: ptr, size: int) => ptr;
@@ -47,14 +47,16 @@ export interface Exported {
   SKIP_skfs_end_of_init: () => void;
   SKIP_printCall: (txtPtr: ptr) => void;
   SKIP_callWithException: (fnc: ptr, exc: int) => ptr;
-  I18N_text: (txtPtr: ptr, optCat: Opt<ptr>) => ptr;
-  I18N_raw: (txtPtr: ptr) => ptr;
-  I18N_format: (formatPtr: ptr, parameters: ptr) => ptr;
-  I18N_textVector: () => ptr;
-  I18N_pushText: (vector: ptr, txtPtr: ptr) => void;
+  SKIP_I18N_text: (txtPtr: ptr, optCat: Opt<ptr>) => ptr;
+  SKIP_I18N_raw: (txtPtr: ptr) => ptr;
+  SKIP_I18N_format: (formatPtr: ptr, parameters: ptr) => ptr;
+  SKIP_I18N_textVector: () => ptr;
+  SKIP_I18N_pushText: (vector: ptr, txtPtr: ptr) => void;
   SKIP_createByteArray: (size: int) => ptr;
   SKIP_setByte: (skArray: ptr, index: int, value: int) => ptr;
   SKIP_chillByteArray: (skArray: ptr) => ptr;
+  SKIP_SKUIMessage_manage: (skMsg: ptr) => void;
+  SKIP_SKUIMessage_messageFailure: (skMsg: ptr) => void;
 }
 
 export function toBeDefined(fn: String) {
@@ -166,16 +168,16 @@ export class Utils {
   text = (strTxt: string, strCat: Opt<string>) => {
     const skText = this.exportString(strTxt);
     const skCategory = strCat ? this.exportString(strCat) : null;
-    return this.exports.I18N_text(skText, skCategory);
+    return this.exports.SKIP_I18N_text(skText, skCategory);
   }
   raw = (strTxt: string) => {
     const skText = this.exportString(strTxt);
-    return this.exports.I18N_raw(skText);
+    return this.exports.SKIP_I18N_raw(skText);
   }
   format = (format: ptr, params: Array<ptr>) => {
-    const vector = this.exports.I18N_textVector();
-    params.forEach(ptr => this.exports.I18N_pushText(vector, ptr));
-    return this.exports.I18N_format(format, vector);
+    const vector = this.exports.SKIP_I18N_textVector();
+    params.forEach(ptr => this.exports.SKIP_I18N_pushText(vector, ptr));
+    return this.exports.SKIP_I18N_format(format, vector);
   }
   exportLocale = (text: string | Text) => {
     const verified = check(text);
@@ -216,6 +218,20 @@ export class Utils {
       msg = "No message supplied"
     }
     return this.exportString(msg);
+  }
+  manageMessage = (message: string) => {
+    this.runWithGc(
+      () => this.exports.SKIP_SKUIMessage_manage(
+        this.exportString(message)
+      )
+    )
+  }
+  messageFailure = (message: string) => {
+    this.runWithGc(
+      () => this.exports.SKIP_SKUIMessage_messageFailure(
+        this.exportString(message)
+      )
+    )
   }
 }
 
