@@ -10,8 +10,7 @@ BUILDDIR	?= target/$(VERSION)
 BINARCH		?= i386:x86-64
 ELFARCH		?= elf64-x86-64
 OBCOPY		?= objcopy
-TSDIR			?= $(BUILDDIR)/ts
-
+TSDIR			?= target/tsres
 
 ifdef DEBUG
 SKSUFFIX ?= _debug
@@ -54,7 +53,6 @@ SOURCES32			:= $(shell find -L wasm -name "*.c")
 FILES32				:= $(addprefix $(BUILDDIR)/,$(SOURCES32:.c=.bc))
 RULE32				:= $(LIBDIR)/lib$(SKNAME)_32.bc
 endif #("$(wildcard native)","")
-RESOURCES32  	:= $(foreach file,$(RESOURCES), $(TSDIR)/$(SKNAME)_$(shell basename $(file) .bin).ts)
 
 default: build
 
@@ -84,46 +82,8 @@ $(LIBDIR)/lib$(SKNAME)_32.bc: $(BUILDDIR)/lib$(SKNAME)_32.bc
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	cp $@ $(LIBDIR)/lib$(SKNAME)_32.bc
 
-$(TSDIR)/$(SKNAME)_%.ts: resources/%.bin
-	[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	$(eval VARNAME := $(shell basename $@ .ts))
-	@echo 'var $(VARNAME) = `' >> $@
-	@base64 $< >> $@
-	@echo '`;' >> $@
-	@echo '' >> $@
-	@echo 'interface ToWasm {' >> $@
-	@echo ' SKIP_SKUIViewsRes_$(VARNAME): () => number;' >> $@
-	@echo '}' >> $@
-	@echo '' >> $@
-	@echo 'interface Utils {' >> $@
-	@echo '  exportString: (s: string) => number;' >> $@
-	@echo '}' >> $@
-	@echo '' >> $@
-	@echo 'class LinksImpl implements ToWasm {' >> $@
-	@echo '  SKIP_SKUIViewsRes_$(VARNAME): () => number;' >> $@
-	@echo '' >> $@
-	@echo '  complete = (utils: Utils, exports: object) => {' >> $@
-	@echo '    this.SKIP_SKUIViewsRes_$(VARNAME) = () => {' >> $@
-	@echo '      return utils.exportString($(VARNAME));' >> $@
-	@echo '    }' >> $@
-	@echo '    return null;' >> $@
-	@echo '  }' >> $@
-	@echo '}' >> $@
-	@echo '' >> $@
-	@echo 'class Manager {' >> $@
-	@echo '  prepare = (wasm: object) => {' >> $@
-	@echo '    let toWasm = wasm as ToWasm;' >> $@
-	@echo '    let links = new LinksImpl();' >> $@
-	@echo '    toWasm.SKIP_SKUIViewsRes_$(VARNAME) =  () => links.SKIP_SKUIViewsRes_$(VARNAME)();' >> $@
-	@echo '    return links;' >> $@
-	@echo '  }' >> $@
-	@echo '}' >> $@
-	@echo '' >> $@
-	@echo 'export var init = () => new Manager();' >> $@
-	@echo '' >> $@
-
 .PHONY: build
-build: $(RULE64) $(RULE32) $(RESOURCES32) 
+build: $(RULE64) $(RULE32) 
 
 .PHONY: check
 check:

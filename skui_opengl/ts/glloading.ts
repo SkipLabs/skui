@@ -16,9 +16,9 @@ export class Loading {
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
   interval: int | null;
-  setInterval: (fn: () => void, delay: number) => int
+  setInterval: (handler: TimerHandler, timeout: int) => int
 
-  constructor(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext, setInterval: (fn: () => void, delay: number) => int) {
+  constructor(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext, setInterval: (handler: TimerHandler, timeout: int) => int) {
     this.setInterval = setInterval;
     this.positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);

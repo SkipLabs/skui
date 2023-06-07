@@ -1,7 +1,7 @@
 import {int, Environment, Links, Utils, ToWasmManager} from "#skui_base/types";
 
 interface ToWasm {
-  SKIP_FWK_applyCursor: (cursor: int) => void;
+  SKIP_FWK_applyCursor: (wId: int, cursor: int) => void;
   SKIP_FWK_update: (wId: int) => void;
 }
 
@@ -18,7 +18,7 @@ class LinksImpl implements Links, ToWasm {
     this.env = env;
   }
 
-  SKIP_FWK_applyCursor =  (code: int) => {
+  SKIP_FWK_applyCursor =  (wId: int, code: int) => {
     let cursor = "default";
     switch (code) {
       case 0: cursor = "none"; break;
@@ -80,7 +80,7 @@ class Manager implements ToWasmManager {
   prepare = (wasm: object) => {
     let toWasm = wasm as ToWasm;
     let links = new LinksImpl(this.env);
-    toWasm.SKIP_FWK_applyCursor =  (code: int) => links.SKIP_FWK_applyCursor(code);
+    toWasm.SKIP_FWK_applyCursor =  (wId: int, code: int) => links.SKIP_FWK_applyCursor(wId,code);
     toWasm.SKIP_FWK_update =  (wId: int) => links.SKIP_FWK_update(wId);
     return links;
   }

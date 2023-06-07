@@ -176,7 +176,6 @@ native fun getJSExceptionMessage(actor: UInt32): String;
 @cpp_extern("SKIP_JS_deleteException")
 native fun deleteJSException(actor: UInt32): void;
 
-
 @cpp_extern("SKIP_SKUI_checkObstack")
 native fun skuiCheckObstack(): ?SKFS.Obstack;
 
@@ -189,7 +188,7 @@ fun checkObstack(): ?SKFS.Obstack {
   skuiCheckObstack()
 }
 
-@cpp_extern("SKIP_cleanObstack")
+@cpp_export("SKIP_cleanObstack")
 @wasm_export("SKIP_cleanObstack")
 fun cleanObstack(optObstack: ?SKFS.Obstack): void {
   skuiCleanObstack(optObstack)

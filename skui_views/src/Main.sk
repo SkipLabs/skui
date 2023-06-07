@@ -1,7 +1,5 @@
 module SkuiViews;
 
-const kWasm: Bool = SkargoVersion.kTarget.startsWith("wasm32");
-
 fun main(): void {
   available = mutable Vector[
     SKUIViewsButtons.view(),
@@ -80,7 +78,7 @@ fun perform(
         .long("version")
         .about("Print version info and exit"),
     );
-  if (!kWasm) {
+  if (!SkargoVersion.kWasm) {
     !command = command
       .arg(
         Cli.StringArg("screen")
@@ -101,49 +99,61 @@ fun perform(
       Cli.Command("help").extra().about("Displays help for a subcommand"),
     );
   available.each(v -> !command = command.subcommand(v.i0));
-  args = command.parseArgs();
-  if (args.getBool("version")) {
-    print_string("skuix11gl " + SkargoVersion.kVersion);
-  } else {
-    args.maybeGetSubcommand() match {
+  args = Cli.parseArgs(command);
+  args.error match {
+  | Some(err) ->
+    error = args.subcommand match {
     | Some(subcmd) ->
-      if (subcmd == "help") {
-        optSubcmd = args.extra.maybeGet(0);
-        optSubcmd.flatMap(subcmd ->
-          args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
-        ) match {
-        | Some(cmd) -> print_string(Cli.usage(cmd, true, Some(args.cmd)))
-        | _ ->
-          optSubcmd match {
-          | Some(cmd) -> print_error(`error: Invalid subcommand ${cmd}.`)
-          | _ -> print_error("error: No subcommand specified.")
-          };
-          print_string(Cli.usage(args.cmd, true))
-        };
-      } else {
-        available.filter(v -> v.i0.name == subcmd).maybeGet(0) match {
-        | Some((cmd, fn)) ->
-          screen = args.getString("screen").toIntOption().default(0);
-          fps = args.getString("fps").toIntOption().default(60);
-          wId = 0;
-          title = cmd._about match {
-          | Some(t) -> t
-          | _ -> command._about.fromSome()
-          };
-          _ = SKFS.initMainContext(SKFS.Context{});
-          SKFS.Context::withGc(context ~> {
-            initUiWidget(context, wId, fn(args));
-            context.initPre();
-          });
-          if (kWasm) {
-            SKUIJS.init(uint32(wId), title);
-          } else {
-            SKUIX11.launch(wId, title, screen, fps);
-          }
-        | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
-        }
+      command._subcommands.find(c -> c.name == subcmd) match {
+      | Some(cmd) -> Cli.usage(cmd, false, Some(command))
+      | None() -> `Unknown subcommand ${subcmd}`
       }
-    | None() -> print_string(Cli.usage(args.cmd, true))
+    | None() -> Cli.usage(command, false)
+    };
+    display(None(), Some(`error: ${err.getMessage()}\n${error}`))
+  | _ ->
+    if (args.getBool("version")) {
+      display(Some("skuiviews " + SkargoVersion.kVersion))
+    } else {
+      args.maybeGetSubcommand() match {
+      | Some(subcmd) ->
+        if (subcmd == "help") {
+          optSubcmd = args.extra.maybeGet(0);
+          optSubcmd.flatMap(subcmd ->
+            args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
+          ) match {
+          | Some(cmd) -> display(Some(Cli.usage(cmd, true, Some(args.cmd))))
+          | _ ->
+            error = optSubcmd
+              .map(cmd -> `error: Invalid subcommand ${cmd}`)
+              .default("error: No subcommand specified");
+            display(Some(Cli.usage(args.cmd, true)), Some(error))
+          };
+        } else {
+          available.filter(v -> v.i0.name == subcmd).maybeGet(0) match {
+          | Some((cmd, fn)) ->
+            wId = 0;
+            title = cmd._about match {
+            | Some(t) -> t
+            | _ -> command._about.fromSome()
+            };
+            _ = SKFS.initMainContext(SKFS.Context{});
+            SKFS.Context::withGc(context ~> {
+              initUiWidget(context, wId, fn(args));
+              context.initPre();
+            });
+            if (SkargoVersion.kWasm) {
+              SKUIJS.init(uint32(wId), title);
+            } else {
+              screen = args.getString("screen").toIntOption().default(0);
+              fps = args.getString("fps").toIntOption().default(60);
+              SKUIX11.launch(wId, title, screen, fps);
+            }
+          | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
+          }
+        }
+      | None() -> display(Some(Cli.usage(args.cmd, true)))
+      }
     }
   }
 }
@@ -154,6 +164,15 @@ fun update(): void {
   pos = checkObstack();
   SKFS.Context::withoutGc(context ~> context.updateIfRoot());
   cleanObstack(pos);
+}
+
+fun display(optOutput: ?String, optError: ?String = None()): void {
+  if (SkargoVersion.kWasm) {
+    SKUIJS.display(optOutput, optError)
+  } else {
+    optError.each(print_error);
+    optOutput.each(print_string);
+  }
 }
 
 module end;

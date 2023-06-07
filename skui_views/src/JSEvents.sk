@@ -1,13 +1,10 @@
 module SKUIJS;
 
 @wasm_export("SKIP_SKUIJS_manageMouseEvent")
+@cpp_export("SKIP_SKUIJS_manageMouseEvent")
 fun manageMouseEvent(
   _wId: UInt32,
   evtType: UInt32,
-  _altKey: Bool,
-  _ctrlKey: Bool,
-  _shiftKey: Bool,
-  _metaKey: Bool,
   button: UInt32,
   _clickCount: UInt32,
   clientX: Float,
@@ -16,6 +13,10 @@ fun manageMouseEvent(
   _screenY: Float,
   _movementX: Float,
   _movementY: Float,
+  _ctrlKey: Bool,
+  _shiftKey: Bool,
+  _altKey: Bool,
+  _metaKey: Bool,
 ): void {
   pos = SKFS.newObstack();
   fn = context ~> {
@@ -57,6 +58,7 @@ fun manageMouseEvent(
 }
 
 @wasm_export("SKIP_SKUIJS_manageWheelEvent")
+@cpp_export("SKIP_SKUIJS_manageWheelEvent")
 fun manageWheelEvent(
   _wId: UInt32,
   _deltaX: Float,
@@ -80,11 +82,20 @@ fun manageWheelEvent(
 }
 
 @wasm_export("SKIP_SKUIJS_manageResize")
+@cpp_export("SKIP_SKUIJS_manageResize")
 fun manageResize(wId: UInt32, width: UInt32, height: UInt32): void {
-  SKUIX11.manageResize(wId.toInt(), width.toInt(), height.toInt())
+  pos = SKFS.newObstack();
+  SKFS.Context::withoutGc(context ~> {
+    context.getGlobal("FWK.Window.Size").map(FWK.Sizer::fromFile).each(sizer ->
+      sizer.value(context, wId.toInt(), width.toInt(), height.toInt())
+    );
+    context.updateIfRoot();
+  });
+  SKFS.destroyObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_clearKeyboardEvent")
+@cpp_export("SKIP_SKUIJS_clearKeyboardEvent")
 fun clearKeyboardEvent(_wId: UInt32): void {
   SKFS.Context::withoutGc(context ~> {
     FWKKeys.execute(
@@ -96,6 +107,7 @@ fun clearKeyboardEvent(_wId: UInt32): void {
 }
 
 @wasm_export("SKIP_SKUIJS_manageKeyboardEvent")
+@cpp_export("SKIP_SKUIJS_manageKeyboardEvent")
 fun manageKeyboardEvent(
   _wId: UInt32,
   evtType: UInt32,
@@ -145,13 +157,32 @@ fun manageKeyboardEvent(
 }
 
 @wasm_export("SKIP_SKUIJS_windowInitialized")
+@cpp_export("SKIP_SKUIJS_windowInitialized")
 fun windowInitialized(wId: UInt32): void {
-  SKUIX11.windowInitialized(wId.toInt())
+  pos = SKFS.newObstack();
+  SKFS.Context::withoutGc(context ~> {
+    context.setGlobal(
+      "SKUIMessage.Sender",
+      SKUIMessage.Sender((_ctx, message, asyncMode, delay) ~> {
+        sendMessage(wId, message, asyncMode, delay);
+        true
+      }),
+    );
+    context.checkPendingMessages();
+    context.updateIfRoot();
+  });
+  SKFS.destroyObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_performPaste")
+@cpp_export("SKIP_SKUIJS_performPaste")
 fun performPaste(wid: Int, mimeType: String, data: String): void {
-  SKUIX11.performPaste(wid, mimeType, data)
+  SKFS.Context::withoutGc(context ~> {
+    type = FWKClipboard.Type::fromMime(mimeType);
+    content = FWKClipboard.Content(Map[type => IO.Text(data)]);
+    debug(("TODO: Manage on paste event", wid, type, content));
+    context.updateIfRoot();
+  });
 }
 
 @debug
@@ -171,5 +202,8 @@ native fun updateClipboard(wid: UInt32, mimeType: String, data: String): void;
 
 @cpp_extern("SKIP_SKUIJS_init")
 native fun init(wid: UInt32, title: String): void;
+
+@cpp_extern("SKIP_SKUIJS_display")
+native fun display(optOutput: ?String, optError: ?String): void;
 
 module end;

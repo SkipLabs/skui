@@ -1,15 +1,25 @@
 module System;
 
+@cpp_extern("SKIP_JS_timeStamp")
+native fun jsTimeStamp(): Float;
+
 @debug
-@cpp_extern
-native fun timeStamp(): TimeStamp;
+@cpp_extern("SKIP_System_timeStamp")
+native fun systemTimeStamp(): TimeStamp;
+
+fun timeStamp(): TimeStamp {
+  if (SkargoVersion.kWasm) {
+    convertFTime(jsTimeStamp())
+  } else {
+    systemTimeStamp()
+  }
+}
 
 @cpp_export("SKIP_System_createTimeStamp")
 fun createTimeStamp(seconds: UInt32, microseconds: UInt32): TimeStamp {
   TimeStamp(seconds.toInt(), microseconds.toInt());
 }
 
-@cpp_export("SKIP_System_convertFTime")
 fun convertFTime(fTimeStamp: Float): TimeStamp {
   seconds = (fTimeStamp / 1000.0).toInt();
   microseconds = (((fTimeStamp - (seconds * 1000).toFloat()).toInt()) *

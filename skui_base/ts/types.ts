@@ -378,7 +378,7 @@ export async function start(modules: Array<string>, path: URL, environment: Envi
   for (let i = 0; i < modules.length; i++) {
     let evnModule = await import(modules[i]);
     if (evnModule.init) {
-        managers.push(await evnModule.init());
+        managers.push(await evnModule.init(environment));
     }
   }
   let data = await environment.readData(path);

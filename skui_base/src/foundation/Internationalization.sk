@@ -193,7 +193,6 @@ fun textVector(): mutable Vector<Text> {
   mutable Vector<Text>[]
 }
 
-
 @wasm_export("SKIP_I18N_pushText")
 @cpp_export("SKIP_I18N_pushText")
 fun pushText(v: mutable Vector<Text>, text: Text): void {

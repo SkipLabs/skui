@@ -29,11 +29,11 @@ char* createBuffer(uint8_t* start, uint8_t* end) {
 
 extern "C"
 {
-  char* SKIP_SKUIViewsRes_bigData() {
+  char* SKIP_skui_views_big_bin() {
     return createBuffer(big_start, big_end);
   }
 
-  char* SKIP_SKUIViewsRes_smallData() {
+  char* SKIP_skui_views_small_bin() {
     return createBuffer(small_start, small_end);
   }
 }

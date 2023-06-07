@@ -5,6 +5,8 @@ import { Loading } from "#skui_opengl/glloading";
 interface Env extends Environment {
   window: () => Window; 
   canvas: () => HTMLCanvasElement;
+  requestAnimationFrame: (callback: FrameRequestCallback) => number;
+  cancelAnimationFrame: (handle: number) => void;
 }
 
 const uniforms = [
@@ -95,7 +97,7 @@ export class Factory {
     let canvas = env.canvas();
     return getContext(canvas).then(gl => {
       let factory = new Factory();
-      factory.loading = new Loading(canvas, gl, env.window().setInterval);
+      factory.loading = new Loading(canvas, gl, (handler: TimerHandler, timeout: int) => env.window().setInterval(handler, timeout));
       factory.loading.start();
       factory.env = env;
       factory.utils = null;
@@ -374,10 +376,10 @@ export class Context {
     if (this.setGlContext) {
       this.setGlContext(this.id);
     }
-    this.animationFrameRequest = requestAnimationFrame(this.onAnimationFrame);
+    this.animationFrameRequest = this.env.requestAnimationFrame(this.onAnimationFrame);
   }
   stop = (restoreCall: (ev?: Event) => void) => {
-    cancelAnimationFrame(this.animationFrameRequest);
+    this.env.cancelAnimationFrame(this.animationFrameRequest);
     this.canvas.removeEventListener('webglcontextlost', this.onLost);
     this.canvas.removeEventListener('webglcontextrestored', restoreCall);
   }
@@ -389,7 +391,7 @@ export class Context {
       if (this.render) {
         this.render(this.id, this.canvas.width, this.canvas.height);
       }
-      this.animationFrameRequest = requestAnimationFrame(this.onAnimationFrame)
+      this.animationFrameRequest = this.env.requestAnimationFrame(this.onAnimationFrame)
     }
   }
   getGlObject = (id: int, check: boolean = false) => {

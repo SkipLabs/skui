@@ -122,7 +122,7 @@ interface ToWasm {
     dataPtr: ptr | null | undefined,
     ctxId: int
   ) => void;
-  SKIP_GL_shaderSource:(shader: int, source: int, ctxId: int) => void;
+  SKIP_GL_shaderSource:(shader: int, source: ptr, ctxId: int) => void;
   SKIP_GL_getShaderInfoLog:(shader: int, ctxId: int) =>  ptr | null;
   SKIP_GL_staticDrawData:(dataPtr: ptr, len: int, ctxId: int) => void;
   SKIP_GL_getProgramInfoLog:(program: int, ctxId: int) => ptr | null;
@@ -146,6 +146,7 @@ export class LinksImpl implements Links {
 
   complete = (utils: Utils, exports: object) => {
     let exported = exports as Exported;
+    this.factory.utils = utils;
     this.factory.render = exported.SKIP_SKUIGL_performFrame;
     this.factory.setGlContext = exported.SKIP_SKUIGL_setWindowContext;
     return new WebglShared(this.factory);
