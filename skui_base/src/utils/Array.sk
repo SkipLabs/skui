@@ -78,32 +78,27 @@ extension class .Array {
 
 module end;
 
-@wasm_export("SKIP_getFloatAt")
-@cpp_export("SKIP_getFloatAt")
+@export("SKIP_getFloatAt")
 fun getFloatAt(array: readonly Array<Float>, index: Int32): Float {
   array.get(index.toInt());
 }
 
-@wasm_export("SKIP_createByteArray")
-@cpp_export("SKIP_createByteArray")
+@export("SKIP_createByteArray")
 fun createByteArray(size: Int32): mutable Array<UInt8> {
   Array<UInt8>::mfill(size.toInt(), UInt8::truncate(0));
 }
 
-@wasm_export("SKIP_getBytesSize")
-@cpp_export("SKIP_getBytesSize")
+@export("SKIP_getBytesSize")
 fun getBytesSize(array: Array<UInt8>): Int32 {
   Int32::truncate(array.size())
 }
 
-@wasm_export("SKIP_setByte")
-@cpp_export("SKIP_setByte")
+@export("SKIP_setByte")
 fun setByte(bytes: mutable Array<UInt8>, index: Int32, byte: UInt8): void {
   bytes.set(index.toInt(), byte);
 }
 
-@wasm_export("SKIP_chillByteArray")
-@cpp_export("SKIP_chillByteArray")
+@export("SKIP_chillByteArray")
 fun chillByteArray(array: mutable Array<UInt8>): Array<UInt8> {
   array.chill();
 }

@@ -1,7 +1,6 @@
 module SKUIJS;
 
 @wasm_export("SKIP_SKUIJS_manageMouseEvent")
-@cpp_export("SKIP_SKUIJS_manageMouseEvent")
 fun manageMouseEvent(
   _wId: UInt32,
   evtType: UInt32,
@@ -58,7 +57,6 @@ fun manageMouseEvent(
 }
 
 @wasm_export("SKIP_SKUIJS_manageWheelEvent")
-@cpp_export("SKIP_SKUIJS_manageWheelEvent")
 fun manageWheelEvent(
   _wId: UInt32,
   _deltaX: Float,
@@ -82,7 +80,6 @@ fun manageWheelEvent(
 }
 
 @wasm_export("SKIP_SKUIJS_manageResize")
-@cpp_export("SKIP_SKUIJS_manageResize")
 fun manageResize(wId: UInt32, width: UInt32, height: UInt32): void {
   pos = SKFS.newObstack();
   SKFS.Context::withoutGc(context ~> {
@@ -95,7 +92,6 @@ fun manageResize(wId: UInt32, width: UInt32, height: UInt32): void {
 }
 
 @wasm_export("SKIP_SKUIJS_clearKeyboardEvent")
-@cpp_export("SKIP_SKUIJS_clearKeyboardEvent")
 fun clearKeyboardEvent(_wId: UInt32): void {
   SKFS.Context::withoutGc(context ~> {
     FWKKeys.execute(
@@ -107,7 +103,6 @@ fun clearKeyboardEvent(_wId: UInt32): void {
 }
 
 @wasm_export("SKIP_SKUIJS_manageKeyboardEvent")
-@cpp_export("SKIP_SKUIJS_manageKeyboardEvent")
 fun manageKeyboardEvent(
   _wId: UInt32,
   evtType: UInt32,
@@ -157,7 +152,6 @@ fun manageKeyboardEvent(
 }
 
 @wasm_export("SKIP_SKUIJS_windowInitialized")
-@cpp_export("SKIP_SKUIJS_windowInitialized")
 fun windowInitialized(wId: UInt32): void {
   pos = SKFS.newObstack();
   SKFS.Context::withoutGc(context ~> {
@@ -175,7 +169,6 @@ fun windowInitialized(wId: UInt32): void {
 }
 
 @wasm_export("SKIP_SKUIJS_performPaste")
-@cpp_export("SKIP_SKUIJS_performPaste")
 fun performPaste(wid: Int, mimeType: String, data: String): void {
   SKFS.Context::withoutGc(context ~> {
     type = FWKClipboard.Type::fromMime(mimeType);

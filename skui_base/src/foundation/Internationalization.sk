@@ -169,32 +169,27 @@ module end;
 
 module I18N;
 
-@wasm_export("SKIP_I18N_text")
-@cpp_export("SKIP_I18N_text")
+@export("SKIP_I18N_text")
 fun text(text: String, optCategory: ?String): Text {
   LocaleText(text, optCategory)
 }
 
-@wasm_export("SKIP_I18N_raw")
-@cpp_export("SKIP_I18N_raw")
+@export("SKIP_I18N_raw")
 fun raw(text: String): Text {
   Raw(text)
 }
 
-@wasm_export("SKIP_I18N_format")
-@cpp_export("SKIP_I18N_format")
+@export("SKIP_I18N_format")
 fun format(format: Text, parameters: Vector<Text>): Text {
   Format(format, parameters.toArray())
 }
 
-@wasm_export("SKIP_I18N_textVector")
-@cpp_export("SKIP_I18N_textVector")
+@export("SKIP_I18N_textVector")
 fun textVector(): mutable Vector<Text> {
   mutable Vector<Text>[]
 }
 
-@wasm_export("SKIP_I18N_pushText")
-@cpp_export("SKIP_I18N_pushText")
+@export("SKIP_I18N_pushText")
 fun pushText(v: mutable Vector<Text>, text: Text): void {
   v.push(text);
 }
