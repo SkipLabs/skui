@@ -1,4 +1,4 @@
-import {int, float, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_base/types";
+import {int, float, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_base/skui_types";
 
 interface Env extends Environment {
   window: () => Window | null;

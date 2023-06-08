@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2021",
-    "module": "esnext",
     "outDir": "js",
     "baseUrl": ".",
     "paths": {
-      "#skui_base/*": ["../../skui_base/ts/*"],
-      "#skui_opengl/*": ["./*"]
+      "#skui_base/*": ["../../../skui_base/ts/src/*"],
+      "#skui_common/*": ["./*"]
     },
     "strictNullChecks":true
   }

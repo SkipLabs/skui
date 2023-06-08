@@ -3,11 +3,11 @@ CPP				= clang++
 BCLINK		= llvm-link
 VERSION	 	?= $(shell lsb_release -sc)
 LIBDIR		?= lib
-BUILDDIR	?= target/$(VERSION)
 BINARCH		?= i386:x86-64
 ELFARCH		?= elf64-x86-64
 OBCOPY		?= objcopy
-
+BUILDDIR	?= target
+SRCDIR    ?= src
 
 ifdef DEBUG
 SKSUFFIX ?= _debug
@@ -23,36 +23,42 @@ CFLAG		 ?= $(OLEVEL) --target=wasm32 -emit-llvm
 CPPFLAG	 ?= $(OLEVEL)
 endif #DEBUG
 
-ifneq ("$(wildcard native)","")
+ifndef RESOURCES
+ifneq ("$(wildcard resources/$(SRCDIR))","")
+RESOURCES := $(shell find -L resources/$(SRCDIR) -name "*.bin")
+endif #("$(wildcard resources)","")
+endif #RESOURCES
+
+ifneq ("$(wildcard native/$(SRCDIR))","")
 
 ifndef SKARGO_INCLUDEDIRS64
-ifneq ("$(wildcard native/includes)","")
-SKARGO_INCLUDEDIRS64 := native/includes
-endif #("$(wildcard native/includes)","")
+ifneq ("$(wildcard native/$(SRCDIR)/includes)","")
+SKARGO_INCLUDEDIRS64 := native/$(SRCDIR)/includes
+endif #("$(wildcard native/$(SRCDIR)/includes)","")
 endif #SKARGO_INCLUDEDIRS64
 
-ifndef RESOURCES64
-ifneq ("$(wildcard native/resources)","")
-RESOURCES64 := $(shell find -L native/resources -name "*.bin")
-endif #("$(wildcard native/resources)","")
-endif #RESOURCES64
 IFILES64  		:= $(foreach dir,$(SKARGO_INCLUDEDIRS64),$(shell find -L $(dir) -name "*.h"))
-SOURCES64			:= $(shell find -L native -name "*.cpp")
+SOURCES64			:= $(shell find -L native/$(SRCDIR) -name "*.cpp")
 FILES64				:= $(addprefix $(BUILDDIR)/,$(SOURCES64:.cpp=$(SKSUFFIX).o))
-RULE64				:= $(LIBDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
+RULE64				:= $(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
 INC64     		:= $(foreach dir,$(SKARGO_INCLUDEDIRS64),"-I$(dir)")
-ORESOURCES64	:= $(addprefix $(BUILDDIR)/,$(RESOURCES64:.bin=.bin.o))
 endif #("$(wildcard native)","")
 
-ifneq ("$(wildcard wasm)","")
-SOURCES32	:= $(shell find -L wasm -name "*.c")
-FILES32		:= $(addprefix $(BUILDDIR)/,$(SOURCES32:.c=.bc))
-RULE32		:= $(LIBDIR)/lib$(SKNAME)_32.bc
+
+ifneq ("$(RESOURCES)","")
+ORESOURCES64	:= $(addprefix $(BUILDDIR)/,$(RESOURCES:.bin=.bin.o))
+RULE64				?= $(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
+endif #("$(RESOURCES)","")
+
+ifneq ("$(wildcard wasm/$(SRCDIR))","")
+SOURCES32			:= $(shell find -L wasm -name "*.c")
+FILES32				:= $(addprefix $(BUILDDIR)/,$(SOURCES32:.c=.bc))
+RULE32				:= $(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_32.bc
 endif #("$(wildcard native)","")
 
 default: build
 
-$(BUILDDIR)/native/resources/%.bin.o: native/resources/%.bin
+$(BUILDDIR)/resources/%.bin.o: resources/%.bin
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	${OBCOPY} -B $(BINARCH) -I binary -O $(ELFARCH) $< $@
 
@@ -60,24 +66,25 @@ $(BUILDDIR)/native/%$(SKSUFFIX).o: native/%.cpp $(IFILES64)
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	$(CPP) $(CPPFLAG) -std=c++17 $(INC64) -o $@ -c $<
 
-$(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a: $(FILES64) $(ORESOURCES64)
-	ar rcs $(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a $(FILES64) $(ORESOURCES64)
-
-$(LIBDIR)/lib$(SKNAME)_64$(SKSUFFIX).a: $(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
+$(BUILDDIR)/$(SRCDIR)/lib$(SKNAME)_64$(SKSUFFIX).a: $(FILES64) $(ORESOURCES64)
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	cp $(BUILDDIR)/lib$(SKNAME)_64$(SKSUFFIX).a $(LIBDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
+	ar rcs $@ $(FILES64) $(ORESOURCES64)
+
+$(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_64$(SKSUFFIX).a: $(BUILDDIR)/$(SRCDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
+	[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	cp $< $@ 
 
 $(BUILDDIR)/wasm/%.bc: wasm/%.c
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	$(CC) $(CFLAG) -o $@ -c $<
 
-$(BUILDDIR)/lib$(SKNAME)_32.bc: $(FILES32)
-	$(BCLINK) $(FILES32) -o $(BUILDDIR)/lib$(SKNAME)_32.bc
-
-$(LIBDIR)/lib$(SKNAME)_32.bc: $(BUILDDIR)/lib$(SKNAME)_32.bc
+$(BUILDDIR)/$(SRCDIR)/lib$(SKNAME)_32.bc: $(FILES32)
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	cp $(BUILDDIR)/lib$(SKNAME)_32.bc $(LIBDIR)/lib$(SKNAME)_32.bc
+	$(BCLINK) $(FILES32) -o $@
 
+$(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_32.bc: $(BUILDDIR)/$(SRCDIR)/lib$(SKNAME)_32.bc
+	[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	cp $< $@
 
 .PHONY: build
 build: $(RULE64) $(RULE32)

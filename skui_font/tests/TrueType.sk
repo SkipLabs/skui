@@ -1,72 +1,72 @@
 module SKUIFontTest;
 
 @testr
-fun truetypeParse(r: Map<String, TrueType.Font>): void {
+fun truetypeParse(r: String ~> TrueType.Font): void {
   Parse(r).run()
 }
 
 @testr
-fun truetypeName(r: Map<String, TrueType.Font>): void {
+fun truetypeName(r: String ~> TrueType.Font): void {
   Name(r).run()
 }
 
 @testr
-fun truetypeGlyph(r: Map<String, TrueType.Font>): void {
+fun truetypeGlyph(r: String ~> TrueType.Font): void {
   Glyph(r).run()
 }
 
 @testr
-fun truetypeIndex1(r: Map<String, TrueType.Font>): void {
-  runIndex(r["luxisr"], SKUIFontTest.luxisrChars())
+fun truetypeIndex1(r: String ~> TrueType.Font): void {
+  runIndex(r("luxisr"), SKUIFontTest.luxisrChars())
 }
 
 @testr
-fun truetypeIndex2(r: Map<String, TrueType.Font>): void {
-  runIndex(r["xab"], SKUIFontTest.xabChars())
+fun truetypeIndex2(r: String ~> TrueType.Font): void {
+  runIndex(r("xab"), SKUIFontTest.xabChars())
 }
 
 @testr
-fun truetypeIndex3(r: Map<String, TrueType.Font>): void {
-  runIndex(r["xtnr"], SKUIFontTest.xtnrChars())
+fun truetypeIndex3(r: String ~> TrueType.Font): void {
+  runIndex(r("xtnr"), SKUIFontTest.xtnrChars())
 }
 
 // TODO Fix Check char greater than UInt16 size
 @testr
-fun truetypeIndex4(r: Map<String, TrueType.Font>): void {
-  runIndex(r["xdvso"], SKUIFontTest.xdvsoChars())
+fun truetypeIndex4(r: String ~> TrueType.Font): void {
+  runIndex(r("xdvso"), SKUIFontTest.xdvsoChars())
 }
 
 // to big cannot be compiled
 //@testr
-fun truetypeIndex5(r: Map<String, TrueType.Font>): void {
-  runIndex(r["xdsff"], SKUIFontTest.xdsffChars())
+fun truetypeIndex5(r: String ~> TrueType.Font): void {
+  runIndex(r("xdsff"), SKUIFontTest.xdsffChars())
 }
 
 @testr
-fun truetypeScaling1(r: Map<String, TrueType.Font>): void {
-  Scaling(r["luxisr"], 12, Font.HintingNone(), SKUIFontTest.luxisr12sh()).run()
+fun truetypeScaling1(r: String ~> TrueType.Font): void {
+  Scaling(r("luxisr"), 12, Font.HintingNone(), SKUIFontTest.luxisr12sh()).run()
 }
 
 @testr
-fun truetypeScaling2(r: Map<String, TrueType.Font>): void {
-  Scaling(r["xdvso"], 17, Font.HintingNone(), SKUIFontTest.xdvso17sh()).run()
+fun truetypeScaling2(r: String ~> TrueType.Font): void {
+  Scaling(r("xdvso"), 17, Font.HintingNone(), SKUIFontTest.xdvso17sh()).run()
 }
 
 @testr
-fun truetypeScaling3(r: Map<String, TrueType.Font>): void {
-  Scaling(r["xdsff"], 9, Font.HintingNone(), SKUIFontTest.xdsff9sh()).run()
+fun truetypeScaling3(r: String ~> TrueType.Font): void {
+  Scaling(r("xdsff"), 9, Font.HintingNone(), SKUIFontTest.xdsff9sh()).run()
 }
 
 @testr
-fun truetypeScaling4(r: Map<String, TrueType.Font>): void {
-  Scaling(r["xtnr"], 13, Font.HintingNone(), SKUIFontTest.xtnr13sh()).run()
+fun truetypeScaling4(r: String ~> TrueType.Font): void {
+  Scaling(r("xtnr"), 13, Font.HintingNone(), SKUIFontTest.xtnr13sh()).run()
 }
 
 // TODO: check  expected file
 //    Invalid advance for glyph 4: got 196 expect 234
 //@test
-fun truetypeScaling5(r: Map<String, TrueType.Font>): void {
-  Scaling(r["xab"], 11, Font.HintingNone(), SKUIFontTest.xab11sh()).run()
+fun truetypeScaling5(r: String ~> TrueType.Font): void {
+  Scaling(r("xab"), 11, Font.HintingNone(), SKUIFontTest.xab11sh()).run()
 }
 
 class Rectangle(rect: Fixed.Rectangle26_6) extends SKFS.File {}
@@ -77,14 +77,14 @@ class FontCase(
   name: String = "luxisr",
 ) extends Case {}
 
-base class TrueType(r: Map<String, TrueType.Font>) {
+base class TrueType(r: String ~> TrueType.Font) {
   //
   fun run(): void {
     this.cases().eachWithIndex(this.runCase);
   }
 
   protected fun runCase(idx: Int, case: FontCase): void {
-    font = this.r[case.name];
+    font = this.r(case.name);
     case.got(font) match {
     | failure @ SKFS.LoadFailed _ ->
       invariant_violation(`Error: ${failure.optError}`)

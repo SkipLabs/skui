@@ -7,7 +7,7 @@ class Env(fn: (GL.Ctx, Int, Int) ~> Context)
 fun main(): void {
   available = mutable Vector[
     ("rounded", SkuiX11gl.rounded),
-    ("rounded", SkuiX11gl.rectangle),
+    ("rectangle", SkuiX11gl.rectangle),
   ];
   /*#forEachFunction (@draw, #function, #functionName) {
     available.push((#functionName.split(".").last(), #function))

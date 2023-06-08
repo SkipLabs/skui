@@ -74,20 +74,17 @@ class File(font: TrueType.Font) extends SKFS.File
 
 fun main(): void {
   pos = SKFS.newObstack();
-  resources = mutable Map[];
-  #forEachFunction (@resources, #function, #functionName) {
-    #function(resources)
-  };
-
-  //roResources = unsafe_chill_trust_me(resources);
-  roResources = SKFS.destroyObstackWithValue(
-    pos,
-    List.Cons(unsafe_chill_trust_me(resources), List.Nil()),
-  ) match {
-  | List.Cons(x, _) -> x
-  | _ -> invariant_violation("error")
-  };
-  !pos = SKFS.newObstack();
+  resources = (name) ~>
+    name match {
+    | "luximr" -> TrueType.parse(SKIP_SKUIFontTestsRes.luximrBin())
+    | "luxirr" -> TrueType.parse(SKIP_SKUIFontTestsRes.luxirrBin())
+    | "luxisr" -> TrueType.parse(SKIP_SKUIFontTestsRes.luxisrBin())
+    | "xab" -> TrueType.parse(SKIP_SKUIFontTestsRes.xabBin())
+    | "xdsff" -> TrueType.parse(SKIP_SKUIFontTestsRes.xdsffBin())
+    | "xdvso" -> TrueType.parse(SKIP_SKUIFontTestsRes.xdvsoBin())
+    | "xtnr" -> TrueType.parse(SKIP_SKUIFontTestsRes.xtnrBin())
+    | _ -> invariant_violation(`Unknown resource named ${name}`)
+    };
   tests = mutable Map[];
   #forEachFunction (@testr, #function, #functionName) {
     // TODO: Properly handle tests outside of module/suite?
@@ -95,9 +92,9 @@ fun main(): void {
     if (!tests.containsKey(testSuite)) {
       tests.set(testSuite, mutable Map[])
     };
-    tests[testSuite].set(testName, () ~> #function(roResources))
+    tests[testSuite].set(testName, () ~> #function(resources))
   };
-  mute(roResources);
+  mute(resources);
   #forEachFunction (@test, #function, #functionName) {
     // TODO: Properly handle tests outside of module/suite?
     (testSuite, testName) = #functionName.splitFirst(".");

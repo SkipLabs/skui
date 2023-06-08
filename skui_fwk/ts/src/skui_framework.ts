@@ -1,4 +1,4 @@
-import {int, Environment, Links, Utils, ToWasmManager} from "#skui_base/types";
+import {int, Environment, Links, Utils, ToWasmManager} from "#skui_base/skui_types";
 
 interface ToWasm {
   SKIP_FWK_applyCursor: (wId: int, cursor: int) => void;

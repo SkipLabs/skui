@@ -1,4 +1,4 @@
-import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/types";
+import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/skui_types";
 
 type MouseEventManager = (
   wId: int, type: int,

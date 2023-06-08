@@ -1,6 +1,6 @@
 
 
-import {float, int, start, Environment, ToWasmManager, Shared} from "#skui_base/types";
+import {float, int, start, Environment, ToWasmManager, Shared} from "#skui_base/skui_types";
 
 interface Views extends Shared {
     update: () => void;
@@ -21,6 +21,7 @@ class Env implements Environment {
     appendTextTo: (name: string, content: string) => void;
     requestAnimationFrame: (callback: FrameRequestCallback) => number;
     cancelAnimationFrame: (handle: number) => void;
+    base64Decode: (base64: String) => Uint8Array;
     update: () => void;
     start: (wId: int) => Promise<int>;
     arguments: Array<string>;
@@ -56,6 +57,7 @@ class Env implements Environment {
         this.clipboard = () => navigator.clipboard;
         var decoder = new TextDecoder('utf8');
         this.decodeUTF8 = (utf8: Uint8Array) => decoder.decode(utf8);
+        this.base64Decode = (base64: string) => Uint8Array.from(atob(base64), c => c.charCodeAt(0));;
         this.storage = () => localStorage;
         this.onException = () => {};
         let search = window.location.search.trim().substring(1);

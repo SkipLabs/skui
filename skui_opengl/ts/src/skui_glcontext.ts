@@ -1,6 +1,6 @@
 
-import {int, float, ptr, Environment, Utils} from "#skui_base/types";
-import { Loading } from "#skui_opengl/glloading";
+import {int, float, ptr, Environment, Utils} from "#skui_base/skui_types";
+import { Loading } from "#skui_opengl/skui_glloading";
 
 interface Env extends Environment {
   window: () => Window; 

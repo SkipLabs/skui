@@ -1,6 +1,6 @@
 
-import {int} from "#skui_base/types";
-import { Matrix } from "#skui_opengl/matrix";
+import {int} from "#skui_base/skui_types";
+import { Matrix } from "#skui_opengl/skui_matrix";
 
 export class Loading {
   win: Window;
