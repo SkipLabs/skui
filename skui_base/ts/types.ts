@@ -27,7 +27,6 @@ export interface Shared {
 
 export interface Environment {
   timestamp: () => float;
-  readData: (url: URL) => Promise<ArrayBuffer>;
   decodeUTF8: (utf8: Uint8Array) => string;
   onException: () => void;
   complete(exports: object, shared: Map<string,Shared>)
@@ -132,11 +131,12 @@ export class Utils {
     return this.exports.sk_string_create(addr, i);
   };
   exportBytes: (view: Uint8Array) => ptr = (view: Uint8Array) => {
-    var skArray = this.exports.SKIP_createByteArray(view.length);
+    var exps = this.exports;
+    var skArray = exps.SKIP_createByteArray(view.length);
     view.forEach(function (item, index) {
-      this.exports.SKIP_setByte(skArray, index, item);
+      exps.SKIP_setByte(skArray, index, item);
     });
-    return this.exports.SKIP_chillByteArray(skArray);
+    return exps.SKIP_chillByteArray(skArray);
   }
   call = (fnId: ptr) => {
     return this.exports.SKIP_call0(fnId);
@@ -373,7 +373,7 @@ var loadWasm = (
   );
 }
 
-export async function start(modules: Array<string>, path: URL, environment: Environment, managers?: Array<ToWasmManager>) {
+export async function start(modules: Array<string>, buffer: Uint8Array, environment: Environment, managers?: Array<ToWasmManager>) {
   managers = managers ? managers : new Array<ToWasmManager>();
   for (let i = 0; i < modules.length; i++) {
     let evnModule = await import(modules[i]);
@@ -381,8 +381,6 @@ export async function start(modules: Array<string>, path: URL, environment: Envi
         managers.push(await evnModule.init(environment));
     }
   }
-  let data = await environment.readData(path);
-  let buffer = new Uint8Array(data);
   await loadWasm(buffer, managers, environment);
 }
 

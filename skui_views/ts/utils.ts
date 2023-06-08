@@ -15,7 +15,6 @@ class Env implements Environment {
     window: () => Window;
     canvas: () => HTMLCanvasElement;
     clipboard: () => Clipboard;
-    readData: (url: URL) => Promise<ArrayBuffer>;
     decodeUTF8: (utf8: Uint8Array) => string;
     storage: () => Storage;
     onException: () => void;
@@ -55,7 +54,6 @@ class Env implements Environment {
         this.window = () => window;
         this.canvas = () => canvas;
         this.clipboard = () => navigator.clipboard;
-        this.readData = (url: URL) => fetch(url).then(ab => ab.arrayBuffer());
         var decoder = new TextDecoder('utf8');
         this.decodeUTF8 = (utf8: Uint8Array) => decoder.decode(utf8);
         this.storage = () => localStorage;
@@ -83,6 +81,6 @@ class Env implements Environment {
     }
 }
 
-export async function init(window: Window, navigator: Navigator, modules: Array<string>, path: URL, managers?: Array<ToWasmManager>) {
-    await start(modules, path, new Env(window, navigator), managers);
+export async function init(window: Window, navigator: Navigator, modules: Array<string>, buffer: Uint8Array, managers?: Array<ToWasmManager>) {
+    await start(modules, buffer, new Env(window, navigator), managers);
 }
