@@ -58,7 +58,7 @@ trait ScrollingState {
     conv: SKFS.File ~> Ui.Scroll = f ~>
       f match {
       | s @ Ui.Scroll _ -> s
-      | _ -> invariant_violation("Must be an Ui.Scroll")
+      | _ -> SKFS.cast_violation("Ui.Scroll", f)
       };
     this.getHandle().maybeGetProp(context, Ui.scrollProp, conv);
   }
@@ -67,7 +67,7 @@ trait ScrollingState {
     conv: SKFS.File ~> Ui.Visible = f ~>
       f match {
       | v @ Ui.Visible _ -> v
-      | _ -> invariant_violation("Must be an Ui.Visible")
+      | _ -> SKFS.cast_violation("Ui.Visible", f)
       };
     this.getComputed()
       .maybeGetProp(context, Ui.ensureVisibleProp, conv)

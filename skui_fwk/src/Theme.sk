@@ -387,7 +387,7 @@ base class Theme extends SKFS.File {
   static fun forFile(obj: SKFS.File): Theme {
     obj match {
     | x @ Theme _ -> x
-    | _ -> invariant_violation("Invalid Ui.Theme")
+    | _ -> SKFS.cast_violation("Ui.Theme", obj)
     }
   }
 

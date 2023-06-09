@@ -4,6 +4,12 @@ base class Texturable(width: Int, height: Int) {
   fun asTexture(ctx: Ctx): Texture;
 }
 
+class LamTexturable(conv: Ctx ~> Texture) extends Texturable {
+  fun asTexture(ctx: Ctx): Texture {
+    this.conv(ctx)
+  }
+}
+
 trait Extern {
   macro fun getId(): UInt32 {
     this.id

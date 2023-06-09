@@ -194,7 +194,7 @@ base class Indentation(
   static fun forFile(obj: SKFS.File): Indentation {
     obj match {
     | x @ Indentation _ -> x
-    | _ -> invariant_violation("Invalid Indentation")
+    | _ -> SKFS.cast_violation("Indentation", obj)
     }
   }
 }
@@ -230,7 +230,7 @@ base class EndLine extends SKFS.File uses Orderable, Show {
   static fun forFile(obj: SKFS.File): EndLine {
     obj match {
     | x @ EndLine _ -> x
-    | _ -> invariant_violation("Invalid UiDocument.EndLine")
+    | _ -> SKFS.cast_violation("UiDocument.EndLine", obj)
     }
   }
 }
@@ -257,7 +257,7 @@ base class Separation(
   static fun forFile(obj: SKFS.File): Separation {
     obj match {
     | x @ Separation _ -> x
-    | _ -> invariant_violation("Invalid Ui.Separation")
+    | _ -> SKFS.cast_violation("Ui.Separation", obj)
     }
   }
 }
@@ -904,7 +904,7 @@ base class Decoration extends SKFS.File {
   static fun forFile(obj: SKFS.File): Decoration {
     obj match {
     | x @ Decoration _ -> x
-    | _ -> invariant_violation("Invalid Decoration")
+    | _ -> SKFS.cast_violation("Decoration", obj)
     }
   }
 }

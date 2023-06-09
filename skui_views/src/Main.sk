@@ -46,7 +46,7 @@ fun pictureToTexturable(
   picture match {
   | img @ Ui.Image _ ->
     Some(GLTexture.Image(Some(img.data), linear, img.width, img.height))
-  | Ui.EmptyPicture _ -> None()
+  | _ -> None()
   }
 }
 

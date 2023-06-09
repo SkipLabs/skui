@@ -9,7 +9,7 @@ base class Query(tick: SKFS.Tick) extends SKFS.File {
   static fun forFile(obj: SKFS.File): Query {
     obj match {
     | x @ Query _ -> x
-    | _ -> invariant_violation("Invalid UiGL.Query")
+    | _ -> SKFS.cast_violation("UiGL.Query", obj)
     }
   }
 }

@@ -233,7 +233,7 @@ class HStorage private (
             None()
           };
           writer.write(key, SKFS.OptFile(optSW))
-        | _ -> invariant_violation("Must be a UiRoot.Layer")
+        | _ -> SKFS.cast_violation("UiRoot.Layer", key)
         }
       },
     );

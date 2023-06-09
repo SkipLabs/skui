@@ -457,7 +457,7 @@ class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
       } else {
         iComp
       }
-    | _ -> invariant_violation("Must be compared with a UI.Path")
+    | _ -> SKFS.cast_violation("UI.Path", other)
     }
   }
 
@@ -515,7 +515,7 @@ class NViewport(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ NViewport _ -> x
-    | _ -> invariant_violation("Must be Ui.NViewport")
+    | _ -> SKFS.cast_violation("Ui.NViewport", obj)
     }
   }
 }

@@ -7,7 +7,7 @@ base class Portion extends SKFS.File uses Hashable, Orderable {
   static fun forFile(obj: SKFS.File): Portion {
     obj match {
     | x @ Portion _ -> x
-    | _ -> invariant_violation("Invalid portion")
+    | _ -> SKFS.cast_violation("Text.Portion", obj)
     }
   }
 

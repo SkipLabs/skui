@@ -94,14 +94,14 @@ base class Cursor() extends SKFS.File uses Hashable, Equality {
     | 25 -> DnDMoveCursor()
     | 26 -> DnDNoneCursor()
     | 27 -> DnDAskCursor()
-    | _ -> invariant_violation("Invalid Ui.Cursor code")
+    | _ -> invariant_violation("Inavalid Ui.Cursor code")
     }
   }
 
   static fun forFile(obj: SKFS.File): Cursor {
     obj match {
     | x @ Cursor _ -> x
-    | _ -> invariant_violation("Invalid Ui.Cursor")
+    | _ -> SKFS.cast_violation("Ui.Cursor", obj)
     }
   }
 }

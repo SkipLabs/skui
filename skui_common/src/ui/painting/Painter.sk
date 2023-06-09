@@ -13,7 +13,7 @@ base class Draw extends AlphaSupplier, SKFS.File uses Hashable, Equality {
   static fun forFile(obj: SKFS.File): Draw {
     obj match {
     | x @ Draw _ -> x
-    | _ -> invariant_violation("Invalid Draw")
+    | _ -> SKFS.cast_violation("Draw", obj)
     }
   }
 
@@ -102,7 +102,7 @@ base class Painter extends SKFS.File uses Hashable, Equality {
   static fun forFile(obj: SKFS.File): Painter {
     obj match {
     | x @ Painter _ -> x
-    | _ -> invariant_violation("Invalid Painter")
+    | _ -> SKFS.cast_violation("Painter", obj)
     }
   }
 

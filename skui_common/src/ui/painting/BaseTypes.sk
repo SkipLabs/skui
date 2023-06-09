@@ -20,7 +20,7 @@ class Handles(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Handles _ -> x
-    | _ -> invariant_violation("Must be Ui.Handles")
+    | _ -> SKFS.cast_violation("Ui.Handles", obj)
     }
   }
 }
@@ -38,7 +38,7 @@ class Drawables(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Drawables _ -> x
-    | _ -> invariant_violation("Must be Ui.Drawables")
+    | _ -> SKFS.cast_violation("Ui.Drawables", obj)
     }
   }
 }

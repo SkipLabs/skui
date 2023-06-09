@@ -52,7 +52,7 @@ class KIdx(value: String) extends SKFS.BaseName {
   fun sameCompare(y: SKFS.BaseName): Order {
     y match {
     | KIdx(v2) -> this.value.compare(v2)
-    | _ -> invariant_violation("Must be a UiTabs.KIdx")
+    | _ -> SKFS.cast_violation("UiTabs.KIdx", y)
     }
   }
 

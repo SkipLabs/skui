@@ -73,7 +73,7 @@ base class SelectionModel extends SKFS.File {
   static fun forFile(obj: SKFS.File): SelectionModel {
     obj match {
     | x @ SelectionModel _ -> x
-    | _ -> invariant_violation("Invalid UiTable.SelectionModel")
+    | _ -> SKFS.cast_violation("UiTable.SelectionModel", obj)
     }
   }
 }

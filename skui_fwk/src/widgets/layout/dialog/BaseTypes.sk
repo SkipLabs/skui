@@ -9,7 +9,7 @@ base class Builder extends SKFS.File {
   static fun forFile(file: SKFS.File): Builder {
     file match {
     | x @ Builder _ -> x
-    | _ -> invariant_violation("Invalid UiDialog.Builder file.")
+    | _ -> SKFS.cast_violation("UiDialog.Builder file.", file)
     }
   }
 }

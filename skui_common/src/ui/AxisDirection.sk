@@ -101,7 +101,7 @@ base class HorizontalDirection()
   static fun forFile(obj: SKFS.File): HorizontalDirection {
     obj match {
     | x @ HorizontalDirection _ -> x
-    | _ -> invariant_violation("Invalid Ui.HorizontalDirection")
+    | _ -> SKFS.cast_violation("Ui.HorizontalDirection", obj)
     }
   }
 }

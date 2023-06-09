@@ -156,7 +156,7 @@ base class Selection uses HasClassName, Equality {
   fun toTarget(): Target {
     this match {
     | target @ Target _ -> target
-    | _ -> invariant_violation("Must be a UiMonospace.Target")
+    | _ -> SKFS.cast_violation("UiMonospace.Target", this)
     }
   }
 }

@@ -224,7 +224,7 @@ base class PropertyFile<
   fun getName(): String {
     this.valueHdl.key match {
     | sid @ SKFS.StrID _ -> sid.value
-    | _ -> invariant_violation("Must be a SKFS.StrID")
+    | obj -> SKFS.cast_violation("SKFS.StrID", obj)
     };
   }
 

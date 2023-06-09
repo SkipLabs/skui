@@ -27,7 +27,7 @@ class Selected(optIndex: ?Int) extends OptPath {
     | oKey @ Selected _ ->
       iComp = this.optIndex.compare(oKey.optIndex);
       if (iComp == EQ()) this.optPath.compare(oKey.optPath) else iComp
-    | _ -> invariant_violation("Must be a UiDropdown.Selected")
+    | _ -> SKFS.cast_violation("UiDropdown.Selected", other)
     }
   }
 }

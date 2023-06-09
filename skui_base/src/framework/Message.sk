@@ -64,7 +64,7 @@ base class Support extends SKFS.File uses HasClassName {
   static fun forFile(obj: SKFS.File): Support {
     obj match {
     | x @ Support _ -> x
-    | _ -> invariant_violation("Invalid SKUIMessage.Support")
+    | _ -> SKFS.cast_violation("SKUIMessage.Support", obj)
     }
   }
 }

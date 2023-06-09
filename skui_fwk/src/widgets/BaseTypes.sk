@@ -79,7 +79,7 @@ base class Configuration extends SKFS.File {
   static fun forFile(obj: SKFS.File): Configuration {
     obj match {
     | x @ Configuration _ -> x
-    | _ -> invariant_violation("Invalid Configuration")
+    | _ -> SKFS.cast_violation("Ui.Configuration", obj)
     }
   }
 }
@@ -510,7 +510,7 @@ base class WidgetsCollection extends SKFS.File {
   static fun forFile(obj: SKFS.File): WidgetsCollection {
     obj match {
     | x @ WidgetsCollection _ -> x
-    | _ -> invariant_violation("Invalid WidgetsCollection")
+    | _ -> SKFS.cast_violation("Ui.WidgetsCollection", obj)
     }
   }
 }

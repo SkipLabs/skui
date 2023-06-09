@@ -4,7 +4,7 @@ class Timed extends Ui.TimedFile<Bool> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiBoolProp.Timed")
+    | _ -> SKFS.cast_violation("UiBoolProp.Timed", file)
     }
   }
 }
@@ -24,7 +24,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiBoolProp.Timed")
+    | _ -> SKFS.cast_violation("UiBoolProp.Timed", file)
     }
   }
 
@@ -101,7 +101,7 @@ class Timed extends Ui.TimedFile<Int> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiIntProp.Timed")
+    | _ -> SKFS.cast_violation("UiIntProp.Timed", file)
     }
   }
 }
@@ -121,7 +121,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiIntProp.Timed")
+    | _ -> SKFS.cast_violation("UiIntProp.Timed", file)
     }
   }
 
@@ -186,7 +186,7 @@ class Timed extends Ui.TimedFile<Float> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiFloatProp.Timed")
+    | _ -> SKFS.cast_violation("UiFloatProp.Timed", file)
     }
   }
 }
@@ -210,7 +210,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiFloatProp.Timed")
+    | _ -> SKFS.cast_violation("UiFloatProp.Timed", file)
     }
   }
 
@@ -275,7 +275,7 @@ class Timed extends Ui.TimedFile<Text> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiTextProp.Timed")
+    | _ -> SKFS.cast_violation("UiTextProp.Timed", file)
     }
   }
 }
@@ -292,7 +292,7 @@ class Property extends Ui.TextProperty, Ui.PropertyFile<Text, Timed, Text> {
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiStringProp.Timed")
+    | _ -> SKFS.cast_violation("UiStringProp.Timed", file)
     }
   }
 
@@ -390,7 +390,7 @@ class Timed extends Ui.TimedFile<String> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiStringProp.Timed")
+    | _ -> SKFS.cast_violation("UiStringProp.Timed", file)
     }
   }
 }
@@ -414,7 +414,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiStringProp.Timed")
+    | _ -> SKFS.cast_violation("UiStringProp.Timed", file)
     }
   }
 
@@ -479,7 +479,7 @@ class Timed extends Ui.TimedFile<Ui.Position> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiPositionProp.Timed")
+    | _ -> SKFS.cast_violation("UiPositionProp.Timed", file)
     }
   }
 }
@@ -503,7 +503,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiPositionProp.Timed")
+    | _ -> SKFS.cast_violation("UiPositionProp.Timed", file)
     }
   }
 
@@ -546,7 +546,7 @@ class Timed extends Ui.TimedFile<Ui.Portion> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiPortionProp.Timed")
+    | _ -> SKFS.cast_violation("UiPortionProp.Timed", file)
     }
   }
 }
@@ -567,7 +567,7 @@ class Property extends Ui.PortionProperty, Ui.FPropertyFile<Ui.Portion, Timed> {
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiPortionProp.Timed")
+    | _ -> SKFS.cast_violation("UiPortionProp.Timed", file)
     }
   }
 
@@ -610,7 +610,7 @@ class Timed extends Ui.TimedFile<Ui.Indentation> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiIndentationProp.Timed")
+    | _ -> SKFS.cast_violation("UiIndentationProp.Timed", file)
     }
   }
 }
@@ -634,7 +634,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiIndentationProp.Timed")
+    | _ -> SKFS.cast_violation("UiIndentationProp.Timed", file)
     }
   }
 
@@ -680,7 +680,7 @@ class Timed extends Ui.TimedFile<Ui.EndLine> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiEndLineProp.Timed")
+    | _ -> SKFS.cast_violation("UiEndLineProp.Timed", file)
     }
   }
 }
@@ -701,7 +701,7 @@ class Property extends Ui.EndLineProperty, Ui.FPropertyFile<Ui.EndLine, Timed> {
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiEndLineProp.Timed")
+    | _ -> SKFS.cast_violation("UiEndLineProp.Timed", file)
     }
   }
 
@@ -744,7 +744,7 @@ class Timed extends Ui.TimedFile<Ui.Separation> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiSeparationProp.Timed")
+    | _ -> SKFS.cast_violation("UiSeparationProp.Timed", file)
     }
   }
 }
@@ -768,7 +768,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiSeparationProp.Timed")
+    | _ -> SKFS.cast_violation("UiSeparationProp.Timed", file)
     }
   }
 
@@ -814,7 +814,7 @@ class Timed extends Ui.TimedFile<UiIcon.Description> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiIconProp.Timed")
+    | _ -> SKFS.cast_violation("UiIconProp.Timed", file)
     }
   }
 }
@@ -838,7 +838,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiIconProp.Timed")
+    | _ -> SKFS.cast_violation("UiIconProp.Timed", file)
     }
   }
 
@@ -887,7 +887,7 @@ class Timed extends Ui.TimedFile<Ui.Decoration> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiDecorationProp.Timed")
+    | _ -> SKFS.cast_violation("UiDecorationProp.Timed", file)
     }
   }
 }
@@ -911,14 +911,14 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiDecorationProp.Timed")
+    | _ -> SKFS.cast_violation("UiDecorationProp.Timed", file)
     }
   }
 
   protected static fun valueFromFile(file: SKFS.File): Ui.Decoration {
     file match {
     | x @ Ui.Decoration _ -> x
-    | _ -> invariant_violation("Invalid Ui.Decoration")
+    | _ -> SKFS.cast_violation("Ui.Decoration", file)
     }
   }
 
@@ -960,7 +960,7 @@ class Timed extends Ui.TimedFile<Range> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiRangeProp.Timed")
+    | _ -> SKFS.cast_violation("UiRangeProp.Timed", file)
     }
   }
 }
@@ -984,7 +984,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiRangeProp.Timed")
+    | _ -> SKFS.cast_violation("UiRangeProp.Timed", file)
     }
   }
 
@@ -995,7 +995,7 @@ class Property extends
   protected static fun fileValueFromFile(file: SKFS.File): SKFS.RangeFile {
     file match {
     | x @ SKFS.RangeFile _ -> x
-    | _ -> invariant_violation("Invalid SKFS.RangeFile")
+    | _ -> SKFS.cast_violation("SKFS.RangeFile", file)
     }
   }
 
@@ -1034,7 +1034,7 @@ class Timed extends Ui.TimedFile<Status> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiStatusProp.Timed")
+    | _ -> SKFS.cast_violation("UiStatusProp.Timed", file)
     }
   }
 }
@@ -1055,14 +1055,14 @@ class Property extends Ui.StatusProperty, Ui.FPropertyFile<Status, Timed> {
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiStatusProp.Timed")
+    | _ -> SKFS.cast_violation("UiStatusProp.Timed", file)
     }
   }
 
   protected static fun valueFromFile(file: SKFS.File): Status {
     file match {
     | x @ Status _ -> x
-    | _ -> invariant_violation("Invalid SKFS.StatusFile")
+    | _ -> SKFS.cast_violation("SKFS.StatusFile", file)
     }
   }
 
@@ -1101,7 +1101,7 @@ class Timed extends Ui.TimedFile<JSON.Value> {
   static fun fromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Must be a UiJSONProp.Timed")
+    | _ -> SKFS.cast_violation("UiJSONProp.Timed", file)
     }
   }
 }
@@ -1125,7 +1125,7 @@ class Property extends
   protected static fun timedFromFile(file: SKFS.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> invariant_violation("Invalid UiJSONProp.Timed")
+    | _ -> SKFS.cast_violation("UiJSONProp.Timed", file)
     }
   }
 

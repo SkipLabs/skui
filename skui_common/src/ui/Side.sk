@@ -27,7 +27,7 @@ base class .UiSide() extends SKFS.File uses Hashable, Equality {
   static fun forFile(obj: SKFS.File): .UiSide {
     obj match {
     | x @ .UiSide _ -> x
-    | _ -> invariant_violation("Invalid .UiSide")
+    | _ -> SKFS.cast_violation(".UiSide", obj)
     }
   }
 }

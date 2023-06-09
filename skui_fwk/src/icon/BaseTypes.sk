@@ -47,7 +47,7 @@ class Face(
       } else {
         cComp
       }
-    | _ -> invariant_violation("Must be a UiIcon.Face")
+    | obj -> SKFS.cast_violation("UiIcon.Face", obj)
     }
   }
 
@@ -72,7 +72,7 @@ class Glyph(face: Face, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
       } else {
         cComp
       }
-    | _ -> invariant_violation("Must be a UiIcon.Glyph")
+    | obj -> SKFS.cast_violation("UiIcon.Glyph", obj)
     }
   }
 
@@ -428,7 +428,7 @@ base class Codes extends SKFS.File {
   static fun forFile(obj: SKFS.File): Codes {
     obj match {
     | x @ Codes _ -> x
-    | _ -> invariant_violation("Invalid UiIcon.Codes")
+    | _ -> SKFS.cast_violation("UiIcon.Codes", obj)
     }
   }
 }
@@ -608,7 +608,7 @@ class Description(
   static fun forFile(obj: SKFS.File): Description {
     obj match {
     | x @ Description _ -> x
-    | _ -> invariant_violation("Invalid UiIcon.Description")
+    | _ -> SKFS.cast_violation("UiIcon.Description", obj)
     }
   }
 }

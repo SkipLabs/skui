@@ -11,7 +11,7 @@ extension base class Text extends SKFS.File {
   static fun forFile(obj: SKFS.File): Text {
     obj match {
     | x @ Text _ -> x
-    | _ -> invariant_violation("Invalid Text")
+    | _ -> SKFS.cast_violation("Text", obj)
     }
   }
 }

@@ -40,7 +40,6 @@ class JSONProp extends Prop {
 }
 
 class IntProp extends Prop
-class TexturableProp extends Prop
 
 class TextProp extends Prop {
   //
