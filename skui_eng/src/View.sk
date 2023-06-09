@@ -1,0 +1,192 @@
+module UiEngine;
+
+class Label{
+  //
+  optText: ?Serializable = None(),
+  optIcon: ?Serializable = None(),
+  optTooltip: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#view#${static::identifier}#${name}`);
+    textGetter = toTextOptGetter(context, this.optText);
+    tooltipGetter = toTextOptGetter(context, this.optTooltip);
+    iconGetter = toIconOptGetter(context, this.optIcon);
+    Ui.Label::create(
+      context,
+      path,
+      UiLabel.LamController{
+        icon => (ctx, size) ~>
+          iconGetter(ctx, false)
+            .flatMap(ei -> ei.toIconBuilder())
+            .flatMap(ib -> ib.buildIcon(ctx, size)),
+        text => ctx ~> textGetter(ctx, false),
+        tooltip => ctx ~> tooltipGetter(ctx, false),
+      },
+      this.optConfiguration,
+    );
+  }
+}
+
+class Indicator{optProgress: ?Serializable = None()} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#in#${static::identifier}#${name}`);
+    progress = toIntOptGetter(context, this.optProgress);
+    Ui.Indicator::create(
+      context,
+      path,
+      UiProgress.parameters(
+        context,
+        path,
+        UiProgress.LamController{progress => ctx ~> progress(ctx, false)},
+      ),
+      this.optConfiguration,
+    )
+  }
+}
+
+class Decorated{
+  optDecoration: ?Serializable = None(),
+  optWidget: ?Serializable = None(),
+  optRigthToLeft: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(collector: Renderable -> void): void {
+    this.optWidget.each(s -> collect(s, collector))
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#in#${static::identifier}#${name}`);
+    decoration = toDecorationOptGetter(context, this.optDecoration);
+    widget = toOptWidgetGetter(context, this.optWidget, root, prebuilt);
+    rigthToLeft = toBoolOptGetter(context, this.optRigthToLeft);
+    Ui.Decorated::create(
+      context,
+      path,
+      UiDecorated.LamController{
+        decoration => ctx ~>
+          decoration(ctx, false).default(Ui.Padding(Geometry.Insets::all(0.0))),
+        widget,
+        direction => ctx ~>
+          if (rigthToLeft(ctx, false).default(false)) Ui.ToLeft() else {
+            Ui.ToRight()
+          },
+      },
+    );
+  }
+}
+
+class Image{optPicture: ?Serializable = None()} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#in#${static::identifier}#${name}`);
+    texturable = toPictureOptGetter(context, this.optPicture);
+    Ui.ImageView::create(
+      context,
+      path,
+      UiImage.LamController{image => ctx ~> texturable(ctx, false)},
+    )
+  }
+}
+
+class Constrained{
+  optConstraints: ?Serializable = None(),
+  optWidget: ?Serializable = None(),
+  optEnforced: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(collector: Renderable -> void): void {
+    this.optWidget.each(s -> collect(s, collector))
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#in#${static::identifier}#${name}`);
+    constraints = toConstraintsOptGetter(context, this.optConstraints);
+    widget = toOptWidgetGetter(context, this.optWidget, root, prebuilt);
+    enforced = toBoolOptGetter(context, this.optEnforced);
+    Ui.Constrained::create(
+      context,
+      path,
+      UiConstrained.LamController{
+        constraints => ctx ~>
+          constraints(ctx, false).default(Ui.BoxConstraints::new()),
+        widget,
+        enforced => ctx ~> enforced(ctx, false).default(false),
+      },
+    );
+  }
+}
+
+class TextView{
+  //
+  optText: ?Serializable = None(),
+  optStyle: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#view#${static::identifier}#${name}`);
+    textGetter = toTextOptGetter(context, this.optText);
+    styleGetter = toStyleOptGetter(context, this.optStyle);
+    Ui.VText::createForController(
+      context,
+      path,
+      UiText.LamController{
+        text => ctx ~> textGetter(ctx, false).default(Raw("")),
+        style => ctx ~>
+          styleGetter(ctx, false).default(
+            Text.Style{faceId => ctx.getThemeFont(UiTheme.Basic())},
+          ),
+      },
+      this.optConfiguration,
+    );
+  }
+}
+
+module end;

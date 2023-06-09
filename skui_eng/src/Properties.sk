@@ -1,0 +1,96 @@
+module UiEngine;
+
+extension base class Serializable extends SKFS.File
+
+module end;
+
+module UiSeparationProp;
+
+class Jsonable extends
+  Ui.SeparationProperty,
+  Ui.PropertyJsonable<Ui.Separation>,
+{
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): Ui.Separation {
+    UiEngine.optSeparation(UiEngine.fromJSON(s)).default(Ui.FromStart(100))
+  }
+
+  protected static fun valueToJSON(s: Ui.Separation): JSON.Value {
+    UiEngine.toJSON(s)
+  }
+
+  protected static fun getDefaultValue(): Ui.Separation {
+    Ui.FromStart(100)
+  }
+}
+
+module end;
+
+module UiRangeProp;
+
+class Jsonable extends Ui.RangeProperty, Ui.PropertyJsonable<Range> {
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): Range {
+    UiEngine.optRange(UiEngine.fromJSON(s)).default(Range(0, 0))
+  }
+
+  protected static fun valueToJSON(r: Range): JSON.Value {
+    UiEngine.toJSON(r)
+  }
+
+  protected static fun getDefaultValue(): Range {
+    Range(0, 0)
+  }
+}
+
+module end;
+
+module UiStringProp;
+
+class JsonableEng extends Ui.StringProperty, Ui.PropertyJsonable<String> {
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): String {
+    UiEngine.optString(UiEngine.fromJSON(s)).default("")
+  }
+
+  protected static fun valueToJSON(s: String): JSON.Value {
+    JSON.String(s)
+  }
+
+  protected static fun getDefaultValue(): String {
+    ""
+  }
+}
+
+module end;
+
+module UiStatusProp;
+
+class Jsonable extends Ui.StatusProperty, Ui.PropertyJsonable<Status> {
+  //
+  fun get from Ui.PropertyJsonable;
+  fun getTimed from Ui.PropertyJsonable;
+
+  protected static fun valueFromJSON(s: JSON.Value): Status {
+    UiEngine.optStatus(UiEngine.fromJSON(s)).default(OK())
+  }
+
+  protected static fun valueToJSON(r: Status): JSON.Value {
+    UiEngine.toJSON(r)
+  }
+
+  protected static fun getDefaultValue(): Status {
+    OK()
+  }
+}
+
+module end;

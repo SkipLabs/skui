@@ -1,0 +1,192 @@
+module UiEngine;
+
+class Wrap{
+  optWidgets: ?Serializable = None(),
+  optVertical: ?Serializable = None(),
+  optRigthToLeft: ?Serializable = None(),
+  optDownToUp: ?Serializable = None(),
+  optMainAlignment: ?Serializable = None(),
+  optCrossAlignment: ?Serializable = None(),
+  optRunAlignment: ?Serializable = None(),
+  optSpacing: ?Serializable = None(),
+  optRunSpacing: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(collector: Renderable -> void): void {
+    this.optWidgets.each(s -> collect(s, collector))
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#layout#${static::identifier}#${name}`);
+    widgets = toWidgetsCollection(context, this.optWidgets, root, prebuilt);
+    vertical = toBoolOptGetter(context, this.optVertical);
+    rigthToLeft = toBoolOptGetter(context, this.optRigthToLeft);
+    downToUp = toBoolOptGetter(context, this.optDownToUp);
+    mainAlignment = toIntOptGetter(context, this.optMainAlignment);
+    crossAlignment = toIntOptGetter(context, this.optCrossAlignment);
+    runAlignment = toIntOptGetter(context, this.optRunAlignment);
+    spacing = toIntOptGetter(context, this.optSpacing);
+    runSpacing = toIntOptGetter(context, this.optRunSpacing);
+    Ui.Wrap::createForController(
+      context,
+      path,
+      UiWrap.LamController{
+        direction => ctx ~>
+          if (vertical(ctx, false).default(false)) Ui.VerticalAxis() else {
+            Ui.HorizontalAxis()
+          },
+        horizontalDirection => ctx ~>
+          if (rigthToLeft(ctx, false).default(false)) Ui.ToLeft() else {
+            Ui.ToRight()
+          },
+        verticalDirection => ctx ~>
+          if (downToUp(ctx, false).default(false)) Ui.Up() else {
+            Ui.Down()
+          },
+        mainAxisAlignment => ctx ~>
+          mainAlignment(ctx, false).default(0) match {
+          | 1 -> UiWrap.End()
+          | 2 -> UiWrap.Center()
+          | 3 -> UiWrap.SpaceBetween()
+          | 4 -> UiWrap.SpaceAround()
+          | 5 -> UiWrap.SpaceEvenly()
+          | 0
+          | _ ->
+            UiWrap.Start()
+          },
+        crossAxisAlignment => ctx ~>
+          crossAlignment(ctx, false).default(0) match {
+          | 1 -> UiWrap.End()
+          | 2 -> UiWrap.Center()
+          | 0
+          | _ ->
+            UiWrap.Start()
+          },
+        runAlignment => ctx ~>
+          runAlignment(ctx, false).default(0) match {
+          | 1 -> UiWrap.End()
+          | 2 -> UiWrap.Center()
+          | 3 -> UiWrap.SpaceBetween()
+          | 4 -> UiWrap.SpaceAround()
+          | 5 -> UiWrap.SpaceEvenly()
+          | 0
+          | _ ->
+            UiWrap.Start()
+          },
+        spacing => ctx ~> spacing(ctx, false).default(0).toFloat(),
+        runSpacing => ctx ~> runSpacing(ctx, false).default(0).toFloat(),
+        widgets,
+      },
+      this.optConfiguration,
+    )
+  }
+}
+
+class Flex{
+  optWidgets: ?Serializable = None(),
+  optVertical: ?Serializable = None(),
+  optRigthToLeft: ?Serializable = None(),
+  optDownToUp: ?Serializable = None(),
+  optMainAlignment: ?Serializable = None(),
+  optCrossAlignment: ?Serializable = None(),
+  optMaxSize: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(collector: Renderable -> void): void {
+    this.optWidgets.each(s -> collect(s, collector))
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#layout#${static::identifier}#${name}`);
+    widgets = toWidgetsCollection(context, this.optWidgets, root, prebuilt);
+    vertical = toBoolOptGetter(context, this.optVertical);
+    rigthToLeft = toBoolOptGetter(context, this.optRigthToLeft);
+    downToUp = toBoolOptGetter(context, this.optDownToUp);
+    mainAlignment = toIntOptGetter(context, this.optMainAlignment);
+    crossAlignment = toIntOptGetter(context, this.optCrossAlignment);
+    Ui.Flex::createForController(
+      context,
+      path,
+      UiFlex.LamController{
+        direction => ctx ~>
+          if (vertical(ctx, false).default(false)) Ui.VerticalAxis() else {
+            Ui.HorizontalAxis()
+          },
+        horizontalDirection => ctx ~>
+          if (rigthToLeft(ctx, false).default(false)) Ui.ToLeft() else {
+            Ui.ToRight()
+          },
+        verticalDirection => ctx ~>
+          if (downToUp(ctx, false).default(false)) Ui.Up() else {
+            Ui.Down()
+          },
+        mainAxisAlignment => ctx ~>
+          mainAlignment(ctx, false).default(0) match {
+          | 1 -> UiFlex.End()
+          | 2 -> UiFlex.Center()
+          | 3 -> UiFlex.SpaceBetween()
+          | 4 -> UiFlex.SpaceAround()
+          | 5 -> UiFlex.SpaceEvenly()
+          | 0
+          | _ ->
+            UiFlex.Start()
+          },
+        crossAxisAlignment => ctx ~>
+          crossAlignment(ctx, false).default(0) match {
+          | 0 -> UiFlex.CrossStart()
+          | 1 -> UiFlex.CrossEnd()
+          | 2 -> UiFlex.CrossCenter()
+          | 3
+          | _ ->
+            UiFlex.CrossStretch()
+          },
+        widgets,
+      },
+      this.optConfiguration,
+    )
+  }
+}
+
+class AspectRatio{
+  optWidget: ?Serializable = None(),
+  optRatio: ?Serializable = None(),
+  optCentered: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(collector: Renderable -> void): void {
+    this.optWidget.each(s -> collect(s, collector))
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#in#${static::identifier}#${name}`);
+    widget = toWidgetGetter(context, this.optWidget, root, prebuilt);
+    centered = toBoolOptGetter(context, this.optCentered);
+    ratio = toFloatOptGetter(context, this.optRatio);
+    Ui.AspectRatio::create(
+      context,
+      path,
+      UiAspectRatio.LamController{
+        widget,
+        centered => ctx ~> centered(ctx, false).default(true),
+        aspectRatio => ctx ~> ratio(ctx, false).default(0.0),
+      },
+    );
+  }
+}
+
+module end;

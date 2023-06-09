@@ -1,0 +1,373 @@
+module UiEngine;
+
+base class ActionPerformer {
+  fun perform(context: mutable SKFS.Context, count: Int): void;
+}
+
+class LamActionPerformer(
+  toPerform: (mutable SKFS.Context, Int) ~> void,
+) extends ActionPerformer {
+  fun perform(context: mutable SKFS.Context, count: Int): void {
+    this.toPerform(context, count)
+  }
+}
+
+base class External {
+  fun actionPerformer(): ActionPerformer;
+  fun inputPerformer(): InputPerformer;
+  fun tabsCloser(): TabsCloser;
+  fun treeMenuGetter(): TreeMenuGetter;
+  fun treeSelectionListener(): TreeSelectionListener;
+  fun treeExpansionListener(): TreeExpansionListener;
+  fun treePerformer(): TreePerformer;
+  fun treeDropper(): TreeDropper;
+}
+
+class ConstExternal{
+  optActionPerformer: ?ActionPerformer = None(),
+  optInputPerformer: ?InputPerformer = None(),
+  optTabsCloser: ?TabsCloser = None(),
+  optTreeMenuGetter: ?TreeMenuGetter = None(),
+  optTreeSelectionListener: ?TreeSelectionListener = None(),
+  optTreeExpansionListener: ?TreeExpansionListener = None(),
+  optTreePerformer: ?TreePerformer = None(),
+  optTreeDropper: ?TreeDropper = None(),
+} extends External {
+  //
+  fun actionPerformer(): ActionPerformer {
+    this.optActionPerformer.fromSome()
+  }
+
+  fun inputPerformer(): InputPerformer {
+    this.optInputPerformer.fromSome()
+  }
+
+  fun tabsCloser(): TabsCloser {
+    this.optTabsCloser.fromSome()
+  }
+
+  fun treeMenuGetter(): TreeMenuGetter {
+    this.optTreeMenuGetter.fromSome()
+  }
+
+  fun treeSelectionListener(): TreeSelectionListener {
+    this.optTreeSelectionListener.fromSome()
+  }
+
+  fun treeExpansionListener(): TreeExpansionListener {
+    this.optTreeExpansionListener.fromSome()
+  }
+
+  fun treePerformer(): TreePerformer {
+    this.optTreePerformer.fromSome()
+  }
+
+  fun treeDropper(): TreeDropper {
+    this.optTreeDropper.fromSome()
+  }
+}
+
+class Button{
+  kind: UiButton.Kind = UiButton.Regular(),
+  mode: UiButton.Mode = UiButton.Basic(),
+  //
+  action: External,
+  disabled: Serializable = SBool(false),
+  //
+  optText: ?Serializable = None(),
+  optIcon: ?Serializable = None(),
+  optTooltip: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#control#${static::identifier}#${name}`);
+    textGetter = toTextOptGetter(context, this.optText);
+    tooltipGetter = toTextOptGetter(context, this.optTooltip);
+    disabledGetter = toBoolOptGetter(context, Some(this.disabled));
+    iconGetter = toIconOptGetter(context, this.optIcon);
+    action = this.action.actionPerformer();
+    Ui.Button::create(
+      context,
+      path,
+      UiButton.Parameters(
+        UiButton.LamController{
+          icon => (ctx, size) ~>
+            iconGetter(ctx, false)
+              .flatMap(ei -> ei.toIconBuilder())
+              .flatMap(ib -> ib.buildIcon(ctx, size)),
+          text => ctx ~> textGetter(ctx, false),
+          tooltip => ctx ~> tooltipGetter(ctx, false),
+          kind => _ctx ~> this.kind,
+          mode => _ctx ~> this.mode,
+          onFire => (ctx, optCount) ~> action.perform(ctx, optCount.default(0)),
+          disabled => ctx ~> disabledGetter(ctx, false).default(false),
+        },
+        UiButton.init(context, path),
+      ),
+      this.optConfiguration,
+    );
+  }
+}
+
+class Slider{
+  // Bidirectionnal
+  value: Serializable,
+  // Unidirectionnal
+  optBounds: ?Serializable = None(),
+  optVertical: ?Serializable = None(),
+  optDisabled: ?Serializable = None(),
+  optSmall: ?Serializable = None(),
+  optRange: ?Serializable = None(),
+  optLabeled: ?Serializable = None(),
+  optStep: ?Serializable = None(),
+  optTicks: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    id: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#control#${static::identifier}#${id}`);
+    verticalGetter = toBoolOptGetter(context, this.optVertical);
+    disabledGetter = toBoolOptGetter(context, this.optDisabled);
+    smallGetter = toBoolOptGetter(context, this.optSmall);
+    labeledGetter = toBoolOptGetter(context, this.optLabeled);
+    rangeGetter = toBoolOptGetter(context, this.optRange);
+    stepGetter = toIntOptGetter(context, this.optStep);
+    ticksGetter = toIntOptGetter(context, this.optTicks);
+    boundsGetter = toRangeOptGetter(context, this.optBounds);
+    property = toJSONValueProperty(context, Some(this.value));
+    Ui.Slider::create(
+      context,
+      path,
+      UiSlider.init(
+        context,
+        path,
+        UiSlider.LamController{
+          range => (ctx, iu) ~> boundsGetter(ctx, iu).default(Range(0, 100)),
+          disabled => ctx ~> disabledGetter(ctx, false).default(false),
+          small => ctx ~> smallGetter(ctx, false).default(false),
+          step => (ctx, iu) ~>
+            UiSlider.Step(Math.max(stepGetter(ctx, iu).default(1), 1)),
+          ticks => ctx ~> ticksGetter(ctx, false).map(v -> UiSlider.Step(v)),
+          value => (ctx, iu) ~> {
+            isRange = rangeGetter(ctx, iu).default(false);
+            if (isRange) {
+              (UiSlider.RangeProp(UiRangeProp.Jsonable(property)))
+            } else {
+              UiSlider.IntProp(UiIntProp.Jsonable(property))
+            }
+          },
+          rangeKind => (ctx, iu) ~> rangeGetter(ctx, iu).default(false),
+          direction => ctx ~>
+            if (verticalGetter(ctx, false).default(false)) {
+              Ui.VerticalAxis()
+            } else {
+              Ui.HorizontalAxis()
+            },
+          withLabel => ctx ~> labeledGetter(ctx, false).default(false),
+        },
+      ),
+      this.optConfiguration,
+    );
+  }
+}
+
+class Split{
+  optSeparation: ?Serializable = None(),
+  optFirst: ?Serializable = None(),
+  optSecond: ?Serializable = None(),
+  optVertical: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(collector: Renderable -> void): void {
+    this.optFirst.each(s -> collect(s, collector));
+    this.optSecond.each(s -> collect(s, collector));
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    id: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#control#${static::identifier}#${id}`);
+    verticalGetter = toBoolOptGetter(context, this.optVertical);
+    firstGetter = toWidgetGetter(context, this.optFirst, root, prebuilt);
+    secondGetter = toWidgetGetter(context, this.optSecond, root, prebuilt);
+    property = toJSONValueProperty(context, this.optSeparation);
+    separationProp = UiSeparationProp.Jsonable(property);
+    Ui.Split::create(
+      context,
+      path,
+      UiSplit.LamController{
+        first => firstGetter,
+        second => secondGetter,
+        axis => (ctx, iu) ~>
+          if (verticalGetter(ctx, iu).default(false)) {
+            Ui.VerticalAxis()
+          } else {
+            Ui.HorizontalAxis()
+          },
+        separation => Ui.defaultOne(separationProp),
+      },
+      this.optConfiguration,
+    );
+  }
+}
+
+class Toggle{
+  selected: Serializable,
+  //
+  optIndeterminate: ?Serializable = None(),
+  optKind: ?Serializable = None(),
+  optDisabled: ?Serializable = None(),
+  optText: ?Serializable = None(),
+  optIcon: ?Serializable = None(),
+  optTooltip: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#control#${static::identifier}#${name}`);
+    textGetter = toTextOptGetter(context, this.optText);
+    tooltipGetter = toTextOptGetter(context, this.optTooltip);
+    disabledGetter = toBoolOptGetter(context, this.optDisabled);
+    iconGetter = toIconOptGetter(context, this.optIcon);
+    kindGetter = toIntOptGetter(context, this.optKind);
+    indeterminateProp = this.optIndeterminate.map(v -> {
+      property = toJSONValueProperty(context, Some(v));
+      indProperty = UiBoolProp.Jsonable(property);
+      Ui.defaultOne(Some(indProperty));
+    }).default(Ui.defaultOne(None()));
+    property = toJSONValueProperty(context, Some(this.selected));
+    selectedProp = Ui.defaultOne(UiBoolProp.Jsonable(property));
+    Ui.Toggle::create(
+      context,
+      path,
+      UiToggle.Parameters(
+        UiToggle.LamController{
+          icon => (ctx, size) ~>
+            iconGetter(ctx, false)
+              .flatMap(ei -> ei.toIconBuilder())
+              .flatMap(ib -> ib.buildIcon(ctx, size)),
+          text => ctx ~> textGetter(ctx, false),
+          tooltip => ctx ~> tooltipGetter(ctx, false),
+          kind => (ctx, iu) ~>
+            kindGetter(ctx, iu)
+              .map(UiToggle.Kind::fromCode)
+              .default(UiToggle.Checkbox()),
+          disabled => (ctx, iu) ~> disabledGetter(ctx, iu).default(false),
+          indeterminateProp,
+          selectedProp,
+        },
+        UiToggle.init(context, path),
+      ),
+      this.optConfiguration,
+    );
+  }
+}
+
+class Scroll{
+  optWidget: ?Serializable = None(),
+  optHScroll: ?Serializable = None(),
+  optVScroll: ?Serializable = None(),
+  optHPolicy: ?Serializable = None(),
+  optVPolicy: ?Serializable = None(),
+  optUnit: ?Serializable = None(),
+  optNegative: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#in#${static::identifier}#${name}`);
+    hNeeded = isPropertyNeeded(this.optHScroll);
+    vNeeded = isPropertyNeeded(this.optHScroll);
+    time = context.timeStamp();
+    ppsPath = `sc${time}`;
+    if (hNeeded || hNeeded) {
+      UiJSONProp.Property::initValues(
+        context,
+        Some(ppsPath),
+        Array[
+          (
+            SKFS.StrID("hScroll"),
+            if (hNeeded) this.optHScroll.map(toJSON) else None(),
+          ),
+          (
+            SKFS.StrID("vScroll"),
+            if (vNeeded) this.optHScroll.map(toJSON) else None(),
+          ),
+        ],
+      )
+    };
+    widgetGetter = toWidgetGetter(context, this.optWidget, root, prebuilt);
+    hScrollProperty = if (hNeeded) {
+      UiJSONProp.Property::forName(context, Some(ppsPath), "hScroll")
+    } else {
+      toJSONValueProperty(context, this.optHScroll)
+    };
+    vScrollProperty = if (vNeeded) {
+      UiJSONProp.Property::forName(context, Some(ppsPath), "vScroll")
+    } else {
+      toJSONValueProperty(context, this.optVScroll)
+    };
+    hPolicyGetter = toIntOptGetter(context, this.optHPolicy);
+    vPolicyGetter = toIntOptGetter(context, this.optVPolicy);
+    vUnitGetter = toIntOptGetter(context, this.optUnit);
+    negativeGetter = toBoolOptGetter(context, this.optNegative);
+    Ui.ScrollPane::create(
+      context,
+      path,
+      UiScroll.LamController{
+        widget => widgetGetter,
+        hScroll => Ui.defaultOne(UiIntProp.Jsonable(hScrollProperty)),
+        vScroll => Ui.defaultOne(UiIntProp.Jsonable(vScrollProperty)),
+        hPolicy => ctx ~>
+          hPolicyGetter(ctx, false)
+            .map(UiScroll.Policy::fromCode)
+            .default(UiScroll.AsNeeded()),
+        vPolicy => ctx ~>
+          vPolicyGetter(ctx, false)
+            .map(UiScroll.Policy::fromCode)
+            .default(UiScroll.AsNeeded()),
+        negative => ctx ~> negativeGetter(ctx, false).default(false),
+        unit => (ctx, iu) ~> vUnitGetter(ctx, iu).default(100),
+      },
+      this.optConfiguration,
+    );
+  }
+}
+
+module end;

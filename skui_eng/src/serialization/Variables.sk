@@ -1,0 +1,163 @@
+module Ui;
+
+extension base class Prop {
+  fun pSerialize(
+    identifier: String,
+  ): (String, Map<String, UiEngine.Serializable>) {
+    (
+      identifier,
+      Map[
+        "name" => UiEngine.SString(this.name),
+        "path" => UiEngine.SOption(
+          this.optPath.map(v -> UiEngine.SString(v.toString())),
+        ),
+        "combined" => UiEngine.SBool(this.kind == Ui.PCombined()),
+      ],
+    )
+  }
+
+  deferred static fun pDeserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): this {
+    static(
+      UiEngine.getString(value, "name"),
+      UiEngine.maybeGetString(value, "path"),
+      if (UiEngine.getBool(value, "combined")) Ui.PCombined() else Ui.PProp(),
+    )
+  }
+}
+
+extension class JSONProp extends UiEngine.SObject {
+  const identifier: String = "jsonProp";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    this.pSerialize(static::identifier)
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): JSONProp {
+    JSONProp::pDeserialize(value)
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): JSONProp {
+    s match {
+    | x @ JSONProp _ -> x
+    | _ -> SKFS.cast_violation("Ui.JSONProp", s)
+    }
+  }
+}
+
+extension class IntProp extends UiEngine.SObject {
+  const identifier: String = "intProp";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    this.pSerialize(static::identifier)
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): IntProp {
+    IntProp::pDeserialize(value)
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): IntProp {
+    s match {
+    | x @ IntProp _ -> x
+    | _ -> SKFS.cast_violation("Ui.IntProp", s)
+    }
+  }
+}
+
+extension class TextProp extends UiEngine.SObject {
+  const identifier: String = "textProp";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    this.pSerialize(static::identifier)
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): TextProp {
+    TextProp::pDeserialize(value)
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): TextProp {
+    s match {
+    | x @ TextProp _ -> x
+    | _ -> SKFS.cast_violation("Ui.TextProp", s)
+    }
+  }
+}
+
+fun checkVariables(
+  type_: String,
+  value: Map<String, UiEngine.Serializable>,
+): ?UiEngine.Serializable {
+  /*if (type_ == StringVar::identifier) {
+    Some(StringVar::deserialize(value))
+  } else if (type_ == FloatVar::identifier) {
+    Some(FloatVar::deserialize(value))
+  } else if (type_ == BoolVar::identifier) {
+    Some(BoolVar::deserialize(value))
+  } else if (type_ == RangeVar::identifier) {
+    Some(RangeVar::deserialize(value))
+  } else if (type_ == StatusVar::identifier) {
+    Some(StatusVar::deserialize(value))
+  } else if (type_ == WidgetVar::identifier) {
+    Some(WidgetVar::deserialize(value))
+  } else if (type_ == IconVar::identifier) {
+    Some(IconVar::deserialize(value))
+  } else if (type_ == DecorationVar::identifier) {
+    Some(DecorationVar::deserialize(value))
+  } else if (type_ == SeparationVar::identifier) {
+    Some(SeparationVar::deserialize(value))
+  } else if (type_ == PositionVar::identifier) {
+    Some(PositionVar::deserialize(value))
+  } else if (type_ == PortionVar::identifier) {
+    Some(PortionVar::deserialize(value))
+  } else if (type_ == IndentationVar::identifier) {
+    Some(IndentationVar::deserialize(value))
+  } else if (type_ == EndLineVar::identifier) {
+    Some(EndLineVar::deserialize(value))
+  } else if (type_ == VarsVar::identifier) {
+    Some(VarsVar::deserialize(value))
+  } else if (type_ == TexturableVar::identifier) {
+    Some(TexturableVar::deserialize(value))
+  } */ if (type_ == JSONProp::identifier) {
+    Some(JSONProp::deserialize(value))
+  } else if (type_ == IntProp::identifier) {
+    Some(IntProp::deserialize(value))
+  } else if (type_ == TextProp::identifier) {
+    Some(TextProp::deserialize(value))
+  } else if (type_ == UiJSONProp.Const::identifier) {
+    Some(UiJSONProp.Const::deserialize(value))
+  } else {
+    None()
+  }
+}
+
+module end;
+
+module UiJSONProp;
+
+extension class Const extends UiEngine.SObject {
+  const identifier: String = "jsonConst";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map["value" => UiEngine.fromJSON(this.value), "writer" => this.writer],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Const {
+    Const(
+      UiEngine.toJSON(value.get("value")),
+      Ui.JSONWriter::forSerializable(value.get("writer")),
+    )
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Const {
+    s match {
+    | x @ Const _ -> x
+    | _ -> SKFS.cast_violation("Ui.Const", s)
+    }
+  }
+}
+
+module end;

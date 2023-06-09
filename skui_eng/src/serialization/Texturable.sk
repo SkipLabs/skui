@@ -1,0 +1,33 @@
+module UiTexturable;/*
+TODO
+extension class Impl extends UiEngine.SObject {
+const identifier: String = "texturable";
+fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+(
+static::identifier,
+Map[
+"id" => UiEngine.SInt(this.getId().toInt()),
+"width" => UiEngine.SInt(this.width.toInt()),
+"height" => UiEngine.SInt(this.height.toInt()),
+],
+)
+}
+
+static fun deserialize(value: Map<String, UiEngine.Serializable>): Impl {
+Impl::make(
+UInt32::truncate(UiEngine.getInt(value, "id")),
+UInt32::truncate(UiEngine.getInt(value, "width")),
+UInt32::truncate(UiEngine.getInt(value, "height")),
+)
+}
+
+static fun fromSerializable(s: UiEngine.Serializable): Impl {
+s match {
+| x @ Impl _ -> x
+| _ -> SKFS.cast_violation("UiTexturable.Impl", obj)
+}
+}
+}*/
+
+
+module end;

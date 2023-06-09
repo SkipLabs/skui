@@ -1,0 +1,274 @@
+module UiEngine;
+
+extension base class ColumnPerformer extends SObject {
+  //
+  static fun fromSerializable(s: Serializable): ColumnPerformer {
+    s match {
+    | t @ ColumnPerformer _ -> t
+    | _ -> SKFS.cast_violation("UiEngine.ColumnPerformer", s)
+    }
+  }
+}
+
+extension base class RowsRequirer extends SObject {
+  //
+  static fun fromSerializable(s: Serializable): RowsRequirer {
+    s match {
+    | t @ RowsRequirer _ -> t
+    | _ -> SKFS.cast_violation("UiEngine.RowsRequirer", s)
+    }
+  }
+}
+
+extension class Sort extends UiEngine.SObject {
+  const identifier: String = "sort";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "column" => UiEngine.SString(this.column),
+        "order" => UiEngine.SInt(this.optOrder.map(o -> o.toCode()).default(2)),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Sort {
+    Sort(
+      getString(value, "column"),
+      maybeGetInt(value, "order").flatMap(UiTable.Order::fromCode),
+    )
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Sort {
+    s match {
+    | x @ Sort _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Sort", s)
+    }
+  }
+}
+
+extension class Column extends UiEngine.SObject {
+  const identifier: String = "column";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "id" => UiEngine.SString(this.id),
+        "text" => UiEngine.SOption(this.optText),
+        "icon" => UiEngine.SOption(this.optIcon),
+        "tooltip" => UiEngine.SOption(this.optTooltip),
+        "size" => UiEngine.SOption(this.optSize),
+        "actionIcon" => UiEngine.SOption(this.optActionIcon),
+        "actionTooltip" => UiEngine.SOption(this.optActionTooltip),
+        "cellAlignment" => UiEngine.SOption(this.optCellAlignment),
+        "columnPerformer" => UiEngine.SOption(this.optColumnPerformer),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Column {
+    Column{
+      id => getString(value, "id"),
+      optText => maybeGet(value, "text"),
+      optIcon => maybeGet(value, "icon"),
+      optTooltip => maybeGet(value, "tooltip"),
+      optSize => maybeGet(value, "size"),
+      optActionIcon => maybeGet(value, "actionIcon"),
+      optActionTooltip => maybeGet(value, "actionTooltip"),
+      optCellAlignment => maybeGet(value, "cellAlignment"),
+      optColumnPerformer => maybeGet(value, "columnPerformer").map(
+        ColumnPerformer::fromSerializable,
+      ),
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Column {
+    s match {
+    | x @ Column _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Column", s)
+    }
+  }
+}
+
+extension class Cell extends UiEngine.SObject {
+  const identifier: String = "cell";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "text" => UiEngine.SOption(this.optText),
+        "icon" => UiEngine.SOption(this.optIcon),
+        "tooltip" => UiEngine.SOption(this.optTooltip),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Cell {
+    Cell{
+      optText => maybeGet(value, "text"),
+      optIcon => maybeGet(value, "icon"),
+      optTooltip => maybeGet(value, "tooltip"),
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Cell {
+    s match {
+    | x @ Cell _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Cell", s)
+    }
+  }
+}
+
+extension class Row extends UiEngine.SObject {
+  const identifier: String = "row";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "id" => UiEngine.SString(this.id),
+        "cells" => UiEngine.SOption(this.optCells),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Row {
+    Row{id => getString(value, "id"), optCells => maybeGet(value, "cells")}
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Row {
+    s match {
+    | x @ Row _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Row", s)
+    }
+  }
+}
+
+extension class Rows extends UiEngine.SObject {
+  const identifier: String = "rows";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map["offset" => UiEngine.SInt(this.offset), "elements" => this.elements],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Rows {
+    Rows{offset => getInt(value, "offset"), elements => value.get("elements")}
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Rows {
+    s match {
+    | x @ Rows _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Rows", s)
+    }
+  }
+}
+
+extension class Pager extends SObject {
+  const identifier: String = "pager";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "count" => this.count,
+        "pageSize" => this.pageSize,
+        "requirer" => this.requirer,
+        "rows" => this.rows,
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Pager {
+    Pager(
+      value.get("count"),
+      value.get("pageSize"),
+      RowsRequirer::fromSerializable(value.get("requirer")),
+      value.get("rows"),
+    )
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Pager {
+    s match {
+    | x @ Pager _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Pager", s)
+    }
+  }
+}
+
+extension class Table {
+  const identifier: String = "table";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "columns" => this.columns,
+        "rows" => this.optPager match {
+        | Some(pager) -> pager
+        | _ -> SOption(this.optRows)
+        },
+        "gridPolicy" => SOption(this.optGridPolicy),
+        "allowMultipleSelection" => SOption(this.optAllowMultipleSelection),
+        "showCheckboxes" => SOption(this.optShowCheckboxes),
+        "showOddEven" => SOption(this.optShowOddEven),
+        "placeHolder" => SOption(this.optPlaceHolder),
+        "rowHeight" => SOption(this.optRowHeight),
+        "headerHeight" => SOption(this.optHeaderHeight),
+        "sorting" => SOption(this.optSorting),
+        "selection" => SOption(this.optSelection),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Table {
+    Table{
+      columns => value.get("columns"),
+      optPager => maybeGet(value, "rows").flatMap(v ->
+        v match {
+        | p @ Pager _ -> Some(p)
+        | _ -> None()
+        }
+      ),
+      optRows => maybeGet(value, "rows"),
+      optGridPolicy => maybeGet(value, "gridPolicy"),
+      optAllowMultipleSelection => maybeGet(value, "allowMultipleSelection"),
+      optShowCheckboxes => maybeGet(value, "showCheckboxes"),
+      optShowOddEven => maybeGet(value, "showOddEven"),
+      optPlaceHolder => maybeGet(value, "placeHolder"),
+      optRowHeight => maybeGet(value, "rowHeight"),
+      optHeaderHeight => maybeGet(value, "headerHeight"),
+      optSorting => maybeGet(value, "sorting"),
+      optSelection => maybeGet(value, "selection"),
+    }
+  }
+}
+
+// DUMMY
+
+extension class DummyColumnPerformer extends SObject {
+  //
+  fun serialize(): (String, Map<String, Serializable>) {
+    dummy()
+  }
+  static fun deserialize(_value: Map<String, Serializable>): this {
+    dummy()
+  }
+}
+
+extension class DummyRowsRequirer extends SObject {
+  //
+  fun serialize(): (String, Map<String, Serializable>) {
+    dummy()
+  }
+  static fun deserialize(_value: Map<String, Serializable>): this {
+    dummy()
+  }
+}
+
+module end;

@@ -1,0 +1,119 @@
+module UiEngine;
+
+extension class Confirm {
+  const identifier: String = "confirm";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "text" => this.text,
+        "action" => UiEngine.SString(this.action),
+        "type" => this.type,
+        "title" => UiEngine.SOption(this.optTitle),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Confirm {
+    Confirm{
+      text => maybeGet(value, "text")
+        .map(Text::fromSerializable)
+        .default(!"No text defined."),
+      action => UiEngine.getString(value, "action"),
+      type => maybeGet(value, "type")
+        .map(UiDialogs.QType::fromSerializable)
+        .default(UiDialogs.YesNo()),
+      optTitle => maybeGet(value, "title").map(Text::fromSerializable),
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Confirm {
+    s match {
+    | t @ Confirm _ -> t
+    | _ -> SKFS.cast_violation("UiEngine.Confirm", s)
+    }
+  }
+}
+
+extension class InputDialog {
+  const identifier: String = "inputDialog";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "label" => this.label,
+        "action" => UiEngine.SString(this.action),
+        "title" => UiEngine.SOption(this.optTitle),
+        "autoClose" => UiEngine.SBool(this.autoClose),
+        //
+        "kind" => this.settings.kind,
+        "icon" => SOption(this.settings.optIcon.map(fromJSON)),
+        "prefix" => SOption(this.settings.optPrefix.map(fromJSON)),
+        "suffix" => SOption(this.settings.optSuffix.map(fromJSON)),
+        "placeHolder" => SOption(this.settings.optPlaceHolder.map(fromJSON)),
+        "tooltip" => SOption(this.settings.optTooltip.map(fromJSON)),
+        "disabled" => SOption(this.settings.optDisabled.map(fromJSON)),
+        "withCounter" => SOption(this.settings.optWithCounter.map(fromJSON)),
+        "withStatus" => SOption(this.settings.optWithStatus.map(fromJSON)),
+        "withClear" => SOption(this.settings.optWithClear.map(fromJSON)),
+        "alignRight" => SOption(this.settings.optAlignRight.map(fromJSON)),
+        //
+        "text" => SOption(this.settings.optText.map(fromJSON)),
+        "position" => SOption(this.settings.optPosition.map(fromJSON)),
+        "selection" => SOption(this.settings.optSelection.map(fromJSON)),
+        "status" => SOption(this.settings.optStatus.map(fromJSON)),
+        //
+        "maxChars" => SInt(this.settings.maxChars),
+        "visibleChars" => SInt(this.settings.visibleChars),
+      ],
+    )
+  }
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): InputDialog {
+    InputDialog{
+      label => maybeGet(value, "label")
+        .map(Text::fromSerializable)
+        .default(!"No text defined."),
+      action => UiEngine.getString(value, "action"),
+      optTitle => maybeGet(value, "title").map(Text::fromSerializable),
+      autoClose => UiEngine.getBool(value, "autoClose"),
+      settings => UiDialogs.Settings{
+        // settings
+        kind => maybeGet(value, "kind")
+          .map(v -> v as UiInput.Kind _)
+          .default(UiInput.Text()),
+        maxChars => maybeGetInt(value, "maxChars").default(64),
+        visibleChars => maybeGetInt(value, "visibleChars").default(10),
+        //
+        optText => maybeGet(value, "text").map(toJSON),
+        optPosition => maybeGet(value, "position").map(toJSON),
+        optSelection => maybeGet(value, "selection").map(toJSON),
+        optStatus => maybeGet(value, "status").map(toJSON),
+        //
+        optIcon => maybeGet(value, "icon").map(toJSON),
+        optPrefix => maybeGet(value, "prefix").map(toJSON),
+        optSuffix => maybeGet(value, "suffix").map(toJSON),
+        optPlaceHolder => maybeGet(value, "placeHolder").map(toJSON),
+        optTooltip => maybeGet(value, "tooltip").map(toJSON),
+        optDisabled => maybeGet(value, "disabled").map(toJSON),
+        optWithCounter => maybeGet(value, "withCounter").map(toJSON),
+        optWithStatus => maybeGet(value, "withStatus").map(toJSON),
+        optWithClear => maybeGet(value, "withClear").map(toJSON),
+        optAlignRight => maybeGet(value, "alignRight").map(toJSON),
+      },
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): InputDialog {
+    s match {
+    | t @ InputDialog _ -> t
+    | _ -> SKFS.cast_violation("UiEngine.InputDialog", s)
+    }
+  }
+}
+
+module end;

@@ -1,0 +1,129 @@
+module UiEngine;
+
+base class InputPerformer {
+  fun perform(context: mutable SKFS.Context, text: String): void;
+}
+
+class LamInputPerformer(
+  toPerform: (mutable SKFS.Context, String) ~> void,
+) extends InputPerformer {
+  fun perform(context: mutable SKFS.Context, text: String): void {
+    this.toPerform(context, text)
+  }
+}
+
+class Input{
+  // settings
+  kind: UiInput.Kind = UiInput.Text(),
+  maxChars: Int = 64,
+  visibleChars: Int = 10,
+  //
+  optText: ?Serializable = None(),
+  optPosition: ?Serializable = None(),
+  optSelection: ?Serializable = None(),
+  optStatus: ?Serializable = None(),
+  //
+  optInputAction: ?External = None(),
+  optFocusLost: ?External = None(),
+  optLabel: ?Serializable = None(),
+  optPrefix: ?Serializable = None(),
+  optSuffix: ?Serializable = None(),
+  optPlaceHolder: ?Serializable = None(),
+  optTooltip: ?Serializable = None(),
+  optIcon: ?Serializable = None(),
+  optActionIcon: ?Serializable = None(),
+  optDisabled: ?Serializable = None(),
+  optEditable: ?Serializable = None(),
+  optWithCounter: ?Serializable = None(),
+  optWithStatus: ?Serializable = None(),
+  optWithLabel: ?Serializable = None(),
+  optWithClear: ?Serializable = None(),
+  optAlignRight: ?Serializable = None(),
+  optPlaceholderAsLabel: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    path = Ui.Path::create(`#control#${static::identifier}#${name}`);
+    // Supplier
+    textPropertyGetter = toStringPropOptGetter(context, this.optText);
+    positionPropertyGetter = toIntPropOptGetter(context, this.optPosition);
+    selectionPropertyGetter = toRangePropOptGetter(context, this.optSelection);
+    statusPropertyGetter = toStatusPropOptGetter(context, this.optStatus);
+    //
+    labelGetter = toTextOptGetter(context, this.optLabel);
+    prefixGetter = toTextOptGetter(context, this.optPrefix);
+    suffixGetter = toTextOptGetter(context, this.optSuffix);
+    placeHolderGetter = toTextOptGetter(context, this.optPlaceHolder);
+    tooltipGetter = toTextOptGetter(context, this.optTooltip);
+    iconGetter = toIconOptGetter(context, this.optIcon);
+    actionIconGetter = toIconOptGetter(context, this.optActionIcon);
+    disabledGetter = toBoolOptGetter(context, this.optDisabled);
+    editableGetter = toBoolOptGetter(context, this.optEditable);
+    withCounterGetter = toBoolOptGetter(context, this.optWithCounter);
+    withStatusGetter = toBoolOptGetter(context, this.optWithStatus);
+    withLabelGetter = toBoolOptGetter(context, this.optWithLabel);
+    withClearGetter = toBoolOptGetter(context, this.optWithClear);
+    alignRightGetter = toBoolOptGetter(context, this.optAlignRight);
+    placeholderAsLabelGetter = toBoolOptGetter(
+      context,
+      this.optPlaceholderAsLabel,
+    );
+    optInputAction = this.optInputAction.map(v -> v.inputPerformer());
+    optFocusLost = this.optFocusLost.map(v -> v.inputPerformer());
+    controller = UiInput.LamController{
+      kind => (_ctx, _iu) ~> this.kind,
+      label => ctx ~> labelGetter(ctx, false),
+      placeHolder => ctx ~> placeHolderGetter(ctx, false),
+      prefix => ctx ~> prefixGetter(ctx, false),
+      suffix => ctx ~> suffixGetter(ctx, false),
+      tooltip => ctx ~> tooltipGetter(ctx, false),
+      icon => (ctx, size) ~>
+        iconGetter(ctx, false)
+          .flatMap(ei -> ei.toIconBuilder())
+          .flatMap(ib -> ib.buildIcon(ctx, size)),
+      fireIcon => (ctx, size) ~>
+        actionIconGetter(ctx, false)
+          .flatMap(ei -> ei.toIconBuilder())
+          .flatMap(ib -> ib.buildIcon(ctx, size)),
+      visibleChars => _ctx ~> this.visibleChars,
+      maxChars => _ctx ~> this.maxChars,
+      disabled => ctx ~> disabledGetter(ctx, false).default(false),
+      editable => (ctx, iu) ~> editableGetter(ctx, iu).default(true),
+      alignRight => ctx ~> alignRightGetter(ctx, false).default(false),
+      withCounter => ctx ~> withCounterGetter(ctx, false).default(true),
+      withStatus => ctx ~> withStatusGetter(ctx, false).default(true),
+      withLabel => ctx ~> withLabelGetter(ctx, false).default(true),
+      withClear => ctx ~> withClearGetter(ctx, false).default(true),
+      placeholderAsLabel => ctx ~>
+        placeholderAsLabelGetter(ctx, false).default(false),
+      actionMessages => (ctx, text, _iu) ~> {
+        optInputAction.each(action -> action.perform(ctx, text));
+        Array[]
+      },
+      focusLostMessages => (ctx, text, _iu) ~> {
+        optFocusLost.each(action -> action.perform(ctx, text));
+        Array[]
+      },
+    };
+    supplier = UiInput.LamSupplier{
+      text => textPropertyGetter,
+      position => positionPropertyGetter,
+      selection => selectionPropertyGetter,
+      status => statusPropertyGetter,
+    };
+    Ui.Input::create(
+      context,
+      path,
+      UiInput.init(context, path, controller, supplier),
+    );
+  }
+}

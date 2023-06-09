@@ -1,0 +1,64 @@
+module UiEngine;
+
+base class Dialog extends UiEngine.SObject {
+  fun open(context: mutable SKFS.Context): void;
+}
+
+class Confirm{
+  text: Text,
+  action: String,
+  type: UiDialogs.QType = UiDialogs.YesNo(),
+  optTitle: ?Text = None(),
+} extends Dialog {
+  fun open(context: mutable SKFS.Context): void {
+    message = context.openConfirmMessage(
+      this.text,
+      SKUIMessage.Target(
+        "engine",
+        "control",
+        JSON.Object(
+          Map[
+            "__class" => JSON.String("UiEngine.OnConfirm"),
+            "action" => JSON.String(this.action),
+          ],
+        ),
+        false,
+      ),
+      true,
+      this.type,
+      this.optTitle,
+    );
+    SKUIMessage.emitMessage(context, message)
+  }
+}
+
+class InputDialog{
+  label: Text,
+  action: String,
+  optTitle: ?Text = None(),
+  autoClose: Bool = true,
+  settings: UiDialogs.Settings = UiDialogs.Settings{},
+} extends Dialog {
+  fun open(context: mutable SKFS.Context): void {
+    message = context.openInputMessage(
+      this.label,
+      SKUIMessage.Target(
+        "engine",
+        "control",
+        JSON.Object(
+          Map[
+            "__class" => JSON.String("UiEngine.OnInput"),
+            "action" => JSON.String(this.action),
+          ],
+        ),
+        false,
+      ),
+      this.autoClose,
+      this.optTitle,
+      this.settings,
+    );
+    SKUIMessage.emitMessage(context, message)
+  }
+}
+
+module end;

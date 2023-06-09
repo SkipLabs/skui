@@ -1,0 +1,155 @@
+module UiEngine;
+
+extension class Label extends SObject {
+  const identifier: String = "label";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "text" => SOption(this.optText),
+        "icon" => SOption(this.optIcon),
+        "tooltip" => SOption(this.optTooltip),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    Label{
+      optText => maybeGet(value, "text"),
+      optIcon => maybeGet(value, "icon"),
+      optTooltip => maybeGet(value, "tooltip"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Indicator {
+  const identifier: String = "indicator";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "progress" => SOption(this.optProgress),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): Indicator {
+    Indicator{
+      optProgress => maybeGet(value, "progress"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Decorated {
+  const identifier: String = "decorated";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "decoration" => SOption(this.optDecoration),
+        "widget" => SOption(this.optWidget),
+        "rigthToLeft" => SOption(this.optRigthToLeft),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): Decorated {
+    Decorated{
+      optDecoration => maybeGet(value, "decoration"),
+      optWidget => maybeGet(value, "widget"),
+      optRigthToLeft => maybeGet(value, "rigthToLeft"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Constrained {
+  const identifier: String = "constrained";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "constraints" => SOption(this.optConstraints),
+        "widget" => SOption(this.optWidget),
+        "enforced" => SOption(this.optEnforced),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): Constrained {
+    Constrained{
+      optConstraints => maybeGet(value, "constraints"),
+      optWidget => maybeGet(value, "widget"),
+      optEnforced => maybeGet(value, "enforced"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Image {
+  const identifier: String = "image";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "picture" => SOption(this.optPicture),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): Image {
+    Image{
+      optPicture => maybeGet(value, "picture"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class TextView extends SObject {
+  const identifier: String = "textview";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "text" => SOption(this.optText),
+        "style" => SOption(this.optStyle),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    TextView{
+      optText => maybeGet(value, "text"),
+      optStyle => maybeGet(value, "style"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+module end;

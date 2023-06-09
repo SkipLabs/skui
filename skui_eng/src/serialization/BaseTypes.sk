@@ -1,0 +1,248 @@
+module UiIcon;
+
+extension class Description extends UiEngine.SObject {
+  const identifier: String = "icon";
+
+  fun serialize(): (String, .Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      .Map[
+        "kind" => this.kind match {
+        | KInner() -> UiEngine.SInt(0)
+        | KTheme() -> UiEngine.SInt(1)
+        | KImage() -> UiEngine.SInt(2)
+        | KCategory(cat) -> UiEngine.SString(cat)
+        },
+        "name" => UiEngine.SString(this.name),
+        "size" => UiEngine.SOption(this.optSize),
+      ],
+    )
+  }
+
+  static fun deserialize(value: .Map<String, UiEngine.Serializable>): this {
+    kind = UiEngine.maybeGetInt(value, "kind") match {
+    | Some(0) -> KInner()
+    | Some(2) -> KImage()
+    | Some _ -> KTheme()
+    | _ -> KCategory(UiEngine.getString(value, "kind"))
+    };
+    Description(
+      kind,
+      UiEngine.getString(value, "name"),
+      UiEngine.maybeGet(value, "size").map(v -> v as Ui.Size _),
+    )
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Description {
+    s match {
+    | t @ Description _ -> t
+    | _ -> SKFS.cast_violation("UiIcon.Description", s)
+    }
+  }
+}
+
+module end;
+
+module UiInput;
+
+extension base class Kind extends UiEngine.SObject {
+  const identifier: String = "inputKind";
+
+  const textType: Int = 0;
+  const passwordType: Int = 1;
+  const ASCIIType: Int = 2;
+  const integerType: Int = 3;
+  const realType: Int = 4;
+  const hexType: Int = 5;
+  const binaryType: Int = 6;
+  const octalType: Int = 7;
+  const patternType: Int = 8;
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      this match {
+      | Text() ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::textType),
+        ]
+      | Password() ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::passwordType),
+        ]
+      | ASCII() ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::ASCIIType),
+        ]
+      | Real() ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::realType),
+        ]
+      | Hex() ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::hexType),
+        ]
+      | Octal() ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::octalType),
+        ]
+      | Binary() ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::binaryType),
+        ]
+      | Integer(optMin, optMax) ->
+        map = mutable Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::integerType),
+        ];
+        optMin.each(min -> map.add("min", UiEngine.SInt(min)));
+        optMax.each(max -> map.add("max", UiEngine.SInt(max)));
+        unsafe_chill_trust_me(map)
+      | Pattern(pattern) ->
+        Map<String, UiEngine.Serializable>[
+          "type" => UiEngine.SInt(static::patternType),
+          "pattern" => UiEngine.SString(pattern),
+        ]
+      | _ ->
+        invariant_violation("Only predefined input kind can be serialized.")
+      },
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Kind {
+    type_ = UiEngine.getInt(value, "type");
+    if (type_ == static::passwordType) {
+      Password()
+    } else if (type_ == static::ASCIIType) {
+      ASCII()
+    } else if (type_ == static::binaryType) {
+      Binary()
+    } else if (type_ == static::octalType) {
+      Octal()
+    } else if (type_ == static::hexType) {
+      Hex()
+    } else if (type_ == static::realType) {
+      Real()
+    } else if (type_ == static::integerType) {
+      Integer(
+        UiEngine.maybeGetInt(value, "min"),
+        UiEngine.maybeGetInt(value, "max"),
+      )
+    } else if (type_ == static::patternType) {
+      Pattern(UiEngine.getString(value, "pattern"))
+    } else {
+      Text()
+    }
+  }
+}
+module end;
+
+module Ui;
+
+extension base class JSONWriter extends UiEngine.SObject {
+  //
+  static fun forSerializable(s: UiEngine.Serializable): JSONWriter {
+    s match {
+    | t @ JSONWriter _ -> t
+    | _ -> SKFS.cast_violation("Ui.JSONWriter", s)
+    }
+  }
+}
+
+extension base class Combine {
+  //
+  static fun fromSerializable(s: UiEngine.Serializable): Combine {
+    s match {
+    | t @ Combine _ -> t
+    | _ -> SKFS.cast_violation("Ui.Combine", s)
+    }
+  }
+}
+
+extension class DummyCombine {
+  fun serialize(): (String, .Map<String, UiEngine.Serializable>) {
+    dummy()
+  }
+
+  static fun deserialize(
+    _value: Map<String, UiEngine.Serializable>,
+  ): DummyCombine {
+    dummy()
+  }
+}
+
+module end;
+
+module Text;
+
+extension class Style extends UiEngine.SObject {
+  const identifier: String = "textstyle";
+
+  fun serialize(): (String, .Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map<String, UiEngine.Serializable>[
+        "color" => this.fill match {
+        | color @ Color _ -> UiEngine.SString(color.toWeb())
+        | _ -> invariant_violation("Engine manage only colors.")
+        },
+        "size" => UiEngine.SString(Ui.Pt(this.faceId.size).toString()),
+        "slant" => UiEngine.SInt(this.faceId.typeface.slant.code()),
+        "weight" => UiEngine.SInt(this.faceId.typeface.weight.toWeight()),
+        "hAlignment" => UiEngine.SInt(this.hAlignment.toCode()),
+        "vAlignment" => UiEngine.SInt(this.vAlignment.toCode()),
+        "lineSpacing" => UiEngine.SString(this.lineSpacing.toString()),
+        "wrapping" => UiEngine.SInt(this.wrapping.toCode()),
+        "overflow" => UiEngine.SInt(this.overrun.toCode()),
+        "transform" => UiEngine.SInt(this.transform.toCode()),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Style {
+    px = Ui.Dim::fromString(UiEngine.getString(value, "size"))
+      .map(v ~>
+        v match {
+        | fd @ Ui.FixedSize _ -> fd.pixels()
+        | rd @ Ui.RelativeToSize _ ->
+          size = Ui.Pt(UiTheme.defaultFace.size).pixels();
+          rd.pixels(size, size)
+        }
+      )
+      .default(0.0);
+    pt = Ui.Px(px).points();
+    faceId = Font.FaceID::create(
+      Font.TypefaceInfo(
+        UiTheme.family,
+        Font.Weight::fromWeight(UiEngine.getInt(value, "weight")),
+        Font.Slant::fromCode(UiEngine.getInt(value, "slant")),
+      ),
+      pt,
+    );
+    lineSpacing = Ui.Dim::fromString(UiEngine.getString(value, "lineSpacing"))
+      .map(v ~>
+        v match {
+        | fd @ Ui.FixedSize _ -> Text.ConstLineSpacing(fd.pixels())
+        | rd @ Ui.RelativeToSize _ -> Text.ScaledLineSpacing(rd.value)
+        }
+      )
+      .default(Text.ScaledLineSpacing(0.5));
+    Style{
+      fill => Ui.parseColor(UiEngine.getString(value, "color")).default(
+        Colors.black(),
+      ),
+      faceId,
+      hAlignment => Text.FixedAlign::fromCode(
+        UiEngine.getInt(value, "hAlignment"),
+      ),
+      vAlignment => Text.VAlign::fromCode(UiEngine.getInt(value, "vAlignment")),
+      lineSpacing,
+      wrapping => Text.Wrapping::fromCode(UiEngine.getInt(value, "wrapping")),
+      overrun => Text.Overrun::fromCode(UiEngine.getInt(value, "overflow")),
+      transform => Text.Transform::fromCode(
+        UiEngine.getInt(value, "transform"),
+      ),
+    }
+  }
+}
+
+module end;

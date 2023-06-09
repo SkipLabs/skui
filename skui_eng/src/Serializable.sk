@@ -1,0 +1,283 @@
+module UiEngine;
+
+base class Serializable extends SKFS.File {
+  children =
+  | SArray(value: Array<Serializable>)
+  | SOption(value: ?Serializable)
+  | SInt(value: Int)
+  | SFloat(value: Float)
+  | SString(value: String)
+  | SMap(value: Map<String, Serializable>)
+
+  static fun frFile(file: SKFS.File): Serializable {
+    file match {
+    | x @ Serializable _ -> x
+    | _ -> invariant_violation("Must be UiEngine.Serializable")
+    }
+  }
+}
+
+base class SObject extends Serializable {
+  fun serialize(): (String, Map<String, Serializable>);
+  static fun deserialize(value: Map<String, Serializable>): this;
+}
+
+fun getString(value: Map<String, Serializable>, name: String): String {
+  value.maybeGet(name) match {
+  | Some(SString(v)) -> v
+  | Some(SFloat(v)) -> v.toString()
+  | Some(SInt(v)) -> v.toString()
+  | Some(SBool(v)) -> v.toString()
+  | None() -> invariant_violation(`Missing ${name}`)
+  | _ ->
+    invariant_violation(
+      "Must be UiEngine.SFloat, UiEngine.SInt, UiEngine.SBool or UiEngine.SString",
+    )
+  }
+}
+
+fun getBool(value: Map<String, Serializable>, name: String): Bool {
+  (value.get(name) as SBool _).value
+}
+
+fun getInt(value: Map<String, Serializable>, name: String): Int {
+  value.get(name) match {
+  | SFloat(v) -> v.toInt()
+  | SInt(v) -> v
+  | _ -> invariant_violation("Must be UiEngine.SFloat or UiEngine.SInt")
+  }
+}
+
+fun getFloat(value: Map<String, Serializable>, name: String): Float {
+  value.get(name) match {
+  | SFloat(v) -> v
+  | SInt(v) -> v.toFloat()
+  | _ -> invariant_violation("Must be UiEngine.SFloat or UiEngine.SInt")
+  }
+}
+
+fun getArray(
+  value: Map<String, Serializable>,
+  name: String,
+): Array<Serializable> {
+  (value.get(name) as SArray _).value
+}
+
+fun getMap(
+  value: Map<String, Serializable>,
+  name: String,
+): Map<String, Serializable> {
+  (value.get(name) as SMap _).value
+}
+
+fun maybeGet(value: Map<String, Serializable>, name: String): ?Serializable {
+  value
+    .maybeGet(name)
+    .map(v ->
+      v match {
+      | SOption(opt) -> opt
+      | _ -> Some(v)
+      }
+    )
+    .default(None())
+}
+
+fun maybeGetString(value: Map<String, Serializable>, name: String): ?String {
+  maybeGet(value, name).flatMap(v ->
+    v match {
+    | SString(sv) -> Some(sv)
+    | SFloat(fv) -> Some(fv.toString())
+    | SInt(iv) -> Some(iv.toString())
+    | SBool(bv) -> Some(bv.toString())
+    | _ -> None()
+    }
+  )
+}
+
+fun maybeGetText(value: Map<String, Serializable>, name: String): ?Text {
+  maybeGet(value, name).flatMap(v ->
+    v match {
+    | sv @ Text _ -> Some(sv)
+    | _ -> None()
+    }
+  )
+}
+
+fun maybeGetBool(value: Map<String, Serializable>, name: String): ?Bool {
+  maybeGet(value, name).map(v -> (v as SBool _).value)
+}
+
+fun maybeGetInt(value: Map<String, Serializable>, name: String): ?Int {
+  maybeGet(value, name).flatMap(v ->
+    v match {
+    | SFloat(fv) -> Some(fv.toInt())
+    | SInt(iv) -> Some(iv)
+    | _ -> None()
+    }
+  )
+}
+
+fun maybeGetFloat(value: Map<String, Serializable>, name: String): ?Float {
+  maybeGet(value, name).flatMap(v ->
+    v match {
+    | SFloat(fv) -> Some(fv)
+    | SInt(iv) -> Some(iv.toFloat())
+    | _ -> None()
+    }
+  )
+}
+
+fun maybeGetArray(
+  value: Map<String, Serializable>,
+  name: String,
+): ?Array<Serializable> {
+  maybeGet(value, name).map(v -> (v as SArray _).value)
+}
+
+fun maybeGetMap(
+  value: Map<String, Serializable>,
+  name: String,
+): ?Map<String, Serializable> {
+  maybeGet(value, name).map(v -> (v as SMap _).value)
+}
+
+class SBool(value: Bool) extends Serializable {
+  const TRUE: SBool = SBool(true);
+  const FALSE: SBool = SBool(false);
+}
+
+fun toJSON(serializable: Serializable): JSON.Value {
+  serializable match {
+  | SOption(value) -> value.map(toJSON).default(JSON.Null())
+  | SInt(value) -> JSON.IntNumber(value)
+  | SFloat(value) -> JSON.FloatNumber(value)
+  | SString(value) -> JSON.String(value)
+  | SBool(value) -> JSON.Bool(value)
+  | SArray(value) -> JSON.arrayToJSON(value, toJSON)
+  | SMap(value) -> JSON.Object(value.map((_k, v) -> toJSON(v)))
+  | obj @ SObject _ ->
+    (type_, fields) = obj.serialize();
+    jsFields = fields.map((_k, v) -> toJSON(v)).filter((_k, v) -> !v.isNull());
+    JSON.Object(
+      Map["type" => JSON.String(type_), "fields" => JSON.Object(jsFields)],
+    )
+  };
+}
+
+fun checkSerializable(
+  type_: String,
+  value: Map<String, UiEngine.Serializable>,
+): ?UiEngine.Serializable {
+  // TODO: use Annotation (Can't be used while using skiptollvm)
+  if (type_ == UiIcon.Description::identifier) {
+    Some(UiIcon.Description::deserialize(value))
+  } else if (type_ == UiInput.Kind::identifier) {
+    Some(UiInput.Kind::deserialize(value))
+  } else if (type_ == Button::identifier) {
+    Some(Button::deserialize(value))
+  } else if (type_ == Input::identifier) {
+    Some(Input::deserialize(value))
+  } else if (type_ == Slider::identifier) {
+    Some(Slider::deserialize(value))
+  } else if (type_ == Wrap::identifier) {
+    Some(Wrap::deserialize(value))
+  } else if (type_ == Flex::identifier) {
+    Some(Flex::deserialize(value))
+  } else if (type_ == AspectRatio::identifier) {
+    Some(AspectRatio::deserialize(value))
+  } else if (type_ == Indicator::identifier) {
+    Some(Indicator::deserialize(value))
+  } else if (type_ == Label::identifier) {
+    Some(Label::deserialize(value))
+  } else if (type_ == Decorated::identifier) {
+    Some(Decorated::deserialize(value))
+  } else if (type_ == Constrained::identifier) {
+    Some(Constrained::deserialize(value))
+  } else if (type_ == Image::identifier) {
+    Some(Image::deserialize(value))
+  } else if (type_ == Confirm::identifier) {
+    Some(Confirm::deserialize(value))
+  } else if (type_ == InputDialog::identifier) {
+    Some(InputDialog::deserialize(value))
+  } else if (type_ == UiTree.Item::identifier) {
+    Some(TreeItem::deserialize(value))
+  } else if (type_ == Tree::identifier) {
+    Some(Tree::deserialize(value))
+  } else if (type_ == DMenu::identifier) {
+    Some(DMenu::deserialize(value))
+  } else if (type_ == DItem::identifier) {
+    Some(DItem::deserialize(value))
+  } else if (type_ == Split::identifier) {
+    Some(Split::deserialize(value))
+  } else if (type_ == Toggle::identifier) {
+    Some(Toggle::deserialize(value))
+  } else if (type_ == Scroll::identifier) {
+    Some(Scroll::deserialize(value))
+  } else if (type_ == Tab::identifier) {
+    Some(Tab::deserialize(value))
+  } else if (type_ == Action::identifier) {
+    Some(Action::deserialize(value))
+  } else if (type_ == Tabs::identifier) {
+    Some(Tabs::deserialize(value))
+  } else if (type_ == Text.Style::identifier) {
+    Some(Text.Style::deserialize(value))
+  } else if (type_ == TextView::identifier) {
+    Some(TextView::deserialize(value))
+  } else {
+    checkExternals(type_, value)
+  }
+}
+
+type Checker = (
+  String,
+  Map<String, UiEngine.Serializable>,
+) ~> ?UiEngine.Serializable;
+
+const checkers: Array<Checker> = Array[
+  .checkSerializable,
+  UiEngine.checkSerializable,
+  Ui.checkSerializable,
+];
+
+class Deserializer(
+  deserialize: Map<String, Serializable> ~> Serializable,
+) extends SKFS.File
+
+fun fromJSON(json: JSON.Value): Serializable {
+  json match {
+  | JSON.Null() -> SOption(None())
+  | JSON.IntNumber(value) -> SInt(value)
+  | JSON.FloatNumber(value) -> SFloat(value)
+  | JSON.String(value) -> SString(value)
+  | JSON.Bool(value) -> SBool(value)
+  | arr @ JSON.Array _ -> SArray(JSON.arrayFromJSON(arr, fromJSON))
+  | jso @ JSON.Object _ ->
+    if (jso.value.size() == 2) {
+      optFields = jso.maybeGetObject("fields");
+      optType = jso.maybeGetString("type");
+      (optType, optFields) match {
+      | (Some(type_), Some(fields)) ->
+        value = fields.value.map((_k, v) -> fromJSON(v));
+        optResult = for (checker in checkers) {
+          optChecked = checker(type_, value);
+          if (optChecked.isSome()) {
+            break optChecked
+          }
+        } else {
+          SKFS.getWorkingContext()
+            .flatMap(ctx -> ctx.getGlobal(`UiEngine.Deserializer.${type_}`))
+            .map(Deserializer::fromFile)
+            .map(d -> d.deserialize(value));
+        };
+        return optResult match {
+        | Some(s) -> s
+        | _ -> invariant_violation(`Unknown engine type ${type_}`)
+        }
+      | _ -> void
+      }
+    };
+    SMap(jso.value.map((_k, v) -> fromJSON(v)))
+  }
+}
+
+module end;

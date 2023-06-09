@@ -1,0 +1,330 @@
+module UiEngine;
+
+extension base class External extends SObject {
+  static fun fromSerializable(s: UiEngine.Serializable): External {
+    s match {
+    | t @ External _ -> t
+    | _ -> SKFS.cast_violation("UiEngine.External", s)
+    }
+  }
+}
+
+extension class Button extends SObject {
+  const identifier: String = "button";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "text" => SOption(this.optText),
+        "icon" => SOption(this.optIcon),
+        "tooltip" => SOption(this.optTooltip),
+        "kind" => SInt(
+          this.kind match {
+          | UiButton.Regular() -> 0
+          | UiButton.Primary() -> 1
+          | UiButton.Accent() -> 2
+          | UiButton.Warn() -> 3
+          },
+        ),
+        "mode" => SInt(
+          this.mode match {
+          | UiButton.Basic() -> 0
+          | UiButton.Stroked() -> 1
+          | UiButton.Raised() -> 2
+          | UiButton.Flat() -> 3
+          | UiButton.Icon(mini) -> if (!mini) 4 else 5
+          | UiButton.Fab(mini) -> if (!mini) 6 else 7
+          },
+        ),
+        "action" => this.action,
+        "configuration" => SOption(this.optConfiguration),
+        "disabled" => this.disabled,
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    Button{
+      kind => getInt(value, "kind") match {
+      | 1 -> UiButton.Primary()
+      | 2 -> UiButton.Accent()
+      | 3 -> UiButton.Warn()
+      | 0
+      | _ ->
+        UiButton.Regular()
+      },
+      mode => getInt(value, "mode") match {
+      | 1 -> UiButton.Stroked()
+      | 2 -> UiButton.Raised()
+      | 3 -> UiButton.Flat()
+      | 4 -> UiButton.Icon(false)
+      | 5 -> UiButton.Icon(true)
+      | 6 -> UiButton.Fab(false)
+      | 7 -> UiButton.Fab(true)
+      | 0
+      | _ ->
+        UiButton.Basic()
+      },
+      action => External::fromSerializable(value.get("action")),
+      disabled => value.get("disabled"),
+      optText => maybeGet(value, "text"),
+      optIcon => maybeGet(value, "icon"),
+      optTooltip => maybeGet(value, "tooltip"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Slider extends SObject {
+  const identifier: String = "slider";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "value" => this.value,
+        "bounds" => SOption(this.optBounds),
+        "range" => SOption(this.optRange),
+        "vertical" => SOption(this.optVertical),
+        "labeled" => SOption(this.optLabeled),
+        "small" => SOption(this.optSmall),
+        "disabled" => SOption(this.optDisabled),
+        "step" => SOption(this.optStep),
+        "ticks" => SOption(this.optTicks),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    Slider{
+      value => value.get("value"),
+      optBounds => maybeGet(value, "bounds"),
+      optLabeled => maybeGet(value, "labeled"),
+      optVertical => maybeGet(value, "vertical"),
+      optSmall => maybeGet(value, "small"),
+      optRange => maybeGet(value, "range"),
+      optDisabled => maybeGet(value, "disabled"),
+      optStep => maybeGet(value, "step"),
+      optTicks => maybeGet(value, "ticks"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension base class InputPerformer extends SObject
+
+extension class Input extends SObject {
+  const identifier: String = "input";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "label" => SOption(this.optLabel),
+        "icon" => SOption(this.optIcon),
+        "prefix" => SOption(this.optPrefix),
+        "suffix" => SOption(this.optSuffix),
+        "placeHolder" => SOption(this.optPlaceHolder),
+        "tooltip" => SOption(this.optTooltip),
+        "kind" => this.kind,
+        "onInputAction" => SOption(this.optInputAction),
+        "onFocusLost" => SOption(this.optFocusLost),
+        "actionIcon" => SOption(this.optActionIcon),
+        "disabled" => SOption(this.optDisabled),
+        "editable" => SOption(this.optEditable),
+        "withCounter" => SOption(this.optWithCounter),
+        "withStatus" => SOption(this.optWithStatus),
+        "withLabel" => SOption(this.optWithLabel),
+        "withClear" => SOption(this.optWithClear),
+        "alignRight" => SOption(this.optAlignRight),
+        "placeholderAsLabel" => SOption(this.optPlaceholderAsLabel),
+        //
+        "text" => SOption(this.optText),
+        "position" => SOption(this.optPosition),
+        "selection" => SOption(this.optSelection),
+        "status" => SOption(this.optStatus),
+        //
+        "maxChars" => SInt(this.maxChars),
+        "visibleChars" => SInt(this.visibleChars),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    Input{
+      kind => maybeGet(value, "kind")
+        .map(v -> v as UiInput.Kind _)
+        .default(UiInput.Text()),
+      maxChars => maybeGetInt(value, "maxChars").default(64),
+      visibleChars => maybeGetInt(value, "visibleChars").default(10),
+      //
+      optText => maybeGet(value, "text"),
+      optPosition => maybeGet(value, "position"),
+      optSelection => maybeGet(value, "selection"),
+      optStatus => maybeGet(value, "status"),
+      //
+      optIcon => maybeGet(value, "icon"),
+      optActionIcon => maybeGet(value, "actionIcon"),
+      //
+      optInputAction => maybeGet(value, "onInputAction").map(
+        External::fromSerializable,
+      ),
+      optFocusLost => maybeGet(value, "onFocusLost").map(
+        External::fromSerializable,
+      ),
+      optLabel => maybeGet(value, "label"),
+      optPrefix => maybeGet(value, "prefix"),
+      optSuffix => maybeGet(value, "suffix"),
+      optPlaceHolder => maybeGet(value, "placeHolder"),
+      optTooltip => maybeGet(value, "tooltip"),
+      optDisabled => maybeGet(value, "disabled"),
+      optEditable => maybeGet(value, "editable"),
+      optWithCounter => maybeGet(value, "withCounter"),
+      optWithStatus => maybeGet(value, "withStatus"),
+      optWithLabel => maybeGet(value, "withLabel"),
+      optWithClear => maybeGet(value, "withClear"),
+      optAlignRight => maybeGet(value, "alignRight"),
+      optPlaceholderAsLabel => maybeGet(value, "placeholderAsLabel"),
+      //
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Split {
+  const identifier: String = "split";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "first" => SOption(this.optFirst),
+        "second" => SOption(this.optSecond),
+        "vertical" => SOption(this.optVertical),
+        "separation" => SOption(this.optSeparation),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): Split {
+    Split{
+      optFirst => maybeGet(value, "first"),
+      optSecond => maybeGet(value, "second"),
+      optVertical => maybeGet(value, "vertical"),
+      optSeparation => maybeGet(value, "separation"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Toggle extends SObject {
+  const identifier: String = "toggle";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "selected" => this.selected,
+        "indeterminate" => SOption(this.optIndeterminate),
+        //
+        "text" => SOption(this.optText),
+        "icon" => SOption(this.optIcon),
+        "tooltip" => SOption(this.optTooltip),
+        "kind" => SOption(this.optKind),
+        "configuration" => SOption(this.optConfiguration),
+        "disabled" => SOption(this.optDisabled),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    Toggle{
+      selected => value.get("selected"),
+      optKind => maybeGet(value, "kind"),
+      optIndeterminate => maybeGet(value, "indeterminate"),
+      optDisabled => maybeGet(value, "disabled"),
+      optText => maybeGet(value, "text"),
+      optIcon => maybeGet(value, "icon"),
+      optTooltip => maybeGet(value, "tooltip"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Scroll {
+  const identifier: String = "scroll";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "widget" => SOption(this.optWidget),
+        "hScroll" => SOption(this.optHScroll),
+        "vScroll" => SOption(this.optVScroll),
+        "hPolicy" => SOption(this.optHPolicy),
+        "vPolicy" => SOption(this.optVPolicy),
+        "unit" => SOption(this.optUnit),
+        "negative" => SOption(this.optNegative),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): Scroll {
+    Scroll{
+      optWidget => maybeGet(value, "widget"),
+      optHScroll => maybeGet(value, "hScroll"),
+      optVScroll => maybeGet(value, "vScroll"),
+      optHPolicy => maybeGet(value, "hPolicy"),
+      optVPolicy => maybeGet(value, "vPolicy"),
+      optUnit => maybeGet(value, "unit"),
+      optNegative => maybeGet(value, "vertical"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class LamActionPerformer {
+  fun serialize(): (String, Map<String, Serializable>) {
+    useless()
+  }
+  static fun deserialize(_value: Map<String, Serializable>): this {
+    useless()
+  }
+}
+
+extension class LamInputPerformer {
+  fun serialize(): (String, Map<String, Serializable>) {
+    useless()
+  }
+  static fun deserialize(_value: Map<String, Serializable>): this {
+    useless()
+  }
+}
+
+extension class ConstExternal {
+  fun serialize(): (String, Map<String, Serializable>) {
+    useless()
+  }
+  static fun deserialize(_value: Map<String, Serializable>): this {
+    useless()
+  }
+}
+
+module end;

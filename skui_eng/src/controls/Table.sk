@@ -1,0 +1,96 @@
+module UiEngine;
+
+base class ColumnPerformer {
+  fun perform(context: mutable SKFS.Context, row: String): void;
+}
+
+class Sort(column: String, optOrder: ?UiTable.Order)
+
+base class RowsRequirer {
+  fun requireRows(
+    context: mutable SKFS.Context,
+    offset: Int,
+    size: Int,
+    sort: Array<Sort>,
+  ): void;
+}
+
+class Column{
+  id: String,
+  //
+  optText: ?Serializable = None(),
+  optIcon: ?Serializable = None(),
+  optTooltip: ?Serializable = None(),
+  optSize: ?Serializable = None(),
+  optActionIcon: ?Serializable = None(),
+  optActionTooltip: ?Serializable = None(),
+  optCellAlignment: ?Serializable = None(),
+  optColumnPerformer: ?ColumnPerformer = None(),
+}
+
+class Cell{
+  optText: ?Serializable = None(),
+  optIcon: ?Serializable = None(),
+  optTooltip: ?Serializable = None(),
+}
+
+class Row{id: String, optCells: ?Serializable = None()}
+
+class Rows{offset: Int, elements: Serializable}
+
+class Pager(
+  count: Serializable,
+  pageSize: Serializable,
+  requirer: RowsRequirer,
+  rows: Serializable,
+)
+
+class Table{
+  columns: Serializable,
+  optPager: ?Pager = None(),
+  optRows: ?Serializable = None(),
+  optGridPolicy: ?Serializable = None(),
+  optAllowMultipleSelection: ?Serializable = None(),
+  optShowCheckboxes: ?Serializable = None(),
+  optShowOddEven: ?Serializable = None(),
+  optPlaceHolder: ?Serializable = None(),
+  optRowHeight: ?Serializable = None(),
+  optHeaderHeight: ?Serializable = None(),
+  optSorting: ?Serializable = None(),
+  optSelection: ?Serializable = None(),
+} extends Description {
+  //
+  fun collect(_collector: Renderable -> void): void {
+    void
+  }
+
+  fun build(
+    _context: mutable SKFS.Context,
+    _name: String,
+    _root: UiRoot.Storage,
+    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget {
+    todo("UiEngine.Table.build")
+  }
+}
+
+// DUMMY
+
+class DummyColumnPerformer() extends ColumnPerformer {
+  fun perform(_context: mutable SKFS.Context, _row: String): void {
+    dummy()
+  }
+}
+
+class DummyRowsRequirer() extends RowsRequirer {
+  fun requireRows(
+    _context: mutable SKFS.Context,
+    _offset: Int,
+    _size: Int,
+    _sort: Array<Sort>,
+  ): void {
+    dummy()
+  }
+}
+
+module end;

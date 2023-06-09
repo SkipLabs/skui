@@ -1,0 +1,68 @@
+module Geometry;
+
+extension base class InsetsGeometry extends UiEngine.SObject {
+  const identifier: String = "insets";
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): InsetsGeometry {
+    pixels = strValue ~> {
+      Ui.Dim::fromString(strValue)
+        .map(v ~>
+          v match {
+          | fd @ Ui.FixedSize _ -> fd.pixels()
+          | rd @ Ui.RelativeToSize _ ->
+            size = Ui.Pt(UiTheme.defaultFace.size).pixels();
+            rd.pixels(size, size)
+          }
+        )
+        .default(0.0)
+    };
+    valPixel = strProp ~> pixels(UiEngine.getString(value, strProp));
+    top = valPixel("top");
+    bottom = valPixel("bottom");
+    optStart = UiEngine.maybeGetString(value, "start").map(pixels);
+    optEnd = UiEngine.maybeGetString(value, "end").map(pixels);
+    optLeft = UiEngine.maybeGetString(value, "left").map(pixels);
+    optRight = UiEngine.maybeGetString(value, "right").map(pixels);
+    (optStart, optEnd) match {
+    | (Some(start), Some(end)) ->
+      InsetsDirectional::fromSTEB(start, top, end, bottom)
+    | _ ->
+      (optLeft, optRight) match {
+      | (Some(left), Some(right)) -> Insets::fromLTRB(left, top, right, bottom)
+      | _ -> invariant_violation("Invalid Geometry.InsetsGeometry")
+      }
+    }
+  }
+}
+
+extension class Insets {
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "top" => UiEngine.SString(Ui.Px(this.top).toString()),
+        "bottom" => UiEngine.SString(Ui.Px(this.bottom).toString()),
+        "left" => UiEngine.SString(Ui.Px(this.left).toString()),
+        "right" => UiEngine.SString(Ui.Px(this.right).toString()),
+      ],
+    )
+  }
+}
+
+extension class InsetsDirectional {
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "top" => UiEngine.SString(Ui.Px(this.top).toString()),
+        "bottom" => UiEngine.SString(Ui.Px(this.bottom).toString()),
+        "start" => UiEngine.SString(Ui.Px(this.start).toString()),
+        "end" => UiEngine.SString(Ui.Px(this.end).toString()),
+      ],
+    )
+  }
+}
+
+module end;

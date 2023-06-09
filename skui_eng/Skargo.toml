@@ -1,0 +1,12 @@
+[package]
+name = "skui_eng"
+version = "0.1.0"
+format-on-check = true
+auto-remove-state = true
+
+[dependencies]
+skui_views = {}
+
+[[bin]]
+name = "skuieng"
+main = "SkuiEng.main"

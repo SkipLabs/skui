@@ -1,0 +1,632 @@
+module Ui;
+
+extension class BoxConstraints extends UiEngine.SObject {
+  const identifier: String = "constraints";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "minWidth" => UiEngine.SString(Ui.Px(this.minWidth()).toString()),
+        "maxWidth" => UiEngine.SOption(
+          if (this.hasBoundedWidth()) {
+            Some(UiEngine.SString(Ui.Px(this.maxWidth()).toString()))
+          } else {
+            None()
+          },
+        ),
+        "minHeight" => UiEngine.SString(Ui.Px(this.minHeight()).toString()),
+        "maxHeight" => UiEngine.SOption(
+          if (this.hasBoundedHeight()) {
+            Some(UiEngine.SString(Ui.Px(this.maxHeight()).toString()))
+          } else {
+            None()
+          },
+        ),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): this {
+    optSize = mane -> {
+      UiEngine.maybeGetString(value, mane).flatMap(str ->
+        Ui.Dim::fromString(str).flatMap(dim ->
+          dim match {
+          | fs @ FixedSize _ -> Some(fs.pixels())
+          | _ -> None()
+          }
+        )
+      )
+    };
+    BoxConstraints::make{
+      minWidth => optSize("minWidth"),
+      maxWidth => optSize("maxWidth"),
+      minHeight => optSize("minHeight"),
+      maxHeight => optSize("maxHeight"),
+    }
+  }
+}
+
+extension class Size extends UiEngine.SObject {
+  const identifier: String = "size";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "width" => UiEngine.SString(this.width.toString()),
+        "height" => UiEngine.SString(this.width.toString()),
+        "keepRatio" => UiEngine.SBool(this.keepRatio),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): this {
+    Size(
+      Ui.Dim::fromString(UiEngine.getString(value, "width")).fromSome(),
+      Ui.Dim::fromString(UiEngine.getString(value, "height")).fromSome(),
+      UiEngine.getBool(value, "keepRatio"),
+    )
+  }
+}
+
+extension class Shortcut extends UiEngine.SObject {
+  const identifier: String = "shortcut";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "key" => UiEngine.SString(this.key),
+        "ctrl" => UiEngine.SBool(this.ctrl),
+        "shift" => UiEngine.SBool(this.shift),
+        "alt" => UiEngine.SBool(this.alt),
+        "meta" => UiEngine.SBool(this.meta),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): this {
+    Shortcut(
+      UiEngine.getString(value, "key"),
+      UiEngine.getBool(value, "ctrl"),
+      UiEngine.getBool(value, "shift"),
+      UiEngine.getBool(value, "alt"),
+      UiEngine.getBool(value, "meta"),
+    )
+  }
+
+  static fun fromSerializable(obj: UiEngine.Serializable): Shortcut {
+    obj match {
+    | x @ Shortcut _ -> x
+    | _ -> SKFS.cast_violation("Ui.Shortcut", obj)
+    }
+  }
+}
+
+extension base class Separation extends UiEngine.SObject {
+  const identifier: String = "separation";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(
+          this match {
+          | FromStart _ -> 0
+          | FromEnd _ -> 1
+          | Percent _ -> 2
+          },
+        ),
+        "value" => UiEngine.SInt(this.value),
+      ],
+    )
+  }
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): Separation {
+    UiEngine.getInt(value, "type") match {
+    | 1 -> FromEnd(UiEngine.getInt(value, "value"))
+    | 2 -> Percent(Math.clamp(UiEngine.getInt(value, "value"), 0, 100))
+    | 0
+    | _ ->
+      FromStart(UiEngine.getInt(value, "value"))
+    }
+  }
+
+  static fun fromSerializable(obj: UiEngine.Serializable): Separation {
+    obj match {
+    | x @ Separation _ -> x
+    | _ -> SKFS.cast_violation("Ui.Separation", obj)
+    }
+  }
+}
+
+extension base class Decoration extends UiEngine.SObject {
+  //
+  static fun fromSerializable(obj: UiEngine.Serializable): Decoration {
+    obj match {
+    | x @ Decoration _ -> x
+    | _ -> SKFS.cast_violation("Ui.Decoration", obj)
+    }
+  }
+}
+
+extension class Background {
+  const identifier: String = "background";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "color" => this.paint match {
+        | color @ Color _ -> UiEngine.SString(color.toWeb())
+        | _ -> invariant_violation("Engine manage only colors.")
+        },
+        "padding" => this.padding,
+        "radius" => UiEngine.SOption(
+          this.optRadius.map(v -> UiEngine.SString(`${v}px`)),
+        ),
+      ],
+    )
+  }
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): Background {
+    Background(
+      Ui.parseColor(UiEngine.getString(value, "color")).default(Colors.black()),
+      UiEngine.maybeGet(value, "padding")
+        .map(v -> v as Geometry.InsetsGeometry _)
+        .default(Geometry.Insets::all(0.0)),
+      UiEngine.maybeGetString(value, "radius").flatMap(Ui.Dim::fromString),
+    )
+  }
+}
+
+extension class BorderLine {
+  const identifier: String = "borderline";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "color" => this.paint match {
+        | color @ Color _ -> UiEngine.SString(color.toWeb())
+        | _ -> invariant_violation("Engine manage only colors.")
+        },
+        "padding" => this.padding,
+      ],
+    )
+  }
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): BorderLine {
+    BorderLine{
+      padding => UiEngine.maybeGet(value, "padding")
+        .map(v -> v as Geometry.InsetsGeometry _)
+        .default(Geometry.Insets::all(0.0)),
+      paint => Ui.parseColor(UiEngine.getString(value, "color")).default(
+        Colors.black(),
+      ),
+    }
+  }
+}
+
+extension class Padding {
+  const identifier: String = "padding";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (static::identifier, Map["padding" => this.padding])
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Padding {
+    Padding(
+      UiEngine.maybeGet(value, "padding")
+        .map(v -> v as Geometry.InsetsGeometry _)
+        .default(Geometry.Insets::all(0.0)),
+    )
+  }
+}
+
+extension class Nested {
+  const identifier: String = "nested";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map["decorations" => UiEngine.SArray(this.decorations)],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Nested {
+    Nested(
+      UiEngine.maybeGetArray(value, "decorations")
+        .map(a -> a.map(v -> v as Decoration _))
+        .default(Array[]),
+    )
+  }
+}
+
+extension class Shadow {
+  //
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    todo("Ui.Shadow.serialize")
+  }
+
+  static fun deserialize(_value: Map<String, UiEngine.Serializable>): this {
+    todo("Ui.Shadow.deserialize")
+  }
+}
+
+extension base class EndLine extends UiEngine.SObject {
+  const identifier: String = "endline";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(
+          this match {
+          | CR() -> 0
+          | LF() -> 1
+          | CRLF() -> 2
+          },
+        ),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): EndLine {
+    UiEngine.getInt(value, "type") match {
+    | 1 -> LF()
+    | 2 -> CRLF()
+    | 0
+    | _ ->
+      CR()
+    }
+  }
+
+  static fun fromSerializable(obj: UiEngine.Serializable): EndLine {
+    obj match {
+    | x @ EndLine _ -> x
+    | _ -> SKFS.cast_violation("Ui.EndLine", obj)
+    }
+  }
+}
+
+extension base class Indentation extends UiEngine.SObject {
+  const identifier: String = "indentation";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(
+          this match {
+          | Space _ -> 0
+          | Tabulation _ -> 1
+          },
+        ),
+        "size" => UiEngine.SInt(this.size),
+      ],
+    )
+  }
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): Indentation {
+    UiEngine.getInt(value, "type") match {
+    | 1 -> Tabulation(UiEngine.getInt(value, "size"))
+    | 0
+    | _ ->
+      Space(UiEngine.getInt(value, "size"))
+    }
+  }
+
+  static fun fromSerializable(obj: UiEngine.Serializable): Indentation {
+    obj match {
+    | x @ Indentation _ -> x
+    | _ -> SKFS.cast_violation("Ui.Indentation", obj)
+    }
+  }
+}
+
+extension class Position extends UiEngine.SObject {
+  const identifier: String = "position";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "line" => UiEngine.SInt(this.line),
+        "column" => UiEngine.SInt(this.column),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Position {
+    Position(UiEngine.getInt(value, "line"), UiEngine.getInt(value, "column"))
+  }
+
+  static fun fromSerializable(obj: UiEngine.Serializable): Position {
+    obj match {
+    | x @ Position _ -> x
+    | _ -> SKFS.cast_violation("Ui.Position", obj)
+    }
+  }
+}
+
+extension class Portion extends UiEngine.SObject {
+  const identifier: String = "portion";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (static::identifier, Map["start" => this.start, "end" => this.end])
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): this {
+    Portion(
+      Position::fromSerializable(value.get("start")),
+      Position::fromSerializable(value.get("end")),
+    )
+  }
+
+  static fun fromSerializable(obj: UiEngine.Serializable): Portion {
+    obj match {
+    | x @ Portion _ -> x
+    | _ -> SKFS.cast_violation("Ui.Portion", obj)
+    }
+  }
+}
+
+fun checkSerializable(
+  type_: String,
+  value: Map<String, UiEngine.Serializable>,
+): ?UiEngine.Serializable {
+  if (type_ == Size::identifier) {
+    Some(Size::deserialize(value))
+  } else if (type_ == Background::identifier) {
+    Some(Background::deserialize(value))
+  } else if (type_ == BorderLine::identifier) {
+    Some(BorderLine::deserialize(value))
+  } else if (type_ == Padding::identifier) {
+    Some(Padding::deserialize(value))
+  } else if (type_ == Nested::identifier) {
+    Some(Nested::deserialize(value))
+  } else if (type_ == UiFlex.Configuration::identifier) {
+    Some(UiFlex.Configuration::deserialize(value))
+  } else if (type_ == UiStack.Configuration::identifier) {
+    Some(UiStack.Configuration::deserialize(value))
+  } else if (type_ == UiDialogs.QType::identifier) {
+    Some(UiDialogs.QType::deserialize(value))
+  } else if (type_ == Geometry.InsetsGeometry::identifier) {
+    Some(Geometry.InsetsGeometry::deserialize(value))
+  } else if (type_ == Separation::identifier) {
+    Some(Separation::deserialize(value))
+  } else if (type_ == Shortcut::identifier) {
+    Some(Shortcut::deserialize(value))
+  } /*else if (type_ == UiTexturable.Impl::identifier) {
+  Some(UiTexturable.Impl::deserialize(value))
+  }*/ else if (type_ == BoxConstraints::identifier) {
+    Some(BoxConstraints::deserialize(value))
+  } else {
+    checkVariables(type_, value)
+  }
+}
+
+extension base class Configuration extends UiEngine.SObject
+
+extension class DummyConfiguration {
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    dummy()
+  }
+
+  static fun deserialize(_value: Map<String, UiEngine.Serializable>): this {
+    dummy()
+  }
+}
+
+module end;
+
+module UiFlex;
+
+extension class Configuration {
+  const identifier: String = "flexConf";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "flex" => UiEngine.SInt(this.flex),
+        "fitLoose" => UiEngine.SBool(this.fit == Loose()),
+        "ignoreCross" => UiEngine.SBool(this.ignoreCross),
+      ],
+    )
+  }
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): Configuration {
+    Configuration{
+      flex => UiEngine.getInt(value, "flex"),
+      fit => if (UiEngine.getBool(value, "fitLoose")) Loose() else Tight(),
+      ignoreCross => UiEngine.getBool(value, "ignoreCross"),
+    }
+  }
+}
+
+module end;
+
+module UiStack;
+
+extension class Configuration {
+  const identifier: String = "stackConf";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "fit" => UiEngine.SInt(
+          this.fit match {
+          | Loose() -> 0
+          | Expand() -> 1
+          | Passthrough() -> 2
+          },
+        ),
+        "visible" => UiEngine.SBool(this.overflow == Visible()),
+        "opaque" => UiEngine.SBool(this.opaque),
+      ],
+    )
+  }
+
+  static fun deserialize(
+    value: Map<String, UiEngine.Serializable>,
+  ): Configuration {
+    Configuration{
+      fit => UiEngine.getInt(value, "fit") match {
+      | 0 -> Loose()
+      | 1 -> Expand()
+      | 2
+      | _ ->
+        Passthrough()
+      },
+      overflow => if (UiEngine.getBool(value, "visible")) Visible() else Clip(),
+      opaque => UiEngine.getBool(value, "opaque"),
+    }
+  }
+}
+
+module end;
+
+module UiDialogs;
+
+extension base class QType extends UiEngine.SObject {
+  const identifier: String = "questionType";
+
+  fun code(): Int
+  | YesNo _ -> 0
+  | AcceptDecline _ -> 1
+  | AgreeDisagree _ -> 2
+  | ConfirmDismiss _ -> 3
+  | QCustom _ -> 4
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>)
+  | YesNo(withNeutral) ->
+    (
+      static::identifier,
+      Map[
+        "kind" => UiEngine.SInt(0),
+        "withNeutral" => UiEngine.SBool(withNeutral),
+      ],
+    )
+  | AcceptDecline(withNeutral) ->
+    (
+      static::identifier,
+      Map[
+        "kind" => UiEngine.SInt(1),
+        "withNeutral" => UiEngine.SBool(withNeutral),
+      ],
+    )
+  | AgreeDisagree(withNeutral) ->
+    (
+      static::identifier,
+      Map[
+        "kind" => UiEngine.SInt(2),
+        "withNeutral" => UiEngine.SBool(withNeutral),
+      ],
+    )
+  | ConfirmDismiss(withNeutral) ->
+    (
+      static::identifier,
+      Map[
+        "kind" => UiEngine.SInt(3),
+        "withNeutral" => UiEngine.SBool(withNeutral),
+      ],
+    )
+  | QCustom(confirm, dismiss, optNeutral) ->
+    (
+      static::identifier,
+      Map[
+        "kind" => UiEngine.SInt(4),
+        "confirm" => confirm,
+        "dismiss" => dismiss,
+        "neutral" => UiEngine.SOption(optNeutral),
+      ],
+    )
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): QType {
+    UiEngine.maybeGetInt(value, "kind")
+      .map(kind ->
+        kind match {
+        | 1 ->
+          AcceptDecline(
+            UiEngine.maybeGetBool(value, "withNeutral").default(false),
+          )
+        | 2 ->
+          AgreeDisagree(
+            UiEngine.maybeGetBool(value, "withNeutral").default(false),
+          )
+        | 3 ->
+          ConfirmDismiss(
+            UiEngine.maybeGetBool(value, "withNeutral").default(false),
+          )
+        | 4 ->
+          QCustom(
+            UiEngine.maybeGet(value, "confirm")
+              .map(Text::fromSerializable)
+              .default(!"Yes"),
+            UiEngine.maybeGet(value, "dismiss")
+              .map(Text::fromSerializable)
+              .default(!"No"),
+            UiEngine.maybeGet(value, "neutral").map(Text::fromSerializable),
+          )
+        | _ -> YesNo(UiEngine.maybeGetBool(value, "withNeutral").default(false))
+        }
+      )
+      .default(YesNo());
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): QType {
+    s match {
+    | t @ QType _ -> t
+    | _ -> SKFS.cast_violation("UiEngine.QType", s)
+    }
+  }
+}
+
+module end;
+
+module UiTree;
+
+extension class Item extends UiEngine.SObject {
+  //
+  const identifier: String = "treeitem";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "text" => this.text,
+        "tooltip" => UiEngine.SOption(this.tooltip),
+        "icon" => UiEngine.SOption(this.icon),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Item {
+    Item{
+      text => Text::fromSerializable(value.get("text")),
+      icon => UiEngine.maybeGet(value, "icon").map(
+        UiIcon.Description::fromSerializable,
+      ),
+      tooltip => UiEngine.maybeGet(value, "tooltip").map(
+        Text::fromSerializable,
+      ),
+      leaf => UiEngine.maybeGet(value, "items").isNone(),
+    }
+  }
+}
+
+module end;

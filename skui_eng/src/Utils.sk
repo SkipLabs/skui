@@ -1,0 +1,785 @@
+module UiEngine;
+
+fun optInt(serializable: Serializable): ?Int {
+  serializable match {
+  | SInt(v)
+  | SOption(Some(SInt(v))) ->
+    Some(v)
+  | SFloat(v)
+  | SOption(Some(SFloat(v))) ->
+    Some(v.toInt())
+  | SString(v)
+  | SOption(Some(SString(v))) ->
+    v.toIntOption() match {
+    | Some(iv) -> Some(iv)
+    | _ -> v.toFloatOption().map(v -> v.toInt())
+    }
+  | SBool(v)
+  | SOption(Some(SBool(v))) ->
+    Some(if (v) 1 else 0)
+  | _ -> None()
+  }
+}
+
+fun optFloat(serializable: Serializable): ?Float {
+  serializable match {
+  | SInt(v)
+  | SOption(Some(SInt(v))) ->
+    Some(v.toFloat())
+  | SFloat(v)
+  | SOption(Some(SFloat(v))) ->
+    Some(v)
+  | SString(v)
+  | SOption(Some(SString(v))) ->
+    v.toIntOption() match {
+    | Some(iv) -> Some(iv.toFloat())
+    | _ -> v.toFloatOption()
+    }
+  | SBool(v)
+  | SOption(Some(SBool(v))) ->
+    Some(if (v) 1.0 else 0.0)
+  | _ -> None()
+  }
+}
+
+fun optString(serializable: Serializable): ?String {
+  serializable match {
+  | SInt(v)
+  | SOption(Some(SInt(v))) ->
+    Some(v.toString())
+  | SFloat(v)
+  | SOption(Some(SFloat(v))) ->
+    Some(v.toString())
+  | SString(v)
+  | SOption(Some(SString(v))) ->
+    Some(v)
+  | SBool(v)
+  | SOption(Some(SBool(v))) ->
+    Some(v.toString())
+  | v @ Text _ -> Some(v.toString())
+  | SOption(Some(v @ Text _)) -> Some(v.toString())
+  | _ -> None()
+  }
+}
+
+fun optText(serializable: Serializable): ?Text {
+  serializable match {
+  | v @ Text _ -> Some(v)
+  | SOption(Some(v @ Text _)) -> Some(v)
+  | _ -> optString(serializable).map(str -> Raw(str))
+  }
+}
+
+fun optBool(serializable: Serializable): ?Bool {
+  serializable match {
+  | SInt(v)
+  | SOption(Some(SInt(v))) ->
+    Some(v != 0)
+  | SFloat(v)
+  | SOption(Some(SFloat(v))) ->
+    Some(!Math.like(v, 0.0))
+  | SString(v)
+  | SOption(Some(SString(v))) ->
+    Some(v == "true")
+  | SBool(v)
+  | SOption(Some(SBool(v))) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun optRange(serializable: Serializable): ?Range {
+  serializable match {
+  | v @ Range _
+  | SOption(Some(v @ Range _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun optStyle(serializable: Serializable): ?Text.Style {
+  serializable match {
+  | v @ Text.Style _
+  | SOption(Some(v @ Text.Style _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun optDecoration(serializable: Serializable): ?Ui.Decoration {
+  serializable match {
+  | v @ Ui.Decoration _
+  | SOption(Some(v @ Ui.Decoration _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun optConstraints(serializable: Serializable): ?Ui.BoxConstraints {
+  serializable match {
+  | v @ Ui.BoxConstraints _
+  | SOption(Some(v @ Ui.BoxConstraints _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun optStatus(serializable: Serializable): ?Status {
+  serializable match {
+  | v @ Status _
+  | SOption(Some(v @ Status _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun optPicture(_serializable: Serializable): ?Ui.Picture {
+  todo("UiEngine.optPicture")
+  /*serializable match {
+  | v @ Ui.Picture _
+  | SOption(Some(v @ Ui.Picture _)) ->
+    Some(v)
+  | _ -> None()
+  }*/
+}
+
+fun optSeparation(serializable: Serializable): ?Ui.Separation {
+  serializable match {
+  | v @ Ui.Separation _
+  | SOption(Some(v @ Ui.Separation _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun optIcon(serializable: Serializable): ?UiIcon.Description {
+  serializable match {
+  | v @ UiIcon.Description _
+  | SOption(Some(v @ UiIcon.Description _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
+fun expectArray(serializable: Serializable): Array<Serializable> {
+  serializable match {
+  | v @ SArray _
+  | SOption(Some(v @ SArray _)) ->
+    v.value
+  | _ -> SKFS.cast_violation("UiEngine.SArray", serializable)
+  }
+}
+
+fun expectString(serializable: Serializable): String {
+  serializable match {
+  | SInt(v)
+  | SOption(Some(SInt(v))) ->
+    v.toString()
+  | SFloat(v)
+  | SOption(Some(SFloat(v))) ->
+    v.toString()
+  | SString(v)
+  | SOption(Some(SString(v))) ->
+    v
+  | SBool(v)
+  | SOption(Some(SBool(v))) ->
+    v.toString()
+  | _ -> SKFS.cast_violation("showable value", serializable)
+  }
+}
+
+fun widgetableToWidget(
+  context: mutable SKFS.Context,
+  root: UiRoot.Storage,
+  prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  value: ?Widgetable,
+): ?Ui.Widget {
+  value.flatMap(w ->
+    w match {
+    | d @ Description _ ->
+      Some(d.build(context, context.timeStamp().toString(), root, prebuilt))
+    | r @ Renderable _ ->
+      prebuilt(context, r.getId()) match {
+      | Some(pb) -> Some(pb)
+      | _ ->
+        r.render(context).map(d ->
+          d.build(context, context.timeStamp().toString(), root, prebuilt)
+        )
+      }
+    }
+  )
+}
+
+fun toOptGetter<T: frozen>(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+  propConv: UiJSONProp.Property ~> Ui.GetterOne<?T, Bool>,
+  optConv: Serializable ~> ?T,
+  fileConv: SKFS.File ~> T,
+): Ui.GetterOne<?T, Bool> {
+  optVar match {
+  | Some(s) ->
+    s match {
+    | Ui.JSONProp(name, optPath, kind) ->
+      kind match {
+      | Ui.PProp() ->
+        propConv(UiJSONProp.Property::forName(context, optPath, name))
+      | Ui.PCombined() ->
+        propConv(
+          UiJSONProp.Property::forName(
+            context,
+            optPath match {
+            | Some(p) -> Some(`${p}/combined`)
+            | _ -> Some("combined")
+            },
+            name,
+          ),
+        )
+      | Ui.PLoadable() ->
+        optHandle = optPath.map(path ->
+          SKFS.LHandle(SKFS.Loadable::forFile, SKFS.DirName::create(path))
+        );
+        (ctx, iu) ~>
+          optHandle
+            .flatMap(hdl -> hdl.maybeGetValue(ctx, SKFS.StrID(name), iu))
+            .flatMap(loadable -> loadable.maybeGet(fileConv))
+      | Ui.PHandle() ->
+        optHandle = optPath.map(path ->
+          SKFS.EHandle(fileConv, SKFS.DirName::create(path))
+        );
+        (ctx, iu) ~>
+          optHandle.flatMap(hdl -> hdl.maybeGetValue(ctx, SKFS.StrID(name), iu))
+      }
+    | _ -> Ui.defaultOne(optConv(s))
+    }
+  | _ -> Ui.defaultOne(None())
+  };
+}
+
+fun toBoolOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Bool, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptBoolGetter(),
+    optBool,
+    f ~> SKFS.BoolFile::fromFile(f).value,
+  )
+}
+
+fun toIntOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Int, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptIntGetter(),
+    optInt,
+    f ~> SKFS.IntFile::fromFile(f).value,
+  )
+}
+
+fun toFloatOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Float, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptFloatGetter(),
+    optFloat,
+    f ~> SKFS.FloatFile::fromFile(f).value,
+  )
+}
+
+fun toIconOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?UiIcon.Description, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptValueGetter(jsv ~> optIcon(fromJSON(jsv))),
+    optIcon,
+    UiIcon.Description::fromFile,
+  )
+}
+
+fun toDecorationOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Ui.Decoration, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptValueGetter(jsv ~> optDecoration(fromJSON(jsv))),
+    optDecoration,
+    Ui.Decoration::forFile,
+  )
+}
+
+fun toConstraintsOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Ui.BoxConstraints, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptValueGetter(jsv ~> optConstraints(fromJSON(jsv))),
+    optConstraints,
+    Ui.BoxConstraints::fromFile,
+  )
+}
+
+fun toTextOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Text, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptValueGetter(jsv ~> optText(fromJSON(jsv))),
+    optText,
+    file ~>
+      file match {
+      | t @ Text _ -> t
+      | str @ SKFS.StringFile _ -> Raw(str.value)
+      | i @ SKFS.IntFile _ -> Raw(i.value.toString())
+      | f @ SKFS.FloatFile _ -> Raw(f.value.toString())
+      | b @ SKFS.BoolFile _ -> Raw(b.value.toString())
+      | _ -> Raw("")
+      }
+    ,
+  )
+}
+
+fun toPictureOptGetter(
+  _context: readonly SKFS.Context,
+  _optVar: ?Serializable,
+): Ui.GetterOne<?Ui.Picture, Bool> {
+  todo("UiEngine.toPictureOptGetter")
+  /*toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptValueGetter(jsv ~> optPicture(fromJSON(jsv))),
+    optPicture,
+    Picture::forFile,
+  )*/
+}
+
+fun toRangeOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Range, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptValueGetter(jsv ~> optRange(fromJSON(jsv))),
+    optRange,
+    Range::fromFile,
+  )
+}
+
+fun toStyleOptGetter(
+  context: readonly SKFS.Context,
+  optVar: ?Serializable,
+): Ui.GetterOne<?Text.Style, Bool> {
+  toOptGetter(
+    context,
+    optVar,
+    p ~> p.toOptValueGetter(jsv ~> optStyle(fromJSON(jsv))),
+    optStyle,
+    Text.Style::fromFile,
+  )
+}
+
+fun isPropertyNeeded(optS: ?Serializable, allowConst: Bool = true): Bool {
+  optS
+    .map(s ->
+      s match {
+      | Ui.JSONProp _ -> false
+      | UiJSONProp.Const _ -> !allowConst
+      | _ -> true
+      }
+    )
+    .default(true)
+}
+
+fun toJSONProperty(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+): UiJSONProp.Property {
+  optS.flatMap(s ->
+    s match {
+    | prop @ Ui.JSONProp _ -> Some(prop.toProperty(context))
+    | _ -> None()
+    }
+  ) match {
+  | Some(prop) -> prop
+  | _ ->
+    optScope = Some(`sc${context.timeStamp().value}`);
+    key = SKFS.StrID(`prop${context.timeStamp().value}`);
+    UiJSONProp.Property::initValues(
+      context,
+      optScope,
+      Array[(key, optS.map(toJSON))],
+    );
+    UiJSONProp.Property::forStrID(context, optScope, key)
+  }
+}
+
+fun toJSONValueProperty(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+): Ui.JSONProperty {
+  optS.flatMap(s ->
+    s match {
+    | prop @ Ui.JSONProp _ -> Some(prop.toProperty(context))
+    | c @ UiJSONProp.Const _ -> Some(c)
+    | _ -> None()
+    }
+  ) match {
+  | Some(prop) -> prop
+  | _ ->
+    optScope = Some(`sc${context.timeStamp().value}`);
+    key = SKFS.StrID(`prop${context.timeStamp().value}`);
+    UiJSONProp.Property::initValues(
+      context,
+      optScope,
+      Array[(key, optS.map(toJSON))],
+    );
+    UiJSONProp.Property::forStrID(context, optScope, key)
+  }
+}
+
+class WidgetHandle(hdl: SKFS.EHValue<Ui.WidgetFile>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ WidgetHandle _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.WidgetHandle", obj)
+    }
+  }
+}
+
+fun isWidgetable(s: Serializable): Bool {
+  s match {
+  | Widgetable _
+  | Ui.JSONProp _ ->
+    true
+  | _ -> false
+  }
+}
+
+fun widgetPipeline(
+  context: mutable SKFS.Context,
+  property: UiJSONProp.Property,
+  root: UiRoot.Storage,
+  prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget = (_ctx, _name) ~>
+    None(),
+): SKFS.EHValue<Ui.WidgetFile> {
+  dirname = property.valueHdl.getChildDirName;
+  verifiedHdl = property.valueHdl.mapChild(
+    WidgetableFile::fromFile,
+    context,
+    "verifiedwidget/",
+    jsv ~>
+      WidgetableFile(
+        fromJSON(jsv) match {
+        | widget @ Widgetable _
+        | SOption(Some(widget @ Widgetable _)) ->
+          widget
+        | _ -> // Invalid Widget widget
+          UiEngine.Indicator{}
+        },
+      )
+    ,
+  );
+  renderablesHdl = verifiedHdl.hdl.contextWriterKeyMap(
+    RenderableFile::fromFile,
+    context,
+    dirname("renderables/"),
+    (_context, writer, _key, widgetable) ~> {
+      collector: Renderable -> void = r -> {
+        id = r.getId();
+        writer.write(SKFS.StrID(id), RenderableFile(r));
+      };
+      widgetable.value match {
+      | r @ Renderable _ -> collector(r)
+      | d @ Description _ -> d.collect(collector)
+      }
+    },
+  );
+  renderedsHdl = renderablesHdl
+    .contextWriterKeyMap(
+      DescriptionFile::fromFile,
+      context,
+      dirname("descriptions/"),
+      (context, writer, key, renderable) ~> {
+        desc = renderable.value.render(context).default(UiEngine.Indicator{});
+        writer.write(key, DescriptionFile(desc))
+      },
+    )
+    .contextWriterKeyMap(
+      Ui.WidgetFile::fromFile,
+      context,
+      dirname("rendereds/"),
+      (context, writer, key, description) ~> {
+        widget = description.value.build(
+          context,
+          key.toString(),
+          root,
+          prebuilt,
+        );
+        writer.write(key, Ui.WidgetFile(widget))
+      },
+    );
+  cPrebuilt = (ctx, name) ~>
+    renderedsHdl.maybeGet(ctx, SKFS.StrID(name)) match {
+    | None() -> prebuilt(ctx, name)
+    | v -> v.map(wf -> wf.widget)
+    };
+  SKFS.EHValue(
+    verifiedHdl.mapContextWriter(
+      Ui.WidgetFile::fromFile,
+      context,
+      dirname("built/"),
+      (context, writer, key, widgetable) ~> {
+        widget = widgetable.value match {
+        | r @ Renderable _ ->
+          renderedsHdl.get(context, SKFS.StrID(r.getId())).widget
+        | d @ Description _ -> d.build(context, key.toString(), root, cPrebuilt)
+        };
+        writer.write(key, Ui.WidgetFile(widget))
+      },
+    ),
+    verifiedHdl.key,
+  )
+}
+
+fun toWidgetHandle(
+  context: mutable SKFS.Context,
+  prop: Ui.JSONProp,
+  root: UiRoot.Storage,
+  prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget = (_ctx, _name) ~>
+    None(),
+): WidgetHandle {
+  property = prop.toProperty(context);
+  WidgetHandle(widgetPipeline(context, property, root, prebuilt))
+}
+
+fun toWidgetsCollection(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+  root: UiRoot.Storage,
+  prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+): Ui.WidgetsCollection {
+  property = toJSONProperty(context, optS);
+  dirname = property.valueHdl.getChildDirName;
+  verifiedVarsHdl = property.valueHdl.mapChild(
+    file ~>
+      file match {
+      | x @ SArray _ -> x
+      | _ -> invariant_violation("Must be UiEngine.SArray")
+      },
+    context,
+    "verifiedwidgets/",
+    jsv ~>
+      fromJSON(jsv) match {
+      | arr @ SArray _ -> SArray(arr.value.filter(isWidgetable))
+      | s if (isWidgetable(s)) -> SArray(Array[s])
+      | _ -> SArray(Array[])
+      }
+    ,
+  );
+  widgetVarsHdl = verifiedVarsHdl.mapContextWriterChild(
+    f ~> f,
+    context,
+    "splittedwidgets/",
+    (_context, writer, _key, array) ~> {
+      keys = mutable Vector<SKFS.BaseName>[];
+      array.value.each(s -> {
+        sk = SKFS.IID(hash(s));
+        keys.push(sk);
+        writer.write(sk, s)
+      });
+      writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
+      writer.write(SKFS.KSize(), SKFS.IntFile(keys.size()));
+    },
+  );
+  renderablesHdl = widgetVarsHdl.contextWriterKeyMap(
+    RenderableFile::fromFile,
+    context,
+    dirname("renderables/"),
+    (_context, writer, _key, file) ~> {
+      collector: Renderable -> void = r -> {
+        writer.write(SKFS.StrID(r.getId()), RenderableFile(r));
+      };
+      file match {
+      | r @ Renderable _ -> collector(r)
+      | d @ Description _ -> d.collect(collector)
+      | _ -> void
+      }
+    },
+  );
+  propertiesHdl = widgetVarsHdl.contextWriterKeyMap(
+    WidgetHandle::fromFile,
+    context,
+    dirname("properties/"),
+    (context, writer, key, file) ~> {
+      file match {
+      | prop @ Ui.JSONProp _ ->
+        writer.write(key, toWidgetHandle(context, prop, root))
+      | _ -> void
+      }
+    },
+  );
+  descriptionsHdl = renderablesHdl.contextWriterKeyMap(
+    DescriptionFile::fromFile,
+    context,
+    dirname("descriptions/"),
+    (context, writer, key, renderable) ~> {
+      writer.write(
+        key,
+        DescriptionFile(
+          renderable.value.render(context).default(UiEngine.Indicator{}),
+        ),
+      )
+    },
+  );
+  renderedsHdl = descriptionsHdl.contextWriterKeyMap(
+    Ui.WidgetFile::fromFile,
+    context,
+    dirname("rendereds/"),
+    (context, writer, key, description) ~> {
+      widget = description.value.build(context, key.toString(), root, prebuilt);
+      writer.write(key, Ui.WidgetFile(widget))
+    },
+  );
+  cPrebuilt = (ctx, name) ~>
+    renderedsHdl.maybeGet(ctx, SKFS.StrID(name)) match {
+    | None() -> prebuilt(ctx, name)
+    | v -> v.map(wf -> wf.widget)
+    };
+  widgetsHdl = widgetVarsHdl.contextWriterKeyMap(
+    f ~> f,
+    context,
+    dirname("built/"),
+    (context, writer, key, file) ~> {
+      toWrite = file match {
+      | r @ Renderable _ -> renderedsHdl.get(context, SKFS.StrID(r.getId()))
+      | d @ Description _ ->
+        Ui.WidgetFile(
+          d.build(context, `${key}#${context.timeStamp()}`, root, cPrebuilt),
+        )
+      | Ui.JSONProp _ -> propertiesHdl.get(context, key).hdl.get(context)
+      | _ -> file
+      };
+      writer.write(key, toWrite)
+    },
+  );
+  Ui.HandledCollection(widgetsHdl)
+}
+
+fun toWidgetGetter(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+  root: UiRoot.Storage,
+  prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+): Ui.Getter<Ui.Widget> {
+  property = toJSONProperty(context, optS);
+  hdl = widgetPipeline(context, property, root, prebuilt);
+  ctx ~> hdl.get(ctx, false).widget;
+}
+
+fun toOptWidgetGetter(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+  root: UiRoot.Storage,
+  prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+): Ui.Getter<?Ui.Widget> {
+  default: ?Ui.Widget = None();
+  optS
+    .map(s -> {
+      property = toJSONProperty(context, Some(s));
+      hdl = widgetPipeline(context, property, root, prebuilt);
+      ctx ~> hdl.maybeGet(ctx, false).map(wf -> wf.widget);
+    })
+    .default(Ui.default(default));
+}
+
+fun toStringPropOptGetter(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+): Ui.GetterOne<?Ui.StringProperty, Bool> {
+  default: ?Ui.StringProperty = None();
+  optS
+    .map(s -> {
+      property = toJSONValueProperty(context, Some(s));
+      strProp = UiStringProp.JsonableEng(property);
+      Ui.defaultOne(Some(strProp));
+    })
+    .default(Ui.defaultOne(default));
+}
+
+fun toIntPropOptGetter(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+): Ui.GetterOne<?Ui.IntProperty, Bool> {
+  default: ?Ui.IntProperty = None();
+  optS
+    .map(s -> {
+      property = toJSONValueProperty(context, Some(s));
+      strProp = UiIntProp.Jsonable(property);
+      Ui.defaultOne(Some(strProp));
+    })
+    .default(Ui.defaultOne(default));
+}
+
+fun toRangePropOptGetter(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+): Ui.GetterOne<?Ui.RangeProperty, Bool> {
+  default: ?Ui.RangeProperty = None();
+  optS
+    .map(s -> {
+      property = toJSONValueProperty(context, Some(s));
+      strProp = UiRangeProp.Jsonable(property);
+      Ui.defaultOne(Some(strProp));
+    })
+    .default(Ui.defaultOne(default));
+}
+
+fun toStatusPropOptGetter(
+  context: mutable SKFS.Context,
+  optS: ?Serializable,
+): Ui.GetterOne<?Ui.StatusProperty, Bool> {
+  default: ?Ui.StatusProperty = None();
+  optS
+    .map(s -> {
+      property = toJSONValueProperty(context, Some(s));
+      strProp = UiStatusProp.Jsonable(property);
+      Ui.defaultOne(Some(strProp));
+    })
+    .default(Ui.defaultOne(default));
+}
+
+fun collect(s: Serializable, collector: Renderable -> void): void {
+  s match {
+  | a @ SArray _
+  | SOption(Some(a @ SArray _)) ->
+    a.value.each(cs -> collect(cs, collector))
+  | v @ Description _
+  | SOption(Some(v @ Description _)) ->
+    v.collect(collector)
+  | r @ Renderable _
+  | SOption(Some(r @ Renderable _)) ->
+    collector(r)
+  | _ -> void
+  }
+}
+
+module end;

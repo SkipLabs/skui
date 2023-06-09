@@ -1,0 +1,71 @@
+module UiEngine;
+
+const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/engine/");
+
+class WidgetableFile(value: Widgetable) extends SKFS.File
+
+base class Widgetable extends SObject {
+  //
+  static fun fromSerializable(obj: Serializable): Widgetable {
+    obj match {
+    | x @ Widgetable _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Widgetable", obj)
+    }
+  }
+}
+
+class DescriptionFile(value: Description) extends SKFS.File
+
+base class Description{
+  optConfiguration: ?Ui.Configuration = None(),
+} extends Widgetable {
+  fun collect(Renderable -> void): void;
+  //
+  fun build(
+    context: mutable SKFS.Context,
+    name: String,
+    root: UiRoot.Storage,
+    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+  ): Ui.Widget;
+
+  static fun fromWidgetable(obj: Widgetable): Description {
+    obj match {
+    | x @ Description _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Description", obj)
+    }
+  }
+}
+
+class RenderableFile(value: Renderable) extends SKFS.File
+
+class Renderable(private eptr: SKFS.ExternalPointer) extends Widgetable {
+  //
+  static fun make(id: UInt32): this {
+    static(SKFS.ExternalPointer::create(id, deleteRenderable))
+  }
+
+  fun getId(): String {
+    `UiEngine.Renderable.${this.eptr.value}`
+  }
+
+  fun render(context: mutable SKFS.Context): ?Description {
+    // initScope
+    optScope = Some(`sc${context.timeStamp().value}`);
+    UiJSONProp.Property::init(context, optScope);
+    optCombined = Ui.combinedPath(optScope);
+    UiJSONProp.Property::initCombines(context, optCombined.fromSome());
+    natRender(this.eptr.value, optScope)
+      .map(JSON.decode)
+      .map(fromJSON)
+      .map(s ~> s as Description _)
+  }
+
+  static fun fromWidgetable(obj: Widgetable): Renderable {
+    obj match {
+    | x @ Renderable _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Renderable", obj)
+    }
+  }
+}
+
+module end;

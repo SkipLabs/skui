@@ -1,0 +1,218 @@
+const text_raw: Int = 0;
+const text_locale: Int = 1;
+const text_format: Int = 2;
+const text_texts: Int = 3;
+const text_date: Int = 4;
+const text_datetime: Int = 5;
+
+extension base class Text extends UiEngine.SObject {
+  const identifier: String = "text";
+
+  static fun fromString(str: String): Text {
+    RegExp.strMatchAll(str, "^\\[\\[([^\\]]*)\\]\\](.*)$") match {
+    | Some(elements) if (elements.size() == 1 && elements[0].size() == 3) ->
+      cat = elements[0][1];
+      txt = elements[0][2];
+      LocaleText(
+        str.sub(str.getIter().drop(txt.start), txt.size()),
+        str.sub(str.getIter().drop(cat.start), cat.size()).trim() match {
+        | "" -> None()
+        | c -> Some(c)
+        },
+      )
+    | _ -> Raw(str)
+    }
+  }
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>)
+  | Raw(str) ->
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(text_locale),
+        "value" => UiEngine.SString(str),
+      ],
+    )
+  | LocaleText(str, optCategory) ->
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(text_locale),
+        "value" => UiEngine.SString(str),
+        "category" => UiEngine.SOption(
+          optCategory.map(v -> UiEngine.SString(v)),
+        ),
+      ],
+    )
+  | Format(pattern, parameters) ->
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(text_format),
+        "pattern" => pattern,
+        "parameters" => UiEngine.SArray(parameters),
+      ],
+    )
+  | Texts(value) ->
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(text_texts),
+        "value" => UiEngine.SArray(value),
+      ],
+    )
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Text {
+    type_ = UiEngine.getInt(value, "type");
+    if (type_ == text_locale) {
+      LocaleText(
+        UiEngine.getString(value, "value"),
+        UiEngine.maybeGetString(value, "category"),
+      )
+    } else if (type_ == text_texts) {
+      Texts(UiEngine.getArray(value, "value").map(static::fromSerializable))
+    } else if (type_ == text_format) {
+      Format(
+        static::fromSerializable(value.get("pattern")),
+        UiEngine.getArray(value, "parameters").map(static::fromSerializable),
+      );
+    } else {
+      Raw(UiEngine.getString(value, "value"))
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Text {
+    s match {
+    | t @ Text _ -> t
+    | str @ UiEngine.SString _ -> static::fromString(str.value)
+    | _ -> SKFS.cast_violation("Text", s)
+    }
+  }
+}
+
+extension class Range extends UiEngine.SObject {
+  const identifier: String = "range";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "start" => UiEngine.SInt(this.start),
+        "end" => UiEngine.SInt(this.end),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Range {
+    Range(UiEngine.getInt(value, "start"), UiEngine.getInt(value, "end"))
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Range {
+    s match {
+    | t @ Range _ -> t
+    | _ -> SKFS.cast_violation("Range", s)
+    }
+  }
+
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Range _ -> x
+    | _ -> invariant_violation("Must be Range")
+    }
+  }
+}
+
+const status_ok: Int = 0;
+const status_valid: Int = 1;
+const status_running: Int = 2;
+const status_ko: Int = 3;
+
+const err_information: Int = 0;
+const err_warning: Int = 1;
+const err_error: Int = 2;
+
+fun levelToSerializable(level: Level): UiEngine.Serializable {
+  level match {
+  | Information() -> UiEngine.SInt(err_information)
+  | Warning() -> UiEngine.SInt(err_warning)
+  | Error() -> UiEngine.SInt(err_error)
+  }
+}
+
+fun levelFromSerializable(level: UiEngine.Serializable): Level {
+  value = (level as UiEngine.SInt _).value;
+  if (value == err_information) Information() else if (value == err_warning) {
+    Warning()
+  } else {
+    Error()
+  }
+}
+
+extension base class Status extends UiEngine.SObject {
+  const identifier: String = "status";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>)
+  | Running(optProgress) ->
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(status_running),
+        "progress" => UiEngine.SOption(optProgress.map(p -> UiEngine.SInt(p))),
+      ],
+    )
+  | OK _ -> (static::identifier, Map["type" => UiEngine.SInt(status_ok)])
+  | Valid _ -> (static::identifier, Map["type" => UiEngine.SInt(status_valid)])
+  | KO(optError, level) ->
+    (
+      static::identifier,
+      Map[
+        "type" => UiEngine.SInt(status_ko),
+        "level" => levelToSerializable(level),
+        "error" => UiEngine.SOption(optError),
+      ],
+    )
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Status {
+    type_ = UiEngine.getInt(value, "type");
+    if (type_ == status_ko) {
+      level = levelFromSerializable(value.get("level"));
+      optError = UiEngine.maybeGet(value, "error").map(err ->
+        err match {
+        | txt @ Text _ -> txt
+        | ss @ UiEngine.SString _ -> Text::fromString(ss.value)
+        | _ -> SKFS.cast_violation("String or Text", err)
+        }
+      );
+      KO(optError, level)
+    } else if (type_ == status_running) {
+      optProgress = UiEngine.maybeGetInt(value, "progress");
+      Running(optProgress)
+    } else if (type_ == status_valid) {
+      Valid()
+    } else {
+      OK()
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Status {
+    s match {
+    | t @ Status _ -> t
+    | _ -> SKFS.cast_violation("Status", s)
+    }
+  }
+}
+
+fun checkSerializable(
+  type_: String,
+  value: Map<String, UiEngine.Serializable>,
+): ?UiEngine.Serializable {
+  if (type_ == Status::identifier) {
+    Some(Status::deserialize(value))
+  } else if (type_ == Text::identifier) {
+    Some(Text::deserialize(value))
+  } else if (type_ == Range::identifier) {
+    Some(Range::deserialize(value))
+  } else {
+    None()
+  }
+}

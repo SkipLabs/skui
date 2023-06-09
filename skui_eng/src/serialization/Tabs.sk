@@ -1,0 +1,122 @@
+module UiEngine;
+
+extension class Tab extends UiEngine.SObject {
+  const identifier: String = "tab";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "id" => UiEngine.SString(this.id),
+        "widget" => UiEngine.SOption(this.optWidget),
+        "text" => UiEngine.SOption(this.optText),
+        "icon" => UiEngine.SOption(this.optIcon),
+        "tooltip" => UiEngine.SOption(this.optTooltip),
+        "discriminant" => UiEngine.SOption(this.optDiscriminant),
+        "badge" => UiEngine.SOption(this.optBadge),
+        "progress" => UiEngine.SOption(this.optProgress),
+        "disabled" => UiEngine.SOption(this.optDisabled),
+        "closable" => UiEngine.SOption(this.optClosable),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Tab {
+    Tab{
+      id => getString(value, "id"),
+      optWidget => maybeGet(value, "widget"),
+      optText => maybeGet(value, "text"),
+      optIcon => maybeGet(value, "icon"),
+      optTooltip => maybeGet(value, "tooltip"),
+      optDiscriminant => maybeGet(value, "discriminant"),
+      optBadge => maybeGet(value, "badge"),
+      optProgress => maybeGet(value, "progress"),
+      optDisabled => maybeGet(value, "disabled"),
+      optClosable => maybeGet(value, "closable"),
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Tab {
+    s match {
+    | x @ Tab _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Tab", s)
+    }
+  }
+}
+
+extension class Action extends UiEngine.SObject {
+  const identifier: String = "action";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "id" => UiEngine.SString(this.id),
+        "icon" => UiEngine.SOption(this.optIcon),
+        "tooltip" => UiEngine.SOption(this.optTooltip),
+        "disabled" => UiEngine.SOption(this.optDisabled),
+        "action" => UiEngine.SOption(this.optAction),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Action {
+    Action{
+      id => getString(value, "id"),
+      optIcon => maybeGet(value, "icon"),
+      optTooltip => maybeGet(value, "tooltip"),
+      optDisabled => maybeGet(value, "disabled"),
+      optAction => maybeGet(value, "action").map(External::fromSerializable),
+    }
+  }
+
+  static fun fromSerializable(s: UiEngine.Serializable): Action {
+    s match {
+    | x @ Action _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Action", s)
+    }
+  }
+}
+
+extension class Tabs extends UiEngine.SObject {
+  const identifier: String = "tabs";
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "tabs" => UiEngine.SOption(this.optTabs),
+        "actions" => UiEngine.SOption(this.optActions),
+        "active" => UiEngine.SOption(this.optActive),
+        "placeHolder" => UiEngine.SOption(this.optPlaceHolder),
+        "kind" => UiEngine.SOption(this.optKind),
+        "mode" => UiEngine.SOption(this.optMode),
+        "side" => UiEngine.SOption(this.optSide),
+        "minWidth" => UiEngine.SOption(this.optMinWidth),
+        "maxWidth" => UiEngine.SOption(this.optMaxWidth),
+        "iconOnTop" => UiEngine.SOption(this.optIconOnTop),
+        "tabCloser" => UiEngine.SOption(this.optTabsCloser),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Tabs {
+    Tabs{
+      optTabs => maybeGet(value, "tabs"),
+      optActions => maybeGet(value, "actions"),
+      optActive => maybeGet(value, "active"),
+      optPlaceHolder => maybeGet(value, "placeHolder"),
+      optKind => maybeGet(value, "kind"),
+      optMode => maybeGet(value, "mode"),
+      optSide => maybeGet(value, "side"),
+      optMinWidth => maybeGet(value, "minWidth"),
+      optMaxWidth => maybeGet(value, "maxWidth"),
+      optIconOnTop => maybeGet(value, "iconOnTop"),
+      optTabsCloser => maybeGet(value, "tabsCloser").map(
+        External::fromSerializable,
+      ),
+    }
+  }
+}
+
+module end;

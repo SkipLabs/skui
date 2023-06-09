@@ -1,0 +1,293 @@
+module UiEnginePicture;
+
+// TODO Manage scoping
+
+const dirName: SKFS.DirName = SKFS.DirName::create("/ui/engine/pictures/");
+const resizedDirName: SKFS.DirName = SKFS.DirName::create(
+  "/ui/engine/pictures/resized/",
+);
+
+const pictureHdl: SKFS.IHandle<Impl> = SKFS.IHandle(
+  SKFS.FileConverter(Impl::fromFile),
+  dirName,
+);
+
+const resizedHdl: SKFS.IHandle<Variable> = SKFS.IHandle(
+  SKFS.FileConverter(Variable::fromFile),
+  resizedDirName,
+);
+
+class Variable(optSuccess: ?UInt32, optError: ?Text) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Variable _ -> x
+    | _ -> SKFS.cast_violation("UiEnginePicture.Variable", obj)
+    }
+  }
+}
+
+class Key(
+  picture: UInt32,
+  width: UInt32,
+  height: UInt32,
+  oWidth: UInt32,
+  oHeight: UInt32,
+) extends SKFS.BaseName {
+  //
+  fun toString(): String {
+    `${this.picture}:${this.width}x${this.height}:${this.oWidth}x${
+      this.oHeight
+    }`;
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    other match {
+    | ok @ Key _ ->
+      (
+        this.picture,
+        this.width,
+        this.height,
+        this.oWidth,
+        this.oHeight,
+      ).compare((ok.picture, ok.width, ok.height, ok.oWidth, ok.oHeight))
+    | _ -> SKFS.cast_violation("UiEnginePicture.Key", other)
+    }
+  }
+}
+
+class RKey(
+  picture: UInt32,
+  width: UInt32,
+  height: UInt32,
+) extends SKFS.BaseName {
+  //
+  fun toString(): String {
+    `${this.picture}:${this.width}x${this.height}`;
+  }
+
+  fun sameCompare(other: SKFS.FileName): Order {
+    other match {
+    | ok @ Key _ ->
+      (this.picture, this.width, this.height).compare(
+        (ok.picture, ok.width, ok.height),
+      )
+    | _ -> SKFS.cast_violation("UiEnginePicture.RKey", other)
+    }
+  }
+}
+
+class Variables(hdl: SKFS.LHandle<SKFS.Loadable>) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Variables _ -> x
+    | _ -> SKFS.cast_violation("UiEnginePicture.Variables", obj)
+    }
+  }
+}
+
+fun log2Size(size: UInt32): UInt32 {
+  l2 = Math.log2(size.toInt());
+  l2Size = Math.intpow(2, l2);
+  if (l2Size < size) {
+    !l2Size = l2Size * 2;
+  };
+  UInt32::truncate(l2Size);
+}
+
+@always_inline
+fun f(v: UInt32): Float {
+  v.toFloat()
+}
+
+@always_inline
+fun i(v: Float): UInt32 {
+  UInt32::truncate(Math.ceil(v).toInt())
+}
+
+@always_inline
+fun s(v1: UInt32, v2: UInt32, factor: Float): UInt32 {
+  Math.max(v1, i(f(v2) * factor))
+}
+
+fun init(context: mutable SKFS.Context): void {
+  pictures = context.makeDir(Impl::fromFile, dirName, Array[]);
+  resized = context.makeDir(Variable::fromFile, resizedDirName, Array[]);
+  _ = SKFS.LHandle::lazy(
+    SKFS.Loadable::forFile,
+    context,
+    SKFS.DirName::make(resizedDirName, "cache/"),
+    (context, _self, key) ~> {
+      key match {
+      | tKey @ Key _ ->
+        (oWidth, oHeight) = (tKey.oWidth, tKey.oHeight);
+        if (oWidth > 0 && oHeight > 0) {
+          factor = if (oWidth > oHeight) {
+            (oHeight.toFloat() / oWidth.toFloat())
+          } else {
+            (oWidth.toFloat() / oHeight.toFloat())
+          };
+          width = if (oWidth > oHeight) {
+            s(tKey.width, tKey.height, 1.0 / factor)
+          } else {
+            s(tKey.width, tKey.height, factor)
+          };
+          height = if (oWidth > oHeight) {
+            s(tKey.height, tKey.width, factor)
+          } else {
+            s(tKey.height, tKey.width, 1.0 / factor)
+          };
+          maxSize = log2Size(Math.max(oWidth, oHeight));
+          refSize = log2Size(Math.max(width, height));
+          (refWidth, refHeight) = if (refSize < maxSize) {
+            min = UInt32::truncate((refSize.toFloat() * factor).toInt());
+            (
+              if (oWidth > oHeight) refSize else min,
+              if (oWidth > oHeight) min else refSize,
+            )
+          } else {
+            !refSize = maxSize;
+            (oWidth, oHeight)
+          };
+          optLoadable = resized
+            .maybeGet(context, RKey(tKey.picture, refWidth, refHeight))
+            .map(var ->
+              var.optSuccess
+                .map(p ->
+                  SKFS.Loaded(pictures.get(context, SKFS.IID(p.toInt())))
+                )
+                .default(SKFS.LoadFailed(var.optError))
+            );
+          load: (?SKFS.Loadable) -> SKFS.Loadable = optLoadable -> {
+            resize(tKey.picture, refWidth, refHeight);
+            optLoadable.default(SKFS.Loading())
+          };
+          optLoadable match {
+          | Some(l) -> l
+          | None() -> load(None())
+          }
+        } else {
+          SKFS.LoadFailed(Some(!"Empty image to display."))
+        }
+      | _ -> SKFS.cast_violation("UiEnginePicture.Key", key)
+      }
+    },
+    false,
+  );
+}
+
+class Impl private (
+  width: UInt32,
+  height: UInt32,
+  private optEptr: ?SKFS.ExternalPointer,
+) extends Ui.Picture, SKFS.File uses Hashable, HasClassName {
+  //
+  static fun empty(): this {
+    static(UInt32::truncate(0), UInt32::truncate(0), None())
+  }
+
+  fun getSize(): Geometry.ISize {
+    Geometry.ISize(this.width.toInt(), this.height.toInt())
+  }
+
+  fun resized(_width: Int, _height: Int): ?Ui.Picture {
+    print_string("TODO: UiEnginePicture.resized");
+    //resizedHdl.get()
+    Some(this)
+  }
+
+  static fun make(id: UInt32, oWidth: UInt32, oHeight: UInt32): this {
+    static(oWidth, oHeight, Some(SKFS.ExternalPointer::create(id, delete)))
+  }
+
+  fun optId(): ?Int {
+    this.optEptr.map(epr -> epr.value).map(v -> v.toInt())
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    Hashable.combine(h, this.optEptr.map(epr -> epr.value));
+  }
+}
+
+@cpp_extern("SKIP_UiEnginePicture_delete")
+private native fun delete(actor: UInt32): void;
+
+@cpp_extern("SKIP_UiEnginePicture_width")
+private native fun width(actor: UInt32): UInt32;
+
+@cpp_extern("SKIP_UiEnginePicture_height")
+private native fun height(actor: UInt32): UInt32;
+
+@cpp_extern("SKIP_UiEnginePicture_resize")
+private native fun resize(picture: UInt32, width: UInt32, height: UInt32): void;
+
+@cpp_extern("SKIP_UiEnginePicture_asTexture")
+private native fun asTexture(picture: UInt32, ctx: UInt32): UInt32;
+
+@export("SKIP_UiEnginePicture_register")
+fun register(id: UInt32, width: UInt32, height: UInt32): void {
+  SKFS.Context::withoutGc(context ~>
+    if (pictureHdl.exists(context)) {
+      pictureHdl.write(
+        context,
+        SKFS.IID(id.toInt()),
+        Impl::make(id, width, height),
+      )
+    }
+  )
+}
+
+@export("SKIP_UiEnginePicture_unregister")
+fun unregister(picture: UInt32): void {
+  SKFS.Context::withoutGc(context ~>
+    if (pictureHdl.exists(context)) {
+      pictureHdl.remove(context, SKFS.IID(picture.toInt()))
+    }
+  )
+}
+
+@export("SKIP_UiEnginePicture_resized")
+fun resized(
+  picture: UInt32,
+  width: UInt32,
+  height: UInt32,
+  optResult: ?UInt32,
+  optError: ?Text,
+): void {
+  SKFS.Context::withoutGc(context ~> {
+    if (resizedHdl.exists(context)) {
+      fsKey = RKey(picture, width, height);
+      if (optResult.isNone() && optError.isNone()) {
+        resizedHdl.remove(context, fsKey)
+      } else {
+        resizedHdl.write(context, fsKey, Variable(optResult, optError));
+      };
+      context.updateIfRoot();
+    } else {
+      print_error(`Texturable directory is missing.`);
+    }
+  });
+}
+
+fun pictureToTexturable(
+  picture: Ui.Picture,
+  linear: Bool = true,
+): ?GL.Texturable {
+  picture match {
+  | img @ Ui.Image _ ->
+    Some(GLTexture.Image(Some(img.data), linear, img.width, img.height))
+  | Ui.EmptyPicture _ -> None()
+  | i @ Impl _ ->
+    i.optId().map(id ->
+      GL.LamTexturable(
+        gl ~> gl.importTexture(asTexture(uint32(id), gl.id)),
+        i.width.toInt(),
+        i.height.toInt(),
+      )
+    )
+  }
+}
+
+module end;

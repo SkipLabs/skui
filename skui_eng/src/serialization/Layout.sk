@@ -1,0 +1,104 @@
+module UiEngine;
+
+extension class Wrap extends SObject {
+  const identifier: String = "wrap";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "widgets" => SOption(this.optWidgets),
+        "vertical" => SOption(this.optVertical),
+        "rigthToLeft" => SOption(this.optRigthToLeft),
+        "downToUp" => SOption(this.optDownToUp),
+        "mainAlignment" => SOption(this.optMainAlignment),
+        "crossAlignment" => SOption(this.optCrossAlignment),
+        "runAlignment" => SOption(this.optRunAlignment),
+        "spacing" => SOption(this.optSpacing),
+        "runSpacing" => SOption(this.optRunSpacing),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    Wrap{
+      optWidgets => maybeGet(value, "widgets"),
+      optVertical => maybeGet(value, "vertical"),
+      optRigthToLeft => maybeGet(value, "rigthToLeft"),
+      optDownToUp => maybeGet(value, "downToUp"),
+      optMainAlignment => maybeGet(value, "mainAlignment"),
+      optCrossAlignment => maybeGet(value, "crossAlignment"),
+      optRunAlignment => maybeGet(value, "runAlignment"),
+      optSpacing => maybeGet(value, "spacing"),
+      optRunSpacing => maybeGet(value, "runSpacing"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class Flex extends SObject {
+  const identifier: String = "flex";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "widgets" => SOption(this.optWidgets),
+        "vertical" => SOption(this.optVertical),
+        "rigthToLeft" => SOption(this.optRigthToLeft),
+        "downToUp" => SOption(this.optDownToUp),
+        "mainAlignment" => SOption(this.optMainAlignment),
+        "crossAlignment" => SOption(this.optCrossAlignment),
+        "maxSize" => SOption(this.optMaxSize),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    Flex{
+      optWidgets => maybeGet(value, "widgets"),
+      optVertical => maybeGet(value, "vertical"),
+      optRigthToLeft => maybeGet(value, "rigthToLeft"),
+      optDownToUp => maybeGet(value, "downToUp"),
+      optMainAlignment => maybeGet(value, "mainAlignment"),
+      optCrossAlignment => maybeGet(value, "crossAlignment"),
+      optMaxSize => maybeGet(value, "maxSize"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+extension class AspectRatio {
+  const identifier: String = "aspectratio";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "widget" => SOption(this.optWidget),
+        "ratio" => SOption(this.optRatio),
+        "centered" => SOption(this.optCentered),
+        "configuration" => SOption(this.optConfiguration),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): AspectRatio {
+    AspectRatio{
+      optWidget => maybeGet(value, "widget"),
+      optCentered => maybeGet(value, "centered"),
+      optRatio => maybeGet(value, "ratio"),
+      optConfiguration => maybeGet(value, "configuration").map(v ->
+        v as Ui.Configuration _
+      ),
+    }
+  }
+}
+
+module end;
