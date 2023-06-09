@@ -214,12 +214,6 @@ class Impl private (
 @cpp_extern("SKIP_UiEnginePicture_delete")
 private native fun delete(actor: UInt32): void;
 
-@cpp_extern("SKIP_UiEnginePicture_width")
-private native fun width(actor: UInt32): UInt32;
-
-@cpp_extern("SKIP_UiEnginePicture_height")
-private native fun height(actor: UInt32): UInt32;
-
 @cpp_extern("SKIP_UiEnginePicture_resize")
 private native fun resize(picture: UInt32, width: UInt32, height: UInt32): void;
 
@@ -253,16 +247,20 @@ fun resized(
   picture: UInt32,
   width: UInt32,
   height: UInt32,
-  optResult: ?UInt32,
+  result: UInt32,
   optError: ?Text,
 ): void {
   SKFS.Context::withoutGc(context ~> {
     if (resizedHdl.exists(context)) {
       fsKey = RKey(picture, width, height);
-      if (optResult.isNone() && optError.isNone()) {
+      if (result.toInt() == 0 && optError.isNone()) {
         resizedHdl.remove(context, fsKey)
       } else {
-        resizedHdl.write(context, fsKey, Variable(optResult, optError));
+        resizedHdl.write(
+          context,
+          fsKey,
+          Variable(if (result.toInt() > 0) Some(result) else None(), optError),
+        );
       };
       context.updateIfRoot();
     } else {

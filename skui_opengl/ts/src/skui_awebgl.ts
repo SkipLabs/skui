@@ -131,9 +131,11 @@ interface ToWasm {
 export class WebglShared implements Shared {
   getName = () => "webgl";
   start: (wId: int) => Promise<int>;
+  imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
 
   constructor(factory:  Factory) {
     this.start = (wId: int) => factory.createContext(wId).then(ctx => ctx.id);
+    this.imageAsTexture = factory.imageAsTexture;
   }
 }
 

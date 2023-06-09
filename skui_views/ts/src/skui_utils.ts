@@ -8,6 +8,7 @@ interface Views extends Shared {
 
 interface Webgl extends Shared {
     start: (wId: int) => Promise<int>;
+    imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
 }
 
 class Env implements Environment {
@@ -24,6 +25,7 @@ class Env implements Environment {
     base64Decode: (base64: String) => Uint8Array;
     update: () => void;
     start: (wId: int) => Promise<int>;
+    imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
     arguments: Array<string>;
     
     constructor(window: Window, navigator: Navigator) {
@@ -78,6 +80,7 @@ class Env implements Environment {
         let webgl = shared.get("webgl");
         if (webgl) {
             this.start = (webgl as Webgl).start;
+            this.imageAsTexture = (webgl as Webgl).imageAsTexture;
         }
         exports.skip_main();
     }

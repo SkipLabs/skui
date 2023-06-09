@@ -321,6 +321,10 @@ export class Factory {
     let message = ctx.getProgramInfoLog(program);
     return message ? this.utils!.exportString(message) : null;
   });
+  imageAsTexture = (ctx: int, image: HTMLImageElement) => {
+    let res = this.doOnContext(ctx, gl => gl.textureFromImage(image)); 
+    return res ? res : 0;
+  }
 }
 
 export class Context {
