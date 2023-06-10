@@ -1,0 +1,108 @@
+module UiEngineJS;
+
+@cpp_extern("SKIP_UiEngineJS_createObject")
+native fun createObject(): UInt32;
+
+@cpp_extern("SKIP_UiEngineJS_addToObject")
+native fun addToObject(object: UInt32, name: String, value: UInt32): void;
+
+@cpp_extern("SKIP_UiEngineJS_createArray")
+native fun createArray(): UInt32;
+
+@cpp_extern("SKIP_UiEngineJS_addToArray")
+native fun addToArray(array: UInt32, value: UInt32): void;
+
+@cpp_extern("SKIP_UiEngineJS_createNull")
+native fun createNull(): UInt32;
+
+@cpp_extern("SKIP_UiEngineJS_createNumber")
+native fun createNumber(value: Float): UInt32;
+
+@cpp_extern("SKIP_UiEngineJS_createString")
+native fun createString(value: String): UInt32;
+
+@cpp_extern("SKIP_UiEngineJS_createBool")
+native fun createBool(value: Bool): UInt32;
+
+@wasm_export("SKIP_UiEngineJS_toJS")
+fun toJS(json: JSON.Value): UInt32 {
+  json match {
+  | JSON.Object(value) ->
+    jso = createObject();
+    value.each((k, v) -> addToObject(jso, k, toJS(v)));
+    jso
+  | JSON.Array(value) ->
+    jsa = createArray();
+    value.each(v -> addToArray(jsa, toJS(v)));
+    jsa
+  | JSON.String(value) -> createString(value)
+  | JSON.IntNumber(value) -> createNumber(value.toFloat())
+  | JSON.FloatNumber(value) -> createNumber(value)
+  | JSON.Bool(value) -> createBool(value)
+  | JSON.Null() -> createNull()
+  }
+}
+
+@wasm_export("SKIP_JSON_startObject")
+fun startJSONObject(): mutable Map<String, JSON.Value> {
+  mutable Map<String, JSON.Value>[]
+}
+
+@wasm_export("SKIP_JSON_addToObject")
+fun addJSONValueToObject(
+  object: mutable Map<String, JSON.Value>,
+  name: String,
+  value: JSON.Value,
+): void {
+  object.add(name, value)
+}
+
+@wasm_export("SKIP_JSON_endObject")
+fun endJSONObject(object: mutable Map<String, JSON.Value>): JSON.Value {
+  JSON.Object(object.chill())
+}
+
+@wasm_export("SKIP_JSON_startArray")
+fun startJSONArray(): mutable Vector<JSON.Value> {
+  mutable Vector<JSON.Value>[]
+}
+
+@wasm_export("SKIP_JSON_addToArray")
+fun addJSONValueToArray(
+  array: mutable Vector<JSON.Value>,
+  value: JSON.Value,
+): void {
+  array.push(value)
+}
+
+@wasm_export("SKIP_JSON_endArray")
+fun endJSONArray(array: mutable Vector<JSON.Value>): JSON.Value {
+  JSON.Array(array.chill())
+}
+
+@wasm_export("SKIP_JSON_createNull")
+fun createJSONNull(): JSON.Value {
+  JSON.Null()
+}
+
+@wasm_export("SKIP_JSON_createIntNumber")
+fun createJSONIntNumber(value: UInt32): JSON.Value {
+  JSON.IntNumber(value.toInt())
+}
+
+@wasm_export("SKIP_JSON_createFloatNumber")
+fun createJSONFloatNumber(value: Float): JSON.Value {
+  JSON.FloatNumber(value)
+}
+
+@wasm_export("SKIP_JSON_createString")
+fun createJSONString(value: String): JSON.Value {
+  JSON.String(value)
+}
+
+@wasm_export("SKIP_JSON_createBool")
+fun createJSONBool(value: Bool): JSON.Value {
+  JSON.Bool(value)
+}
+
+module end;
