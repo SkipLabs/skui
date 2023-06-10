@@ -1,0 +1,59 @@
+module UiEngineHandle;
+
+// TODO Manage scoping
+
+const dirName: SKFS.DirName = SKFS.DirName::create("/ui/engine/handles/");
+
+const handlesHdl: SKFS.IHandle<Handle> = SKFS.IHandle(
+  SKFS.FileConverter(Handle::fromFile),
+  dirName,
+);
+
+class Handle private (
+  type_: String,
+  eptr: SKFS.ExternalPointer,
+) extends SKFS.File uses Hashable, HasClassName {
+  static fun make(id: UInt32, type_: String): this {
+    static(type_, SKFS.ExternalPointer::create(id, delete))
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.type_);
+    Hashable.combine(h, this.eptr.value);
+  }
+}
+
+fun init(context: mutable SKFS.Context): void {
+  _ = context.makeDir(Handle::fromFile, dirName, Array[]);
+}
+
+@cpp_extern("SKIP_UiEngineHandle_delete")
+private native fun delete(actor: UInt32): void;
+
+@cpp_extern("SKIP_UiEngineHandle_apply")
+private native fun apply(
+  actor: UInt32,
+  type_: String,
+  parameters: JSON.Array,
+): void;
+
+@export("SKIP_UiEngineHandle_register")
+fun register(id: UInt32, type_: String): void {
+  SKFS.Context::withoutGc(context ~>
+    if (handlesHdl.exists(context)) {
+      handlesHdl.write(context, SKFS.IID(id.toInt()), Handle::make(id, type_))
+    }
+  )
+}
+
+@export("SKIP_UiEngineHandle_unregister")
+fun unregister(id: UInt32): void {
+  SKFS.Context::withoutGc(context ~>
+    if (handlesHdl.exists(context)) {
+      handlesHdl.remove(context, SKFS.IID(id.toInt()))
+    }
+  )
+}
+
+module end;

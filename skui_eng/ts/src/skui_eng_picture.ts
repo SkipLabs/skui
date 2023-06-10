@@ -17,8 +17,6 @@ interface Env extends Environment {
   imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
 }
 
-
-
 async function resize(
   document: Document,
   image: HTMLImageElement,
@@ -82,7 +80,6 @@ class LinksImpl implements Links, ToWasm {
     this.state = new State();
     this.env = env;
   }
-  
 
   SKIP_UiEnginePicture_delete: (id: int) => void;
   SKIP_UiEnginePicture_resize: (id: int, width: int, height: int) => void;
