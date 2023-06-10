@@ -1,4 +1,4 @@
-import {int, float, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/skui_types";
+import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/skui_types";
 
 interface Exported {
   SKIP_UiEngineHandle_register: (id: int, type_: ptr) => void;
@@ -12,7 +12,7 @@ interface Env extends Environment {
 
 interface ToWasm {
   SKIP_UiEngineHandle_delete: (id: int) => void;
-  SKIP_UiEngineHandle_apply: (id: int, type_: ptr, paremeter: ptr) => void;
+  SKIP_UiEngineHandle_apply: (id: int, type_: ptr, paremeter: ptr) => null | ptr;
 }
 
 class State {
@@ -38,8 +38,9 @@ class State {
   apply = (id: int, paremeter: Array<any>) => {
     let fn = this.functions.get(id);
     if (fn && typeof fn == "function") {
-      fn.apply(null, paremeter);
+      return fn.apply(null, paremeter);
     }
+    return null;
   }
 }
 
@@ -66,7 +67,7 @@ class LinksImpl implements Links, ToWasm {
   }
 
   SKIP_UiEngineHandle_delete = (id: int) => this.state.delete(id);
-  SKIP_UiEngineHandle_apply: (id: int, type: ptr, paremeter: ptr) => void;
+  SKIP_UiEngineHandle_apply: (id: int, type: ptr, paremeter: ptr) => null | ptr;
 
   complete = (utils: Utils, exports: object) => {
     let exported = exports as Exported;
@@ -75,9 +76,12 @@ class LinksImpl implements Links, ToWasm {
         let type = utils.importString(skType);
         let parameters = this.env.importJSONValue(skParemeters);
         if (type == "function" && Array.isArray(parameters)) {
-          this.state.apply(id, parameters);
+          let res = this.state.apply(id, parameters);
+          return res !== undefined ? this.env.exportJSONValue(res) : null;
         }
+        return null;
       }
+      return null;
     }
     return new HandleShared(
       (value: any) => {
