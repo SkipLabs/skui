@@ -1,24 +1,9 @@
+module alias H = UiEngineHandle;
+
 module UiEngine;
 
-base class DropdownSupplier extends SKFS.BaseName {
-  fun getId(): String;
+base class DropdownSupplier {
   fun supply(context: mutable SKFS.Context): ?Array<DItemBase>;
-
-  fun toString(): String {
-    `${this.getClassName()}[${this.getId()}]`
-  }
-
-  fun hash(): Int {
-    this.toString().hash()
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    this.toString().compare(other.toString())
-  }
-}
-
-base class DropdownPerformer {
-  fun perform(context: mutable SKFS.Context): void;
 }
 
 base class DItemBase{
@@ -29,23 +14,13 @@ base class DItemBase{
   disabled: Bool,
   separator: Ui.Separator,
 } {
-  fun toMenuItem(
-    cache: (mutable SKFS.Context, DropdownSupplier, Bool) ~> Array<
-      UiDropdown.ItemBase,
-    >,
-  ): UiDropdown.ItemBase;
+  fun toMenuItem(): UiDropdown.ItemBase;
 }
 
-class DItem{
-  optShortcut: ?Ui.Shortcut,
-  performer: DropdownPerformer,
-} extends DItemBase {
-  fun toMenuItem(
-    _cache: (mutable SKFS.Context, DropdownSupplier, Bool) ~> Array<
-      UiDropdown.ItemBase,
-    >,
-  ): UiDropdown.ItemBase {
+class DItem{optShortcut: ?Ui.Shortcut, performer: Int} extends DItemBase {
+  fun toMenuItem(): UiDropdown.ItemBase {
     text = Text::fromString(this.text);
+    performer = H.Performer(this.performer);
     UiDropdown.Item{
       id => this.id,
       text => Ui.default(text),
@@ -53,10 +28,7 @@ class DItem{
       disabled => Ui.default(this.disabled),
       separator => Ui.default(this.separator),
       shortcut => Ui.default(this.optShortcut),
-      message => (ctx, _ui) ~> {
-        this.performer.perform(ctx);
-        Array[]
-      },
+      perform => performer.perform,
     }
   }
 }
@@ -64,15 +36,11 @@ class DItem{
 base class Items {
   children =
   | ConstItems(value: Array<DItemBase>)
-  | ComputedItems(supplier: DropdownSupplier)
+  | ComputedItems(supplier: Int)
 }
 
 class DMenu{items: Items} extends DItemBase {
-  fun toMenuItem(
-    cache: (mutable SKFS.Context, DropdownSupplier, Bool) ~> Array<
-      UiDropdown.ItemBase,
-    >,
-  ): UiDropdown.ItemBase {
+  fun toMenuItem(): UiDropdown.ItemBase {
     text = Text::fromString(this.text);
     UiDropdown.Menu{
       id => this.id,
@@ -83,30 +51,17 @@ class DMenu{items: Items} extends DItemBase {
       items => this.items match {
       | ConstItems(value) ->
         itemsCollection = UiDropdown.ArrayCollection(
-          value.map(v -> v.toMenuItem(cache)),
+          value.map(v -> v.toMenuItem()),
         );
         Ui.defaultOne(itemsCollection)
       | ComputedItems(supplier) ->
-        (ctx, iu) ~> UiDropdown.ArrayCollection(cache(ctx, supplier, iu))
+        ddSupplier = H.DropdownSupplier(supplier);
+        (ctx, _iu) ~>
+          UiDropdown.ArrayCollection(
+            ddSupplier.supply(ctx).default(Array[]).map(v -> v.toMenuItem()),
+          )
       },
     }
-  }
-}
-
-// DUMMY
-
-class DummyDropdownSupplier() extends DropdownSupplier {
-  fun getId(): String {
-    dummy()
-  }
-  fun supply(_context: mutable SKFS.Context): ?Array<DItemBase> {
-    dummy()
-  }
-}
-
-class DummyDropdownPerformer() extends DropdownPerformer {
-  fun perform(_context: mutable SKFS.Context): void {
-    dummy()
   }
 }
 

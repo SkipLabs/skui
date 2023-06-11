@@ -1,11 +1,10 @@
 [package]
 name = "skui_eng"
 version = "0.1.0"
-format-on-check = true
 auto-remove-state = true
 
 [dependencies]
-skui_views = {}
+skui_fwk = {}
 
 [[bin]]
 name = "skuieng"

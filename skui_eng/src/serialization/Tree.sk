@@ -25,51 +25,6 @@ extension class TreeItem extends SObject {
   }
 }
 
-extension base class TreeExpansionListener extends SObject {
-  static fun fromSerializable(s: Serializable): TreeExpansionListener {
-    s match {
-    | t @ TreeExpansionListener _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.TreeExpansionListener", s)
-    }
-  }
-}
-
-extension base class TreeMenuGetter extends SObject {
-  static fun fromSerializable(s: Serializable): TreeMenuGetter {
-    s match {
-    | t @ TreeMenuGetter _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.TreeMenuGetter", s)
-    }
-  }
-}
-
-extension base class TreeSelectionListener extends SObject {
-  static fun fromSerializable(s: Serializable): TreeSelectionListener {
-    s match {
-    | t @ TreeSelectionListener _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.TreeSelectionListener", s)
-    }
-  }
-}
-
-extension base class TreePerformer extends SObject {
-  static fun fromSerializable(s: Serializable): TreePerformer {
-    s match {
-    | t @ TreePerformer _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.TreePerformer", s)
-    }
-  }
-}
-
-extension base class TreeDropper extends SObject {
-  static fun fromSerializable(s: Serializable): TreeDropper {
-    s match {
-    | t @ TreeDropper _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.TreeDropper", s)
-    }
-  }
-}
-
 extension class Tree {
   //
   const identifier: String = "tree";
@@ -81,11 +36,11 @@ extension class Tree {
         "items" => this.items,
         "allowMultipleSelection" => SOption(this.optAllowMultipleSelection),
         "badgeMaxChar" => SOption(this.optBadgeMaxChar),
-        "menuGetter" => SOption(this.optMenuGetter),
-        "onSelectionChange" => SOption(this.optSelectionListener),
-        "onExpansionChange" => SOption(this.optExpansionListener),
-        "onTreePerform" => SOption(this.optTreePerformer),
-        "onTreeDrop" => SOption(this.optTreeDropper),
+        "requestMenu" => SInt(this.requestMenu),
+        "onSelectionChange" => SInt(this.onSelectionChange),
+        "onExpansionChange" => SInt(this.onExpansionChange),
+        "onTreePerform" => SInt(this.onTreePerform),
+        "onTreeDrop" => SInt(this.onTreeDrop),
       ],
     )
   }
@@ -93,71 +48,14 @@ extension class Tree {
   static fun deserialize(value: Map<String, Serializable>): this {
     static{
       items => value.get("items"),
-      optExpansionListener => maybeGet(value, "onExpansionChange").map(
-        External::fromSerializable,
-      ),
       optAllowMultipleSelection => maybeGet(value, "allowMultipleSelection"),
       optBadgeMaxChar => maybeGet(value, "badgeMaxChar"),
-      optMenuGetter => maybeGet(value, "menuGetter").map(
-        External::fromSerializable,
-      ),
-      optSelectionListener => maybeGet(value, "onSelectionChange").map(
-        External::fromSerializable,
-      ),
-      optTreePerformer => maybeGet(value, "onTreePerform").map(
-        External::fromSerializable,
-      ),
-      optTreeDropper => maybeGet(value, "onTreeDrop").map(
-        External::fromSerializable,
-      ),
+      requestMenu => getInt(value, "requestMenu"),
+      onSelectionChange => getInt(value, "onSelectionChange"),
+      onExpansionChange => getInt(value, "onExpansionChange"),
+      onTreePerform => getInt(value, "onTreePerform"),
+      onTreeDrop => getInt(value, "onTreeDrop"),
     }
-  }
-}
-
-// DUMMY
-
-extension class DummyTreeMenuGetter {
-  fun serialize(): (String, Map<String, Serializable>) {
-    dummy()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    dummy()
-  }
-}
-
-extension class DummyTreeExpansionListener {
-  fun serialize(): (String, Map<String, Serializable>) {
-    dummy()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    dummy()
-  }
-}
-
-extension class DummyTreeSelectionListener {
-  fun serialize(): (String, Map<String, Serializable>) {
-    dummy()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    dummy()
-  }
-}
-
-extension class DummyTreePerformer {
-  fun serialize(): (String, Map<String, Serializable>) {
-    dummy()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    dummy()
-  }
-}
-
-extension class DummyTreeDropper {
-  fun serialize(): (String, Map<String, Serializable>) {
-    dummy()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    dummy()
   }
 }
 

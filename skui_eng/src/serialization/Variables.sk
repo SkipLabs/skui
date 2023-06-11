@@ -1,3 +1,5 @@
+module alias H = UiEngineHandle;
+
 module Ui;
 
 extension base class Prop {
@@ -88,37 +90,7 @@ fun checkVariables(
   type_: String,
   value: Map<String, UiEngine.Serializable>,
 ): ?UiEngine.Serializable {
-  /*if (type_ == StringVar::identifier) {
-    Some(StringVar::deserialize(value))
-  } else if (type_ == FloatVar::identifier) {
-    Some(FloatVar::deserialize(value))
-  } else if (type_ == BoolVar::identifier) {
-    Some(BoolVar::deserialize(value))
-  } else if (type_ == RangeVar::identifier) {
-    Some(RangeVar::deserialize(value))
-  } else if (type_ == StatusVar::identifier) {
-    Some(StatusVar::deserialize(value))
-  } else if (type_ == WidgetVar::identifier) {
-    Some(WidgetVar::deserialize(value))
-  } else if (type_ == IconVar::identifier) {
-    Some(IconVar::deserialize(value))
-  } else if (type_ == DecorationVar::identifier) {
-    Some(DecorationVar::deserialize(value))
-  } else if (type_ == SeparationVar::identifier) {
-    Some(SeparationVar::deserialize(value))
-  } else if (type_ == PositionVar::identifier) {
-    Some(PositionVar::deserialize(value))
-  } else if (type_ == PortionVar::identifier) {
-    Some(PortionVar::deserialize(value))
-  } else if (type_ == IndentationVar::identifier) {
-    Some(IndentationVar::deserialize(value))
-  } else if (type_ == EndLineVar::identifier) {
-    Some(EndLineVar::deserialize(value))
-  } else if (type_ == VarsVar::identifier) {
-    Some(VarsVar::deserialize(value))
-  } else if (type_ == TexturableVar::identifier) {
-    Some(TexturableVar::deserialize(value))
-  } */ if (type_ == JSONProp::identifier) {
+  if (type_ == JSONProp::identifier) {
     Some(JSONProp::deserialize(value))
   } else if (type_ == IntProp::identifier) {
     Some(IntProp::deserialize(value))
@@ -141,14 +113,17 @@ extension class Const extends UiEngine.SObject {
   fun serialize(): (String, Map<String, UiEngine.Serializable>) {
     (
       static::identifier,
-      Map["value" => UiEngine.fromJSON(this.value), "writer" => this.writer],
+      Map[
+        "value" => UiEngine.fromJSON(this.value),
+        "writer" => UiEngine.SInt((this.writer as H.Writer _).hdl),
+      ],
     )
   }
 
   static fun deserialize(value: Map<String, UiEngine.Serializable>): Const {
     Const(
       UiEngine.toJSON(value.get("value")),
-      Ui.JSONWriter::forSerializable(value.get("writer")),
+      H.Writer(UiEngine.getInt(value, "writer")),
     )
   }
 

@@ -55,7 +55,7 @@ extension class Action extends UiEngine.SObject {
         "icon" => UiEngine.SOption(this.optIcon),
         "tooltip" => UiEngine.SOption(this.optTooltip),
         "disabled" => UiEngine.SOption(this.optDisabled),
-        "action" => UiEngine.SOption(this.optAction),
+        "action" => UiEngine.SInt(this.action),
       ],
     )
   }
@@ -66,7 +66,7 @@ extension class Action extends UiEngine.SObject {
       optIcon => maybeGet(value, "icon"),
       optTooltip => maybeGet(value, "tooltip"),
       optDisabled => maybeGet(value, "disabled"),
-      optAction => maybeGet(value, "action").map(External::fromSerializable),
+      action => getInt(value, "action"),
     }
   }
 
@@ -95,7 +95,7 @@ extension class Tabs extends UiEngine.SObject {
         "minWidth" => UiEngine.SOption(this.optMinWidth),
         "maxWidth" => UiEngine.SOption(this.optMaxWidth),
         "iconOnTop" => UiEngine.SOption(this.optIconOnTop),
-        "tabCloser" => UiEngine.SOption(this.optTabsCloser),
+        "onCloseTabs" => UiEngine.SInt(this.onCloseTabs),
       ],
     )
   }
@@ -112,9 +112,7 @@ extension class Tabs extends UiEngine.SObject {
       optMinWidth => maybeGet(value, "minWidth"),
       optMaxWidth => maybeGet(value, "maxWidth"),
       optIconOnTop => maybeGet(value, "iconOnTop"),
-      optTabsCloser => maybeGet(value, "tabsCloser").map(
-        External::fromSerializable,
-      ),
+      onCloseTabs => getInt(value, "onCloseTabs"),
     }
   }
 }

@@ -1,3 +1,5 @@
+module alias H = UiEngineHandle;
+
 module UiEngine;
 
 class TreeItems(value: Array<TreeItem>) extends SKFS.File {
@@ -192,11 +194,11 @@ class Tree{
   items: Serializable,
   optAllowMultipleSelection: ?Serializable = None(),
   optBadgeMaxChar: ?Serializable = None(),
-  optMenuGetter: ?External = None(),
-  optSelectionListener: ?External = None(),
-  optExpansionListener: ?External = None(),
-  optTreePerformer: ?External = None(),
-  optTreeDropper: ?External = None(),
+  requestMenu: Int = 0,
+  onSelectionChange: Int = 0,
+  onExpansionChange: Int = 0,
+  onTreePerform: Int = 0,
+  onTreeDrop: Int = 0,
 } extends Description {
   //
   fun collect(_collector: Renderable -> void): void {
@@ -216,73 +218,44 @@ class Tree{
       this.optAllowMultipleSelection,
     );
     badgeMaxCharGetter = toIntOptGetter(context, this.optBadgeMaxChar);
-    optSelectionListener = this.optSelectionListener.map(v ->
-      v.treeSelectionListener()
-    );
+    optSelectionListener = if (this.onSelectionChange > 0) {
+      Some(H.TreeSelectionListener(this.onSelectionChange))
+    } else {
+      None()
+    };
     selectionChange = optSelectionListener
-      .map(sl ~>
-        (ctx, paths, _ui) ~> {
-          sl.selectionChanged(ctx, paths);
-          Array[]
-        }
-      )
-      .default(Ui.defaultTwo(Array[]));
-    optExpansionListener = this.optExpansionListener.map(v ->
-      v.treeExpansionListener()
-    );
+      .map(sl ~> sl.selectionChanged)
+      .default(Ui.defaultOne(void));
+    optExpansionListener = if (this.onExpansionChange > 0) {
+      Some(H.TreeExpansionListener(this.onExpansionChange))
+    } else {
+      None()
+    };
     expansionChange = optExpansionListener
-      .map(sl ~>
-        (ctx, path, value, _ui) ~> {
-          sl.expansionChanged(ctx, path, value);
-          Array[]
-        }
-      )
-      .default(Ui.defaultThree(Array[]));
-    optTreePerformer = this.optTreePerformer.map(v -> v.treePerformer());
-    fire = optTreePerformer
-      .map(p ~>
-        (ctx, optCurrent, paths, _ui) ~> {
-          p.perform(ctx, optCurrent, paths);
-          Array[]
-        }
-      )
-      .default(Ui.defaultThree(Array[]));
-    optTreeDropper = this.optTreeDropper.map(v -> v.treeDropper());
-    drop = optTreeDropper
-      .map(d ~>
-        (ctx, from, to, drop, _ui) ~> {
-          d.drop(ctx, from, to, drop);
-          Array[]
-        }
-      )
-      .default((_, _, _, _, _) ~> Array[]);
-    optMenuGetter = this.optMenuGetter.map(v -> v.treeMenuGetter());
+      .map(sl ~> sl.expansionChanged)
+      .default(Ui.defaultTwo(void));
+    optTreePerformer = if (this.onTreePerform > 0) {
+      Some(H.TreePerformer(this.onTreePerform))
+    } else {
+      None()
+    };
+    fire = optTreePerformer.map(p ~> p.perform).default(Ui.defaultTwo(void));
+    optTreeDropper = if (this.onTreeDrop > 0) {
+      Some(H.TreeDropper(this.onTreeDrop))
+    } else {
+      None()
+    };
+    drop = optTreeDropper.map(d ~> d.drop).default((_, _, _, _) ~> void);
+    optMenuGetter = if (this.requestMenu > 0) {
+      Some(H.TreeMenuGetter(this.requestMenu))
+    } else {
+      None()
+    };
     contextMenuItems = optMenuGetter match {
     | Some(mg) ->
-      cacheHdl = SKFS.LHandle::lazy(
-        DDItems::fromFile,
-        context,
-        SKFS.DirName::make(
-          Ui.toDirName(context, Some(SKFS.normalize(path.toString()))),
-          "cache/",
-        ),
-        (context, self, key) ~> {
-          key match {
-          | supplier @ DropdownSupplier _ ->
-            cache = (ctx, s, iu) ~> self.getValue(ctx, s, iu).value;
-            DDItems(
-              supplier
-                .supply(context)
-                .map(v -> v.map(i -> i.toMenuItem(cache)))
-                .default(Array[]),
-            )
-          | _ -> DDItems(Array[])
-          }
-        },
-      );
       (ctx, optPath, selection) ~>
         mg.getContextMenu(ctx, optPath, selection).map(items ->
-          items.toMenuItem((ctx, s, iu) ~> cacheHdl.getValue(ctx, s, iu).value)
+          items.toMenuItem()
         )
     | _ -> Ui.defaultTwo(Array[])
     };
@@ -305,58 +278,6 @@ class Tree{
       //badge: Ui.GetterOne<?Text, Ui.Path> = Ui.defaultOne(None()),
     };
     Ui.Tree::create(context, path, UiTree.init(context, path, controller));
-  }
-}
-
-// DUMMY
-
-class DummyTreeMenuGetter() extends TreeMenuGetter {
-  fun getContextMenu(
-    _context: mutable SKFS.Context,
-    _optCurrent: ?Ui.Path,
-    _selection: Array<Ui.Path>,
-  ): Array<DItemBase> {
-    dummy()
-  }
-}
-
-class DummyTreeExpansionListener() extends TreeExpansionListener {
-  fun expansionChanged(
-    _context: mutable SKFS.Context,
-    _path: Ui.Path,
-    _value: Bool,
-  ): void {
-    dummy()
-  }
-}
-
-class DummyTreeSelectionListener() extends TreeSelectionListener {
-  fun selectionChanged(
-    _context: mutable SKFS.Context,
-    _selection: Array<Ui.Path>,
-  ): void {
-    dummy()
-  }
-}
-
-class DummyTreePerformer() extends TreePerformer {
-  fun perform(
-    _context: mutable SKFS.Context,
-    _optCurrent: ?Ui.Path,
-    _selection: Array<Ui.Path>,
-  ): void {
-    dummy()
-  }
-}
-
-class DummyTreeDropper() extends TreeDropper {
-  fun drop(
-    _context: mutable SKFS.Context,
-    _from: Ui.Path,
-    _to: Ui.Path,
-    _drop: Ui.Drop,
-  ): void {
-    dummy()
   }
 }
 

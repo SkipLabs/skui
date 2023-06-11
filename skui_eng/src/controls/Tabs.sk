@@ -1,15 +1,13 @@
+module alias H = UiEngineHandle;
+
 module UiEngine;
 
 base class TabsCloser {
   fun close(context: mutable SKFS.Context, tabs: Array<String>): void;
 }
 
-class LamTabsCloser(
-  toPerform: (mutable SKFS.Context, Array<String>) ~> void,
-) extends TabsCloser {
-  fun close(context: mutable SKFS.Context, tabs: Array<String>): void {
-    this.toPerform(context, tabs)
-  }
+base class Performer {
+  fun perform(context: mutable SKFS.Context): void;
 }
 
 class Tab{
@@ -81,13 +79,13 @@ class Action{
   optIcon: ?Serializable = None(),
   optTooltip: ?Serializable = None(),
   optDisabled: ?Serializable = None(),
-  optAction: ?External = None(),
+  action: Int = 0,
 } extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Action _ -> x
-    | _ -> invariant_violation("Must be UiEngine.Action")
+    | _ -> SKFS.cast_violation("UiEngine.Action", obj)
     }
   }
 
@@ -97,7 +95,7 @@ class Action{
       toIconOptGetter(context, this.optIcon),
       toTextOptGetter(context, this.optTooltip),
       toBoolOptGetter(context, this.optDisabled),
-      this.optAction,
+      this.action,
     )
   }
 }
@@ -107,7 +105,7 @@ class ActionGetter(
   icon: Ui.GetterOne<?UiIcon.Description, Bool>,
   tooltip: Ui.GetterOne<?Text, Bool>,
   disabled: Ui.GetterOne<?Bool, Bool>,
-  optAction: ?External,
+  action: Int,
 ) extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
@@ -118,7 +116,9 @@ class ActionGetter(
   }
 
   fun toAction(context: mutable SKFS.Context): UiTabs.Action {
-    optAction = this.optAction.map(a -> a.actionPerformer());
+    optAction = if (this.action > 0) Some(H.Performer(this.action)) else {
+      None()
+    };
     UiTabs.Action(
       this.id,
       this.icon(context, false)
@@ -132,7 +132,7 @@ class ActionGetter(
           ),
         ),
       this.tooltip(context, false),
-      ctx ~> optAction.each(a -> a.perform(ctx, 0)),
+      ctx ~> optAction.each(a -> a.perform(ctx)),
       ctx ~> this.disabled(ctx, false).default(false),
     )
   }
@@ -149,7 +149,7 @@ class Tabs{
   optMinWidth: ?Serializable = None(),
   optMaxWidth: ?Serializable = None(),
   optIconOnTop: ?Serializable = None(),
-  optTabsCloser: ?External = None(),
+  onCloseTabs: Int = 0,
 } extends Description {
   //
   fun collect(_collector: Renderable -> void): void {
@@ -315,7 +315,11 @@ class Tabs{
     minWidthGetter = toIntOptGetter(context, this.optMinWidth);
     maxWidthGetter = toIntOptGetter(context, this.optMaxWidth);
     active = toStringPropOptGetter(context, this.optActive);
-    optTabsCloser = this.optTabsCloser.map(tc -> tc.tabsCloser());
+    optTabsCloser = if (this.onCloseTabs > 0) {
+      Some(H.TabsCloser(this.onCloseTabs))
+    } else {
+      None()
+    };
     Ui.TabPane::create(
       context,
       path,
@@ -369,10 +373,8 @@ class Tabs{
             .maybeGet(ctx, SKFS.StrID(tab))
             .flatMap(hdl -> hdl.hdl.maybeGet(ctx))
             .map(wf -> wf.widget),
-        closeMessages => (ctx, tabs, _iu) ~> {
-          optTabsCloser.each(closer -> closer.close(ctx, tabs));
-          Array[];
-        },
+        onClose_ => (ctx, tabs) ~>
+          optTabsCloser.each(closer -> closer.close(ctx, tabs)),
       },
     );
   }

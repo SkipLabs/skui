@@ -1,14 +1,5 @@
 module UiEngine;
 
-extension base class External extends SObject {
-  static fun fromSerializable(s: UiEngine.Serializable): External {
-    s match {
-    | t @ External _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.External", s)
-    }
-  }
-}
-
 extension class Button extends SObject {
   const identifier: String = "button";
 
@@ -37,7 +28,7 @@ extension class Button extends SObject {
           | UiButton.Fab(mini) -> if (!mini) 6 else 7
           },
         ),
-        "action" => this.action,
+        "action" => SInt(this.action),
         "configuration" => SOption(this.optConfiguration),
         "disabled" => this.disabled,
       ],
@@ -66,7 +57,7 @@ extension class Button extends SObject {
       | _ ->
         UiButton.Basic()
       },
-      action => External::fromSerializable(value.get("action")),
+      action => getInt(value, "action"),
       disabled => value.get("disabled"),
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),
@@ -117,8 +108,6 @@ extension class Slider extends SObject {
   }
 }
 
-extension base class InputPerformer extends SObject
-
 extension class Input extends SObject {
   const identifier: String = "input";
 
@@ -133,8 +122,8 @@ extension class Input extends SObject {
         "placeHolder" => SOption(this.optPlaceHolder),
         "tooltip" => SOption(this.optTooltip),
         "kind" => this.kind,
-        "onInputAction" => SOption(this.optInputAction),
-        "onFocusLost" => SOption(this.optFocusLost),
+        "onInputAction" => SInt(this.onInputAction),
+        "onFocusLost" => SInt(this.onFocusLost),
         "actionIcon" => SOption(this.optActionIcon),
         "disabled" => SOption(this.optDisabled),
         "editable" => SOption(this.optEditable),
@@ -173,12 +162,8 @@ extension class Input extends SObject {
       optIcon => maybeGet(value, "icon"),
       optActionIcon => maybeGet(value, "actionIcon"),
       //
-      optInputAction => maybeGet(value, "onInputAction").map(
-        External::fromSerializable,
-      ),
-      optFocusLost => maybeGet(value, "onFocusLost").map(
-        External::fromSerializable,
-      ),
+      onInputAction => getInt(value, "onInputAction"),
+      onFocusLost => getInt(value, "onFocusLost"),
       optLabel => maybeGet(value, "label"),
       optPrefix => maybeGet(value, "prefix"),
       optSuffix => maybeGet(value, "suffix"),
@@ -297,33 +282,6 @@ extension class Scroll {
         v as Ui.Configuration _
       ),
     }
-  }
-}
-
-extension class LamActionPerformer {
-  fun serialize(): (String, Map<String, Serializable>) {
-    useless()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    useless()
-  }
-}
-
-extension class LamInputPerformer {
-  fun serialize(): (String, Map<String, Serializable>) {
-    useless()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    useless()
-  }
-}
-
-extension class ConstExternal {
-  fun serialize(): (String, Map<String, Serializable>) {
-    useless()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    useless()
   }
 }
 

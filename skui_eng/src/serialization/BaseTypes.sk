@@ -136,42 +136,6 @@ extension base class Kind extends UiEngine.SObject {
 }
 module end;
 
-module Ui;
-
-extension base class JSONWriter extends UiEngine.SObject {
-  //
-  static fun forSerializable(s: UiEngine.Serializable): JSONWriter {
-    s match {
-    | t @ JSONWriter _ -> t
-    | _ -> SKFS.cast_violation("Ui.JSONWriter", s)
-    }
-  }
-}
-
-extension base class Combine {
-  //
-  static fun fromSerializable(s: UiEngine.Serializable): Combine {
-    s match {
-    | t @ Combine _ -> t
-    | _ -> SKFS.cast_violation("Ui.Combine", s)
-    }
-  }
-}
-
-extension class DummyCombine {
-  fun serialize(): (String, .Map<String, UiEngine.Serializable>) {
-    dummy()
-  }
-
-  static fun deserialize(
-    _value: Map<String, UiEngine.Serializable>,
-  ): DummyCombine {
-    dummy()
-  }
-}
-
-module end;
-
 module Text;
 
 extension class Style extends UiEngine.SObject {

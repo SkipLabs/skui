@@ -1,9 +1,6 @@
 const text_raw: Int = 0;
 const text_locale: Int = 1;
 const text_format: Int = 2;
-const text_texts: Int = 3;
-const text_date: Int = 4;
-const text_datetime: Int = 5;
 
 extension base class Text extends UiEngine.SObject {
   const identifier: String = "text";
@@ -53,14 +50,6 @@ extension base class Text extends UiEngine.SObject {
         "parameters" => UiEngine.SArray(parameters),
       ],
     )
-  | Texts(value) ->
-    (
-      static::identifier,
-      Map[
-        "type" => UiEngine.SInt(text_texts),
-        "value" => UiEngine.SArray(value),
-      ],
-    )
 
   static fun deserialize(value: Map<String, UiEngine.Serializable>): Text {
     type_ = UiEngine.getInt(value, "type");
@@ -69,8 +58,6 @@ extension base class Text extends UiEngine.SObject {
         UiEngine.getString(value, "value"),
         UiEngine.maybeGetString(value, "category"),
       )
-    } else if (type_ == text_texts) {
-      Texts(UiEngine.getArray(value, "value").map(static::fromSerializable))
     } else if (type_ == text_format) {
       Format(
         static::fromSerializable(value.get("pattern")),

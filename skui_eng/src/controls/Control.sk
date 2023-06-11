@@ -4,74 +4,11 @@ base class ActionPerformer {
   fun perform(context: mutable SKFS.Context, count: Int): void;
 }
 
-class LamActionPerformer(
-  toPerform: (mutable SKFS.Context, Int) ~> void,
-) extends ActionPerformer {
-  fun perform(context: mutable SKFS.Context, count: Int): void {
-    this.toPerform(context, count)
-  }
-}
-
-base class External {
-  fun actionPerformer(): ActionPerformer;
-  fun inputPerformer(): InputPerformer;
-  fun tabsCloser(): TabsCloser;
-  fun treeMenuGetter(): TreeMenuGetter;
-  fun treeSelectionListener(): TreeSelectionListener;
-  fun treeExpansionListener(): TreeExpansionListener;
-  fun treePerformer(): TreePerformer;
-  fun treeDropper(): TreeDropper;
-}
-
-class ConstExternal{
-  optActionPerformer: ?ActionPerformer = None(),
-  optInputPerformer: ?InputPerformer = None(),
-  optTabsCloser: ?TabsCloser = None(),
-  optTreeMenuGetter: ?TreeMenuGetter = None(),
-  optTreeSelectionListener: ?TreeSelectionListener = None(),
-  optTreeExpansionListener: ?TreeExpansionListener = None(),
-  optTreePerformer: ?TreePerformer = None(),
-  optTreeDropper: ?TreeDropper = None(),
-} extends External {
-  //
-  fun actionPerformer(): ActionPerformer {
-    this.optActionPerformer.fromSome()
-  }
-
-  fun inputPerformer(): InputPerformer {
-    this.optInputPerformer.fromSome()
-  }
-
-  fun tabsCloser(): TabsCloser {
-    this.optTabsCloser.fromSome()
-  }
-
-  fun treeMenuGetter(): TreeMenuGetter {
-    this.optTreeMenuGetter.fromSome()
-  }
-
-  fun treeSelectionListener(): TreeSelectionListener {
-    this.optTreeSelectionListener.fromSome()
-  }
-
-  fun treeExpansionListener(): TreeExpansionListener {
-    this.optTreeExpansionListener.fromSome()
-  }
-
-  fun treePerformer(): TreePerformer {
-    this.optTreePerformer.fromSome()
-  }
-
-  fun treeDropper(): TreeDropper {
-    this.optTreeDropper.fromSome()
-  }
-}
-
 class Button{
   kind: UiButton.Kind = UiButton.Regular(),
   mode: UiButton.Mode = UiButton.Basic(),
   //
-  action: External,
+  action: Int,
   disabled: Serializable = SBool(false),
   //
   optText: ?Serializable = None(),
@@ -94,7 +31,7 @@ class Button{
     tooltipGetter = toTextOptGetter(context, this.optTooltip);
     disabledGetter = toBoolOptGetter(context, Some(this.disabled));
     iconGetter = toIconOptGetter(context, this.optIcon);
-    action = this.action.actionPerformer();
+    action = UiEngineHandle.ActionPerformer(this.action);
     Ui.Button::create(
       context,
       path,

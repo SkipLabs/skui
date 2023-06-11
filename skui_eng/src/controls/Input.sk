@@ -1,15 +1,9 @@
+module alias H = UiEngineHandle;
+
 module UiEngine;
 
 base class InputPerformer {
   fun perform(context: mutable SKFS.Context, text: String): void;
-}
-
-class LamInputPerformer(
-  toPerform: (mutable SKFS.Context, String) ~> void,
-) extends InputPerformer {
-  fun perform(context: mutable SKFS.Context, text: String): void {
-    this.toPerform(context, text)
-  }
 }
 
 class Input{
@@ -23,8 +17,8 @@ class Input{
   optSelection: ?Serializable = None(),
   optStatus: ?Serializable = None(),
   //
-  optInputAction: ?External = None(),
-  optFocusLost: ?External = None(),
+  onInputAction: Int = 0,
+  onFocusLost: Int = 0,
   optLabel: ?Serializable = None(),
   optPrefix: ?Serializable = None(),
   optSuffix: ?Serializable = None(),
@@ -77,8 +71,16 @@ class Input{
       context,
       this.optPlaceholderAsLabel,
     );
-    optInputAction = this.optInputAction.map(v -> v.inputPerformer());
-    optFocusLost = this.optFocusLost.map(v -> v.inputPerformer());
+    optInputAction = if (this.onInputAction > 0) {
+      Some(H.InputPerformer(this.onInputAction))
+    } else {
+      None()
+    };
+    optFocusLost = if (this.onFocusLost > 0) {
+      Some(H.InputPerformer(this.onFocusLost))
+    } else {
+      None()
+    };
     controller = UiInput.LamController{
       kind => (_ctx, _iu) ~> this.kind,
       label => ctx ~> labelGetter(ctx, false),

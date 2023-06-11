@@ -1,23 +1,5 @@
 module UiEngine;
 
-extension base class DropdownPerformer extends SObject {
-  static fun fromSerializable(s: Serializable): DropdownPerformer {
-    s match {
-    | t @ DropdownPerformer _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.DropdownPerformer", s)
-    }
-  }
-}
-
-extension base class DropdownSupplier extends SObject {
-  static fun fromSerializable(s: Serializable): DropdownSupplier {
-    s match {
-    | t @ DropdownSupplier _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.DropdownSupplier", s)
-    }
-  }
-}
-
 extension base class DItemBase extends SObject {
   static fun fromSerializable(s: Serializable): DItemBase {
     s match {
@@ -41,7 +23,7 @@ extension class DItem {
         "disabled" => SBool(this.disabled),
         "separator" => SInt(this.separator.toCode()),
         "shortcut" => SOption(this.optShortcut),
-        "performer" => this.performer,
+        "performer" => SInt(this.performer),
       ],
     )
   }
@@ -59,7 +41,7 @@ extension class DItem {
       optShortcut => maybeGet(value, "shortcut").map(
         Ui.Shortcut::fromSerializable,
       ),
-      performer => DropdownPerformer::fromSerializable(value.get("performer")),
+      performer => getInt(value, "performer"),
     }
   }
 }
@@ -79,7 +61,7 @@ extension class DMenu {
         "separator" => SInt(this.separator.toCode()),
         "items" => this.items match {
         | ConstItems(value) -> SArray(value)
-        | ComputedItems(supplier) -> supplier
+        | ComputedItems(supplier) -> SInt(supplier)
         },
       ],
     )
@@ -97,29 +79,9 @@ extension class DMenu {
       separator => Ui.Separator::fromCode(getInt(value, "separator")),
       items => value.get("items") match {
       | arr @ SArray _ -> ConstItems(arr.value.map(DItemBase::fromSerializable))
-      | supplier -> ComputedItems(DropdownSupplier::fromSerializable(supplier))
+      | _ -> ComputedItems(getInt(value, "items"))
       },
     }
-  }
-}
-
-// DUMMY
-
-extension class DummyDropdownSupplier {
-  fun serialize(): (String, Map<String, Serializable>) {
-    dummy()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    dummy()
-  }
-}
-
-extension class DummyDropdownPerformer {
-  fun serialize(): (String, Map<String, Serializable>) {
-    dummy()
-  }
-  static fun deserialize(_value: Map<String, Serializable>): this {
-    dummy()
   }
 }
 

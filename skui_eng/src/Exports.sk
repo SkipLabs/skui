@@ -6,60 +6,52 @@ fun getJSON(
   context: mutable SKFS.Context,
   optPath: ?String,
   name: String,
-): ?String {
+): ?JSON.Value {
   prop = UiJSONProp.Property::forName(context, optPath, name);
-  prop.maybeGet(context).map(jv -> jv.toString());
+  prop.maybeGet(context);
 }
 
 fun setJSON(
   context: mutable SKFS.Context,
   optPath: ?String,
   name: String,
-  optValue: ?String,
+  optValue: ?JSON.Value,
 ): void {
   prop = UiJSONProp.Property::forName(context, optPath, name);
-  prop.set(context, optValue.map(JSON.decode), 0);
+  prop.set(context, optValue, 0);
 }
 
-@cpp_export("SKIP_Eng_getValue")
-fun getValue(optPath: ?String, name: String): ?String {
-  SKFS.Context::withoutGc(context ~> {
-    optRes = getJSON(context, optPath, name);
-    optRes.each(v -> context.setGlobal("UiEngine.Result", SKFS.StringFile(v)));
-    optRes
-  })
+@wasm_export("SKIP_Eng_getValue")
+fun getValue(optPath: ?String, name: String): ?JSON.Value {
+  SKFS.Context::withoutGc(context ~> getJSON(context, optPath, name))
 }
 
-@cpp_export("SKIP_Eng_setValue")
-fun setValue(optPath: ?String, name: String, optValue: ?String): void {
+@wasm_export("SKIP_Eng_setValue")
+fun setValue(optPath: ?String, name: String, optValue: ?JSON.Value): void {
   SKFS.Context::withoutGc(context ~> {
     setJSON(context, optPath, name, optValue);
     context.updateIfRoot();
   })
 }
-@cpp_export("SKIP_Eng_create")
-fun create(optPath: ?String, optValue: ?String): String {
+@wasm_export("SKIP_Eng_create")
+fun create(optPath: ?String, optValue: ?JSON.Value): String {
   SKFS.Context::withoutGc(context ~> {
-    prop = UiJSONProp.Property::create(
-      context,
-      optPath,
-      optValue.map(JSON.decode),
-    );
+    prop = UiJSONProp.Property::create(context, optPath, optValue);
     prop.getName();
   })
 }
 
-@cpp_export("SKIP_Eng_combine")
-fun combine(optPath: ?String, strCombine: String): String {
+@wasm_export("SKIP_Eng_combine")
+fun combine(optPath: ?String, combineHdl: UInt32, writeHdl: UInt32): String {
   SKFS.Context::withoutGc(context ~> {
-    combine = Ui.Combine::fromSerializable(fromJSON(JSON.decode(strCombine)));
+    combine = UiEngineHandle.Combine(combineHdl.toInt(), writeHdl.toInt());
     UiJSONProp.Property::combine(context, optPath, combine).value;
   })
 }
 
 /// Dialogs
 
-@cpp_export("SKIP_Eng_alert")
+@wasm_export("SKIP_Eng_alert")
 fun alert(text: Text, optTitle: ?Text): void {
   SKFS.Context::withoutGc(context ~> {
     message = context.openAlertMessage(text, optTitle);
@@ -67,109 +59,15 @@ fun alert(text: Text, optTitle: ?Text): void {
   })
 }
 
-@cpp_export("SKIP_Eng_dialog")
-fun dialog(strDialog: String): void {
+@wasm_export("SKIP_Eng_dialog")
+fun dialog(dialog: JSON.Value): void {
   SKFS.Context::withoutGc(context ~> {
-    ser = UiEngine.fromJSON(JSON.decode(strDialog));
+    ser = UiEngine.fromJSON(dialog);
     ser match {
     | dialog @ UiEngine.Dialog _ -> dialog.open(context)
     | _ -> SKFS.cast_violation("UiEngine.Dialog", ser)
     }
   })
-}
-
-class CombineImpl(private eptr: SKFS.ExternalPointer) extends Ui.Combine {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteCombine))
-  }
-
-  fun combine(_context: mutable SKFS.Context, path: String): JSON.Value {
-    JSON.decode(natCombine(this.eptr.value, path))
-  }
-
-  fun write(_context: mutable SKFS.Context, optValue: ?JSON.Value): void {
-    natOnCombineWrite(
-      this.eptr.value,
-      optValue.default(JSON.Null()).toString(),
-    );
-  }
-}
-
-class WriterImpl(private eptr: SKFS.ExternalPointer) extends Ui.JSONWriter {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteWriter))
-  }
-
-  fun write(_context: mutable SKFS.Context, optValue: ?JSON.Value): void {
-    natWrite(this.eptr.value, optValue.default(JSON.Null()).toString());
-  }
-}
-
-class ActionPerformerImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends ActionPerformer {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteActionPerformer))
-  }
-
-  fun perform(_context: mutable SKFS.Context, count: Int): void {
-    natPerform(this.eptr.value, UInt32::truncate(count))
-  }
-}
-
-class ExExternal(value: Int) extends External {
-  //
-  fun actionPerformer(): ActionPerformer {
-    ActionPerformerImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun inputPerformer(): InputPerformer {
-    InputPerformerImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun tabsCloser(): TabsCloser {
-    TabsCloserImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun treeMenuGetter(): TreeMenuGetter {
-    TreeMenuGetterImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun treeSelectionListener(): TreeSelectionListener {
-    TreeSelectionListenerImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun treeExpansionListener(): TreeExpansionListener {
-    TreeExpansionListenerImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun treePerformer(): TreePerformer {
-    TreePerformerImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun treeDropper(): TreeDropper {
-    TreeDropperImpl::make(UInt32::truncate(this.value))
-  }
-
-  fun writer(): Ui.JSONWriter {
-    WriterImpl::make(UInt32::truncate(this.value))
-  }
-}
-
-class InputPerformerImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends InputPerformer {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteInputPerformer))
-  }
-
-  fun perform(_context: mutable SKFS.Context, text: String): void {
-    natInputPerform(this.eptr.value, text)
-  }
 }
 
 fun fillVectorWithPath(path: Ui.Path, vec: mutable Vector<SString>): void {
@@ -181,175 +79,6 @@ fun pathToSArray(path: Ui.Path): SArray {
   vec = mutable Vector<SString>[];
   fillVectorWithPath(path, vec);
   SArray(vec.toArray());
-}
-
-class TreeMenuGetterImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends TreeMenuGetter {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteTreeMenuGetter))
-  }
-
-  fun getContextMenu(
-    _context: mutable SKFS.Context,
-    optCurrent: ?Ui.Path,
-    selection: Array<Ui.Path>,
-  ): Array<DItemBase> {
-    sCurrent = optCurrent.map(pathToSArray).default(SArray(Array[]));
-    sSelection = SArray(selection.map(p -> pathToSArray(p)));
-    strRes = natGetTreeContextMenu(
-      this.eptr.value,
-      toJSON(sCurrent).toString(),
-      toJSON(sSelection).toString(),
-    );
-    expectArray(fromJSON(JSON.decode(strRes))).map(DItemBase::fromSerializable);
-  }
-}
-
-class TreeExpansionListenerImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends TreeExpansionListener {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteTreeExpansionListener))
-  }
-
-  fun expansionChanged(
-    _context: mutable SKFS.Context,
-    path: Ui.Path,
-    value: Bool,
-  ): void {
-    strPath = toJSON(pathToSArray(path)).toString();
-    natTreeExpansionChanged(this.eptr.value, strPath, value);
-  }
-}
-
-class TreeSelectionListenerImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends TreeSelectionListener {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteTreeSelectionListener))
-  }
-
-  fun selectionChanged(
-    _context: mutable SKFS.Context,
-    selection: Array<Ui.Path>,
-  ): void {
-    sSelection = SArray(selection.map(p -> pathToSArray(p)));
-    natTreeSelectionChanged(this.eptr.value, toJSON(sSelection).toString());
-  }
-}
-
-class TreePerformerImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends TreePerformer {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteTreePerformer))
-  }
-
-  fun perform(
-    _context: mutable SKFS.Context,
-    optCurrent: ?Ui.Path,
-    selection: Array<Ui.Path>,
-  ): void {
-    sCurrent = optCurrent.map(pathToSArray).default(SArray(Array[]));
-    sSelection = SArray(selection.map(p -> pathToSArray(p)));
-    natTreePerform(
-      this.eptr.value,
-      toJSON(sCurrent).toString(),
-      toJSON(sSelection).toString(),
-    );
-  }
-}
-
-class TreeDropperImpl(private eptr: SKFS.ExternalPointer) extends TreeDropper {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteTreePerformer))
-  }
-
-  fun drop(
-    _context: mutable SKFS.Context,
-    from: Ui.Path,
-    to: Ui.Path,
-    drop: Ui.Drop,
-  ): void {
-    sFrom = pathToSArray(from);
-    sTo = pathToSArray(to);
-    dropCode = UInt32::truncate(drop.toCode());
-    natTreeDrop(
-      this.eptr.value,
-      toJSON(sFrom).toString(),
-      toJSON(sTo).toString(),
-      dropCode,
-    );
-  }
-}
-
-class DropdownPerformerImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends DropdownPerformer {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteDropdownPerformer))
-  }
-
-  fun perform(_context: mutable SKFS.Context): void {
-    natDropdownPerform(this.eptr.value);
-  }
-}
-
-class TabsCloserImpl(private eptr: SKFS.ExternalPointer) extends TabsCloser {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteTabsCloser))
-  }
-
-  fun close(_context: mutable SKFS.Context, tabs: Array<String>): void {
-    sPath = SArray(tabs.map(p -> SString(p)));
-    natTabsClose(this.eptr.value, toJSON(sPath).toString());
-  }
-}
-
-class DropdownSupplierImpl(
-  private eptr: SKFS.ExternalPointer,
-) extends DropdownSupplier {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteDropdownSupplier))
-  }
-
-  fun getId(): String {
-    this.eptr.value.toString()
-  }
-
-  fun supply(_context: mutable SKFS.Context): ?Array<DItemBase> {
-    natDropdownSupply(this.eptr.value)
-      .map(JSON.decode)
-      .map(fromJSON)
-      .map(expectArray)
-      .map(arr -> arr.map(v -> v as DItemBase _));
-  }
-}
-
-class JSException(private eptr: SKFS.ExternalPointer) extends Exception {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteException))
-  }
-
-  fun getMessage(): String {
-    natExceptionMessage(this.eptr.value)
-  }
-}
-
-@cpp_export("SKIP_callWithException")
-fun callWithException(f: () -> void, exc: UInt32): void {
-  saveExn(JSException::make(exc));
-  f();
 }
 
 module end;
