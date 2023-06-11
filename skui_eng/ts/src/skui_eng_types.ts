@@ -208,6 +208,24 @@ export class Object {
   }
 }
 
+export class Widget extends Object {}
+export class IconElement extends Object {}
+export class Configuration extends Object {}
+export class Decoration extends Object {}
+export class RangeElement extends Object {}
+export class InputKindElement extends Object {}
+export class SeparationElement extends Object {}
+export class StatusElement extends Object {}
+export class InsetsElement extends Object {}
+export class ConstraintsElement extends Object {}
+export class TextStyleElement extends Object {}
+export class IconedActionElement extends Object {}
+export class TabElement extends Object {}
+export class TreeItemElement extends Object {}
+
+
+
+
 export class Handle {
   id: int;
 
@@ -223,17 +241,17 @@ export class Handle {
 export type FlexConf = {flex?: int, fitLoose?: boolean, ignoreCross?: boolean};
 
 export type Flex = {
-  widgets: Value<Array<Value<Object>>>, 
+  widgets: Value<Array<Value<Widget>>>, 
   vertical?: Value<boolean>, 
   rigthToLeft?: Value<boolean>, 
   mainAlignment?: Value<Alignment>, 
   crossAlignment?: Value<FlCrossAlign>, 
   maxSize?: Value<boolean>,
-  configuration?: Value<Object>,
+  configuration?: Value<Configuration>,
 };
 
 export type Wrap = {
-  widgets: Value<Array<Value<Object>>>,
+  widgets: Value<Array<Value<Widget>>>,
   vertical?: Value<boolean>, 
   rigthToLeft?: Value<boolean>, 
   mainAlignment?: Value<Alignment>, 
@@ -241,21 +259,21 @@ export type Wrap = {
   runAlignment?: Value<Alignment>, 
   spacing?: Value<int>,
   runSpacing?: Value<int>,
-  configuration?: Value<Object>,
+  configuration?: Value<Configuration>,
 };
 
 export type StackConf = {fit?: Fit, opaque?: boolean};
 
 export type Stack = {
-  widgets: Value<Array<Value<Object>>>,
-  configuration?: Value<Object>,
+  widgets: Value<Array<Value<Widget>>>,
+  configuration?: Value<Configuration>,
 };
 
 export type AspectRatio = {
-  widgets: Value<Array<Value<Object>>>,
+  widgets: Value<Array<Value<Widget>>>,
   ratio?: Value<float>,
   centered?: Value<boolean>,
-  configuration?: Value<Object>,
+  configuration?: Value<Configuration>,
 };
 
 export type Icon = {
@@ -268,15 +286,15 @@ export type Button = {
   kind?: ButtonKind,
   mode?: ButtonMode,
   text?: Value<string | Text>,
-  icon?: Value<Object>,
+  icon?: Value<IconElement>,
   tooltip?: Value<string | Text>,
   disabled?: Value<boolean>,
-  configuration?: Value<Object> | int
+  configuration?: Value<Configuration>,
 };
 
 export type Slider = {
   value: Property,
-  bounds: Value<Object>,
+  bounds: Value<RangeElement>,
   range?: Value<boolean>,
   vertical?: Value<boolean>,
   step?: Value<int>,
@@ -284,7 +302,7 @@ export type Slider = {
   small?: Value<boolean>,
   labeled?: Value<boolean>,
   ticks?: Value<int>,
-  configuration?:  Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type InputKind = {
@@ -302,18 +320,18 @@ export type Status = {
 }
 
 export type Input =  {
-  kind?: Object;
+  kind?: InputKindElement;
   maxChars?: int,
   visibleChars?: int,
   onAction?: Handle,
   onFocusLost?: Handle,
   label?: Value<string | Text>,
-  icon?: Value<Object>,
+  icon?: Value<IconElement>,
   prefix?: Value<string | Text>,
   suffix?: Value<string | Text>,
   placeHolder?: Value<string | Text>,
   tooltip?: Value<string | Text>,
-  actionIcon?: Value<Object>,
+  actionIcon?: Value<IconElement>,
   disabled?: Value<boolean>,
   editable?: Value<boolean>,
   withCounter?: Value<boolean>,
@@ -325,9 +343,9 @@ export type Input =  {
   //
   text?: Value<string | Text>,
   position?: Value<int>,
-  selection?: Value<Object>,
-  status?: Value<Object>,
-  configuration?: Value<Object>
+  selection?: Value<RangeElement>,
+  status?: Value<StatusElement>,
+  configuration?: Value<Configuration>,
 }
 
 export type Separation = {
@@ -336,33 +354,33 @@ export type Separation = {
 }
 
 export type Split =  {
-  first: Value<Object>,
-  second: Value<Object>,
-  separation: Value<Object>,
+  first: Value<Widget>,
+  second: Value<Widget>,
+  separation: Value<SeparationElement>,
   vertical?: Value<boolean>,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type Toggle =  {
   selected : Readable,
   kind?: Value<ToggleKind>,
   text?: Value<string | Text>,
-  icon?: Value<Object>,
+  icon?: Value<IconElement>,
   tooltip?: Value<string | Text>,
   disabled?: Value<boolean>,
   indeterminate?: Readable,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type Scroll =  {
-  widget: Value<Object>,
+  widget: Value<Widget>,
   hScroll?: Value<int>,
   vScroll?: Value<int>,
   hPolicy?: Value<Policy>,
   vPolicy?: Value<Policy>,
   unit?: Value<int>,
   negative?: Value<boolean>,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type Insets =  {
@@ -376,21 +394,21 @@ export type Insets =  {
 
 export type Background =  {
   color: string;
-  padding?: Object,
+  padding?: InsetsElement,
   radius?: string
 }
 
 export type Padding =  {
-  padding?: Object,
+  padding?: InsetsElement,
 }
 
 export type BorderLine =  {
   color: string;
-  padding?: Object,
+  padding?: InsetsElement,
 }
 
 export type Nested =  {
-  decorations: Array<Object>
+  decorations: Array<Decoration>
 }
 
 export type Constraints = {
@@ -402,28 +420,28 @@ export type Constraints = {
 
 export type Label = {
   text?: Value<string | Text>,
-  icon?: Value<Object>,
+  icon?: Value<IconElement>,
   tooltip?: Value<string | Text>,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type Indicator = {
   progress?: Value<int>,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type Decorated = {
-  decoration: Value<Object>,
-  widget?: Value<Object>,
+  decoration: Value<Decoration>,
+  widget?: Value<Widget>,
   rigthToLeft?: Value<boolean>,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type Constrained = {
-  constraints: Value<Object>,
-  widget?: Value<Object>,
+  constraints: Value<ConstraintsElement>,
+  widget?: Value<Widget>,
   enforced?: Value<boolean>,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type TextStyle = {
@@ -441,11 +459,11 @@ export type TextStyle = {
 
 export type TextView = {
   text: Value<string | Text>,
-  style: Value<Object>,
+  style: Value<TextStyleElement>,
 }
 export type IconedAction = {
   id: string,
-  icon: Value<Object>,
+  icon: Value<IconElement>,
   onFire: Handle,
   tooltip?: Value<string | Text>,
   disabled?: Value<boolean>,
@@ -453,8 +471,8 @@ export type IconedAction = {
 
 export type Tab = {
   id: string,
-  widget: Value<Object>,
-  icon?: Value<Object>
+  widget: Value<Widget>,
+  icon?: Value<IconElement>
   text?: Value<string | Text>,
   discriminant?: Value<string | Text>,
   tooltip?: Value<string | Text>,
@@ -465,8 +483,8 @@ export type Tab = {
 }
 
 export type Tabs = {
-  tabs?: Value<Array<Object>>,
-  actions?: Value<Array<Object>>,
+  tabs?: Value<Array<TabElement>>,
+  actions?: Value<Array<IconedActionElement>>,
   active?: Value<string>,
   kind?: Value<TabsKind>,
   mode?: Value<TabsMode>,
@@ -475,19 +493,19 @@ export type Tabs = {
   iconOnTop?: Value<boolean>,
   minWidth?: Value<int> | int,
   maxWidth?: Value<int> | int,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 export type TreeItem = {
   text: string, 
-  icon?: Object, 
+  icon?: IconElement, 
   tooltip?: string, 
   id?: string, 
-  items?: Value<Array<Object>>
+  items?: Value<Array<TreeItemElement>>
 }
 
 export type Tree = {
-  items: Value<Array<Object>>,
+  items: Value<Array<TreeItemElement>>,
   onExpansionChange?: Handle,
   onSelectionChange?: Handle,
   onTreePerform?: Handle,
@@ -495,41 +513,59 @@ export type Tree = {
   getContextMenu?: Handle,
   allowMultipleSelection?: Value<boolean>,
   badgeMaxChar?: Value<int>,
-  configuration?: Value<Object>
+  configuration?: Value<Configuration>,
 }
 
 
-export var flexConf = (conf: FlexConf) => new Object("flexConf", conf);
-export var flex = (setting: Flex) => new Object("flex", setting);
-export var wrap = (setting: Wrap) => new Object("wrap", setting);
-export var stackConf = (conf: StackConf) => new Object("stackConf", conf);
-export var stack = (setting: Stack) => new Object("stack", setting);
-export var icon = (setting: Icon) => new Object("icon", setting);
-export var button = (setting: Button) => new Object("button", setting);
-export var range = (start: int, end: int) => new Object("range", {start: start, end: end});
-export var slider = (setting: Slider) => new Object("slider", setting);
-export var inputKind = (setting: InputKind) => new Object("inputKind", setting);
-export var status = (setting: Status) => new Object("status", setting);
-export var input = (setting: Input) => new Object("input", setting);
-export var separation = (setting: Separation) => new Object("separation", setting);
-export var split = (setting: Split) => new Object("split", setting);
-export var toggle = (setting: Toggle) => new Object("toggle", setting);
-export var scroll = (setting: Scroll) => new Object("scroll", setting);
-export var insets = (setting: Insets) => new Object("insets", setting);
-export var background = (setting: Background) => new Object("background", setting);
-export var padding = (setting: Padding) => new Object("padding", setting);
-export var borderLine = (setting: BorderLine) => new Object("borderLine", setting);
-export var nested = (setting: Nested) => new Object("nested", setting);
-export var constraints = (setting: Constraints) => new Object("constraints", setting);
-export var label = (setting: Label) => new Object("label", setting);
-export var indicator = (setting: Indicator) => new Object("indicator", setting);
-export var decorated = (setting: Decorated) => new Object("decorated", setting);
-export var constrained = (setting: Constrained) => new Object("constrained", setting);
-export var textStyle = (setting: TextStyle) => new Object("textStyle", setting);
-export var textView = (setting: TextView) => new Object("textview", setting);
-export var tab = (setting: Tab) => new Object("tab", setting);
-export var iconedAction = (setting: IconedAction) => new Object("iconedAction", setting);
-export var tabs = (setting: Tabs) => new Object("tabs", setting);
-export var treeItem = (setting: TreeItem) => new Object("treeItem", setting);
-export var tree = (setting: Tree) => new Object("tree", setting);
+export var flexConf = (conf: FlexConf) => new Configuration("flexConf", conf);
+export var stackConf = (conf: StackConf) => new Configuration("stackConf", conf);
+//
+export var icon = (setting: Icon) => new IconElement("icon", setting);
+export var range = (start: int, end: int) => new RangeElement("range", {start: start, end: end});
+export var inputKind = (setting: InputKind) => new InputKindElement("inputKind", setting);
+export var status = (setting: Status) => new StatusElement("status", setting);
+export var separation = (setting: Separation) => new SeparationElement("separation", setting);
+export var insets = (setting: Insets) => new InsetsElement("insets", setting);
+export var constraints = (setting: Constraints) => new ConstraintsElement("constraints", setting);
+export var textStyle = (setting: TextStyle) => new TextStyleElement("textStyle", setting);
+//
+export var background = (setting: Background) => new Decoration("background", setting);
+export var padding = (setting: Padding) => new Decoration("padding", setting);
+export var borderLine = (setting: BorderLine) => new Decoration("borderLine", setting);
+export var nested = (setting: Nested) => new Decoration("nested", setting);
+//
+export var iconedAction = (setting: IconedAction) => new IconedActionElement("iconedAction", setting);
+export var tab = (setting: Tab) => new TabElement("tab", setting);
+export var treeItem = (setting: TreeItem) => new TreeItemElement("treeItem", setting);
+//
+export var flex = (setting: Flex) => new Widget("flex", setting);
+export var wrap = (setting: Wrap) => new Widget("wrap", setting);
+export var stack = (setting: Stack) => new Widget("stack", setting);
+export var button = (setting: Button) => new Widget("button", setting);
+export var slider = (setting: Slider) => new Widget("slider", setting);
+export var input = (setting: Input) => new Widget("input", setting);
+export var split = (setting: Split) => new Widget("split", setting);
+export var toggle = (setting: Toggle) => new Widget("toggle", setting);
+export var scroll = (setting: Scroll) => new Widget("scroll", setting);
+export var label = (setting: Label) => new Widget("label", setting);
+export var indicator = (setting: Indicator) => new Widget("indicator", setting);
+export var decorated = (setting: Decorated) => new Widget("decorated", setting);
+export var constrained = (setting: Constrained) => new Widget("constrained", setting);
+export var textView = (setting: TextView) => new Widget("textview", setting);
+export var tabs = (setting: Tabs) => new Widget("tabs", setting);
+export var tree = (setting: Tree) => new Widget("tree", setting);
 
+
+export interface Scope {
+  alert: (text: string, title?: string) => void;
+  dialog: (dialog: Object)  => void;
+  create: (value?: any) => Property;
+  combine: (
+    combine: (values: Array<any>) => any, 
+    combinables: Array<Readable>, 
+    onWrite?: (value: any) => void
+  ) => Property;
+}
+
+
+export type Renderable = (scope: Scope) => Widget;

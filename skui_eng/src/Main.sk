@@ -1,8 +1,2 @@
 module UiEngine;
-
-@cpp_extern("SKIP_ENG_render")
-native fun natRender(renderable: UInt32, optPath: ?String): ?String;
-@cpp_extern("SKIP_ENG_deleteRenderable")
-private native fun deleteRenderable(renderable: UInt32): void;
-
 module end;

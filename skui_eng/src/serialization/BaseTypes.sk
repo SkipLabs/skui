@@ -210,3 +210,29 @@ extension class Style extends UiEngine.SObject {
 }
 
 module end;
+
+module UiEngine;
+
+base class Widgetable extends SObject {
+  //
+  static fun fromSerializable(obj: Serializable): Widgetable {
+    obj match {
+    | x @ Widgetable _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Widgetable", obj)
+    }
+  }
+}
+
+extension class Renderable {
+  const identifier: String = "renderable";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (static::identifier, Map["id" => SInt(this.hdl)])
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    static(getInt(value, "id"))
+  }
+}
+
+module end;

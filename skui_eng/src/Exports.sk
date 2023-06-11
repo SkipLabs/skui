@@ -64,7 +64,7 @@ fun dialog(dialog: JSON.Value): void {
   SKFS.Context::withoutGc(context ~> {
     ser = UiEngine.fromJSON(dialog);
     ser match {
-    | dialog @ UiEngine.Dialog _ -> dialog.open(context)
+    | d @ UiEngine.Dialog _ -> d.open(context)
     | _ -> SKFS.cast_violation("UiEngine.Dialog", ser)
     }
   })

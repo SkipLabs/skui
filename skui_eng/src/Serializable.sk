@@ -223,8 +223,10 @@ fun checkSerializable(
     Some(Text.Style::deserialize(value))
   } else if (type_ == TextView::identifier) {
     Some(TextView::deserialize(value))
+  } else if (type_ == Renderable::identifier) {
+    Some(Renderable::deserialize(value))
   } else {
-    checkExternals(type_, value)
+    None()
   }
 }
 
