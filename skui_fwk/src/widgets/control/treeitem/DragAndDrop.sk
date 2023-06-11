@@ -67,13 +67,12 @@ class DropHandler(
       !this.treeItem.id.isChildOf(tdh.treeItem.id) &&
       transfer == FWK.TrMove()
     ) ->
-      this.treeItem.controller.getDropMessages(
+      this.treeItem.controller.onDrop(
         context,
         tdh.treeItem.id,
         this.treeItem.id,
         this.drop,
-        true,
-      ).each(message -> SKUIMessage.emitMessage(context, message))
+      )
     | _ -> void
     };
     this.treeItem.state.emitTargeted(context, None());

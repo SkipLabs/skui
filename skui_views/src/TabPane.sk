@@ -26,7 +26,6 @@ fun view(): (
       };
       (context, _root) ~> {
         state = init(context, path.makeChild("tabsState"));
-        state.registerMessageSupport(context);
         Ui.TabPane::create(
           context,
           path,
@@ -38,8 +37,7 @@ fun view(): (
             action => state.getAction,
             side => _ctx ~> side,
             closable => (_ctx, _name) ~> true,
-            closeMessages => (_ctx, tabs, _iu) ~>
-              Array[state.closeMessage(tabs)],
+            onClose_ => state.close,
           },
         )
       }
@@ -47,102 +45,12 @@ fun view(): (
   )
 }
 
-// TODO Simplify api
+base class Executable extends Ui.Executable {}
 
-base class Executable extends Ui.Executable {
-  children =
-  | Init()
-  | All(value: Vector<Executable>)
-}
-
-base class Command extends SKUIMessage.Command {
-  fun toJSON(): JSON.Value
-  | Create() -> JSON.Object(Map["__class" => JSON.String(this.getClassName())])
-  | Close(toClose) ->
-    JSON.Object(
-      Map[
-        "__class" => JSON.String(this.getClassName()),
-        "toClose" => JSON.stringsToJSON(toClose),
-      ],
-    )
-
-  static fun fromJSON(jsv: JSON.Value): Command {
-    jso = jsv.expectObject();
-    cl = jso.getString("__class");
-    cl match {
-    | "SKUIViewsTabpane.Create" -> Create()
-    | "SKUIViewsTabpane.Close" ->
-      Close(JSON.stringsFromJSON(jso.get("toClose")))
-    | _ -> SKFS.cast_violation("SKUIViewsTabpane.Command", cl)
-    }
-  }
-}
-
-base class ExecCommand extends Command, Executable {
+base class ExecCommand extends Executable {
   children =
   | Create()
   | Close(toClose: Array<String>)
-}
-
-base class ForStorage
-  extends SKUIMessage.Support
-  uses SKUIMessage.WithUpdate<Command> {
-  //
-  fun init(_context: mutable SKFS.Context): void {
-    void
-  }
-
-  protected fun executeForStorage(
-    context: mutable SKFS.Context,
-    storage: Storage,
-    command: Command,
-  ): void {
-    command match {
-    | executable @ ExecCommand _ -> storage.setTodo(context, executable)
-    }
-  }
-}
-
-class Messages(storage: Storage) extends ForStorage {
-  //
-  protected fun convert(message: JSON.Value): Command {
-    Command::fromJSON(message)
-  }
-
-  protected fun convertCmd(command: SKUIMessage.Command): Command {
-    command as Command _;
-  }
-
-  protected fun execute(
-    context: mutable SKFS.Context,
-    _name: String,
-    _scope: String,
-    command: Command,
-  ): void {
-    this.executeForStorage(context, this.storage, command)
-  }
-}
-
-class AllMessages() extends ForStorage {
-  //
-  protected fun execute(
-    context: mutable SKFS.Context,
-    name: String,
-    scope: String,
-    command: Command,
-  ): void {
-    Storage::forNameAndScope(context, name, scope).each(storage ->
-      this.executeForStorage(context, storage, command)
-    )
-  }
-
-  protected fun convert(message: JSON.Value): Command {
-    Command::fromJSON(message)
-  }
-
-  protected fun convertCmd(command: SKUIMessage.Command): Command {
-    command as Command _;
-  }
 }
 
 const statePath: String = "ui/tpview/state";
@@ -167,32 +75,8 @@ class Tab(color: String, alpha: Int = 100) uses Orderable {
 class Tabs(v: Array<Tab>) extends SKFS.File
 class TabIds(v: Array<String>) extends SKFS.File
 
-class Storage(name: String, handle: SKFS.IHandle<SKFS.File>) {
-  //
-  static fun forNameAndScope(
-    context: mutable SKFS.Context,
-    name: String,
-    scope: String,
-  ): ?this {
-    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
-    if (hdl.exists(context)) Some(Storage(name, hdl)) else None()
-  }
-
-  fun getName(): String {
-    this.name
-  }
-
-  fun getScope(): String {
-    this.handle.getDirName().toString()
-  }
-
-  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
-  }
-}
-
 class State(
-  storage: SKFS.EHandle<SKFS.File>,
+  storage: SKFS.IHandle<SKFS.File>,
   computed: SKFS.EHandle<SKFS.File>,
 ) {
   //
@@ -234,7 +118,7 @@ class State(
         action,
         context.getThemeIcon(UiTheme.Add()),
         Some(!"Add tab"),
-        ctx ~> SKUIMessage.emitMessage(ctx, this.createMessage()),
+        this.create,
       )
     | _ -> invariant_violation("Invalid action")
     }
@@ -264,28 +148,16 @@ class State(
     );
   }
 
-  fun createMessage(): SKUIMessage.Message {
-    this.message(Create())
+  fun create(context: mutable SKFS.Context): void {
+    this.setTodo(context, Create())
   }
 
-  fun closeMessage(toClose: Array<String>): SKUIMessage.Message {
-    this.message(Close(toClose))
+  fun close(context: mutable SKFS.Context, toClose: Array<String>): void {
+    this.setTodo(context, Close(toClose))
   }
 
-  fun registerMessageSupport(context: mutable SKFS.Context): void {
-    context.registerMessageSupport(
-      statePath,
-      this.storage.getDirName().toString(),
-      Messages(Storage(statePath, SKFS.toIHandle(this.storage))),
-    );
-  }
-
-  private fun message(command: SKUIMessage.Command): SKUIMessage.Message {
-    SKUIMessage.Message(
-      statePath,
-      this.storage.getDirName().toString(),
-      command,
-    )
+  private fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+    Ui.setTodo(context, this.storage, value);
   }
 }
 
@@ -296,18 +168,18 @@ fun update(
   todo: Ui.Todo,
   _optUserData: ?SKFS.UserData,
 ): void {
-  execute(context, todo.command as Executable _, values);
+  execute(context, todo.command, values);
 }
 
 @debug
 fun execute(
   context: mutable SKFS.Context,
-  executable: Executable,
+  executable: Ui.Executable,
   values: mutable Map<SKFS.BaseName, ?SKFS.File>,
 ): void {
   executable match {
-  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
-  | Init() ->
+  | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
+  | Ui.Init() ->
     values.set(
       tabsKey,
       Some(
@@ -348,6 +220,7 @@ fun execute(
     tabs = values.get(tabsKey).map(Tabs::fromFile).fromSome().v;
     set = SortedSet::createFromItems(toClose);
     values.set(tabsKey, Some(Tabs(tabs.filter(t -> !set.contains(t.toId())))))
+  | _ -> SKFS.cast_violation("SKUIViewsTabpane.Executable", executable)
   }
 }
 
@@ -357,7 +230,7 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
   stateHdl = context.makeDir(
     Ui.Todo::fromFile,
     dirName,
-    Array[(Ui.todoProp, Ui.Todo(Init(), context.tick))],
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
   );
   computedDirName = SKFS.DirName::make(dirName, "computed/");
   computedHdl = SKFS.derive(
@@ -370,5 +243,5 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
     update,
     None(),
   );
-  State(stateHdl, computedHdl)
+  State(SKFS.IHandle(SKFS.FileConverter(f ~> f), dirName), computedHdl)
 }

@@ -422,7 +422,7 @@ base class Storage {
     context: mutable SKFS.Context,
     optVisibility: ?Ui.Visibility,
   ): void;
-  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  fun setTodo(context: mutable SKFS.Context, cmd: Ui.Executable): void;
   fun setHScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void;
   fun setVScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void;
 }

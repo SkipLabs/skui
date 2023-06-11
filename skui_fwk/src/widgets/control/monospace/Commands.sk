@@ -1,10 +1,6 @@
 module UiMonospace;
 
-base class Executable extends Ui.Executable {
-  children =
-  | Init()
-  | All(value: Vector<Executable>)
-}
+base class Executable extends Ui.Executable
 
 base class Command extends SKUIMessage.Command {
   children =
@@ -16,7 +12,7 @@ base class Command extends SKUIMessage.Command {
   | CancelScrolling(tick: SKFS.Tick)
   | SetBlinking(value: Bool)
   | ToggleHidden(tick: SKFS.Tick)
-  | Multiples(commands: Array<Command>)
+  | All(commands: Array<Command>)
 }
 
 base class ExecCommand extends Command, Executable {

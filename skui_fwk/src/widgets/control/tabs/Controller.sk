@@ -12,12 +12,14 @@ class LamController{
   side: Ui.Getter<.UiSide> = Ui.default(UiSide.Top()),
   minWidth: Ui.Getter<?Int> = Ui.default(None()),
   maxWidth: Ui.Getter<?Int> = Ui.default(None()),
-  changeMessages: (mutable SKFS.Context, String, Bool, Bool) ~> Array<
-    SKUIMessage.Message,
-  > = (_ctx, _value, _selected, _iu) ~> Array[],
-  closeMessages: (mutable SKFS.Context, Array<String>, Bool) ~> Array<
-    SKUIMessage.Message,
-  > = (_ctx, _tabs, _iu) ~> Array[],
+  onChange_: (mutable SKFS.Context, String, Bool) ~> void = (
+    _ctx,
+    _value,
+    _selected,
+  ) ~>
+    void,
+  onClose_: (mutable SKFS.Context, Array<String>) ~> void = (_ctx, _tabs) ~>
+    void,
 } extends Controller {
   //
   fun getActive(context: mutable SKFS.Context): ?Ui.StringProperty {
@@ -60,21 +62,16 @@ class LamController{
     this.maxWidth(context)
   }
 
-  fun getChangeMessages(
+  fun onChange(
     context: mutable SKFS.Context,
     tab: String,
     selected: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.changeMessages(context, tab, selected, isUntracked)
+  ): void {
+    this.onChange_(context, tab, selected)
   }
 
-  fun getCloseMessages(
-    context: mutable SKFS.Context,
-    tabs: Array<String>,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.closeMessages(context, tabs, isUntracked)
+  fun onClose(context: mutable SKFS.Context, tabs: Array<String>): void {
+    this.onClose_(context, tabs)
   }
 }
 

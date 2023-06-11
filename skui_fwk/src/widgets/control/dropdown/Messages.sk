@@ -16,7 +16,7 @@ base class ForStorage
     name = storage.getName();
     scope = storage.getScope();
     command match {
-    | Multiple(commands) ->
+    | All(commands) ->
       commands.each(cmd -> this.executeForStorage(context, storage, cmd))
     | SetHover(optValue) -> storage.setHover(context, optValue)
     | SetScroll(optScroll) -> storage.setScroll(context, optScroll)

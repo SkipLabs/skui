@@ -45,12 +45,12 @@ class Tree protected {
             depth => _ctx ~> item.depth,
             expanded => ctx ~> params.state.isExpanded(ctx, id),
             focused => ctx ~> ctx.isFocused(path),
-            selectMessages => (ctx, toggle, keep, _iu) ~> {
+            select => (ctx, toggle, keep) ~> {
               SystemProperties.setRequireFocus(ctx, path);
-              Array[params.state.selectMessage(id, toggle, keep)]
+              params.state.select(ctx, id, toggle, keep)
             },
-            fireMessages => (_ctx, _iu) ~> Array[params.state.fireMessage(id)],
-            dropMessages => params.controller.getDropMessages,
+            fire => ctx ~> params.state.fire(ctx, id),
+            drop => params.controller.onDrop,
             contextMenuItems => ctx ~> {
               selection = params.state.getSelection(ctx);
               params.controller.getContextMenuItems(ctx, Some(id), selection);

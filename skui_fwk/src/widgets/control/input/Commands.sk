@@ -2,12 +2,10 @@ module UiInput;
 
 base class Executable extends Ui.Executable {
   children =
-  | Init()
   | SetStatus(status: Status, source: Int)
   | SetText(value: String, source: Int)
   | SetPosition(value: Int, source: Int)
   | SetSelection(optValue: ?Range, source: Int)
-  | All(value: Vector<Executable>)
 }
 
 base class Command extends SKUIMessage.Command {

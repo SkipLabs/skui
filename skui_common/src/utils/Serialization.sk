@@ -28,15 +28,6 @@ extension base class Text extends JSONValue {
         "text" => JSON.String(text),
       ],
     )
-  | Texts(texts) ->
-    JSON.Object(
-      Map[
-        "__class" => JSON.String(this.getClassName()),
-        "texts" => JSON.Array(
-          Vector::createFromItems(texts.map(text -> text.toJSON())),
-        ),
-      ],
-    )
   | LocaleText(text, optCategory) ->
     JSON.Object(
       Map[
@@ -63,10 +54,6 @@ extension base class Text extends JSONValue {
     cl = jso.getString("__class");
     cl match {
     | "Raw" -> Raw(jso.getString("text"))
-    | "Texts" ->
-      Texts(
-        jso.getArray("texts").value.map(jsv -> Text::fromJSON(jsv)).toArray(),
-      )
     | "LocaleText" ->
       LocaleText(jso.getString("text"), jso.maybeGetString("category"))
     | "Format" ->

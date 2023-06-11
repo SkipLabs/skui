@@ -23,7 +23,6 @@ fun init(context: mutable SKFS.Context): void {
     "*",
     UiTabsSc.AllMessages(),
   );
-  context.registerMessageSupport(UiTabs.statePath, "*", UiTabs.AllMessages());
   context.registerMessageSupport(
     UiDropdown.statePath,
     "*",

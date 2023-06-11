@@ -1,15 +1,10 @@
 module UiTabs;
 
-base class Executable extends Ui.Executable {
-  children =
-  | Init()
-  | All(value: Vector<Executable>)
-}
+base class Executable extends Ui.Executable {}
 
 base class Command extends SKUIMessage.Command {
   children =
   | SetSelected(optValue: ?String)
-  | Multiple(values: Array<Command>)
 
   fun toJSON(): JSON.Value
   | SetSelected(optValue) ->
@@ -45,13 +40,6 @@ base class Command extends SKUIMessage.Command {
         "value" => JSON.Bool(value),
       ],
     )
-  | Multiple(values) ->
-    JSON.Object(
-      Map[
-        "__class" => JSON.String(this.getClassName()),
-        "values" => JSON.arrayToJSON(values, v ~> v.toJSON()),
-      ],
-    )
 
   static fun fromJSON(jsv: JSON.Value): Command {
     jso = jsv.expectObject();
@@ -67,9 +55,7 @@ base class Command extends SKUIMessage.Command {
     | "UiTabs.SetSelected" -> SetSelected(jso.maybeGetString("value"))
     | "UiTabs.ManagePinned" ->
       ManagePinned(jso.getString("tab"), jso.getBool("value"))
-    | "UiTabs.Multiple" ->
-      Multiple(JSON.arrayFromJSON(jso.getArray("values"), Command::fromJSON))
-    | _ -> invariant_violation(`Invalid json object ${cl} for UiTab.Command`)
+    | _ -> SKFS.cast_violation("UiTab.Command", cl)
     }
   }
 }

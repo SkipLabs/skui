@@ -29,7 +29,7 @@ class DropHandler(tab: Ui.Tab, drop: Ui.Drop) extends FWK.DropHandler {
   }
 
   fun exit(context: mutable SKFS.Context): void {
-    this.tab.state.emitTargeted(context, None());
+    this.tab.state.setTargeted(context, None());
   }
 
   fun over(
@@ -45,7 +45,7 @@ class DropHandler(tab: Ui.Tab, drop: Ui.Drop) extends FWK.DropHandler {
       tdh.tab.path.id != this.tab.path.id &&
       mode == FWK.TrMove()
     ) ->
-      this.tab.state.emitTargeted(context, Some(this.drop));
+      this.tab.state.setTargeted(context, Some(this.drop));
       Some(mode)
     | _ -> None()
     }
@@ -62,16 +62,15 @@ class DropHandler(tab: Ui.Tab, drop: Ui.Drop) extends FWK.DropHandler {
       tdh.tab.path.id != this.tab.path.id &&
       transfer == FWK.TrMove()
     ) ->
-      this.tab.controller.getDropMessages(
+      this.tab.controller.onDrop(
         context,
         tdh.tab.path.id,
         this.tab.path.id,
         this.drop == Ui.DropBefore(),
-        true,
-      ).each(message -> SKUIMessage.emitMessage(context, message))
+      )
     | _ -> void
     };
-    this.tab.state.emitTargeted(context, None());
+    this.tab.state.setTargeted(context, None());
   }
 }
 

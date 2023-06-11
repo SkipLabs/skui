@@ -25,6 +25,7 @@ fun dropdown(
   optNumber: ?Int,
   optConfiguration: ?Ui.Configuration = None(),
 ): Ui.Widget {
+  perform = _ctx ~> void;
   number = Math.max(0, optNumber.default(0));
   subVec = mutable Vector[
     UiDropdown.Item{
@@ -32,18 +33,21 @@ fun dropdown(
       text => _ctx ~> !"Select all",
       shortcut => _ctx ~> Some(Ui.Shortcut("A", true, false, false)),
       separator => _ctx ~> Ui.After(),
+      perform,
     },
     UiDropdown.Item{
       id => "cut",
       text => _ctx ~> !"Cut",
       shortcut => _ctx ~> Some(Ui.Shortcut("X", true, false, false)),
       icon => _ctx ~> Some(UiIcon.Description(UiIcon.KTheme(), "cut", None())),
+      perform,
     },
     UiDropdown.Item{
       id => "copy",
       text => _ctx ~> !"Copy",
       shortcut => _ctx ~> Some(Ui.Shortcut("C", true, false, false)),
       icon => _ctx ~> Some(UiIcon.Description(UiIcon.KTheme(), "copy", None())),
+      perform,
     },
     UiDropdown.Item{
       id => "paste",
@@ -51,13 +55,14 @@ fun dropdown(
       shortcut => _ctx ~> Some(Ui.Shortcut("V", true, false, false)),
       icon => _ctx ~>
         Some(UiIcon.Description(UiIcon.KTheme(), "paste", None())),
+      perform,
     },
   ];
   if (number > 0) {
     for (idx in Range(0, number)) {
       id = `sub_item_${idx + 1}`;
       text = !`Sub item ${idx + 1}`;
-      subVec.push(UiDropdown.Item{id, text => _ctx ~> text})
+      subVec.push(UiDropdown.Item{id, text => _ctx ~> text, perform})
     }
   };
   edition = UiDropdown.ArrayCollection(subVec.toArray());
@@ -66,11 +71,13 @@ fun dropdown(
       id => "undo",
       text => _ctx ~> !"Undo",
       shortcut => _ctx ~> Some(Ui.Shortcut("Z", true, false, false)),
+      perform,
     },
     UiDropdown.Item{
       id => "redo",
       text => _ctx ~> !"Redo",
       shortcut => _ctx ~> Some(Ui.Shortcut("Y", true, false, false)),
+      perform,
     },
     UiDropdown.Menu{
       id => "edition",
@@ -83,7 +90,7 @@ fun dropdown(
     for (idx in Range(0, number)) {
       id = `item_${idx + 1}`;
       text = !`Item ${idx + 1}`;
-      vec.push(UiDropdown.Item{id, text => _ctx ~> text})
+      vec.push(UiDropdown.Item{id, text => _ctx ~> text, perform})
     }
   };
   items = vec.toArray();

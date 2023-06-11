@@ -6,10 +6,7 @@ class IVFocusHandler{
   itemPath: Ui.Path,
   item: ItemBase,
   idx: Int,
-  optCloseMessage: ?(
-    mutable SKFS.Context,
-    Bool,
-  ) ~> SKUIMessage.Message = None(),
+  optOnClose: ?(mutable SKFS.Context) ~> void = None(),
 } extends Ui.TabFocusHandler uses FWK.OnlyShortcuts {
   fun getIdentifier(): Ui.Path {
     this.path;
@@ -32,12 +29,8 @@ class IVFocusHandler{
               ],
             ),
             FWK.Standard(ctx ~> {
-              this.optCloseMessage.each(cm ->
-                SKUIMessage.emitMessage(ctx, cm(ctx, true))
-              );
-              i.message(ctx, true).each(message ->
-                SKUIMessage.emitMessage(ctx, message)
-              )
+              this.optOnClose.each(perform -> perform(ctx));
+              i.perform(ctx)
             }),
           ),
         )
@@ -65,7 +58,7 @@ class IVFocusHandler{
 class FocusHandler{
   path: Ui.Path,
   state: State,
-  optCloseMessage: ?(mutable SKFS.Context, Bool) ~> SKUIMessage.Message,
+  optOnClose: ?(mutable SKFS.Context) ~> void = None(),
 } extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
   protected fun getMainIdentifier(): Ui.Path {
     this.path;
@@ -119,12 +112,8 @@ class FocusHandler{
               .items(ctx, true)
               .getItem(ctx, selected, true) match {
             | i @ Item _ ->
-              this.optCloseMessage.each(cm ->
-                SKUIMessage.emitMessage(ctx, cm(ctx, true))
-              );
-              i.message(ctx, true).each(message ->
-                SKUIMessage.emitMessage(ctx, message)
-              )
+              this.optOnClose.each(perform -> perform(ctx));
+              i.perform(ctx)
             | _m @ Menu _ -> this.state.emitGoto(ctx, Forward(selected))
             };
             true

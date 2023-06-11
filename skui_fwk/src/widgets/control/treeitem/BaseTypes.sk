@@ -19,25 +19,16 @@ base class Controller extends SKFS.UserData, SKFS.File {
     context: mutable SKFS.Context,
   ): Array<UiDropdown.ItemBase>;
 
-  fun getSelectMessages(
-    context: mutable SKFS.Context,
-    toggle: Bool,
-    keep: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  fun onSelect(context: mutable SKFS.Context, toggle: Bool, keep: Bool): void;
 
-  fun getFireMessages(
-    context: mutable SKFS.Context,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  fun onFire(context: mutable SKFS.Context): void;
 
-  fun getDropMessages(
+  fun onDrop(
     context: mutable SKFS.Context,
     source: Ui.Path,
     destination: Ui.Path,
     drop: Ui.Drop,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  ): void;
 }
 
 base class State {

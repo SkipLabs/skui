@@ -684,16 +684,40 @@ base class WithShortcuts{
   }
 }
 
-base class Executable extends SKFS.File
+base class Executable extends SKFS.File {
+  children =
+  | Init()
+  | Multiple(Array<Executable>)
+}
 
 class Todo(command: Executable, tick: SKFS.Tick) extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Todo _ -> x
-    | _ -> invariant_violation("Must be Ui.Todo")
+    | _ -> SKFS.cast_violation("Ui.Todo", obj)
     }
   }
+}
+
+fun setTodo(
+  context: mutable SKFS.Context,
+  handle: SKFS.IHandle<SKFS.File>,
+  value: Executable,
+): void {
+  optExecutable = handle
+    .maybeGetValue(context, Ui.todoProp, true)
+    .map(Ui.Todo::fromFile)
+    .flatMap(t -> if (t.tick == context.tick) Some(t.command) else None());
+  executable = optExecutable match {
+  | Some(command) ->
+    command match {
+    | Multiple(cmds) -> Multiple(Arrays.add(cmds, value))
+    | _ -> Multiple(Array[command, value])
+    }
+  | _ -> value
+  };
+  handle.write(context, todoProp, Ui.Todo(executable, context.tick))
 }
 
 class Shortcut(

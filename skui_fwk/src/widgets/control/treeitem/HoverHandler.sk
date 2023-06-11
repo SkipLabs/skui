@@ -30,15 +30,11 @@ class HoverHandler(
       ) {
         this.state.emitArmed(context, this.expand, false);
         if (this.expand || mouse.getPrimaryClickCount() == 2) {
-          this.controller.getFireMessages(context, true).each(message ->
-            SKUIMessage.emitMessage(context, message)
-          )
+          this.controller.onFire(context)
         } else if (mouse.getPrimaryClickCount() == 1) {
           toggle = FWKKeys.isControlDown(context, true);
           keep = FWKKeys.isShiftDown(context, true);
-          this.controller.getSelectMessages(context, toggle, keep, true).each(
-            message -> SKUIMessage.emitMessage(context, message),
-          )
+          this.controller.onSelect(context, toggle, keep)
         };
         true
       } else {

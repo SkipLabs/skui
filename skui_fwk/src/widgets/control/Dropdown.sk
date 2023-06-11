@@ -460,7 +460,7 @@ class Dropdown protected {
             category => "dropdown",
             optFocusHandler,
             state => this.state,
-            optCloseMessage => Some(this.controller.getCloseMessage),
+            optOnClose => Some(this.controller.onClose),
           },
         )
       },

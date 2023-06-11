@@ -6,10 +6,7 @@ class IVHoverHandler(
   itemPath: Ui.Path,
   item: ItemBase,
   idx: Int,
-  optCloseMessage: ?(
-    mutable SKFS.Context,
-    Bool,
-  ) ~> SKUIMessage.Message = None(),
+  optOnClose: ?(mutable SKFS.Context) ~> void = None(),
 ) extends FWK.HoverHandler {
   fun getIdentifier(): Ui.Path {
     this.path;
@@ -36,12 +33,8 @@ class IVHoverHandler(
       ) {
         this.item match {
         | i @ Item _ ->
-          this.optCloseMessage.each(cm ->
-            SKUIMessage.emitMessage(context, cm(context, true))
-          );
-          i.message(context, true).each(message ->
-            SKUIMessage.emitMessage(context, message)
-          )
+          this.optOnClose.each(perform -> perform(context));
+          i.perform(context)
         | _m @ Menu _ -> this.state.emitGoto(context, Forward(this.idx))
         };
         true

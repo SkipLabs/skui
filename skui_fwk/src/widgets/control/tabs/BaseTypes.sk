@@ -85,9 +85,7 @@ class Tab{
   iconOnTop: Ui.Getter<Bool> = Ui.default(false),
   badge: Ui.Getter<?Ui.Badge> = Ui.default(None()),
   progress: Ui.Getter<?Ui.Progress> = Ui.default(None()),
-  fireMessage: Ui.GetterOne<Array<SKUIMessage.Message>, Bool> = Ui.defaultOne(
-    Array[],
-  ),
+  fire: Ui.Getter<void> = Ui.default(void),
 } extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
@@ -159,18 +157,14 @@ base class Controller extends SKFS.UserData {
   fun getAction(context: mutable SKFS.Context, index: Int): Action;
   fun getMinWidth(context: mutable SKFS.Context): ?Int;
   fun getMaxWidth(context: mutable SKFS.Context): ?Int;
-  fun getChangeMessages(
+
+  fun onChange(
     context: mutable SKFS.Context,
     tab: String,
     selected: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  ): void;
 
-  fun getCloseMessages(
-    context: mutable SKFS.Context,
-    tabs: Array<String>,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  fun onClose(context: mutable SKFS.Context, tabs: Array<String>): void;
 
   fun getNumberOfTabs(context: mutable SKFS.Context): Int {
     this.getTabs(context).size()
@@ -200,23 +194,14 @@ base class State {
     optTab: ?String,
   ): ClosableInfo;
 
-  fun emitPinned(context: mutable SKFS.Context, tab: String, value: Bool): void;
-  fun emitSelected(context: mutable SKFS.Context, optTab: ?String): void;
-  fun pinMessage(tab: String, pinned: Bool): SKUIMessage.Message;
-  fun moveMessage(
+  fun pin(context: mutable SKFS.Context, tab: String, value: Bool): void;
+  fun select(context: mutable SKFS.Context, optTab: ?String): void;
+  fun move(
+    context: mutable SKFS.Context,
     toMove: String,
     dstTab: String,
     before: Bool,
-  ): SKUIMessage.Message;
-}
-
-base class Storage {
-  fun getName(): String;
-  fun getScope(): String;
-
-  fun isPinned(context: mutable SKFS.Context, tab: String): Bool;
-  fun setSelected(context: mutable SKFS.Context, optTab: ?String): void;
-  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  ): void;
 }
 
 class Parameters(

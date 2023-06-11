@@ -82,7 +82,7 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
 }
 
 class HState(
-  storage: SKFS.EHandle<SKFS.File>,
+  storage: SKFS.IHandle<SKFS.File>,
   visibleItems: Ui.ListHandle<ItemFile>,
   size: Ui.Getter<Int>,
   selection: Ui.GetterOne<Bool, Ui.Path>,
@@ -146,12 +146,12 @@ class HState(
     this.badge(context, path)
   }
 
-  protected fun getHandle(): SKFS.EHandle<SKFS.File> {
-    this.storage
-  }
-
   protected fun getComputed(): SKFS.EHandle<SKFS.File> {
     this.computed
+  }
+
+  protected fun getHandle(): SKFS.EHandle<SKFS.File> {
+    this.storage.toEHandle();
   }
 
   protected fun getStatePath(): String {
@@ -212,33 +212,30 @@ class HState(
     this.emit(context, ManageVisible(index))
   }
 
-  fun selectMessage(
+  fun select(
+    context: mutable SKFS.Context,
     path: Ui.Path,
     toogle: Bool,
     keep: Bool,
-  ): SKUIMessage.Message {
+  ): void {
     target = if (keep) {
       SToPath(path, toogle)
     } else {
       SPath(path, toogle)
     };
-    this.message(ManageSelect(target))
+    this.setTodo(context, ManageSelect(target))
   }
 
-  fun toggleExpansionMessage(path: Ui.Path): SKUIMessage.Message {
-    this.message(ToggleExpansion(path))
+  fun toggleExpansion(context: mutable SKFS.Context, path: Ui.Path): void {
+    this.setTodo(context, ToggleExpansion(path))
   }
 
-  fun fireMessage(path: Ui.Path): SKUIMessage.Message {
-    this.message(Fire(Some(path)))
+  fun fire(context: mutable SKFS.Context, path: Ui.Path): void {
+    this.setTodo(context, Fire(Some(path)))
   }
 
-  private fun message(command: SKUIMessage.Command): SKUIMessage.Message {
-    SKUIMessage.Message(
-      statePath,
-      this.storage.getDirName().toString(),
-      command,
-    );
+  private fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+    Ui.setTodo(context, this.storage, value)
   }
 }
 
@@ -352,9 +349,7 @@ fun init(
     (context, writer, key, file) ~>
       if (key == Ui.selectionProp) {
         selection = Items::fromFile(file).value;
-        info.controller
-          .getSelectionChangeMessages(context, selection, true)
-          .each(msg -> SKUIMessage.emitMessage(context, msg));
+        info.controller.onSelectionChange(context, selection);
         writer.write(key, file)
       }
     ,
@@ -400,7 +395,7 @@ fun init(
   Parameters(
     controller,
     HState(
-      stateHdl,
+      SKFS.toIHandle(stateHdl),
       visibleItems,
       size,
       selection,
@@ -422,13 +417,13 @@ fun update(
   todo: Ui.Todo,
   optInfo: ?Info,
 ): void {
-  execute(context, todo.command as Executable _, values, optInfo.fromSome());
+  execute(context, todo.command, values, optInfo.fromSome());
 }
 
 @debug
 fun execute(
   context: mutable SKFS.Context,
-  executable: Executable,
+  executable: Ui.Executable,
   values: mutable Map<SKFS.BaseName, ?SKFS.File>,
   info: Info,
 ): void {
@@ -459,7 +454,7 @@ fun execute(
     values.set(Ui.expansionProp, Some(ItemsSet(expansionSet)));
   };
   executable match {
-  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values, info))
+  | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values, info))
   | Init() -> void
   | ManageScrolling(incr, _) ->
     values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
@@ -566,9 +561,7 @@ fun execute(
         .map(Items::fromFile)
         .map(is -> is.value)
         .default(Array[]);
-      info.controller
-        .getFireMessages(context, optCurrent, selection, true)
-        .each(msg -> SKUIMessage.emitMessage(context, msg));
+      info.controller.onFire(context, optCurrent, selection);
     };
     optCurrent match {
     | Some(path) ->
@@ -580,6 +573,7 @@ fun execute(
       }
     | _ -> fire()
     }
+  | _ -> SKFS.cast_violation("UiTree.Executable", executable)
   }
 }
 

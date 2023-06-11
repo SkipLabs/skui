@@ -1,24 +1,19 @@
 module UiDropdown;
 
-class LamController{
-  closeMessage: Ui.GetterOne<SKUIMessage.Message, Bool>,
-} extends Controller {
+class LamController{onClose_: mutable SKFS.Context ~> void} extends Controller {
   //
   static fun fromArray(
     items: Ui.GetterOne<Array<ItemBase>, Bool>,
-    closeMessage: Ui.GetterOne<SKUIMessage.Message, Bool>,
+    onClose_: mutable SKFS.Context ~> void,
   ): this {
     LamController{
       items => (ctx, ui) ~> ArrayCollection(items(ctx, ui)),
-      closeMessage,
+      onClose_,
     }
   }
 
-  fun getCloseMessage(
-    context: mutable SKFS.Context,
-    isUntracked: Bool,
-  ): SKUIMessage.Message {
-    this.closeMessage(context, isUntracked)
+  fun onClose(context: mutable SKFS.Context): void {
+    this.onClose_(context)
   }
 }
 

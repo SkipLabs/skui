@@ -1,15 +1,11 @@
 module UiDropdown;
 
-base class Executable extends Ui.Executable {
-  children =
-  | Init()
-  | All(value: Vector<Executable>)
-}
+base class Executable extends Ui.Executable
 
 base class Command extends SKUIMessage.Command {
   children =
   | SetHover(optItem: ?Ui.Path)
-  | Multiple(commands: Array<Command>)
+  | All(commands: Array<Command>)
   | SetScroll(optScroll: ?Ui.Scroll)
   | CancelScrolling(tick: SKFS.Tick)
 }

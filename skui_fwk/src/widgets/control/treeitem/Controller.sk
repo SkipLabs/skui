@@ -13,22 +13,9 @@ class LamController{
   progress: Ui.Getter<?Ui.Progress> = Ui.default(None()),
   depth: Ui.Getter<Int> = Ui.default(0),
   contextMenuItems: Ui.Getter<Array<UiDropdown.ItemBase>> = Ui.default(Array[]),
-  selectMessages: Ui.GetterThree<
-    Array<SKUIMessage.Message>,
-    Bool,
-    Bool,
-    Bool,
-  > = Ui.defaultThree(Array[]),
-  fireMessages: Ui.GetterOne<Array<SKUIMessage.Message>, Bool> = Ui.defaultOne(
-    Array[],
-  ),
-  dropMessages: (
-    mutable SKFS.Context,
-    Ui.Path,
-    Ui.Path,
-    Ui.Drop,
-    Bool,
-  ) ~> Array<SKUIMessage.Message> = (_, _, _, _, _) ~> Array[],
+  select: Ui.GetterTwo<void, Bool, Bool> = Ui.defaultTwo(void),
+  fire: Ui.Getter<void> = Ui.default(void),
+  drop: Ui.GetterThree<void, Ui.Path, Ui.Path, Ui.Drop> = Ui.defaultThree(void),
 } extends Controller {
   //
   fun isAllowExpansion(context: mutable SKFS.Context): Bool {
@@ -81,146 +68,21 @@ class LamController{
     this.contextMenuItems(context)
   }
 
-  fun getSelectMessages(
-    context: mutable SKFS.Context,
-    toggle: Bool,
-    keep: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.selectMessages(context, toggle, keep, isUntracked)
+  fun onSelect(context: mutable SKFS.Context, toggle: Bool, keep: Bool): void {
+    this.select(context, toggle, keep)
   }
 
-  fun getFireMessages(
-    context: mutable SKFS.Context,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.fireMessages(context, isUntracked)
+  fun onFire(context: mutable SKFS.Context): void {
+    this.fire(context)
   }
 
-  fun getDropMessages(
+  fun onDrop(
     context: mutable SKFS.Context,
     source: Ui.Path,
     destination: Ui.Path,
     drop: Ui.Drop,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.dropMessages(context, source, destination, drop, isUntracked)
-  }
-}
-
-class DerivedController(
-  getter: (mutable SKFS.Context, Bool) ~> ?Controller,
-) extends Controller {
-  //
-  fun isAllowExpansion(context: mutable SKFS.Context): Bool {
-    this.get(context, c -> c.isAllowExpansion(context), false)
-  }
-
-  fun isExpanded(context: mutable SKFS.Context): Bool {
-    this.get(context, c -> c.isExpanded(context), false)
-  }
-
-  fun isCurrent(context: mutable SKFS.Context): Bool {
-    this.get(context, c -> c.isCurrent(context), false)
-  }
-
-  fun isSelected(context: mutable SKFS.Context): Bool {
-    this.get(context, c -> c.isSelected(context), false)
-  }
-
-  fun isFocused(context: mutable SKFS.Context): Bool {
-    this.get(context, c -> c.isFocused(context), false)
-  }
-
-  fun getText(context: mutable SKFS.Context): Text {
-    default: Text = Raw("");
-    this.get(context, c -> c.getText(context), default)
-  }
-
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
-    default: ?Ui.Icon = None();
-    this.get(context, c -> c.getIcon(context, fontSize), default)
-  }
-
-  fun getTooltip(context: mutable SKFS.Context): ?Text {
-    default: ?Text = None();
-    this.get(context, c -> c.getTooltip(context), default)
-  }
-
-  fun getBadge(context: mutable SKFS.Context): ?Ui.Badge {
-    default: ?Ui.Badge = None();
-    this.get(context, c -> c.getBadge(context), default)
-  }
-
-  fun getProgress(context: mutable SKFS.Context): ?Ui.Progress {
-    default: ?Ui.Progress = None();
-    this.get(context, c -> c.getProgress(context), default)
-  }
-
-  fun getDepth(context: mutable SKFS.Context): Int {
-    this.get(context, c -> c.getDepth(context), 0)
-  }
-
-  fun getContextMenuItems(
-    context: mutable SKFS.Context,
-  ): Array<UiDropdown.ItemBase> {
-    this.get(context, c -> c.getContextMenuItems(context), Array[])
-  }
-
-  fun getSelectMessages(
-    context: mutable SKFS.Context,
-    toggle: Bool,
-    keep: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    default: Array<SKUIMessage.Message> = Array[];
-    this.get(
-      context,
-      c -> c.getSelectMessages(context, toggle, keep, isUntracked),
-      default,
-      isUntracked,
-    );
-  }
-
-  fun getFireMessages(
-    context: mutable SKFS.Context,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    default: Array<SKUIMessage.Message> = Array[];
-    this.get(
-      context,
-      c -> c.getFireMessages(context, isUntracked),
-      default,
-      isUntracked,
-    )
-  }
-
-  fun getDropMessages(
-    context: mutable SKFS.Context,
-    source: Ui.Path,
-    destination: Ui.Path,
-    drop: Ui.Drop,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    default: Array<SKUIMessage.Message> = Array[];
-    this.get(
-      context,
-      c -> c.getDropMessages(context, source, destination, drop, isUntracked),
-      default,
-      isUntracked,
-    );
-  }
-
-  private fun get<T: frozen>(
-    context: mutable SKFS.Context,
-    getter: Controller -> T,
-    default: T,
-    isUntracked: Bool = false,
-  ): T {
-    this.getter(context, isUntracked) match {
-    | Some(controller) -> getter(controller)
-    | _ -> default
-    }
+  ): void {
+    this.drop(context, source, destination, drop)
   }
 }
 

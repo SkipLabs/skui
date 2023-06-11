@@ -15,13 +15,6 @@ class Raw(text: String) extends Text {
   }
 }
 
-class Texts(texts: Array<Text>) extends Text {
-  //
-  fun toString(): String {
-    this.texts.map(txt -> txt.toString()).join("");
-  }
-}
-
 class LocaleText(
   text: String,
   optCategory: ?String = None(),
@@ -91,8 +84,6 @@ base class I18N() uses Hashable, Equality {
 
   fun translate(text: Text): String {
     text match {
-    | texts @ Texts _ ->
-      texts.texts.reduce((acc, value) -> acc + this.translate(value), "")
     | Raw(raw) -> raw
     | local @ LocaleBase _ -> local.toLocalized(this)
     }
@@ -211,11 +202,6 @@ fun translate(
 ): String {
   //;
   text match {
-  | texts @ Texts _ ->
-    texts.texts.reduce(
-      (acc, value) -> acc + translate(context, dictionary, value),
-      "",
-    )
   | Raw(raw) -> raw
   | local @ LocaleBase _ -> local.translate(context, dictionary)
   }

@@ -36,11 +36,7 @@ base class ItemBase{
   children =
   | Item{
     shortcut: mutable SKFS.Context ~> ?Ui.Shortcut = _ ~> None(),
-    message: (mutable SKFS.Context, Bool) ~> Array<SKUIMessage.Message> = (
-      _ctx,
-      _iu,
-    ) ~>
-      Array[],
+    perform: (mutable SKFS.Context) ~> void,
   }
 
   fun isMenu(): Bool
@@ -106,10 +102,7 @@ base class Target {
 }
 
 base class Controller extends Accessor, SKFS.UserData {
-  fun getCloseMessage(
-    context: mutable SKFS.Context,
-    isUntracked: Bool,
-  ): SKUIMessage.Message;
+  fun onClose(context: mutable SKFS.Context): void;
 
   fun getTitle(_context: mutable SKFS.Context): ?Text {
     None()
@@ -151,7 +144,7 @@ base class Storage extends Ui.StorageWithScroll {
   fun getScope(): String;
 
   fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
-  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  fun setTodo(context: mutable SKFS.Context, cmd: Ui.Executable): void;
 }
 
 class Parameters(controller: Controller, state: State) extends Ui.Parameters {}

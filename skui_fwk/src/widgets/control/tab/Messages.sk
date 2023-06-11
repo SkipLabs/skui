@@ -14,11 +14,6 @@ base class ForStorage
     command: Command,
   ): void {
     command match {
-    | SetHover(close, hover) -> storage.setHover(context, close, hover)
-    | SetArmed(close, armed) -> storage.setArmed(context, close, armed)
-    | SetTargeted(targeted) -> storage.setTargeted(context, targeted)
-    | Multiple(values) ->
-      values.each(c -> this.executeForStorage(context, storage, c))
     | SetIndeterminate(value) ->
       if (value < 0) {
         storage.setIndeterminate(context, None())

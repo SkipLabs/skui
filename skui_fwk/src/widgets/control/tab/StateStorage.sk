@@ -21,22 +21,6 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
     this.handle.getDirName().toString()
   }
 
-  fun setArmed(context: mutable SKFS.Context, close: Bool, value: Bool): void {
-    this.handle.writeOrRemove(
-      context,
-      Ui.armedProp,
-      if (value) Some(SKFS.BoolFile(close)) else None(),
-    )
-  }
-
-  fun setHover(context: mutable SKFS.Context, close: Bool, value: Bool): void {
-    this.handle.writeOrRemove(
-      context,
-      Ui.hoverProp,
-      if (value) Some(SKFS.BoolFile(close)) else None(),
-    )
-  }
-
   fun setIndeterminate(context: mutable SKFS.Context, optValue: ?Int): void {
     this.handle.writeOrRemove(
       context,
@@ -44,13 +28,9 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
       optValue.map(v -> SKFS.IntFile(v)),
     )
   }
-
-  fun setTargeted(context: mutable SKFS.Context, optDrop: ?Ui.Drop): void {
-    this.handle.writeOrRemove(context, Ui.targetedProp, optDrop)
-  }
 }
 
-class HState(handle: SKFS.Handle<SKFS.File>) extends State {
+class HState(handle: SKFS.IHandle<SKFS.File>) extends State {
   //
   fun getArmed(context: mutable SKFS.Context): ?Bool {
     this.handle.maybeGetBool(context, Ui.armedProp)
@@ -68,32 +48,28 @@ class HState(handle: SKFS.Handle<SKFS.File>) extends State {
     this.handle.maybeGetProp(context, Ui.targetedProp, f ~> f as Ui.Drop _)
   }
 
-  fun emitArmed(context: mutable SKFS.Context, close: Bool, value: Bool): void {
-    this.emit(context, SetArmed(close, value))
+  fun setArmed(context: mutable SKFS.Context, close: Bool, value: Bool): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.armedProp,
+      if (value) Some(SKFS.BoolFile(close)) else None(),
+    )
   }
 
-  fun emitHover(context: mutable SKFS.Context, close: Bool, value: Bool): void {
-    this.emit(context, SetHover(close, value))
+  fun setHover(context: mutable SKFS.Context, close: Bool, value: Bool): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.hoverProp,
+      if (value) Some(SKFS.BoolFile(close)) else None(),
+    )
+  }
+
+  fun setTargeted(context: mutable SKFS.Context, optDrop: ?Ui.Drop): void {
+    this.handle.writeOrRemove(context, Ui.targetedProp, optDrop)
   }
 
   fun emitIndeterminate(context: mutable SKFS.Context, value: Int): void {
     this.emit(context, SetIndeterminate(value))
-  }
-
-  fun emitTargeted(context: mutable SKFS.Context, optDrop: ?Ui.Drop): void {
-    this.emit(context, SetTargeted(optDrop))
-  }
-
-  fun emitAll(
-    context: mutable SKFS.Context,
-    close: Bool,
-    armed: Bool,
-    hover: Bool,
-  ): void {
-    this.emit(
-      context,
-      Multiple(Array[SetArmed(close, armed), SetHover(close, hover)]),
-    )
   }
 
   private fun emit(
@@ -112,7 +88,7 @@ class HState(handle: SKFS.Handle<SKFS.File>) extends State {
 fun init(context: mutable SKFS.Context, path: Ui.Path): State {
   dirName = Ui.controllerDirName(path);
   stateHdl = context.makeDir(f ~> f, dirName, Array[]);
-  HState(stateHdl)
+  HState(SKFS.toIHandle(stateHdl))
 }
 
 module end;

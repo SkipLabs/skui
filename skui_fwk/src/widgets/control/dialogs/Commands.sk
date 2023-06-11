@@ -1,9 +1,6 @@
 module UiDialogs;
 
-base class Executable extends Ui.Executable {
-  children =
-  | Init()
-}
+base class Executable extends Ui.Executable {}
 
 base class Command extends SKUIMessage.Command {}
 

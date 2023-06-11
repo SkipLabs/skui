@@ -31,12 +31,9 @@ base class Layer extends SKFS.BaseName {
 
 base class Command extends SKUIMessage.Command {
   children =
-  | CloseMenu()
   | ShowTooltip(String)
 
   fun toJSON(): JSON.Value
-  | CloseMenu() ->
-    JSON.Object(Map["__class" => JSON.String(this.getClassName())])
   | ShowTooltip(id) ->
     JSON.Object(
       Map[
@@ -49,7 +46,6 @@ base class Command extends SKUIMessage.Command {
     jso = jsv.expectObject();
     cl = jso.getString("__class");
     cl match {
-    | "UiRoot.CloseMenu" -> CloseMenu()
     | "UiRoot.ShowTooltip" -> ShowTooltip(jso.getString("id"))
     | _ -> invariant_violation(`Invalid json object ${cl} for UiRoot.Command`)
     }
@@ -186,7 +182,7 @@ class HStorage private (
             optFocused.map(f -> (f.i0, None()))
           };
           optMenu = optDropdown
-            .map(dd -> dd.i0.toMenu(dd.i1, this.closeMenuMessage()))
+            .map(dd -> dd.i0.toMenu(dd.i1, this.closeMenu))
             .map(menu ->
               optPreMenu match {
               | Some(preMenu) -> menu with {optFocused => preMenu.optFocused}
@@ -332,13 +328,10 @@ class HStorage private (
     path: Ui.Path,
     items: Array<UiDropdown.ItemBase>,
   ): Ui.Dropdown {
-    closeMessage = Ui.defaultOne<SKUIMessage.Message, Bool>(
-      this.closeMenuMessage(),
-    );
     itemsCollection = UiDropdown.ArrayCollection(items);
     controller = UiDropdown.LamController{
       items => (_ctx, _iu) ~> itemsCollection,
-      closeMessage,
+      onClose_ => this.closeMenu,
     };
     Ui.Dropdown::create(
       context,
@@ -351,18 +344,10 @@ class HStorage private (
     this.state.write(context, Ui.activeProp, SKFS.StringFile(id))
   }
 
-  fun closeMenuMessage(): SKUIMessage.Message {
-    this.message(CloseMenu());
-  }
-
   fun isTooltipShown(context: mutable SKFS.Context, path: Ui.Path): Bool {
     this.state.maybeGetString(context, Ui.activeProp)
       .map(v -> v == path.toString())
       .default(false);
-  }
-
-  private fun message(command: SKUIMessage.Command): SKUIMessage.Message {
-    SKUIMessage.Message(statePath, this.state.getDirName().toString(), command);
   }
 
   private fun emit(

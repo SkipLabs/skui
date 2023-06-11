@@ -12,26 +12,10 @@ class LamController{
     ?Ui.Path,
     Array<Ui.Path>,
   > = Ui.defaultTwo(Array[]),
-  selectionChange: Ui.GetterTwo<
-    Array<SKUIMessage.Message>,
-    Array<Ui.Path>,
-    Bool,
-  > = Ui.defaultTwo(Array[]),
-  expansionChange: Ui.GetterThree<
-    Array<SKUIMessage.Message>,
-    Ui.Path,
-    Bool,
-    Bool,
-  > = Ui.defaultThree(Array[]),
-  fire: Ui.GetterThree<
-    Array<SKUIMessage.Message>,
-    ?Ui.Path,
-    Array<Ui.Path>,
-    Bool,
-  > = Ui.defaultThree(Array[]),
-  drop: (mutable SKFS.Context, Ui.Path, Ui.Path, Ui.Drop, Bool) ~> Array<
-    SKUIMessage.Message,
-  > = (_, _, _, _, _) ~> Array[],
+  selectionChange: Ui.GetterOne<void, Array<Ui.Path>> = Ui.defaultOne(void),
+  expansionChange: Ui.GetterTwo<void, Ui.Path, Bool> = Ui.defaultTwo(void),
+  fire: Ui.GetterTwo<void, ?Ui.Path, Array<Ui.Path>> = Ui.defaultTwo(void),
+  drop: Ui.GetterThree<void, Ui.Path, Ui.Path, Ui.Drop> = Ui.defaultThree(void),
 } extends Controller {
   //
   fun getSelectionModel(
@@ -72,40 +56,36 @@ class LamController{
     this.contextMenuItems(context, optCurrent, selections)
   }
 
-  fun getSelectionChangeMessages(
+  fun onSelectionChange(
     context: mutable SKFS.Context,
     selections: Array<Ui.Path>,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.selectionChange(context, selections, isUntracked)
+  ): void {
+    this.selectionChange(context, selections)
   }
 
-  fun getExpansionChangeMessages(
+  fun onExpansionChange(
     context: mutable SKFS.Context,
     path: Ui.Path,
     value: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.expansionChange(context, path, value, isUntracked)
+  ): void {
+    this.expansionChange(context, path, value)
   }
 
-  fun getFireMessages(
+  fun onFire(
     context: mutable SKFS.Context,
     optCurrent: ?Ui.Path,
     selections: Array<Ui.Path>,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.fire(context, optCurrent, selections, isUntracked)
+  ): void {
+    this.fire(context, optCurrent, selections)
   }
 
-  fun getDropMessages(
+  fun onDrop(
     context: mutable SKFS.Context,
     source: Ui.Path,
     destination: Ui.Path,
     drop: Ui.Drop,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message> {
-    this.drop(context, source, destination, drop, isUntracked)
+  ): void {
+    this.drop(context, source, destination, drop)
   }
 }
 

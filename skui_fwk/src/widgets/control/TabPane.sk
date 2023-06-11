@@ -115,8 +115,8 @@ class TabPane protected {
             side => controller.getSide,
             minWidth => controller.getMinWidth,
             maxWidth => controller.getMaxWidth,
-            changeMessages => controller.getChangeMessages,
-            closeMessages => controller.getCloseMessages,
+            onChange_ => controller.onChange,
+            onClose_ => controller.onClose,
           };
           writer.write(key, UiTabs.init(context, subPath, tabsController))
         } else if (key == placeHolderKey) {

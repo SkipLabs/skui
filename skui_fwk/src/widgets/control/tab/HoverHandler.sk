@@ -12,7 +12,7 @@ class HoverHandler(
 
   fun enter(context: mutable SKFS.Context): void {
     if (!this.controller.isDisabled(context)) {
-      this.state.emitHover(context, this.close, true);
+      this.state.setHover(context, this.close, true);
       FWKPointer.setCursor(context, Ui.HandCursor());
     };
   }
@@ -28,21 +28,17 @@ class HoverHandler(
     FWK.Result(
       if (mouse.isPrimaryPressed(context.tick)) {
         SystemProperties.setRequireFocus(context, this.path);
-        this.state.emitArmed(context, this.close, true);
+        this.state.setArmed(context, this.close, true);
         true
       } else if (
         mouse.isPrimaryReleased(context.tick) &&
         this.state.getArmed(context) == Some(this.close)
       ) {
-        this.state.emitArmed(context, this.close, false);
+        this.state.setArmed(context, this.close, false);
         if (this.close) {
-          this.controller.getCloseMessages(context, true).each(message ->
-            SKUIMessage.emitMessage(context, message)
-          )
+          this.controller.onClose(context)
         } else {
-          this.controller.getFireMessages(context, true).each(message ->
-            SKUIMessage.emitMessage(context, message)
-          )
+          this.controller.onFire(context)
         };
         true
       } else {
@@ -53,7 +49,8 @@ class HoverHandler(
 
   fun exit(context: mutable SKFS.Context): void {
     FWKPointer.resetCursor(context);
-    this.state.emitAll(context, this.close, false, false);
+    this.state.setArmed(context, this.close, false);
+    this.state.setHover(context, this.close, false);
   }
 
   fun getTooltip(context: mutable SKFS.Context): ?FWK.SourcedWidget {

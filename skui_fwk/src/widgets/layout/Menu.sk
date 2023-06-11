@@ -6,16 +6,13 @@ base class Controller extends Ui.Parameters {
 
   fun getWidget(context: mutable SKFS.Context): Ui.Widget;
 
-  fun getCloseMessage(
-    context: mutable SKFS.Context,
-    isUntracked: Bool,
-  ): SKUIMessage.Message;
+  fun onClose(context: mutable SKFS.Context): void;
 }
 
 class LamController{
   offset: Ui.Getter<Geometry.Offset>,
   widget: Ui.Getter<Ui.Widget>,
-  closeMessage: Ui.GetterOne<SKUIMessage.Message, Bool>,
+  onClose_: Ui.Getter<void>,
 } extends Controller {
   //
   fun getOffset(context: mutable SKFS.Context): Geometry.Offset {
@@ -26,18 +23,16 @@ class LamController{
     this.widget(context)
   }
 
-  fun getCloseMessage(
-    context: mutable SKFS.Context,
-    isUntracked: Bool,
-  ): SKUIMessage.Message {
-    this.closeMessage(context, isUntracked)
+  fun onClose(context: mutable SKFS.Context): void {
+    this.onClose_(context)
   }
 }
 
 class FocusHandler{
   path: Ui.Path,
-  message: (mutable SKFS.Context, Bool) ~> SKUIMessage.Message,
+  onClose: Ui.Getter<void>,
 } extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  //
   protected fun getMainIdentifier(): Ui.Path {
     this.path;
   }
@@ -49,9 +44,7 @@ class FocusHandler{
       FWK.ShortcutAction(
         "exit",
         FWK.Shortcut(Array[UiEvent.pureKeyReleased(UiEvent.KeyInfo::escape)]),
-        FWK.Standard(ctx ~>
-          SKUIMessage.emitMessage(ctx, this.message(ctx, true))
-        ),
+        FWK.Standard(this.onClose),
       ),
     ]
   }
@@ -59,7 +52,7 @@ class FocusHandler{
 
 class HoverHandler(
   path: Ui.Path,
-  message: (mutable SKFS.Context, Bool) ~> SKUIMessage.Message,
+  perform: Ui.Getter<void>,
 ) extends Ui.HoverHandlerWrapper {
   //
   fun getIdentifier(): Ui.Path {
@@ -76,7 +69,7 @@ class HoverHandler(
   ): FWK.Result {
     FWK.Result(
       if (mouse.isPrimaryPressed(context.tick)) {
-        SKUIMessage.emitMessage(context, this.message(context, true));
+        this.perform(context);
         true
       } else {
         false
@@ -145,7 +138,7 @@ class MenuLayout protected {
           path => this.path,
           category => "menulayout",
           optFocusHandler,
-          message => this.controller.getCloseMessage,
+          onClose => this.controller.onClose,
         },
       )
     })
@@ -159,7 +152,7 @@ class MenuLayout protected {
       Some(
         UiMenuLayout.HoverHandler(
           this.path,
-          this.controller.getCloseMessage,
+          this.controller.onClose,
           childGetter(context),
         ),
       )

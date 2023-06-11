@@ -53,18 +53,13 @@ base class Controller extends Ui.Parameters {
   fun isDisabled(context: mutable SKFS.Context, tab: String): Bool;
   fun isClosable(context: mutable SKFS.Context, tab: String): Bool;
 
-  fun getChangeMessages(
+  fun onChange(
     context: mutable SKFS.Context,
     tab: String,
     selected: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  ): void;
 
-  fun getCloseMessages(
-    context: mutable SKFS.Context,
-    tabs: Array<String>,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  fun onClose(context: mutable SKFS.Context, tabs: Array<String>): void;
 }
 
 class MainCollection(

@@ -411,7 +411,7 @@ fun init(
     f ~> f,
     dirName,
     Array<(SKFS.BaseName, SKFS.File)>[
-      (Ui.todoProp, Ui.Todo(Init(), context.tick)),
+      (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
     ],
   );
   filteredDirName = SKFS.DirName::make(dirName, "filtered/");
@@ -491,7 +491,10 @@ fun init(
           writer.write(key, Ui.Todo(executables.first().i1, max))
         } else {
           sorted = executables.sortedFor(v ~> v.i0);
-          writer.write(key, Ui.Todo(All(sorted.map(v ~> v.i1)), max))
+          writer.write(
+            key,
+            Ui.Todo(Ui.Multiple(sorted.map(v ~> v.i1).toArray()), max),
+          )
         }
       }
     },
@@ -746,18 +749,18 @@ fun update(
 @debug
 fun execute(
   context: mutable SKFS.Context,
-  executable: Executable,
+  executable: Ui.Executable,
   values: mutable Map<SKFS.BaseName, ?SKFS.File>,
   charFilter: Char ~> Bool,
   source: Int,
 ): Bool {
   check = true;
   executable match {
-  | All(cmds) ->
+  | Ui.Multiple(cmds) ->
     cmds.each(cmd ->
       !check = execute(context, cmd, values, charFilter, source) && check
     )
-  | Init() ->
+  | Ui.Init() ->
     if (values.get(Ui.textProp).isNone()) {
       values.set(Ui.textProp, Some(SourcedText("", source)))
     };
@@ -817,6 +820,7 @@ fun execute(
     if (manageUnicode(values, charFilter, optValue, source)) {
       ensureVisible(context, values)
     }
+  | _ -> SKFS.cast_violation("UiInput.Executable", executable)
   };
   check
 }

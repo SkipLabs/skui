@@ -32,7 +32,7 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
     this.handle.getDirName().toString()
   }
 
-  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+  fun setTodo(context: mutable SKFS.Context, value: Ui.Executable): void {
     this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
   }
 
@@ -496,7 +496,7 @@ class HState(
     context: mutable SKFS.Context,
     commands: readonly Vector<Command>,
   ): void {
-    this.emit(context, Multiples(commands.toArray()))
+    this.emit(context, All(commands.toArray()))
   }
 
   private fun emit(
@@ -627,7 +627,7 @@ fun init(
     f ~> f,
     dirName,
     Array<(SKFS.BaseName, SKFS.File)>[
-      (Ui.todoProp, Ui.Todo(Init(), context.tick)),
+      (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
     ],
   );
   dv = SKFS.IntFile(0);
@@ -939,21 +939,21 @@ fun update(
       userData.controller.getStorePolicies(ctx, true).contains(policy)
     ,
   );
-  execute(context, todo.command as Executable _, updater);
+  execute(context, todo.command, updater);
 }
 
 @debug
 fun execute(
   context: mutable SKFS.Context,
-  executable: Executable,
+  executable: Ui.Executable,
   updater: mutable Updater,
 ): void {
   check = true;
   oldPosition = updater.getPosition();
   oldSelection = updater.getSelection();
   executable match {
-  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, updater))
-  | Init() -> !check = false
+  | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, updater))
+  | Ui.Init() -> !check = false
   | ManageText(value) ->
     updater.setText(value);
     updater.ensureVisible(context)
@@ -1037,6 +1037,7 @@ fun execute(
   | NewLine _ ->
     updater.insert(updater.endLine.toChars());
     updater.ensureVisible(context)
+  | _ -> SKFS.cast_violation("UiMonospace.Executable", executable)
   };
   if (check && updater.isEditable && !updater.redo.isEmpty()) {
     optOldHistory = updater.values.get(Ui.historyProp).map(History::fromFile);

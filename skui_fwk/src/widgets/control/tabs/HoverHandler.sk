@@ -35,16 +35,14 @@ class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
                 id => "pin",
                 text => _ctx ~> !"Pin",
                 separator => _ctx ~> Ui.Both(),
-                message => (_ctx, _iu) ~>
-                  Array[this.tabs.state.pinMessage(thh.path.id, true)],
+                perform => ctx ~> this.tabs.state.pin(ctx, thh.path.id, true),
               }
             } else {
               UiDropdown.Item{
                 id => "unpin",
                 text => _ctx ~> !"Unpin",
                 separator => _ctx ~> Ui.Both(),
-                message => (_ctx, _iu) ~>
-                  Array[this.tabs.state.pinMessage(thh.path.id, false)],
+                perform => ctx ~> this.tabs.state.pin(ctx, thh.path.id, false),
               }
             },
           ];
@@ -64,12 +62,8 @@ class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
                     None()
                   },
                 separator => _ctx ~> Ui.Both(),
-                message => (ctx, iu) ~>
-                  this.tabs.controller.getCloseMessages(
-                    ctx,
-                    Array[thh.path.id],
-                    iu,
-                  ),
+                perform => ctx ~>
+                  this.tabs.controller.onClose(ctx, Array[thh.path.id]),
                 disabled => ctx ~> !thh.controller.isClosable(ctx),
               },
             );
@@ -79,11 +73,10 @@ class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
                 text => _ctx ~> !"Close others",
                 disabled => _ctx ~>
                   closableInfo.right.isEmpty() && closableInfo.left.isEmpty(),
-                message => (ctx, iu) ~>
-                  this.tabs.controller.getCloseMessages(
+                perform => ctx ~>
+                  this.tabs.controller.onClose(
                     ctx,
                     Arrays.merge(closableInfo.right, closableInfo.left),
-                    iu,
                   ),
               },
             );
@@ -92,12 +85,8 @@ class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
                 id => "closeToTheRight",
                 text => _ctx ~> !"Close to the right",
                 disabled => _ctx ~> closableInfo.right.isEmpty(),
-                message => (ctx, iu) ~>
-                  this.tabs.controller.getCloseMessages(
-                    ctx,
-                    closableInfo.right,
-                    iu,
-                  ),
+                perform => ctx ~>
+                  this.tabs.controller.onClose(ctx, closableInfo.right),
               },
             );
             items.push(
@@ -105,12 +94,8 @@ class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
                 id => "closeToTheLeft",
                 text => _ctx ~> !"Close to the left",
                 disabled => _ctx ~> closableInfo.left.isEmpty(),
-                message => (ctx, iu) ~>
-                  this.tabs.controller.getCloseMessages(
-                    ctx,
-                    closableInfo.left,
-                    iu,
-                  ),
+                perform => ctx ~>
+                  this.tabs.controller.onClose(ctx, closableInfo.left),
               },
             );
             items.push(
@@ -118,12 +103,8 @@ class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
                 id => "closeAll",
                 text => _ctx ~> !"Close all",
                 separator => _ctx ~> Ui.After(),
-                message => (ctx, iu) ~>
-                  this.tabs.controller.getCloseMessages(
-                    ctx,
-                    closableInfo.closables,
-                    iu,
-                  ),
+                perform => ctx ~>
+                  this.tabs.controller.onClose(ctx, closableInfo.closables),
               },
             );
           };
@@ -146,12 +127,8 @@ class HoverHandler(tabs: Ui.Tabs) extends Ui.HoverHandlerWrapper {
                 id => "closeAll",
                 text => _ctx ~> !"Close all",
                 separator => _ctx ~> Ui.After(),
-                message => (ctx, iu) ~>
-                  this.tabs.controller.getCloseMessages(
-                    ctx,
-                    closableInfo.closables,
-                    iu,
-                  ),
+                perform => ctx ~>
+                  this.tabs.controller.onClose(ctx, closableInfo.closables),
               },
             ];
             Some(

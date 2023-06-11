@@ -16,7 +16,7 @@ base class ForStorage
     name = storage.getName();
     scope = storage.getScope();
     command match {
-    | Multiples(commands) ->
+    | All(commands) ->
       all = mutable Vector<ExecCommand>[];
       commands.each(cmd ->
         cmd match {
@@ -28,7 +28,7 @@ base class ForStorage
         if (all.size() == 1) {
           storage.setTodo(context, all[0])
         } else {
-          storage.setTodo(context, All(unsafe_chill_trust_me(all)))
+          storage.setTodo(context, Ui.Multiple(all.toArray()))
         }
       }
     | SetHover(optValue) -> storage.setHover(context, optValue)

@@ -126,7 +126,7 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
   stateHdl = context.makeDir(
     Ui.Todo::fromFile,
     dirName,
-    Array[(Ui.todoProp, Ui.Todo(Init(), context.tick))],
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
   );
   computedDirName = SKFS.DirName::make(dirName, "computed/");
   computedHdl = SKFS.derive(
@@ -191,9 +191,18 @@ fun update(
   todo: Ui.Todo,
   _optUserData: ?SKFS.UserData,
 ): void {
+  execute(context, todo.command, values)
+}
+
+fun execute(
+  context: mutable SKFS.Context,
+  executable: Ui.Executable,
+  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+): void {
   keys = values.get(Ui.keysProp).map(Infos::fromFile).default(Infos());
-  todo.command as Executable _ match {
-  | Init() -> void
+  executable match {
+  | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
+  | Ui.Init() -> void
   | Open(kind) ->
     focusState = FWK.getFocusState(context, true);
     optFocused = focusState.optFocused.map(fh -> fh.getIdentifier());
@@ -215,6 +224,7 @@ fun update(
     );
     !keys.value = keys.value.filter(i -> i.id != dialogId);
     values.remove(SKFS.IID(dialogId))
+  | _ -> SKFS.cast_violation("UiDialogs.Executable", executable)
   };
   values.set(Ui.keysProp, Some(keys));
 }

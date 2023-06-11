@@ -332,7 +332,7 @@ class SourcedWidget(
 
   fun toMenu(
     optOffset: ?Geometry.Offset,
-    closeMessage: SKUIMessage.Message,
+    onClose: mutable SKFS.Context ~> void,
   ): this {
     path = this.optPath.map(p -> p.makeChild("@contextmenu")).default(
       Ui.Path("@contextmenu"),
@@ -357,9 +357,7 @@ class SourcedWidget(
           UiMenuLayout.LamController{
             widget => _ctx ~> menu,
             offset => _ctx ~> offset,
-            closeMessage => Ui.defaultOne<SKUIMessage.Message, Bool>(
-              closeMessage,
-            ),
+            onClose_ => onClose,
           },
         )
       })

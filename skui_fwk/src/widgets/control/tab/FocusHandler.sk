@@ -81,15 +81,11 @@ class FocusHandler{
               ],
             ),
             FWK.Standard(ctx ~> {
-              this.state.emitArmed(ctx, this.close, false);
+              this.state.setArmed(ctx, this.close, false);
               if (this.close) {
-                this.controller.getCloseMessages(ctx, true).each(message ->
-                  SKUIMessage.emitMessage(ctx, message)
-                )
+                this.controller.onClose(ctx)
               } else {
-                this.controller.getFireMessages(ctx, true).each(message ->
-                  SKUIMessage.emitMessage(ctx, message)
-                )
+                this.controller.onFire(ctx)
               }
             }),
           ),
@@ -98,7 +94,7 @@ class FocusHandler{
           FWK.ShortcutAction(
             "cancel",
             FWK.Shortcut(Array[UiEvent.keyPressed(UiEvent.KeyInfo::escape)]),
-            FWK.Standard(ctx ~> this.state.emitArmed(ctx, this.close, false)),
+            FWK.Standard(ctx ~> this.state.setArmed(ctx, this.close, false)),
           ),
         );
       };
@@ -111,7 +107,7 @@ class FocusHandler{
               UiEvent.pureKeyPressed(UiEvent.KeyInfo::space),
             ],
           ),
-          FWK.Standard(ctx ~> this.state.emitArmed(ctx, this.close, true)),
+          FWK.Standard(ctx ~> this.state.setArmed(ctx, this.close, true)),
         ),
       );
       shortcuts.toArray()

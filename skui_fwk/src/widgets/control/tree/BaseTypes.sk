@@ -50,33 +50,29 @@ base class Controller {
     selections: Array<Ui.Path>,
   ): Array<UiDropdown.ItemBase>;
 
-  fun getSelectionChangeMessages(
+  fun onSelectionChange(
     context: mutable SKFS.Context,
     selections: Array<Ui.Path>,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  ): void;
 
-  fun getExpansionChangeMessages(
+  fun onExpansionChange(
     context: mutable SKFS.Context,
     path: Ui.Path,
     value: Bool,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  ): void;
 
-  fun getFireMessages(
+  fun onFire(
     context: mutable SKFS.Context,
     optCurrent: ?Ui.Path,
     selections: Array<Ui.Path>,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  ): void;
 
-  fun getDropMessages(
+  fun onDrop(
     context: mutable SKFS.Context,
     source: Ui.Path,
     destination: Ui.Path,
     drop: Ui.Drop,
-    isUntracked: Bool = false,
-  ): Array<SKUIMessage.Message>;
+  ): void;
 }
 
 base class State extends Ui.StateWithScroll {
@@ -121,14 +117,15 @@ base class State extends Ui.StateWithScroll {
 
   fun emitFire(context: mutable SKFS.Context): void;
 
-  fun selectMessage(
+  fun select(
+    context: mutable SKFS.Context,
     path: Ui.Path,
     toogle: Bool,
     keep: Bool,
-  ): SKUIMessage.Message;
+  ): void;
 
-  fun toggleExpansionMessage(path: Ui.Path): SKUIMessage.Message;
-  fun fireMessage(path: Ui.Path): SKUIMessage.Message;
+  fun toggleExpansion(context: mutable SKFS.Context, path: Ui.Path): void;
+  fun fire(context: mutable SKFS.Context, path: Ui.Path): void;
 }
 
 class Parameters(controller: Controller, state: State) extends Ui.Parameters {}

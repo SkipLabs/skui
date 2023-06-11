@@ -97,7 +97,7 @@ class HStorage(
     this.handle.writeOrRemove(context, Ui.hoverProp, optValue)
   }
 
-  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+  fun setTodo(context: mutable SKFS.Context, value: Ui.Executable): void {
     this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
   }
 }
@@ -201,7 +201,7 @@ class HState(
   }
 
   fun emitAll(context: mutable SKFS.Context, commands: Array<Command>): void {
-    this.emit(context, Multiple(commands))
+    this.emit(context, All(commands))
   }
 
   fun gotoMessage(value: Spot): SKUIMessage.Message {
@@ -240,7 +240,7 @@ fun init(
     f ~> f,
     dirName,
     Array<(SKFS.BaseName, SKFS.File)>[
-      (Ui.todoProp, Ui.Todo(Init(), context.tick)),
+      (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
     ],
   );
   computedDirName = SKFS.DirName::make(dirName, "computed/");
@@ -278,18 +278,13 @@ fun update(
   todo: SKFS.File,
   optUtils: ?Controller,
 ): void {
-  execute(
-    context,
-    Ui.Todo::fromFile(todo).command as Executable _,
-    values,
-    optUtils.fromSome(),
-  )
+  execute(context, Ui.Todo::fromFile(todo).command, values, optUtils.fromSome())
 }
 
 @debug
 fun execute(
   context: mutable SKFS.Context,
-  executable: Executable,
+  executable: Ui.Executable,
   values: mutable Map<SKFS.BaseName, ?SKFS.File>,
   controller: Controller,
 ): void {
@@ -303,8 +298,9 @@ fun execute(
     .map(SKFS.IntFile::fromFile)
     .map(f ~> f.value);
   executable match {
-  | Init() -> !current = Active(None(), controller)
-  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values, controller))
+  | Ui.Init() -> !current = Active(None(), controller)
+  | Ui.Multiple(cmds) ->
+    cmds.each(cmd -> execute(context, cmd, values, controller))
   | ManageScrolling(incr, _) ->
     values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
   | Goto(stop) ->
@@ -343,6 +339,7 @@ fun execute(
       Selected(None(), current.optPath),
       Some(SKFS.IntFile(newSelected)),
     )
+  | _ -> SKFS.cast_violation("UiDropdown.Executable", executable)
   };
   values.set(Ui.currentProp, Some(current));
   values.set(Path(current.optPath), Some(current));
