@@ -36,11 +36,11 @@ extension class Tree {
         "items" => this.items,
         "allowMultipleSelection" => SOption(this.optAllowMultipleSelection),
         "badgeMaxChar" => SOption(this.optBadgeMaxChar),
-        "requestMenu" => SInt(this.requestMenu),
-        "onSelectionChange" => SInt(this.onSelectionChange),
-        "onExpansionChange" => SInt(this.onExpansionChange),
-        "onTreePerform" => SInt(this.onTreePerform),
-        "onTreeDrop" => SInt(this.onTreeDrop),
+        "optMenuGetter" => SOption(this.optMenuGetter),
+        "optSelectionListener" => SOption(this.optSelectionListener),
+        "optExpansionListener" => SOption(this.optExpansionListener),
+        "optTreePerformer" => SOption(this.optTreePerformer),
+        "optTreeDropper" => SOption(this.optTreeDropper),
       ],
     )
   }
@@ -50,11 +50,11 @@ extension class Tree {
       items => value.get("items"),
       optAllowMultipleSelection => maybeGet(value, "allowMultipleSelection"),
       optBadgeMaxChar => maybeGet(value, "badgeMaxChar"),
-      requestMenu => getInt(value, "requestMenu"),
-      onSelectionChange => getInt(value, "onSelectionChange"),
-      onExpansionChange => getInt(value, "onExpansionChange"),
-      onTreePerform => getInt(value, "onTreePerform"),
-      onTreeDrop => getInt(value, "onTreeDrop"),
+      optMenuGetter => maybeGet(value, "optMenuGetter"),
+      optSelectionListener => maybeGet(value, "optSelectionListener"),
+      optExpansionListener => maybeGet(value, "optExpansionListener"),
+      optTreePerformer => maybeGet(value, "optTreePerformer"),
+      optTreeDropper => maybeGet(value, "optTreeDropper"),
     }
   }
 }

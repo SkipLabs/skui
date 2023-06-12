@@ -194,11 +194,11 @@ class Tree{
   items: Serializable,
   optAllowMultipleSelection: ?Serializable = None(),
   optBadgeMaxChar: ?Serializable = None(),
-  requestMenu: Int = 0,
-  onSelectionChange: Int = 0,
-  onExpansionChange: Int = 0,
-  onTreePerform: Int = 0,
-  onTreeDrop: Int = 0,
+  optMenuGetter: ?Serializable = None(),
+  optSelectionListener: ?Serializable = None(),
+  optExpansionListener: ?Serializable = None(),
+  optTreePerformer: ?Serializable = None(),
+  optTreeDropper: ?Serializable = None(),
 } extends Description {
   //
   fun collect(_collector: Renderable -> void): void {
@@ -218,39 +218,29 @@ class Tree{
       this.optAllowMultipleSelection,
     );
     badgeMaxCharGetter = toIntOptGetter(context, this.optBadgeMaxChar);
-    optSelectionListener = if (this.onSelectionChange > 0) {
-      Some(H.TreeSelectionListener(this.onSelectionChange))
-    } else {
-      None()
-    };
+    optSelectionListener = this.optSelectionListener.flatMap(optFunction).map(
+      f -> H.TreeSelectionListener(f),
+    );
     selectionChange = optSelectionListener
       .map(sl ~> sl.selectionChanged)
       .default(Ui.defaultOne(void));
-    optExpansionListener = if (this.onExpansionChange > 0) {
-      Some(H.TreeExpansionListener(this.onExpansionChange))
-    } else {
-      None()
-    };
+    optExpansionListener = this.optExpansionListener.flatMap(optFunction).map(
+      f -> H.TreeExpansionListener(f),
+    );
     expansionChange = optExpansionListener
       .map(sl ~> sl.expansionChanged)
       .default(Ui.defaultTwo(void));
-    optTreePerformer = if (this.onTreePerform > 0) {
-      Some(H.TreePerformer(this.onTreePerform))
-    } else {
-      None()
-    };
+    optTreePerformer = this.optTreePerformer.flatMap(optFunction).map(f ->
+      H.TreePerformer(f)
+    );
     fire = optTreePerformer.map(p ~> p.perform).default(Ui.defaultTwo(void));
-    optTreeDropper = if (this.onTreeDrop > 0) {
-      Some(H.TreeDropper(this.onTreeDrop))
-    } else {
-      None()
-    };
+    optTreeDropper = this.optTreeDropper.flatMap(optFunction).map(f ->
+      H.TreeDropper(f)
+    );
     drop = optTreeDropper.map(d ~> d.drop).default((_, _, _, _) ~> void);
-    optMenuGetter = if (this.requestMenu > 0) {
-      Some(H.TreeMenuGetter(this.requestMenu))
-    } else {
-      None()
-    };
+    optMenuGetter = this.optMenuGetter.flatMap(optFunction).map(f ->
+      H.TreeMenuGetter(f)
+    );
     contextMenuItems = optMenuGetter match {
     | Some(mg) ->
       (ctx, optPath, selection) ~>

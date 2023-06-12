@@ -23,7 +23,7 @@ extension class DItem {
         "disabled" => SBool(this.disabled),
         "separator" => SInt(this.separator.toCode()),
         "shortcut" => SOption(this.optShortcut),
-        "performer" => SInt(this.performer),
+        "performer" => SOption(this.optPerformer),
       ],
     )
   }
@@ -41,7 +41,7 @@ extension class DItem {
       optShortcut => maybeGet(value, "shortcut").map(
         Ui.Shortcut::fromSerializable,
       ),
-      performer => getInt(value, "performer"),
+      optPerformer => maybeGet(value, "performer").flatMap(optFunction),
     }
   }
 }
@@ -61,7 +61,7 @@ extension class DMenu {
         "separator" => SInt(this.separator.toCode()),
         "items" => this.items match {
         | ConstItems(value) -> SArray(value)
-        | ComputedItems(supplier) -> SInt(supplier)
+        | ComputedItems(optSupplier) -> SOption(optSupplier)
         },
       ],
     )
@@ -79,7 +79,7 @@ extension class DMenu {
       separator => Ui.Separator::fromCode(getInt(value, "separator")),
       items => value.get("items") match {
       | arr @ SArray _ -> ConstItems(arr.value.map(DItemBase::fromSerializable))
-      | _ -> ComputedItems(getInt(value, "items"))
+      | _ -> ComputedItems(maybeGet(value, "items").flatMap(optFunction))
       },
     }
   }

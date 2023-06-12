@@ -17,10 +17,13 @@ base class DItemBase{
   fun toMenuItem(): UiDropdown.ItemBase;
 }
 
-class DItem{optShortcut: ?Ui.Shortcut, performer: Int} extends DItemBase {
+class DItem{
+  optShortcut: ?Ui.Shortcut,
+  optPerformer: ?Function,
+} extends DItemBase {
   fun toMenuItem(): UiDropdown.ItemBase {
     text = Text::fromString(this.text);
-    performer = H.Performer(this.performer);
+    optPerformer = this.optPerformer.map(p -> H.Performer(p));
     UiDropdown.Item{
       id => this.id,
       text => Ui.default(text),
@@ -28,7 +31,7 @@ class DItem{optShortcut: ?Ui.Shortcut, performer: Int} extends DItemBase {
       disabled => Ui.default(this.disabled),
       separator => Ui.default(this.separator),
       shortcut => Ui.default(this.optShortcut),
-      perform => performer.perform,
+      perform => (ctx) ~> optPerformer.each(p -> p.perform(ctx)),
     }
   }
 }
@@ -36,7 +39,7 @@ class DItem{optShortcut: ?Ui.Shortcut, performer: Int} extends DItemBase {
 base class Items {
   children =
   | ConstItems(value: Array<DItemBase>)
-  | ComputedItems(supplier: Int)
+  | ComputedItems(optSupplier: ?Function)
 }
 
 class DMenu{items: Items} extends DItemBase {
@@ -54,11 +57,14 @@ class DMenu{items: Items} extends DItemBase {
           value.map(v -> v.toMenuItem()),
         );
         Ui.defaultOne(itemsCollection)
-      | ComputedItems(supplier) ->
-        ddSupplier = H.DropdownSupplier(supplier);
+      | ComputedItems(optSupplier) ->
+        optDdSupplier = optSupplier.map(s -> H.DropdownSupplier(s));
         (ctx, _iu) ~>
           UiDropdown.ArrayCollection(
-            ddSupplier.supply(ctx).default(Array[]).map(v -> v.toMenuItem()),
+            optDdSupplier
+              .flatMap(s -> s.supply(ctx))
+              .default(Array[])
+              .map(v -> v.toMenuItem()),
           )
       },
     }

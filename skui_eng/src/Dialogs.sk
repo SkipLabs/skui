@@ -1,63 +1,81 @@
+module alias H = UiEngineHandle;
+
 module UiEngine;
 
-base class Dialog extends UiEngine.SObject {
+base class Confirmation {
+  fun confirm(context: mutable SKFS.Context, confirm: Bool, dId: Int): void;
+}
+
+base class OnInput {
+  fun perform(context: mutable SKFS.Context, value: String, dId: Int): void;
+}
+
+base class Dialog extends SObject {
   fun open(context: mutable SKFS.Context): void;
+}
+
+class Settings{
+  // settings
+  kind: UiInput.Kind = UiInput.Text(),
+  maxChars: Int = 64,
+  visibleChars: Int = 10,
+  //
+  optText: ?Serializable = None(),
+  optPosition: ?Serializable = None(),
+  optSelection: ?Serializable = None(),
+  optStatus: ?Serializable = None(),
+  //
+  optPrefix: ?Serializable = None(),
+  optSuffix: ?Serializable = None(),
+  optPlaceHolder: ?Serializable = None(),
+  optTooltip: ?Serializable = None(),
+  optIcon: ?Serializable = None(),
+  optDisabled: ?Serializable = None(),
+  optWithCounter: ?Serializable = None(),
+  optWithStatus: ?Serializable = None(),
+  optWithClear: ?Serializable = None(),
+  optAlignRight: ?Serializable = None(),
+} {
+  fun toSettings(_context: mutable SKFS.Context): UiDialogs.Settings {
+    todo("UiEngine.Settings.toSettings");
+  }
 }
 
 class Confirm{
   text: Text,
-  action: String,
+  optAction: ?Function,
   type: UiDialogs.QType = UiDialogs.YesNo(),
   optTitle: ?Text = None(),
 } extends Dialog {
   fun open(context: mutable SKFS.Context): void {
-    message = context.openConfirmMessage(
+    optConfirmation = this.optAction.map(action -> H.Confirmation(action));
+    context.openConfirmDialog(
       this.text,
-      SKUIMessage.Target(
-        "engine",
-        "control",
-        JSON.Object(
-          Map[
-            "__class" => JSON.String("UiEngine.OnConfirm"),
-            "action" => JSON.String(this.action),
-          ],
-        ),
-        false,
-      ),
+      (ctx, confirm, dId) ~>
+        optConfirmation.each(c -> c.confirm(ctx, confirm, dId)),
       true,
       this.type,
       this.optTitle,
     );
-    SKUIMessage.emitMessage(context, message)
   }
 }
 
 class InputDialog{
   label: Text,
-  action: String,
+  optAction: ?Function,
   optTitle: ?Text = None(),
   autoClose: Bool = true,
-  settings: UiDialogs.Settings = UiDialogs.Settings{},
+  settings: Settings = Settings{},
 } extends Dialog {
   fun open(context: mutable SKFS.Context): void {
-    message = context.openInputMessage(
+    optOnInput = this.optAction.map(action -> H.OnInput(action));
+    context.openInputDialog(
       this.label,
-      SKUIMessage.Target(
-        "engine",
-        "control",
-        JSON.Object(
-          Map[
-            "__class" => JSON.String("UiEngine.OnInput"),
-            "action" => JSON.String(this.action),
-          ],
-        ),
-        false,
-      ),
+      (ctx, v, dId) ~> optOnInput.each(o -> o.perform(ctx, v, dId)),
       this.autoClose,
       this.optTitle,
-      this.settings,
+      this.settings.toSettings(context),
     );
-    SKUIMessage.emitMessage(context, message)
   }
 }
 

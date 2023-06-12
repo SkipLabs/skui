@@ -2,9 +2,11 @@
 name = "skui_eng"
 version = "0.1.0"
 auto-remove-state = true
+format-on-check = true
 
 [dependencies]
 skui_fwk = {}
+skui_opengl = {}
 
 [[bin]]
 name = "skuieng"

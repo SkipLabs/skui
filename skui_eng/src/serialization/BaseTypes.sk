@@ -227,11 +227,35 @@ extension class Renderable {
   const identifier: String = "renderable";
 
   fun serialize(): (String, Map<String, Serializable>) {
-    (static::identifier, Map["id" => SInt(this.hdl)])
+    (
+      static::identifier,
+      Map[
+        "id" => SInt(this.fn.hdl),
+        "scope" => SOption(this.fn.optScope.map(s -> SString(s))),
+      ],
+    )
   }
 
   static fun deserialize(value: Map<String, Serializable>): this {
-    static(getInt(value, "id"))
+    static(Function(getInt(value, "id"), maybeGetString(value, "scope")))
+  }
+}
+
+extension class Function extends SObject {
+  const identifier: String = "function";
+
+  fun serialize(): (String, Map<String, Serializable>) {
+    (
+      static::identifier,
+      Map[
+        "id" => SInt(this.hdl),
+        "scope" => SOption(this.optScope.map(s -> SString(s))),
+      ],
+    )
+  }
+
+  static fun deserialize(value: Map<String, Serializable>): this {
+    static(getInt(value, "id"), maybeGetString(value, "scope"))
   }
 }
 

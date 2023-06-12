@@ -8,7 +8,7 @@ extension class Confirm {
       static::identifier,
       Map[
         "text" => this.text,
-        "action" => UiEngine.SString(this.action),
+        "action" => UiEngine.SOption(this.optAction),
         "type" => this.type,
         "title" => UiEngine.SOption(this.optTitle),
       ],
@@ -20,7 +20,7 @@ extension class Confirm {
       text => maybeGet(value, "text")
         .map(Text::fromSerializable)
         .default(!"No text defined."),
-      action => UiEngine.getString(value, "action"),
+      optAction => maybeGet(value, "action").flatMap(optFunction),
       type => maybeGet(value, "type")
         .map(UiDialogs.QType::fromSerializable)
         .default(UiDialogs.YesNo()),
@@ -44,26 +44,26 @@ extension class InputDialog {
       static::identifier,
       Map[
         "label" => this.label,
-        "action" => UiEngine.SString(this.action),
+        "action" => UiEngine.SOption(this.optAction),
         "title" => UiEngine.SOption(this.optTitle),
         "autoClose" => UiEngine.SBool(this.autoClose),
         //
         "kind" => this.settings.kind,
-        "icon" => SOption(this.settings.optIcon.map(fromJSON)),
-        "prefix" => SOption(this.settings.optPrefix.map(fromJSON)),
-        "suffix" => SOption(this.settings.optSuffix.map(fromJSON)),
-        "placeHolder" => SOption(this.settings.optPlaceHolder.map(fromJSON)),
-        "tooltip" => SOption(this.settings.optTooltip.map(fromJSON)),
-        "disabled" => SOption(this.settings.optDisabled.map(fromJSON)),
-        "withCounter" => SOption(this.settings.optWithCounter.map(fromJSON)),
-        "withStatus" => SOption(this.settings.optWithStatus.map(fromJSON)),
-        "withClear" => SOption(this.settings.optWithClear.map(fromJSON)),
-        "alignRight" => SOption(this.settings.optAlignRight.map(fromJSON)),
+        "icon" => SOption(this.settings.optIcon),
+        "prefix" => SOption(this.settings.optPrefix),
+        "suffix" => SOption(this.settings.optSuffix),
+        "placeHolder" => SOption(this.settings.optPlaceHolder),
+        "tooltip" => SOption(this.settings.optTooltip),
+        "disabled" => SOption(this.settings.optDisabled),
+        "withCounter" => SOption(this.settings.optWithCounter),
+        "withStatus" => SOption(this.settings.optWithStatus),
+        "withClear" => SOption(this.settings.optWithClear),
+        "alignRight" => SOption(this.settings.optAlignRight),
         //
-        "text" => SOption(this.settings.optText.map(fromJSON)),
-        "position" => SOption(this.settings.optPosition.map(fromJSON)),
-        "selection" => SOption(this.settings.optSelection.map(fromJSON)),
-        "status" => SOption(this.settings.optStatus.map(fromJSON)),
+        "text" => SOption(this.settings.optText),
+        "position" => SOption(this.settings.optPosition),
+        "selection" => SOption(this.settings.optSelection),
+        "status" => SOption(this.settings.optStatus),
         //
         "maxChars" => SInt(this.settings.maxChars),
         "visibleChars" => SInt(this.settings.visibleChars),
@@ -78,10 +78,10 @@ extension class InputDialog {
       label => maybeGet(value, "label")
         .map(Text::fromSerializable)
         .default(!"No text defined."),
-      action => UiEngine.getString(value, "action"),
+      optAction => maybeGet(value, "action").flatMap(optFunction),
       optTitle => maybeGet(value, "title").map(Text::fromSerializable),
       autoClose => UiEngine.getBool(value, "autoClose"),
-      settings => UiDialogs.Settings{
+      settings => UiEngine.Settings{
         // settings
         kind => maybeGet(value, "kind")
           .map(v -> v as UiInput.Kind _)
@@ -89,21 +89,21 @@ extension class InputDialog {
         maxChars => maybeGetInt(value, "maxChars").default(64),
         visibleChars => maybeGetInt(value, "visibleChars").default(10),
         //
-        optText => maybeGet(value, "text").map(toJSON),
-        optPosition => maybeGet(value, "position").map(toJSON),
-        optSelection => maybeGet(value, "selection").map(toJSON),
-        optStatus => maybeGet(value, "status").map(toJSON),
+        optText => maybeGet(value, "text"),
+        optPosition => maybeGet(value, "position"),
+        optSelection => maybeGet(value, "selection"),
+        optStatus => maybeGet(value, "status"),
         //
-        optIcon => maybeGet(value, "icon").map(toJSON),
-        optPrefix => maybeGet(value, "prefix").map(toJSON),
-        optSuffix => maybeGet(value, "suffix").map(toJSON),
-        optPlaceHolder => maybeGet(value, "placeHolder").map(toJSON),
-        optTooltip => maybeGet(value, "tooltip").map(toJSON),
-        optDisabled => maybeGet(value, "disabled").map(toJSON),
-        optWithCounter => maybeGet(value, "withCounter").map(toJSON),
-        optWithStatus => maybeGet(value, "withStatus").map(toJSON),
-        optWithClear => maybeGet(value, "withClear").map(toJSON),
-        optAlignRight => maybeGet(value, "alignRight").map(toJSON),
+        optIcon => maybeGet(value, "icon"),
+        optPrefix => maybeGet(value, "prefix"),
+        optSuffix => maybeGet(value, "suffix"),
+        optPlaceHolder => maybeGet(value, "placeHolder"),
+        optTooltip => maybeGet(value, "tooltip"),
+        optDisabled => maybeGet(value, "disabled"),
+        optWithCounter => maybeGet(value, "withCounter"),
+        optWithStatus => maybeGet(value, "withStatus"),
+        optWithClear => maybeGet(value, "withClear"),
+        optAlignRight => maybeGet(value, "alignRight"),
       },
     }
   }

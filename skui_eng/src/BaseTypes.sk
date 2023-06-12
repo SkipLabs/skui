@@ -30,10 +30,12 @@ base class Description{
 
 class RenderableFile(value: Renderable) extends SKFS.File
 
-class Renderable(hdl: Int) extends Widgetable {
+class Function(hdl: Int, optScope: ?String)
+
+class Renderable(fn: Function) extends Widgetable {
   //
   fun getId(): String {
-    `UiEngine.Renderable.${this.hdl}`
+    `UiEngine.Renderable.${this.fn.hdl}.${this.fn.optScope}`
   }
 
   fun render(context: mutable SKFS.Context): ?Description {
@@ -43,7 +45,7 @@ class Renderable(hdl: Int) extends Widgetable {
     UiJSONProp.Property::init(context, optScope);
     optCombined = Ui.combinedPath(optScope);
     UiJSONProp.Property::initCombines(context, optCombined.fromSome());
-    optS = H.get(context, this.hdl)
+    optS = H.get(context, this.fn)
       .flatMap(h -> h.apply(Vector[JSON.String(scope)]))
       .map(fromJSON);
     optS match {

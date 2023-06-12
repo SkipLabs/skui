@@ -115,7 +115,7 @@ extension class Const extends UiEngine.SObject {
       static::identifier,
       Map[
         "value" => UiEngine.fromJSON(this.value),
-        "writer" => UiEngine.SInt((this.writer as H.Writer _).hdl),
+        "writer" => (this.writer as H.Writer _).fn,
       ],
     )
   }
@@ -123,7 +123,7 @@ extension class Const extends UiEngine.SObject {
   static fun deserialize(value: Map<String, UiEngine.Serializable>): Const {
     Const(
       UiEngine.toJSON(value.get("value")),
-      H.Writer(UiEngine.getInt(value, "writer")),
+      H.Writer(value.get("writer") as UiEngine.Function _),
     )
   }
 

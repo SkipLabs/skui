@@ -4,10 +4,15 @@ module UiEngineHandle;
 
 const dirName: SKFS.DirName = SKFS.DirName::create("/ui/engine/handles/");
 
-const handlesHdl: SKFS.IHandle<Handle> = SKFS.IHandle(
-  SKFS.FileConverter(Handle::fromFile),
-  dirName,
-);
+fun toDirName(optPath: ?String): SKFS.DirName {
+  optPath
+    .map(p -> SKFS.DirName::make(dirName, `${SKFS.normalize(p, true)}/`))
+    .default(dirName)
+}
+
+fun handlesHdl(optPath: ?String): SKFS.IHandle<Handle> {
+  SKFS.IHandle(SKFS.FileConverter(Handle::fromFile), toDirName(optPath));
+}
 
 class Handle private (
   type_: String,
@@ -28,93 +33,125 @@ class Handle private (
   }
 }
 
-fun init(context: mutable SKFS.Context): void {
-  _ = context.makeDir(Handle::fromFile, dirName, Array[]);
+fun init(context: mutable SKFS.Context, optPath: ?String): void {
+  _ = context.makeDir(Handle::fromFile, toDirName(optPath), Array[]);
 }
 
-@cpp_extern("SKIP_UiEngineHandle_delete")
+@cpp_extern("SKIP_UiEngineJS_delete")
 private native fun delete(actor: UInt32): void;
 
-@cpp_extern("SKIP_UiEngineHandle_apply")
+@cpp_extern("SKIP_UiEngineJS_apply")
 private native fun apply(
   actor: UInt32,
   type_: String,
   parameters: JSON.Array,
 ): ?JSON.Value;
 
-@export("SKIP_UiEngineHandle_register")
-fun register(id: UInt32, type_: String): void {
-  SKFS.Context::withoutGc(context ~>
+@export("SKIP_UiEngineJS_register")
+fun register(id: UInt32, optPath: ?String, type_: String): void {
+  SKFS.Context::withoutGc(context ~> {
+    handlesHdl = handlesHdl(optPath);
     if (handlesHdl.exists(context)) {
       handlesHdl.write(context, SKFS.IID(id.toInt()), Handle::make(id, type_))
     }
-  )
+  })
 }
 
-@export("SKIP_UiEngineHandle_unregister")
-fun unregister(id: UInt32): void {
-  SKFS.Context::withoutGc(context ~>
+@export("SKIP_UiEngineJS_unregister")
+fun unregister(id: UInt32, optPath: ?String): void {
+  SKFS.Context::withoutGc(context ~> {
+    handlesHdl = handlesHdl(optPath);
     if (handlesHdl.exists(context)) {
       handlesHdl.remove(context, SKFS.IID(id.toInt()))
     }
-  )
+  })
 }
 
-fun get(context: mutable SKFS.Context, id: Int): ?Handle {
-  handlesHdl.maybeGetValue(context, SKFS.IID(id), true)
+fun get(context: mutable SKFS.Context, fn: UiEngine.Function): ?Handle {
+  handlesHdl(fn.optScope).maybeGetValue(context, SKFS.IID(fn.hdl), true)
 }
 
-class ActionPerformer(hdl: Int) extends UiEngine.ActionPerformer {
+class ActionPerformer(fn: UiEngine.Function) extends UiEngine.ActionPerformer {
   //
   fun perform(context: mutable SKFS.Context, count: Int): void {
-    _ = get(context, this.hdl).map(h -> h.apply(Vector[JSON.IntNumber(count)]))
+    _ = get(context, this.fn).map(h -> h.apply(Vector[JSON.IntNumber(count)]))
   }
 }
 
-class TabsCloser(hdl: Int) extends UiEngine.TabsCloser {
+class TabsCloser(fn: UiEngine.Function) extends UiEngine.TabsCloser {
   //
   fun close(context: mutable SKFS.Context, tabs: Array<String>): void {
-    _ = get(context, this.hdl).map(h ->
+    _ = get(context, this.fn).map(h ->
       h.apply(Vector[JSON.arrayToJSON(tabs, v ~> JSON.String(v))])
     )
   }
 }
 
-class Performer(hdl: Int) extends UiEngine.Performer {
+class Performer(fn: UiEngine.Function) extends UiEngine.Performer {
   //
   fun perform(context: mutable SKFS.Context): void {
-    _ = get(context, this.hdl).map(h -> h.apply(Vector[]))
+    _ = get(context, this.fn).map(h -> h.apply(Vector[]))
   }
 }
 
-class InputPerformer(hdl: Int) extends UiEngine.InputPerformer {
+class Confirmation(fn: UiEngine.Function) extends UiEngine.Confirmation {
+  //
+  fun confirm(
+    context: mutable SKFS.Context,
+    confirm: Bool,
+    dialogId: Int,
+  ): void {
+    _ = get(context, this.fn).map(h ->
+      h.apply(Vector[JSON.Bool(confirm), JSON.IntNumber(dialogId)])
+    )
+  }
+}
+
+class OnInput(fn: UiEngine.Function) extends UiEngine.OnInput {
+  //
+  fun perform(
+    context: mutable SKFS.Context,
+    value: String,
+    dialogId: Int,
+  ): void {
+    _ = get(context, this.fn).map(h ->
+      h.apply(Vector[JSON.String(value), JSON.IntNumber(dialogId)])
+    )
+  }
+}
+
+class InputPerformer(fn: UiEngine.Function) extends UiEngine.InputPerformer {
   //
   fun perform(context: mutable SKFS.Context, text: String): void {
-    _ = get(context, this.hdl).map(h -> h.apply(Vector[JSON.String(text)]))
+    _ = get(context, this.fn).map(h -> h.apply(Vector[JSON.String(text)]))
   }
 }
 
-class TreeSelectionListener(hdl: Int) extends UiEngine.TreeSelectionListener {
+class TreeSelectionListener(
+  fn: UiEngine.Function,
+) extends UiEngine.TreeSelectionListener {
   //
   fun selectionChanged(
     context: mutable SKFS.Context,
     selection: Array<Ui.Path>,
   ): void {
     sSelection = UiEngine.SArray(selection.map(p -> UiEngine.pathToSArray(p)));
-    _ = get(context, this.hdl).map(h ->
+    _ = get(context, this.fn).map(h ->
       h.apply(Vector[UiEngine.toJSON(sSelection)])
     )
   }
 }
 
-class TreeExpansionListener(hdl: Int) extends UiEngine.TreeExpansionListener {
+class TreeExpansionListener(
+  fn: UiEngine.Function,
+) extends UiEngine.TreeExpansionListener {
   //
   fun expansionChanged(
     context: mutable SKFS.Context,
     path: Ui.Path,
     value: Bool,
   ): void {
-    _ = get(context, this.hdl).map(h ->
+    _ = get(context, this.fn).map(h ->
       h.apply(
         Vector[UiEngine.toJSON(UiEngine.pathToSArray(path)), JSON.Bool(value)],
       )
@@ -122,7 +159,7 @@ class TreeExpansionListener(hdl: Int) extends UiEngine.TreeExpansionListener {
   }
 }
 
-class TreePerformer(hdl: Int) extends UiEngine.TreePerformer {
+class TreePerformer(fn: UiEngine.Function) extends UiEngine.TreePerformer {
   //
   fun perform(
     context: mutable SKFS.Context,
@@ -133,13 +170,13 @@ class TreePerformer(hdl: Int) extends UiEngine.TreePerformer {
       .map(UiEngine.pathToSArray)
       .default(UiEngine.SArray(Array[]));
     sSelection = UiEngine.SArray(selection.map(p -> UiEngine.pathToSArray(p)));
-    _ = get(context, this.hdl).map(h ->
+    _ = get(context, this.fn).map(h ->
       h.apply(Vector[UiEngine.toJSON(sCurrent), UiEngine.toJSON(sSelection)])
     )
   }
 }
 
-class TreeDropper(hdl: Int) extends UiEngine.TreeDropper {
+class TreeDropper(fn: UiEngine.Function) extends UiEngine.TreeDropper {
   //
   fun drop(
     context: mutable SKFS.Context,
@@ -149,7 +186,7 @@ class TreeDropper(hdl: Int) extends UiEngine.TreeDropper {
   ): void {
     sFrom = UiEngine.pathToSArray(from);
     sTo = UiEngine.pathToSArray(to);
-    _ = get(context, this.hdl).map(h ->
+    _ = get(context, this.fn).map(h ->
       h.apply(
         Vector[
           UiEngine.toJSON(sFrom),
@@ -161,7 +198,7 @@ class TreeDropper(hdl: Int) extends UiEngine.TreeDropper {
   }
 }
 
-class TreeMenuGetter(hdl: Int) extends UiEngine.TreeMenuGetter {
+class TreeMenuGetter(fn: UiEngine.Function) extends UiEngine.TreeMenuGetter {
   //
   fun getContextMenu(
     context: mutable SKFS.Context,
@@ -172,7 +209,7 @@ class TreeMenuGetter(hdl: Int) extends UiEngine.TreeMenuGetter {
       .map(UiEngine.pathToSArray)
       .default(UiEngine.SArray(Array[]));
     sSelection = UiEngine.SArray(selection.map(p -> UiEngine.pathToSArray(p)));
-    optJSV = get(context, this.hdl).flatMap(h ->
+    optJSV = get(context, this.fn).flatMap(h ->
       h.apply(Vector[UiEngine.toJSON(sCurrent), UiEngine.toJSON(sSelection)])
     );
     optJSV
@@ -191,9 +228,11 @@ class TreeMenuGetter(hdl: Int) extends UiEngine.TreeMenuGetter {
   }
 }
 
-class DropdownSupplier(hdl: Int) extends UiEngine.DropdownSupplier {
+class DropdownSupplier(
+  fn: UiEngine.Function,
+) extends UiEngine.DropdownSupplier {
   fun supply(context: mutable SKFS.Context): ?Array<UiEngine.DItemBase> {
-    optJSV = get(context, this.hdl).flatMap(h -> h.apply(Vector[]));
+    optJSV = get(context, this.fn).flatMap(h -> h.apply(Vector[]));
     optJSV.flatMap(jsv ->
       jsv match {
       | jsa @ JSON.Array _ ->
@@ -208,25 +247,28 @@ class DropdownSupplier(hdl: Int) extends UiEngine.DropdownSupplier {
   }
 }
 
-class Writer(hdl: Int) extends Ui.JSONWriter {
+class Writer(fn: UiEngine.Function) extends Ui.JSONWriter {
   //
   fun write(context: mutable SKFS.Context, optValue: ?JSON.Value): void {
-    _ = get(context, this.hdl).map(h ->
+    _ = get(context, this.fn).map(h ->
       h.apply(Vector[optValue.default(JSON.Null())])
     )
   }
 }
 
-class Combine(combineHdl: Int, writeHdl: Int) extends Ui.Combine {
+class Combine(
+  combineFn: UiEngine.Function,
+  writeFn: UiEngine.Function,
+) extends Ui.Combine {
   //
   fun combine(context: mutable SKFS.Context, path: String): JSON.Value {
-    get(context, this.combineHdl)
+    get(context, this.combineFn)
       .flatMap(h -> h.apply(Vector[JSON.String(path)]))
       .default(JSON.Null())
   }
 
   fun write(context: mutable SKFS.Context, optValue: ?JSON.Value): void {
-    _ = get(context, this.writeHdl).map(h ->
+    _ = get(context, this.writeFn).map(h ->
       h.apply(Vector[optValue.default(JSON.Null())])
     )
   }

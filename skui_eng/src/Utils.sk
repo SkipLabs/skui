@@ -133,6 +133,15 @@ fun optStatus(serializable: Serializable): ?Status {
   }
 }
 
+fun optFunction(serializable: Serializable): ?UiEngine.Function {
+  serializable match {
+  | v @ UiEngine.Function _
+  | SOption(Some(v @ UiEngine.Function _)) ->
+    Some(v)
+  | _ -> None()
+  }
+}
+
 fun optPicture(_serializable: Serializable): ?Ui.Picture {
   todo("UiEngine.optPicture")
   /*serializable match {

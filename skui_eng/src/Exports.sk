@@ -21,19 +21,19 @@ fun setJSON(
   prop.set(context, optValue, 0);
 }
 
-@wasm_export("SKIP_Eng_getValue")
+@wasm_export("SKIP_UiEngineJS_getValue")
 fun getValue(optPath: ?String, name: String): ?JSON.Value {
   SKFS.Context::withoutGc(context ~> getJSON(context, optPath, name))
 }
 
-@wasm_export("SKIP_Eng_setValue")
+@wasm_export("SKIP_UiEngineJS_setValue")
 fun setValue(optPath: ?String, name: String, optValue: ?JSON.Value): void {
   SKFS.Context::withoutGc(context ~> {
     setJSON(context, optPath, name, optValue);
     context.updateIfRoot();
   })
 }
-@wasm_export("SKIP_Eng_create")
+@wasm_export("SKIP_UiEngineJS_create")
 fun create(optPath: ?String, optValue: ?JSON.Value): String {
   SKFS.Context::withoutGc(context ~> {
     prop = UiJSONProp.Property::create(context, optPath, optValue);
@@ -41,25 +41,30 @@ fun create(optPath: ?String, optValue: ?JSON.Value): String {
   })
 }
 
-@wasm_export("SKIP_Eng_combine")
-fun combine(optPath: ?String, combineHdl: UInt32, writeHdl: UInt32): String {
+@wasm_export("SKIP_UiEngineJS_combine")
+fun combine(
+  optPath: ?String,
+  jsCombine: JSON.Value,
+  jsWrite: JSON.Value,
+): String {
   SKFS.Context::withoutGc(context ~> {
-    combine = UiEngineHandle.Combine(combineHdl.toInt(), writeHdl.toInt());
+    combineFn = fromJSON(jsCombine) as Function _;
+    writeFn = fromJSON(jsWrite) as Function _;
+    combine = UiEngineHandle.Combine(combineFn, writeFn);
     UiJSONProp.Property::combine(context, optPath, combine).value;
   })
 }
 
 /// Dialogs
 
-@wasm_export("SKIP_Eng_alert")
+@wasm_export("SKIP_UiEngineJS_alert")
 fun alert(text: Text, optTitle: ?Text): void {
   SKFS.Context::withoutGc(context ~> {
-    message = context.openAlertMessage(text, optTitle);
-    SKUIMessage.emitMessage(context, message);
+    context.openAlert(text, optTitle);
   })
 }
 
-@wasm_export("SKIP_Eng_dialog")
+@wasm_export("SKIP_UiEngineJS_dialog")
 fun dialog(dialog: JSON.Value): void {
   SKFS.Context::withoutGc(context ~> {
     ser = UiEngine.fromJSON(dialog);

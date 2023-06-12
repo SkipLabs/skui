@@ -28,7 +28,7 @@ extension class Button extends SObject {
           | UiButton.Fab(mini) -> if (!mini) 6 else 7
           },
         ),
-        "action" => SInt(this.action),
+        "action" => SOption(this.optAction),
         "configuration" => SOption(this.optConfiguration),
         "disabled" => this.disabled,
       ],
@@ -57,7 +57,7 @@ extension class Button extends SObject {
       | _ ->
         UiButton.Basic()
       },
-      action => getInt(value, "action"),
+      optAction => maybeGet(value, "action"),
       disabled => value.get("disabled"),
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),
@@ -122,8 +122,8 @@ extension class Input extends SObject {
         "placeHolder" => SOption(this.optPlaceHolder),
         "tooltip" => SOption(this.optTooltip),
         "kind" => this.kind,
-        "onInputAction" => SInt(this.onInputAction),
-        "onFocusLost" => SInt(this.onFocusLost),
+        "onInputAction" => SOption(this.optInputAction),
+        "onFocusLost" => SOption(this.optFocusLost),
         "actionIcon" => SOption(this.optActionIcon),
         "disabled" => SOption(this.optDisabled),
         "editable" => SOption(this.optEditable),
@@ -162,8 +162,8 @@ extension class Input extends SObject {
       optIcon => maybeGet(value, "icon"),
       optActionIcon => maybeGet(value, "actionIcon"),
       //
-      onInputAction => getInt(value, "onInputAction"),
-      onFocusLost => getInt(value, "onFocusLost"),
+      optInputAction => maybeGet(value, "onInputAction"),
+      optFocusLost => maybeGet(value, "onFocusLost"),
       optLabel => maybeGet(value, "label"),
       optPrefix => maybeGet(value, "prefix"),
       optSuffix => maybeGet(value, "suffix"),

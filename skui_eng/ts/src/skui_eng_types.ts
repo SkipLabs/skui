@@ -148,6 +148,12 @@ export enum Slant {
   Italic,
 }
 
+export enum Drop {
+  Before,
+  After,
+  In,
+}
+
 export enum Weight {
   Thin = 100,
   ExtraLight = 200,
@@ -181,6 +187,14 @@ export enum Order {
   Asc,
   Desc,
   None,
+}
+
+
+export enum Separator {
+  None,
+  Before,
+  After,
+  Both
 }
 
 
@@ -222,21 +236,8 @@ export class TextStyleElement extends Object {}
 export class IconedActionElement extends Object {}
 export class TabElement extends Object {}
 export class TreeItemElement extends Object {}
-
-
-
-
-export class Handle {
-  id: int;
-
-  constructor(id: int) {
-    this.id = id;
-  }
-
-  toJSON = () => {
-    return this.id;
-  }
-}
+export class DropdownElement extends Object {}
+export class ShorcutElement extends Object {}
 
 export type FlexConf = {flex?: int, fitLoose?: boolean, ignoreCross?: boolean};
 
@@ -282,7 +283,7 @@ export type Icon = {
 };
 
 export type Button = {
-  onFire: Handle,
+  onFire: (count: int) => void,
   kind?: ButtonKind,
   mode?: ButtonMode,
   text?: Value<string | Text>,
@@ -323,8 +324,8 @@ export type Input =  {
   kind?: InputKindElement;
   maxChars?: int,
   visibleChars?: int,
-  onAction?: Handle,
-  onFocusLost?: Handle,
+  onAction?: (text: string) => void,
+  onFocusLost?: (text: string) => void,
   label?: Value<string | Text>,
   icon?: Value<IconElement>,
   prefix?: Value<string | Text>,
@@ -464,7 +465,7 @@ export type TextView = {
 export type IconedAction = {
   id: string,
   icon: Value<IconElement>,
-  onFire: Handle,
+  onFire: () => void,
   tooltip?: Value<string | Text>,
   disabled?: Value<boolean>,
 }
@@ -504,13 +505,44 @@ export type TreeItem = {
   items?: Value<Array<TreeItemElement>>
 }
 
+export type Shortcut = {
+  key: string;
+  ctrl: boolean;
+  shift: boolean;
+  alt: boolean;
+  meta: boolean;
+}
+
+export type DropdownItem = {
+  id: string, 
+  text: string, 
+  icon?: IconElement, 
+  tooltip?: string,
+  disabled: boolean;
+  separator: Separator;
+  shortcut?: ShorcutElement;
+  perform: () => void;
+}
+
+export type DropdownSupplier = () => Array<DropdownElement>;
+
+export type DropdownMenu = {
+  id: string, 
+  text: string, 
+  icon?: IconElement, 
+  tooltip?: string,
+  disabled: boolean;
+  separator: Separator;
+  items: Array<DropdownElement> | DropdownSupplier;
+}
+
 export type Tree = {
   items: Value<Array<TreeItemElement>>,
-  onExpansionChange?: Handle,
-  onSelectionChange?: Handle,
-  onTreePerform?: Handle,
-  onTreeDrop?: Handle,
-  getContextMenu?: Handle,
+  onExpansionChange?: (path: Array<string>, value: boolean) => void,
+  onSelectionChange?: (selection: Array<Array<string>>) => void,
+  onTreePerform?: (current: Array<string>, selection: Array<Array<string>>) => void,
+  onTreeDrop?: (from: Array<string>, to: Array<string>, drop: Drop) => void,
+  getContextMenu?: (current: Array<string>, selection: Array<Array<string>>) => Array<DropdownElement>,
   allowMultipleSelection?: Value<boolean>,
   badgeMaxChar?: Value<int>,
   configuration?: Value<Configuration>,
@@ -528,6 +560,7 @@ export var separation = (setting: Separation) => new SeparationElement("separati
 export var insets = (setting: Insets) => new InsetsElement("insets", setting);
 export var constraints = (setting: Constraints) => new ConstraintsElement("constraints", setting);
 export var textStyle = (setting: TextStyle) => new TextStyleElement("textStyle", setting);
+export var shortcut = (setting: Shortcut) => new ShorcutElement("shortcut", setting);
 //
 export var background = (setting: Background) => new Decoration("background", setting);
 export var padding = (setting: Padding) => new Decoration("padding", setting);
@@ -537,6 +570,8 @@ export var nested = (setting: Nested) => new Decoration("nested", setting);
 export var iconedAction = (setting: IconedAction) => new IconedActionElement("iconedAction", setting);
 export var tab = (setting: Tab) => new TabElement("tab", setting);
 export var treeItem = (setting: TreeItem) => new TreeItemElement("treeItem", setting);
+export var dropdownitem = (setting: DropdownItem) => new DropdownElement("dropdownitem", setting);
+export var dropdownmenu = (setting: DropdownMenu) => new DropdownElement("dropdownmenu", setting);
 //
 export var flex = (setting: Flex) => new Widget("flex", setting);
 export var wrap = (setting: Wrap) => new Widget("wrap", setting);
@@ -554,7 +589,6 @@ export var constrained = (setting: Constrained) => new Widget("constrained", set
 export var textView = (setting: TextView) => new Widget("textview", setting);
 export var tabs = (setting: Tabs) => new Widget("tabs", setting);
 export var tree = (setting: Tree) => new Widget("tree", setting);
-
 
 export interface Scope {
   alert: (text: string, title?: string) => void;

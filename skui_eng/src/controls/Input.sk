@@ -17,8 +17,8 @@ class Input{
   optSelection: ?Serializable = None(),
   optStatus: ?Serializable = None(),
   //
-  onInputAction: Int = 0,
-  onFocusLost: Int = 0,
+  optInputAction: ?Serializable = None(),
+  optFocusLost: ?Serializable = None(),
   optLabel: ?Serializable = None(),
   optPrefix: ?Serializable = None(),
   optSuffix: ?Serializable = None(),
@@ -71,16 +71,12 @@ class Input{
       context,
       this.optPlaceholderAsLabel,
     );
-    optInputAction = if (this.onInputAction > 0) {
-      Some(H.InputPerformer(this.onInputAction))
-    } else {
-      None()
-    };
-    optFocusLost = if (this.onFocusLost > 0) {
-      Some(H.InputPerformer(this.onFocusLost))
-    } else {
-      None()
-    };
+    optInputAction = this.optInputAction.flatMap(optFunction).map(f ->
+      H.InputPerformer(f)
+    );
+    optFocusLost = this.optFocusLost.flatMap(optFunction).map(f ->
+      H.InputPerformer(f)
+    );
     controller = UiInput.LamController{
       kind => (_ctx, _iu) ~> this.kind,
       label => ctx ~> labelGetter(ctx, false),

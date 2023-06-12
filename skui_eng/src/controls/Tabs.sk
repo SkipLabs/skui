@@ -79,7 +79,7 @@ class Action{
   optIcon: ?Serializable = None(),
   optTooltip: ?Serializable = None(),
   optDisabled: ?Serializable = None(),
-  action: Int = 0,
+  optAction: ?Serializable = None(),
 } extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
@@ -95,7 +95,7 @@ class Action{
       toIconOptGetter(context, this.optIcon),
       toTextOptGetter(context, this.optTooltip),
       toBoolOptGetter(context, this.optDisabled),
-      this.action,
+      this.optAction.flatMap(optFunction),
     )
   }
 }
@@ -105,7 +105,7 @@ class ActionGetter(
   icon: Ui.GetterOne<?UiIcon.Description, Bool>,
   tooltip: Ui.GetterOne<?Text, Bool>,
   disabled: Ui.GetterOne<?Bool, Bool>,
-  action: Int,
+  optAction: ?Function,
 ) extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
@@ -116,9 +116,7 @@ class ActionGetter(
   }
 
   fun toAction(context: mutable SKFS.Context): UiTabs.Action {
-    optAction = if (this.action > 0) Some(H.Performer(this.action)) else {
-      None()
-    };
+    optAction = this.optAction.map(f ~> H.Performer(f));
     UiTabs.Action(
       this.id,
       this.icon(context, false)
@@ -149,7 +147,7 @@ class Tabs{
   optMinWidth: ?Serializable = None(),
   optMaxWidth: ?Serializable = None(),
   optIconOnTop: ?Serializable = None(),
-  onCloseTabs: Int = 0,
+  optCloseTabs: ?Serializable = None(),
 } extends Description {
   //
   fun collect(_collector: Renderable -> void): void {
@@ -315,11 +313,9 @@ class Tabs{
     minWidthGetter = toIntOptGetter(context, this.optMinWidth);
     maxWidthGetter = toIntOptGetter(context, this.optMaxWidth);
     active = toStringPropOptGetter(context, this.optActive);
-    optTabsCloser = if (this.onCloseTabs > 0) {
-      Some(H.TabsCloser(this.onCloseTabs))
-    } else {
-      None()
-    };
+    optTabsCloser = this.optCloseTabs.flatMap(optFunction).map(f ->
+      H.TabsCloser(f)
+    );
     Ui.TabPane::create(
       context,
       path,

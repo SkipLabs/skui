@@ -1,3 +1,5 @@
+module alias H = UiEngineHandle;
+
 module UiEngine;
 
 base class ActionPerformer {
@@ -8,7 +10,7 @@ class Button{
   kind: UiButton.Kind = UiButton.Regular(),
   mode: UiButton.Mode = UiButton.Basic(),
   //
-  action: Int,
+  optAction: ?Serializable = None(),
   disabled: Serializable = SBool(false),
   //
   optText: ?Serializable = None(),
@@ -31,7 +33,9 @@ class Button{
     tooltipGetter = toTextOptGetter(context, this.optTooltip);
     disabledGetter = toBoolOptGetter(context, Some(this.disabled));
     iconGetter = toIconOptGetter(context, this.optIcon);
-    action = UiEngineHandle.ActionPerformer(this.action);
+    optAction = this.optAction.flatMap(optFunction).map(f ->
+      H.ActionPerformer(f)
+    );
     Ui.Button::create(
       context,
       path,
@@ -45,7 +49,8 @@ class Button{
           tooltip => ctx ~> tooltipGetter(ctx, false),
           kind => _ctx ~> this.kind,
           mode => _ctx ~> this.mode,
-          onFire => (ctx, optCount) ~> action.perform(ctx, optCount.default(0)),
+          onFire => (ctx, optCount) ~>
+            optAction.each(action -> action.perform(ctx, optCount.default(0))),
           disabled => ctx ~> disabledGetter(ctx, false).default(false),
         },
         UiButton.init(context, path),
