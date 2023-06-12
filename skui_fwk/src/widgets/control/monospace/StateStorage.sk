@@ -512,23 +512,20 @@ class HState(
   }
 
   fun emitOpenGoToLine(context: mutable SKFS.Context): void {
-    SKUIMessage.emitMessage(
-      context,
-      context.openInputMessage(
-        !"What is the line number?",
-        SKUIMessage.Target::forClass(
-          statePath,
-          this.storage.getDirName().toString(),
-          "UiMonospace.GoToLine",
-        ),
-        true,
-        None(),
-        UiDialogs.Settings{
-          optPlaceHolder => Some((!"Line Number").toJSON()),
-          maxChars => 6,
-          kind => UiInput.Integer(Some(1)),
-        },
-      ),
+    context.openInputDialog(
+      !"What is the line number?",
+      todo()/*SKUIMessage.Target::forClass(
+        statePath,
+        this.storage.getDirName().toString(),
+        "UiMonospace.GoToLine",
+      )*/ ,
+      true,
+      None(),
+      UiDialogs.Settings{
+        //TODO: optPlaceHolder => Some((!"Line Number").toJSON()),
+        maxChars => 6,
+        kind => UiInput.Integer(Some(1)),
+      },
     )
   }
 }

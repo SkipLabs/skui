@@ -15,32 +15,8 @@ class Infos(value: Array<Info> = Array[], next: Int = 0) extends SKFS.File {
   }
 }
 
-class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
-  //
-  static fun forNameAndScope(
-    context: mutable SKFS.Context,
-    name: String,
-    scope: String,
-  ): ?this {
-    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
-    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
-  }
-
-  fun getName(): String {
-    this.name
-  }
-
-  fun getScope(): String {
-    this.handle.getDirName().toString()
-  }
-
-  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
-  }
-}
-
 class HState(
-  storage: SKFS.EHandle<SKFS.File>,
+  storage: SKFS.IHandle<SKFS.File>,
   computed: SKFS.EHandle<SKFS.File>,
 ) extends State {
   fun getDialogCount(context: mutable SKFS.Context): Int {
@@ -57,66 +33,53 @@ class HState(
       .fromSome()
   }
 
-  fun emitOpen(context: mutable SKFS.Context, kind: Kind): void {
-    this.emit(context, Open(kind))
+  fun open(context: mutable SKFS.Context, kind: Kind): void {
+    Ui.setTodo(context, this.storage, Open(kind));
   }
 
-  fun emitClose(context: mutable SKFS.Context, id: Int): void {
-    this.emit(context, Close(id))
+  fun close(context: mutable SKFS.Context, id: Int): void {
+    Ui.setTodo(context, this.storage, Close(id));
   }
 
-  fun emitSetVisible(
+  fun setVisible(context: mutable SKFS.Context, id: Int, visible: Bool): void {
+    Ui.setTodo(context, this.storage, SetVisible(id, visible));
+  }
+
+  fun openAlert(
     context: mutable SKFS.Context,
-    id: Int,
-    visible: Bool,
-  ): void {
-    this.emit(context, SetVisible(id, visible))
-  }
-
-  fun openAlertMessage(
     text: Text,
     optTitle: ?Text = None(),
-  ): SKUIMessage.Message {
-    this.message(Open(Alert{text, optTitle}))
+  ): void {
+    Ui.setTodo(context, this.storage, Open(Alert{text, optTitle}));
   }
 
-  fun openConfirmMessage(
+  fun openConfirmDialog(
+    context: mutable SKFS.Context,
     text: Text,
-    target: SKUIMessage.Target,
+    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
     autoClose: Bool = true,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
-  ): SKUIMessage.Message {
-    this.message(Open(Question{text, target, type_, optTitle, autoClose}))
-  }
-
-  fun openInputMessage(
-    message: Text,
-    target: SKUIMessage.Target,
-    autoClose: Bool = true,
-    optTitle: ?Text = None(),
-    settings: Settings = Settings{},
-  ): SKUIMessage.Message {
-    this.message(Open(Input{message, target, optTitle, autoClose, settings}))
-  }
-
-  private fun emit(
-    context: mutable SKFS.Context,
-    command: SKUIMessage.Command,
   ): void {
-    SKUIMessage.emit(
+    Ui.setTodo(
       context,
-      statePath,
-      this.storage.getDirName().toString(),
-      command,
+      this.storage,
+      Open(Question{text, onConfirm, type_, optTitle, autoClose}),
     );
   }
 
-  private fun message(command: SKUIMessage.Command): SKUIMessage.Message {
-    SKUIMessage.Message(
-      statePath,
-      this.storage.getDirName().toString(),
-      command,
+  fun openInputDialog(
+    context: mutable SKFS.Context,
+    message: Text,
+    onInput: (mutable SKFS.Context, String, Int) ~> void,
+    autoClose: Bool = true,
+    optTitle: ?Text = None(),
+    settings: Settings = Settings{},
+  ): void {
+    Ui.setTodo(
+      context,
+      this.storage,
+      Open(Input{message, onInput, optTitle, autoClose, settings}),
     );
   }
 }
@@ -128,6 +91,7 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
     dirName,
     Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
   );
+  storage = SKFS.IHandle(SKFS.Identity(), dirName);
   computedDirName = SKFS.DirName::make(dirName, "computed/");
   computedHdl = SKFS.derive(
     context,
@@ -148,10 +112,9 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
       | iid @ SKFS.IID _ ->
         dialog = (file as Kind _).toDialog(
           context,
-          statePath,
-          dirName.toString(),
           path.makeChild("dialog").makeChild(`k${iid}`),
           iid.value,
+          ctx ~> Ui.setTodo(ctx, storage, Close(iid.value)),
         );
         dialog.getMainFocusable(context).each(focusable ->
           SystemProperties.setRequireFocus(context, focusable)
@@ -181,7 +144,7 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
       }
     ,
   );
-  HState(stateHdl, indexedHdl)
+  HState(storage, indexedHdl)
 }
 
 fun update(

@@ -14,11 +14,6 @@ fun init(context: mutable SKFS.Context): void {
   );
   context.registerMessageSupport(UiTab.statePath, "*", UiTab.AllMessages());
   context.registerMessageSupport(
-    UiDialogs.statePath,
-    "*",
-    UiDialogs.AllMessages(),
-  );
-  context.registerMessageSupport(
     UiTabsSc.statePath,
     "*",
     UiTabsSc.AllMessages(),

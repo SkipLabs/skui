@@ -15,21 +15,9 @@ class Settings{
   maxChars: Int = 64,
   visibleChars: Int = 10,
   //
-  optText: ?JSON.Value = None(),
-  optPosition: ?JSON.Value = None(),
-  optSelection: ?JSON.Value = None(),
-  optStatus: ?JSON.Value = None(),
-  //
-  optPrefix: ?JSON.Value = None(),
-  optSuffix: ?JSON.Value = None(),
-  optPlaceHolder: ?JSON.Value = None(),
-  optTooltip: ?JSON.Value = None(),
-  optIcon: ?JSON.Value = None(),
-  optDisabled: ?JSON.Value = None(),
-  optWithCounter: ?JSON.Value = None(),
-  optWithStatus: ?JSON.Value = None(),
-  optWithClear: ?JSON.Value = None(),
-  optAlignRight: ?JSON.Value = None(),
+  optInputSupplier: ?UiInput.Supplier = None(),
+  optIinputController: ?UiInput.Controller = None(),
+  optDisabled: ?Ui.GetterOne<Bool, Bool> = None(),
 } {
   //
   fun toSupplier(_context: mutable SKFS.Context): UiInput.Supplier {
@@ -94,14 +82,14 @@ base class Kind extends SKFS.File {
   | Alert{text: Text, optTitle: ?Text = None()}
   | Question{
     text: Text,
-    target: SKUIMessage.Target,
+    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
     type_: QType = YesNo(),
     optTitle: ?Text = None(),
     autoClose: Bool = true,
   }
   | Input{
     message: Text,
-    target: SKUIMessage.Target,
+    onInput: (mutable SKFS.Context, String, Int) ~> void,
     optTitle: ?Text = None(),
     autoClose: Bool = true,
     settings: Settings = Settings{},
@@ -110,54 +98,35 @@ base class Kind extends SKFS.File {
 
   fun toDialog(
     context: mutable SKFS.Context,
-    module_: String,
-    scope: String,
     path: Ui.Path,
     id: Int,
+    close: mutable SKFS.Context ~> void,
   ): Ui.Dialog
   | Alert{text, optTitle} ->
-    alert(
-      context,
-      path.makeChild("alert"),
-      text,
-      ctx ~>
-        SKUIMessage.emitMessage(
-          ctx,
-          SKUIMessage.Message(module_, scope, Close(id)),
-        ),
-      optTitle,
-    )
-  | Question{text, target, type_, optTitle, autoClose} ->
-    closeMessage = SKUIMessage.Message(module_, scope, Close(id));
+    alert(context, path.makeChild("alert"), text, close, optTitle)
+  | Question{text, onConfirm, type_, optTitle, autoClose} ->
     confirm(
       context,
       path.makeChild("confirm"),
       text,
       type_,
-      ctx ~>
-        SKUIMessage.emitMessage(
-          ctx,
-          target.toMessage(
-            if (autoClose) Map["value" => JSON.Bool(true)] else {
-              Map["value" => JSON.Bool(true), "close" => closeMessage.toJSON()]
-            },
-          ),
-        ),
-      ctx ~>
-        SKUIMessage.emitMessage(
-          ctx,
-          target.toMessage(
-            if (autoClose) Map["value" => JSON.Bool(false)] else {
-              Map["value" => JSON.Bool(true), "close" => closeMessage.toJSON()]
-            },
-          ),
-        ),
-      Some(ctx ~> SKUIMessage.emitMessage(ctx, closeMessage)),
+      ctx ~> {
+        onConfirm(ctx, true, id);
+        if (autoClose) {
+          close(ctx)
+        }
+      },
+      ctx ~> {
+        onConfirm(ctx, false, id);
+        if (autoClose) {
+          close(ctx)
+        }
+      },
+      Some(close),
       optTitle,
       autoClose,
     )
-  | Input{message, target, optTitle, autoClose, settings} ->
-    closeMessage = SKUIMessage.Message(module_, scope, Close(id));
+  | Input{message, onInput, optTitle, autoClose, settings} ->
     input(
       context,
       path.makeChild("input"),
@@ -166,38 +135,20 @@ base class Kind extends SKFS.File {
       (ctx, optStr) ~>
         optStr match {
         | Some(value) ->
-          SKUIMessage.emitMessage(
-            ctx,
-            target.toMessage(
-              if (autoClose) Map["value" => JSON.String(value)] else {
-                Map[
-                  "value" => JSON.String(value),
-                  "close" => closeMessage.toJSON(),
-                ]
-              },
-            ),
-          )
+          onInput(ctx, value, id);
+          if (autoClose) {
+            close(ctx)
+          }
         | _ ->
-          SKUIMessage.emitMessage(
-            ctx,
-            target.toMessage(
-              if (autoClose) Map[] else {
-                Map["close" => closeMessage.toJSON()]
-              },
-            ),
-          )
+          if (autoClose) {
+            close(ctx)
+          }
         },
-      if (autoClose) {
-        ctx ~> SKUIMessage.emitMessage(ctx, closeMessage)
-      } else {
-        _ctx ~> void
-      },
       optTitle,
     )
   | Custom(dirName, key) ->
-    closeMessage = SKUIMessage.Message(module_, scope, Close(id));
     handle = SKFS.EHandle<UiDialog.Builder>(UiDialog.Builder::forFile, dirName);
-    handle.get(context, SKFS.StrID(key)).build(context, closeMessage)
+    handle.get(context, SKFS.StrID(key)).build(context, id, close)
 }
 
 base class Controller {
@@ -208,40 +159,33 @@ base class State extends SKFS.File {
   fun getDialogCount(context: mutable SKFS.Context): Int;
   fun getDialog(context: mutable SKFS.Context, index: Int): Ui.Dialog;
 
-  fun emitOpen(context: mutable SKFS.Context, kind: Kind): void;
-  fun emitClose(context: mutable SKFS.Context, id: Int): void;
-  fun emitSetVisible(
-    context: mutable SKFS.Context,
-    id: Int,
-    visible: Bool,
-  ): void;
+  fun open(context: mutable SKFS.Context, kind: Kind): void;
+  fun close(context: mutable SKFS.Context, id: Int): void;
+  fun setVisible(context: mutable SKFS.Context, id: Int, visible: Bool): void;
 
-  fun openAlertMessage(
+  fun openAlert(
+    context: mutable SKFS.Context,
     text: Text,
     optTitle: ?Text = None(),
-  ): SKUIMessage.Message;
+  ): void;
 
-  fun openConfirmMessage(
+  fun openConfirmDialog(
+    context: mutable SKFS.Context,
     text: Text,
-    target: SKUIMessage.Target,
+    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
     autoClose: Bool = true,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
-  ): SKUIMessage.Message;
+  ): void;
 
-  fun openInputMessage(
+  fun openInputDialog(
+    context: mutable SKFS.Context,
     message: Text,
-    target: SKUIMessage.Target,
+    onInput: (mutable SKFS.Context, String, Int) ~> void,
     autoClose: Bool = true,
     optTitle: ?Text = None(),
     settings: Settings = Settings{},
-  ): SKUIMessage.Message;
-}
-
-base class Storage {
-  fun getName(): String;
-  fun getScope(): String;
-  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  ): void;
 }
 
 class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
@@ -385,7 +329,6 @@ fun input(
   message: Text,
   settings: Settings,
   onSubmit: (mutable SKFS.Context, ?String) ~> void,
-  onClose: mutable SKFS.Context ~> void = _ctx ~> void,
   optTitle: ?Text = None(),
 ): Ui.Dialog {
   contentPath = path.makeChild("content");
@@ -439,7 +382,6 @@ fun input(
               !"Submit",
               ctx ~> {
                 onSubmit(ctx, Some(input.state.getText(ctx, true)));
-                onClose(ctx);
               },
               Some(UiDialog.Submit()),
               (ctx, iu) ~>
@@ -451,7 +393,6 @@ fun input(
               !"Cancel",
               ctx ~> {
                 onSubmit(ctx, None());
-                onClose(ctx);
               },
               Some(UiDialog.Exit()),
             ),

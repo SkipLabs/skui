@@ -3,7 +3,8 @@ module UiDialog;
 base class Builder extends SKFS.File {
   fun build(
     context: mutable SKFS.Context,
-    closeMessage: SKUIMessage.Message,
+    id: Int,
+    close: mutable SKFS.Context ~> void,
   ): Ui.Dialog;
 
   static fun forFile(file: SKFS.File): Builder {
@@ -17,7 +18,8 @@ base class Builder extends SKFS.File {
 class DummyBuilder() extends Builder {
   fun build(
     _context: mutable SKFS.Context,
-    _closeMessage: SKUIMessage.Message,
+    _id: Int,
+    _close: mutable SKFS.Context ~> void,
   ): Ui.Dialog {
     dummy()
   }
