@@ -1,4 +1,5 @@
 import {int, float, ptr, Environment, Links, Utils, ToWasmManager, Shared, Text, Opt} from "#skui_base/skui_types";
+import { RenderableElement, Scope, Property, Readable, DialogElement} from "#skui_eng/skui_eng_types";
 
 interface Exported {
   SKIP_UiEngineJS_toJS: (json: ptr) => int;
@@ -36,32 +37,6 @@ interface ToWasm {
   SKIP_UiEngineJS_apply: (id: int, type_: ptr, paremeter: ptr) => null | ptr;
 }
 
-export class EngineShared implements Shared {
-  getName = () => "engine";
-  setValue: (path: Opt<string>, name: string, value: any) => void;
-  getValue: (path: Opt<string>, name: string) => any;
-  create: (path: Opt<string>, value: any) => string;
-  combine: (path: Opt<string>, combine: (values: Array<any>) => any, write: (values: any) => void) => string;
-  alert:(text: string | Text, title: Opt<string | Text>) => void;
-  dialog:(path: Opt<string>, dialog: object) => void;
-
-  constructor(
-    setValue: (path: Opt<string>, name: string, value: any) => void,
-    getValue: (path: Opt<string>, name: string) => any,
-    create: (path: Opt<string>, value: any) => string,
-    combine: (path: Opt<string>, combine: (values: Array<any>) => any, write: (values: any) => void) => string,
-    alert:(text: string | Text, title: Opt<string | Text>) => void,
-    dialog:(path: Opt<string>,  dialog: object) => void,
-  ) {
-    this.setValue = setValue;
-    this.getValue = getValue;
-    this.create = create;
-    this.combine = combine;
-    this.alert = alert;
-    this.dialog = dialog;
-  }
-}
-
 class State {
   valueId = 0;
   values = new Map<int,any>();
@@ -93,6 +68,60 @@ class State {
   }
 }
 
+class JSONProperty implements Property {
+  path: Opt<string>;
+  name: string;
+  combined: boolean;
+  getter: (path: Opt<string>, name: string) => any;
+  setter: (path: Opt<string>, name: string, v: any) => void
+  
+  constructor(
+    path: Opt<string>,
+    name: string,
+    combined: boolean,
+    getter: (path: Opt<string>,name: string) => any,
+    setter: (path: Opt<string>, name: string, v: any) => void
+  ) {
+    this.path = path;
+    this.name = name;
+    this.combined = combined;
+    this.getter = getter;
+    this.setter = setter;
+  }
+
+  set = (value: any) => {
+    if (this.setter) {
+      this.setter(this.path, this.name, value)
+    }
+  };
+
+  get = () => {
+    return this.getter ? this.getter(this.path, this.name) : null;
+  };
+
+  toJSON = () => {
+    return { type: "jsonProp", fields: { name: this.name, path: this.path, combined: this.combined } }
+  };
+}
+
+class ScopeImpl implements Scope {
+  alert: (text: string | Text, title: Opt<string | Text>) => void;
+  dialog: (dialog: Object)  => void;
+  create: (value?: any) => Property;
+  combine: (combine: (values: Array<any>) => any, combinables: Array<Readable>,write?: (value: any) => void) => Property;
+
+  constructor(
+    alert: (text: string | Text, title: Opt<string | Text>) => void,
+    dialog: (dialog: DialogElement)  => void,
+    create: (value?: any) => Property,
+    combine: (combine: (values: Array<any>) => any, combinables: Array<Readable>,write?: (value: any) => void) => Property
+  ) {
+    this.create = create;
+    this.combine = combine;
+    this.alert = alert;
+    this.dialog = dialog;
+  }
+}
 
 class LinksImpl implements Links, ToWasm {
   state: State;
@@ -111,9 +140,22 @@ class LinksImpl implements Links, ToWasm {
   SKIP_UiEngineJS_createBool: (value: boolean) => int;
   SKIP_UiEngineJS_delete = (id: int) => this.state.delete(id);
   SKIP_UiEngineJS_apply: (id: int, type: ptr, paremeter: ptr) => null | ptr;
-  register: (skPath: Opt<ptr>, value: (...args: any[]) => any) => int;
-  exportValue: (skPath: Opt<ptr>, value: any) => ptr;
-  importValue: (value: ptr) => any;
+  private register: (skPath: Opt<ptr>, value: (...args: any[]) => any) => int;
+  private exportValue: (path: Opt<string>, skPath: Opt<ptr>, value: any) => ptr;
+  private importValue: (value: ptr) => any;
+  private getter: (path: Opt<string>, name: string) => any;
+  private setter: (path: Opt<string>, name: string, v: any) => void
+  private registerCombine: (path: Opt<string>, combine: () => any, write?: (values: any) => void) => string;
+  private registerProperty: (path: Opt<string>, value: any) => string;
+  private combine: (
+    path: string,
+    combine: (values: Array<any>) => any, 
+    combinables: Array<Readable>,
+    write?: (value: any) => void
+  ) => Property;
+  private create: (path: string, value?: any) => Property;
+  private alert: (text: string | Text, title: Opt<string | Text>) => void;
+  private dialog: (path: Opt<string>, dialog: DialogElement)  => void;
 
   complete = (utils: Utils, exports: object) => {
     let exported = exports as Exported;
@@ -123,7 +165,7 @@ class LinksImpl implements Links, ToWasm {
       return id;
     };
     this.importValue = (value: ptr) => this.state.delete(exported.SKIP_UiEngineJS_toJS(value));
-    this.exportValue = (skPath: Opt<ptr>, value: any) => {
+    this.exportValue = (path: Opt<string>, skPath: Opt<ptr>, value: any) => {
       let type = typeof value;
       if (value == null || value == undefined) {
         return exported.SKIP_JSON_createNull(); 
@@ -135,8 +177,28 @@ class LinksImpl implements Links, ToWasm {
         return exported.SKIP_JSON_createString(utils.exportString(value));
       } else if (Array.isArray(value)) {
         let arr = exported.SKIP_JSON_startArray();
-        value.forEach(v => exported.SKIP_JSON_addToArray(arr, this.exportValue(skPath, v)))
+        value.forEach(v => exported.SKIP_JSON_addToArray(arr, this.exportValue(path, skPath, v)))
         return exported.SKIP_JSON_endArray(arr);
+      } else if (value instanceof RenderableElement) {
+        let render = (skScope: ptr) => {
+          let strScope = utils.importString(skScope);
+          let scope = new ScopeImpl(
+              this.alert,
+              (dialog: DialogElement) => this.dialog(strScope, dialog),
+              (value?: any) => this.create(strScope, value),
+              (combine: (values: Array<any>) => any, combinables: Array<Readable>,write?: (value: any) => void) => this.combine(strScope, combine, combinables, write),
+          );
+          let widget = value.renderable(scope);
+          return this.exportValue(strScope, skScope, widget)
+        };
+        let id = this.register(skPath, render);
+        return this.exportValue(path, skPath, {
+          type: "renderable",
+          fields: {
+            id: id,
+            scope: path
+          }
+        });
       } else if (type == "object") {
         let jso = value;
         if (value.toJSON) {
@@ -144,24 +206,87 @@ class LinksImpl implements Links, ToWasm {
         };
         let obj = exported.SKIP_JSON_startObject();
         for (let key in jso) {
-          exported.SKIP_JSON_addToObject(obj, utils.exportString(key), this.exportValue(skPath, jso[key]))
+          exported.SKIP_JSON_addToObject(obj, utils.exportString(key), this.exportValue(path, skPath, jso[key]))
         }
         return exported.SKIP_JSON_endObject(obj);
       } else if (type == "function") {
         let id = this.register(skPath, value);
-        let scope = skPath != null ? utils.importString(skPath) : null;
-        return this.exportValue(skPath, {
+        return this.exportValue(path, skPath, {
           type: "function",
           fields: {
             id: id,
-            scope: scope
+            scope: path
           }
         });
       } else {
         throw new Error("'" + type + "' cannot be exported to engine.")
       }
     }
-    
+    this.getter = (path: Opt<string>, name: string) => {
+      let skPath = path != null ? utils.exportString(path) : null;
+      let skName = utils.exportString(name);
+      let jsonPtr = exported.SKIP_UiEngineJS_getValue(skPath, skName);
+      if (jsonPtr) {
+        return this.importValue(jsonPtr);
+      };
+      return null;
+    };
+    this.setter = (path: Opt<string>, name: string, value: any) => {
+      let skPath = path != null ? utils.exportString(path) : null;
+      let skName = utils.exportString(name);
+      let skValue = path != null ? this.exportValue(path, skPath, value): null;
+      exported.SKIP_UiEngineJS_setValue(skPath, skName, skValue);
+    };
+    this.registerCombine = (path: Opt<string>, combine: () => any, write: (values: any) => void) =>  {
+      return utils.runWithGc(() => {
+        let skPath = path != null ? utils.exportString(path) : null;
+        let combineFn = this.exportValue(path, skPath, combine);
+        let writeFn = this.exportValue(path, skPath, write);
+        let skName = exported.SKIP_UiEngineJS_combine(skPath, combineFn, writeFn);
+        return utils.importString(skName);
+      });
+    };
+    this.registerProperty = (path: Opt<string>, value: any) => {
+      return utils.runWithGc(() => {
+        let skPath = path != null ? utils.exportString(path) : null;
+        let skValue = value != null ? this.exportValue(path, skPath, value) : null;
+        let jsonPtr = exported.SKIP_UiEngineJS_create(skPath, skValue);
+        return utils.importString(jsonPtr);
+      });
+    };
+    this.combine = (
+      path: string,
+      combine: (values: Array<any>) => any, 
+      combinables: Array<Readable>,
+      write?: (value: any) => void
+    ) =>  {
+      let fn = () => {
+        let values = combinables.map(c => c.get());
+        let result = combine(values);
+        let skPath = utils.exportString(path);
+        return this.exportValue(path, skPath, result);
+      };
+      let name = this.registerCombine(path, fn, write);
+      return new JSONProperty(path, name, true, this.getter, this.setter);
+    };
+    this.create = (path: string, value?: any) => {
+      let name = this.registerProperty(path, value);
+      return new JSONProperty(path, name, false, this.getter, this.setter);
+    }
+    this.alert = (text: string | Text, title: Opt<string | Text>) => {
+      utils.runWithGc(() => {
+        let skText = utils.exportLocale(text);
+        let skTitle = title ? utils.exportLocale(text) : null;
+        exported.SKIP_UiEngineJS_alert(skText, skTitle);
+      })
+    };
+    this.dialog = (path: Opt<string>, dialog: DialogElement) => {
+      utils.runWithGc(() => {
+        let skPath = path != null ? utils.exportString(path) : null;
+        let skDialog = this.exportValue(path, skPath, dialog);
+        exported.SKIP_UiEngineJS_dialog(skDialog);
+      });
+    };
     this.SKIP_UiEngineJS_createObject = () => {
       return this.state.register({});
     }
@@ -184,64 +309,11 @@ class LinksImpl implements Links, ToWasm {
       let parameters = this.importValue(skParemeters);
       if (type == "function" && Array.isArray(parameters)) {
         let res = this.state.apply(id, parameters);
-        return res !== undefined ? this.exportValue(null, res) : null;
+        return res !== undefined ? this.exportValue(null, null, res) : null;
       }
       return null;
     };
-    let setValue = (path: Opt<string>, name: string, value: any) => {
-      let skPath = path != null ? utils.exportString(path) : null;
-      let skName = utils.exportString(name);
-      let skValue = path != null ? this.exportValue(skPath, value): null;
-      exported.SKIP_UiEngineJS_setValue(skPath, skName, skValue);
-    };
-    let getValue = (path: Opt<string>, name: string) => {
-      let skPath = path != null ? utils.exportString(path) : null;
-      let skName = utils.exportString(name);
-      let jsonPtr = exported.SKIP_UiEngineJS_getValue(skPath, skName);
-      if (jsonPtr) {
-        return this.importValue(jsonPtr);
-      };
-      return null;
-    };
-    let create = (path: Opt<string>, value: any) => {
-      return utils.runWithGc(() => {
-        let skPath = path != null ? utils.exportString(path) : null;
-        let skValue = value != null ? this.exportValue(skPath, value) : null;
-        let jsonPtr = exported.SKIP_UiEngineJS_create(skPath, skValue);
-        return utils.importString(jsonPtr);
-      });
-    };
-    let combine = (path: Opt<string>, combine: (values: Array<any>) => any, write: (values: any) => void) =>  {
-      return utils.runWithGc(() => {
-        let skPath = path != null ? utils.exportString(path) : null;
-        let combineFn = this.exportValue(skPath, combine);
-        let writeFn = this.exportValue(skPath, write);
-        let skName = exported.SKIP_UiEngineJS_combine(skPath, combineFn, writeFn);
-        return utils.importString(skName);
-      });
-    };
-    let alert = (text: string | Text, title: Opt<string | Text>) => {
-      utils.runWithGc(() => {
-        let skText = utils.exportLocale(text);
-        let skTitle = title ? utils.exportLocale(text) : null;
-        exported.SKIP_UiEngineJS_alert(skText, skTitle);
-      })
-    };
-    let  dialog = (path: Opt<string>, dialog: object) => {
-      utils.runWithGc(() => {
-        let skPath = path != null ? utils.exportString(path) : null;
-        let skDialog = this.exportValue(skPath, dialog);
-        exported.SKIP_UiEngineJS_dialog(skDialog);
-      });
-    };
-    return new EngineShared(
-      setValue,
-      getValue,
-      create,
-      combine,
-      alert,
-      dialog
-    );
+    return null;
   }
 }
 

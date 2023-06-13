@@ -258,7 +258,7 @@ class Writer(fn: UiEngine.Function) extends Ui.JSONWriter {
 
 class Combine(
   combineFn: UiEngine.Function,
-  writeFn: UiEngine.Function,
+  optWriteFn: ?UiEngine.Function,
 ) extends Ui.Combine {
   //
   fun combine(context: mutable SKFS.Context, path: String): JSON.Value {
@@ -268,9 +268,11 @@ class Combine(
   }
 
   fun write(context: mutable SKFS.Context, optValue: ?JSON.Value): void {
-    _ = get(context, this.writeFn).map(h ->
-      h.apply(Vector[optValue.default(JSON.Null())])
-    )
+    this.optWriteFn.each(writeFn -> {
+      _ = get(context, writeFn).map(h ->
+        h.apply(Vector[optValue.default(JSON.Null())])
+      )
+    })
   }
 }
 
