@@ -1,4 +1,4 @@
-import {int, float, Text} from "#skui_base/skui_types";
+import {int, float, Text, Opt} from "#skui_base/skui_types";
 
 export interface Readable {
   get: () => any;
@@ -222,7 +222,7 @@ export class Object {
   }
 }
 
-export class Widget extends Object {}
+export class WidgetElement extends Object {}
 export class IconElement extends Object {}
 export class Configuration extends Object {}
 export class Decoration extends Object {}
@@ -238,6 +238,16 @@ export class TabElement extends Object {}
 export class TreeItemElement extends Object {}
 export class DropdownElement extends Object {}
 export class ShorcutElement extends Object {}
+export class DialogElement extends Object {}
+
+export class RenderableElement {
+  renderable: Renderable
+  constructor(renderable: Renderable) {
+    this.renderable = renderable;
+  }
+}
+
+export type Widget = WidgetElement | RenderableElement;
 
 export type FlexConf = {flex?: int, fitLoose?: boolean, ignoreCross?: boolean};
 
@@ -548,6 +558,8 @@ export type Tree = {
   configuration?: Value<Configuration>,
 }
 
+export type Renderable = (scope: Scope) => Widget;
+
 
 export var flexConf = (conf: FlexConf) => new Configuration("flexConf", conf);
 export var stackConf = (conf: StackConf) => new Configuration("stackConf", conf);
@@ -573,25 +585,35 @@ export var treeItem = (setting: TreeItem) => new TreeItemElement("treeItem", set
 export var dropdownitem = (setting: DropdownItem) => new DropdownElement("dropdownitem", setting);
 export var dropdownmenu = (setting: DropdownMenu) => new DropdownElement("dropdownmenu", setting);
 //
-export var flex = (setting: Flex) => new Widget("flex", setting);
-export var wrap = (setting: Wrap) => new Widget("wrap", setting);
-export var stack = (setting: Stack) => new Widget("stack", setting);
-export var button = (setting: Button) => new Widget("button", setting);
-export var slider = (setting: Slider) => new Widget("slider", setting);
-export var input = (setting: Input) => new Widget("input", setting);
-export var split = (setting: Split) => new Widget("split", setting);
-export var toggle = (setting: Toggle) => new Widget("toggle", setting);
-export var scroll = (setting: Scroll) => new Widget("scroll", setting);
-export var label = (setting: Label) => new Widget("label", setting);
-export var indicator = (setting: Indicator) => new Widget("indicator", setting);
-export var decorated = (setting: Decorated) => new Widget("decorated", setting);
-export var constrained = (setting: Constrained) => new Widget("constrained", setting);
-export var textView = (setting: TextView) => new Widget("textview", setting);
-export var tabs = (setting: Tabs) => new Widget("tabs", setting);
-export var tree = (setting: Tree) => new Widget("tree", setting);
+export var flex = (setting: Flex) => new WidgetElement("flex", setting);
+export var wrap = (setting: Wrap) => new WidgetElement("wrap", setting);
+export var stack = (setting: Stack) => new WidgetElement("stack", setting);
+export var button = (setting: Button) => new WidgetElement("button", setting);
+export var slider = (setting: Slider) => new WidgetElement("slider", setting);
+export var input = (setting: Input) => new WidgetElement("input", setting);
+export var split = (setting: Split) => new WidgetElement("split", setting);
+export var toggle = (setting: Toggle) => new WidgetElement("toggle", setting);
+export var scroll = (setting: Scroll) => new WidgetElement("scroll", setting);
+export var label = (setting: Label) => new WidgetElement("label", setting);
+export var indicator = (setting: Indicator) => new WidgetElement("indicator", setting);
+export var decorated = (setting: Decorated) => new WidgetElement("decorated", setting);
+export var constrained = (setting: Constrained) => new WidgetElement("constrained", setting);
+export var textView = (setting: TextView) => new WidgetElement("textview", setting);
+export var tabs = (setting: Tabs) => new WidgetElement("tabs", setting);
+export var tree = (setting: Tree) => new WidgetElement("tree", setting);
+// 
+export var insetsAll = (thickness: string) => insets({
+  left: thickness,
+  top: thickness,
+  right: thickness,
+  bottom: thickness
+});
+export var paddingAll = (thickness: string) => padding({padding: insetsAll(thickness)});
+//
+export var renderable = (renderable: Renderable) => new RenderableElement(renderable);
 
 export interface Scope {
-  alert: (text: string, title?: string) => void;
+  alert: (text: string | Text, title: Opt<string | Text>) => void;
   dialog: (dialog: Object)  => void;
   create: (value?: any) => Property;
   combine: (
@@ -600,6 +622,3 @@ export interface Scope {
     onWrite?: (value: any) => void
   ) => Property;
 }
-
-
-export type Renderable = (scope: Scope) => Widget;
