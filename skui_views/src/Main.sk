@@ -19,24 +19,39 @@ fun main(): void {
 
 const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/views/");
 
-fun initUiWidget(
+fun initUi(
   context: mutable SKFS.Context,
   wId: Int,
-  getter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+  builder: (mutable SKFS.Context, UiRoot.Storage) ~> Ui.GetterOne<
+    Ui.Widget,
+    UiRoot.Storage,
+  >,
+  support: Ui.DrawableSupport,
+  inits: Array<mutable SKFS.Context ~> void> = Array[],
 ): void {
   FWKEnv.init(context, wId);
   context.initFontSupport();
   context.initIconSupport();
-  support = SKUIGL.DrawableSupport(pictureToTexturable);
   context.initTextSupport(support);
   root = UiRoot.HStorage::create(context, SKFS.DirName::create("/ui/root/"));
   context.setGlobal("FWK.Root", root);
   windowHdl = initSizeManager(context);
   SystemProperties.init(context);
   Ui.init(context);
+  inits.each(i -> i(context));
+  getter = builder(context, root);
   FWKPipeline.initPipeline(context, getter, windowHdl, root, support);
   context.!optPreOnChanged = Some(_ctx ~> FWK.update(uint32(wId)));
   context.clearProfile();
+}
+
+fun initUiWidget(
+  context: mutable SKFS.Context,
+  wId: Int,
+  getter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+): void {
+  support = SKUIGL.DrawableSupport(pictureToTexturable);
+  initUi(context, wId, (_ctx, _root) ~> getter, support)
 }
 
 fun pictureToTexturable(
@@ -71,7 +86,7 @@ fun perform(
   >,
 ): void {
   command = Cli.Command("skuiviews")
-    .about("Skip UI's Viewer")
+    .about("SKUI's Viewer")
     .arg(
       Cli.BoolArg("version")
         .short("V")
@@ -165,9 +180,13 @@ fun update(): void {
   cleanObstack(pos);
 }
 
-fun display(optOutput: ?String, optError: ?String = None()): void {
+fun display(
+  optOutput: ?String,
+  optError: ?String = None(),
+  html: Bool = false,
+): void {
   if (SkargoVersion.kWasm) {
-    SKUIJS.display(optOutput, optError)
+    SKUIJS.display(optOutput, optError, html)
   } else {
     optError.each(print_error);
     optOutput.each(print_string);

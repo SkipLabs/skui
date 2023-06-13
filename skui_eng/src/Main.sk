@@ -1,2 +1,109 @@
-module UiEngine;
+module alias H = UiEngineHandle;
+
+module SkuiEng;
+
+const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/js_engine/");
+
+class Renderer(
+  name: String,
+  optDescription: ?String,
+  renderable: JSON.Value,
+) uses Show {
+  fun toString(): String {
+    this.optDescription match {
+    | Some(d) -> `${this.name}: ${d}`
+    | _ -> this.name
+    }
+  }
+}
+
+fun main(): void {
+  renderers = mutable Vector<Renderer>[];
+  args = mutable Vector<String>[];
+  isExample = true;
+  arguments().each(arg ->
+    if (isExample) {
+      vtry<void>(
+        () -> {
+          jso = JSON.decode(arg).expectObject();
+          jso.maybeGetString("name").each(name ->
+            jso.maybeGet("renderable").each(renderable ->
+              renderers.push(
+                Renderer(name, jso.maybeGetString("description"), renderable),
+              )
+            )
+          )
+        },
+        _ -> {
+          !isExample = false;
+          args.push(arg)
+        },
+      );
+    } else {
+      args.push(arg)
+    }
+  );
+  perform(unsafe_chill_trust_me(renderers), unsafe_chill_trust_me(args));
+}
+
+fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
+  if (examples.isEmpty()) {
+    SkuiViews.display(None(), Some("No renderer available"), false)
+  } else {
+    available = Set::createFromItems(examples.map(e -> e.name));
+    filtered = args.filter(a -> available.contains(a));
+    if (filtered.isEmpty()) {
+      dExamples = examples.map(e -> e.toString());
+      SkuiViews.display(
+        None(),
+        Some(
+          `Enable to display '${args.join(
+            "/",
+          )}', the avaible renderers are:\n${dExamples.join("\n")}`,
+        ),
+        false,
+      )
+    } else {
+      examples
+        .filter(e -> e.name == filtered[0])
+        .each(example -> {
+          wId = 0;
+          title = example.optDescription.default("SKUI's JS Engine");
+          _ = SKFS.initMainContext(SKFS.Context{});
+          SKFS.Context::withGc(context ~> {
+            initEngineWidget(context, wId, example.name);
+            context.initPre()
+          });
+          SKUIJS.init(uint32(wId), title);
+        })
+    }
+  }
+}
+
+@cpp_extern("SKUI_UiEngineJS_renderable")
+native fun getRenderable(optPath: ?String, name: String): ?JSON.Value;
+
+fun initEngineWidget(
+  context: mutable SKFS.Context,
+  wId: Int,
+  name: String,
+): void {
+  context.setGlobal("Ui.Properties.Root", rootPath);
+  support = SKUIGL.DrawableSupport(UiEnginePicture.pictureToTexturable);
+  optPath: ?String = None();
+  H.init(context, optPath);
+  optRenderable = getRenderable(optPath, name);
+  builder = (ctx, root) ~> {
+    UiJSONProp.Property::initValues(
+      ctx,
+      optPath,
+      Array[(SKFS.StrID("root"), optRenderable)],
+    );
+    property = UiJSONProp.Property::forName(ctx, optPath, "root");
+    hdl = UiEngine.widgetPipeline(ctx, property, root);
+    (ctx, _root) ~> hdl.get(ctx).widget
+  };
+  SkuiViews.initUi(context, wId, builder, support);
+}
+
 module end;

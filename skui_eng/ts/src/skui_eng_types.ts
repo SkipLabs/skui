@@ -222,6 +222,29 @@ export class Object {
   }
 }
 
+export class Congif {
+  name: string;
+  description: string;
+  renderable: Renderable;
+
+  constructor(
+    name: string,
+    description: string,
+    renderable: Renderable,
+  ) {
+    this.name = name;
+    this.description = description;
+    this.renderable = renderable;
+  }
+
+  toJSON = () => {
+    return {
+      name: this.name,
+      description: this.description,
+    }
+  }
+}
+
 export class WidgetElement extends Object {}
 export class IconElement extends Object {}
 export class Configuration extends Object {}

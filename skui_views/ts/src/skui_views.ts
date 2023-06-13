@@ -54,7 +54,7 @@ interface ToWasm {
   SKIP_SKUIJS_requestClipboard: (wId: int, mimeType: ptr) => void;
   SKIP_SKUIJS_updateClipboard: (wId: int, mimeType: ptr, data: ptr) => void;
   SKIP_SKUIJS_init: (wId: int, skTitle: ptr) => void;
-  SKIP_SKUIJS_display: (skOutput: ptr | null, skError: ptr | null) => void;
+  SKIP_SKUIJS_display: (skOutput: ptr | null, skError: ptr | null, html : boolean) => void;
 }
 
 class LinksImpl implements Links, ToWasm {
@@ -67,7 +67,7 @@ class LinksImpl implements Links, ToWasm {
   SKIP_SKUIJS_requestClipboard: (wId: int, mimeType: ptr) => void;
   SKIP_SKUIJS_updateClipboard: (wId: int, mimeType: ptr, data: ptr) => void;
   SKIP_SKUIJS_init: (wId: int, skTitle: ptr) => void;
-  SKIP_SKUIJS_display: (skOutput: ptr | null, skError: ptr | null) => void;
+  SKIP_SKUIJS_display: (skOutput: ptr | null, skError: ptr | null, html : boolean) => void;
   performPaste: (wId: int, mimeType: string, data: string) => void;
   update: () => void;
   manageEvents: (wId: int) => void;
@@ -162,7 +162,7 @@ class LinksImpl implements Links, ToWasm {
       };
     }
 
-    this.SKIP_SKUIJS_display = (skOutput: ptr | null, skError: ptr | null) => {
+    this.SKIP_SKUIJS_display = (skOutput: ptr | null, skError: ptr | null, html: boolean) => {
       if(this.env) {
         let strOutput = skOutput ? utils.importString(skOutput) : null;
         let strError = skError ? utils.importString(skError) : null;
@@ -171,7 +171,7 @@ class LinksImpl implements Links, ToWasm {
         container = container ? container : document.body;
         if (strError != null) {
           var div = document.createElement("div");
-          div.innerHTML = strError.replaceAll("\n", "<br>");
+          div.innerHTML = html ? strError : strError.replaceAll("\n", "<br>");
           div.style.fontSize = "16px";
           div.style.fontWeight = "bold";
           div.style.paddingLeft = "30px"
@@ -179,7 +179,7 @@ class LinksImpl implements Links, ToWasm {
         }
         if (strOutput != null) {
           var div = document.createElement("div");
-          div.innerHTML = strOutput.replaceAll("\n", "<br>");
+          div.innerHTML = html ? strOutput : strOutput.replaceAll("\n", "<br>");
           div.style.fontSize = "16px";
           document.body.appendChild(div);
         };
@@ -330,7 +330,7 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_SKUIJS_sendMessage =  (wId: int, message: ptr, async: boolean, delay: int) => links.SKIP_SKUIJS_sendMessage(wId, message, async, delay);
     toWasm.SKIP_SKUIJS_requestClipboard =  (wId: int, mimeType: ptr) => links.SKIP_SKUIJS_requestClipboard(wId, mimeType);
     toWasm.SKIP_SKUIJS_updateClipboard =  (wId: int, mimeType: ptr, data: ptr) => links.SKIP_SKUIJS_updateClipboard(wId, mimeType, data);
-    toWasm.SKIP_SKUIJS_display =  (skOutput: ptr | null, skError: ptr | null) => links.SKIP_SKUIJS_display(skOutput, skError);
+    toWasm.SKIP_SKUIJS_display =  (skOutput: ptr | null, skError: ptr | null, html : boolean) => links.SKIP_SKUIJS_display(skOutput, skError, html);
     toWasm.SKIP_SKUIJS_init =  (wId: int, skTitle: ptr) => links.SKIP_SKUIJS_init(wId, skTitle);
     return links;
   }

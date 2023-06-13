@@ -197,6 +197,6 @@ native fun updateClipboard(wid: UInt32, mimeType: String, data: String): void;
 native fun init(wid: UInt32, title: String): void;
 
 @cpp_extern("SKIP_SKUIJS_display")
-native fun display(optOutput: ?String, optError: ?String): void;
+native fun display(optOutput: ?String, optError: ?String, html: Bool): void;
 
 module end;

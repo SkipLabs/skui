@@ -5,9 +5,9 @@ auto-remove-state = true
 format-on-check = true
 
 [dependencies]
-skui_fwk = {}
-skui_opengl = {}
+skui_views = {}
 
 [[bin]]
 name = "skuieng"
 main = "SkuiEng.main"
+target = "wasm32"

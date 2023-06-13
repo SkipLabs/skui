@@ -1,5 +1,5 @@
 import {int, float, ptr, Environment, Links, Utils, ToWasmManager, Shared, Text, Opt} from "#skui_base/skui_types";
-import { RenderableElement, Scope, Property, Readable, DialogElement} from "#skui_eng/skui_eng_types";
+import { RenderableElement, Scope, Property, Readable, DialogElement, Renderable} from "#skui_eng/skui_eng_types";
 
 interface Exported {
   SKIP_UiEngineJS_toJS: (json: ptr) => int;
@@ -34,7 +34,12 @@ interface ToWasm {
   SKIP_UiEngineJS_createString: (value: ptr) => int;
   SKIP_UiEngineJS_createBool: (value: boolean) => int;
   SKIP_UiEngineJS_delete: (id: int) => void;
-  SKIP_UiEngineJS_apply: (id: int, type_: ptr, paremeter: ptr) => null | ptr;
+  SKIP_UiEngineJS_apply: (id: int, type_: ptr, paremeter: ptr) => Opt<ptr>;
+  SKUI_UiEngineJS_renderable: (path: Opt<ptr>, name: ptr) => Opt<ptr>;
+}
+
+interface Env extends Environment {
+  configs?: Array<any>;
 }
 
 class State {
@@ -125,9 +130,11 @@ class ScopeImpl implements Scope {
 
 class LinksImpl implements Links, ToWasm {
   state: State;
+  env: Env | undefined;
 
-  constructor() {
+  constructor(env?: Env) {
     this.state = new State();
+    this.env = env;
   }
 
   SKIP_UiEngineJS_createObject: () => int;
@@ -139,7 +146,8 @@ class LinksImpl implements Links, ToWasm {
   SKIP_UiEngineJS_createString: (value: ptr) => int;
   SKIP_UiEngineJS_createBool: (value: boolean) => int;
   SKIP_UiEngineJS_delete = (id: int) => this.state.delete(id);
-  SKIP_UiEngineJS_apply: (id: int, type: ptr, paremeter: ptr) => null | ptr;
+  SKIP_UiEngineJS_apply: (id: int, type: ptr, paremeter: ptr) => Opt<ptr>;
+  SKUI_UiEngineJS_renderable: (path: Opt<ptr>, name: ptr) => Opt<ptr>;
   private register: (skPath: Opt<ptr>, value: (...args: any[]) => any) => int;
   private exportValue: (path: Opt<string>, skPath: Opt<ptr>, value: any) => ptr;
   private importValue: (value: ptr) => any;
@@ -313,16 +321,33 @@ class LinksImpl implements Links, ToWasm {
       }
       return null;
     };
+    this.SKUI_UiEngineJS_renderable = (skPath: Opt<ptr>, skName: ptr) => {
+      let configs = this.env ? this.env.configs : null;
+      if (configs) {
+        let path = skPath != null ? utils.importOptString(skPath) : null;
+        let name = utils.importString(skName);
+        let renderables = configs.filter(c => c.name == name);
+        if (renderables.length > 0) {
+          let renderable = renderables[0].renderable as Renderable;
+          return this.exportValue(path, skPath, new RenderableElement(renderable))
+        }
+      }
+      return null;
+    }
     return null;
   }
 }
 
 class Manager implements ToWasmManager {
-  constructor() {}
+  env:  Env | undefined;
+
+  constructor(env?:  Env) {
+    this.env = env;
+  }
 
   prepare = (wasm: object) => {
     let toWasm = wasm as ToWasm;
-    let links = new LinksImpl();
+    let links = new LinksImpl(this.env);
     toWasm.SKIP_UiEngineJS_createObject =  () => links.SKIP_UiEngineJS_createObject();
     toWasm.SKIP_UiEngineJS_addToObject =  (obj: int, name: ptr, value: int) => links.SKIP_UiEngineJS_addToObject(obj, name, value);
     toWasm.SKIP_UiEngineJS_createArray =  () => links.SKIP_UiEngineJS_createArray();
@@ -331,10 +356,11 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_UiEngineJS_createNumber =  (value: number) => links.SKIP_UiEngineJS_createNumber(value);
     toWasm.SKIP_UiEngineJS_createString =  (value: ptr) => links.SKIP_UiEngineJS_createString(value);
     toWasm.SKIP_UiEngineJS_createBool =  (value: boolean) => links.SKIP_UiEngineJS_createBool(value);
+    toWasm.SKUI_UiEngineJS_renderable =  (skPath: Opt<ptr>, skName: ptr) => links.SKUI_UiEngineJS_renderable(skPath, skName);
     return links;
   }
 }
 
 export function init(env?: Environment) {
-  return Promise.resolve(new Manager());
+  return Promise.resolve(new Manager(env ? env as Env : undefined));
 }
