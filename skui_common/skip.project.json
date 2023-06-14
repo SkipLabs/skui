@@ -34,20 +34,20 @@
     "skfs": {
       "kind": "Library",
       "sources": [
-        "../skfs/src/**"
+        "../../skfs_new/skfs/src/**"
       ],
       "references": []
     },
     "prelude": {
       "kind": "Library",
       "sources": [
-        "../prelude/src/Runtime.sk",
-        "../prelude/src/core/**",
-        "../prelude/src/stdlib/**"
+        "../../skfs_new/prelude/src/Runtime.sk",
+        "../../skfs_new/prelude/src/core/**",
+        "../../skfs_new/prelude/src/stdlib/**"
       ],
       "parameters": {
         "backend": {
-            "native": {"sources": ["../prelude/src/native"]}
+            "native": {"sources": ["../../skfs_new/prelude/src/native"]}
         }
       },
       "references": []
@@ -55,7 +55,7 @@
     "sktest": {
       "kind": "Library",
       "sources": [
-        "../sktest/src/**"
+        "../../skfs_new/sktest/src/**"
       ],
       "references": [
         { "path": ".", "name": "termcolor"},
@@ -65,14 +65,14 @@
     "termcolor": {
       "kind": "Library",
       "sources": [
-        "../termcolor/src/**"
+        "../../skfs_new/termcolor/src/**"
       ],
       "references": []
     },
     "cli": {
       "kind": "Library",
       "sources": [
-        "../cli/src/**"
+        "../../skfs_new/cli/src/**"
       ],
       "references": []
     }

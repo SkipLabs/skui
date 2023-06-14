@@ -86,6 +86,7 @@ class Manager implements ToWasmManager {
   }
 }
 
+/** @sk init */
 export function init(env?: Environment) {
   return Promise.resolve(new Manager(env ? env as Env : undefined));
 }

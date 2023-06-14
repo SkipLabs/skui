@@ -71,4 +71,5 @@ var render = (scope: eng.Scope) => {
   })
 };
 
+/** @sk config */
 export var config = () => new eng.Congif("buttons", "Buttons example", render);

@@ -20,20 +20,12 @@ fun moduleName(name: String): String {
 
 fun toml(
   name: String,
-  formatOnCheck: Bool = false,
-  autoRemoveState: Bool = false,
   optTestHarness: ?String = None(),
   version: String = "0.1.0",
 ): String {
   Array["[package]", `name = "${name}"`, `version = "${version}"`].concat(
-    if (formatOnCheck) Array["format-on-check = true"] else Array[],
+    optTestHarness.map(th -> Array[`test-harness = "${th}"`]).default(Array[]),
   )
-    .concat(if (autoRemoveState) Array["auto-remove-state = true"] else Array[])
-    .concat(
-      optTestHarness
-        .map(th -> Array[`test-harness = "${th}"`])
-        .default(Array[]),
-    )
     .concat(
       Array[
         "",

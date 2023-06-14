@@ -1,18 +1,26 @@
 import {init} from "#skui_views/skui_utils";
 
-var wasm64 = "/*--WASMB64--*/";
+function run(wasm64: String, congifs : Array<string>) {
+  let promises = congifs.map(name => import(name).then(config => {
+    if (config.config) {
+      config.config()
+    } else {
+      null
+    }
+  }))
+  let wasm = import(wasm64 + ".wasm.mjs").then(wm => Uint8Array.from(atob(wm.base64()), c => c.charCodeAt(0)));
+  return Promise.all(
+    [
+      Promise.all(promises).then(cs => cs.filter(c => c != null)),
+      wasm
+    ]
+  ).then(
+    result => init(window, navigator, modules, result[1], result[0])
+  ).catch(e => console.error(e));
+}
+
+var wasm64 = "/*--NAME--*/";
 var modules : Array<string> = [/*--MODULES--*/];
 var congifs : Array<string> = [/*--CONFIGS--*/];
-var buffer = Uint8Array.from(atob(wasm64), c => c.charCodeAt(0));
 
-
-async function run(congifs : Array<string>) {
-  let available = new Array<any>();
-  for (let i = 0; i < congifs.length; i++) {
-    let rModule = await import(congifs[i]);
-    if (rModule.config) {
-      available.push(await rModule.config());
-    }
-  }
-  await init(window, navigator, modules, buffer, available).catch(e => console.error(e));
-}
+run(wasm64, congifs);

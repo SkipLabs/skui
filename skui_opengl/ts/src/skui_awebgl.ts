@@ -453,6 +453,7 @@ class ToConsole implements ToWasmManager {
   }
 }
 
+/** @sk init */
 export function init(env?: Environment) {
   if (env) {
     return Factory.init(env).then(factory => new Manager(factory));

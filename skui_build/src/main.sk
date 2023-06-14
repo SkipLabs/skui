@@ -1,5 +1,183 @@
 module Skuibuild;
 
+fun main(): void {
+  (bcmd, bfn) = SkuibuildBuild.command();
+  args = Cli.Command("skuiargo")
+    .about("Skip UI's package manager")
+    .arg(
+      Cli.BoolArg("version")
+        .short("V")
+        .long("version")
+        .about("Print version info and exit"),
+    )
+    .arg(
+      Cli.BoolArg("verbose")
+        .short("v")
+        .long("verbose")
+        .about("Use verbose output")
+        .global(),
+    )
+    .help()
+    .subcommand(bcmd)
+    .subcommand(
+      Cli.Command("browser")
+        .about("Build a browsable js package")
+        .arg(
+          Cli.StringArg("entry").about(
+            "If specified, build that entry function else for the first bin one.",
+          ),
+        )
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        )
+        .arg(Cli.BoolArg("js").about("Perform only the js part")),
+    )
+    /*.subcommand(
+      Cli.Command("checkall")
+        .short("a")
+        .about(
+          "Analyze the first-level packages, report first found errors, but don't build object files",
+        )
+        .arg(Cli.StringArg("target").about("Check for the target triple"))
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        ),
+    )*/
+    .subcommand(
+      Cli.Command("check")
+        .short("c")
+        .about(
+          "Analyze the current package and report errors, but don't build object files",
+        )
+        .arg(Cli.StringArg("target").about("Check for the target triple"))
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        ),
+    )
+    .subcommand(
+      Cli.Command("test")
+        .short("t")
+        .about("Run the tests")
+        .arg(Cli.BoolArg("debug").about("Build in debug mode"))
+        .arg(
+          Cli.StringArg("filter")
+            .positional()
+            .about(
+              "If specified, only run tests with names matching the filter",
+            ),
+        )
+        .arg(Cli.StringArg("target").about("Check for the target triple"))
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        )
+        .arg(Cli.StringArg("junitxml").about("Generate a JUnit XML report")),
+    )
+    .subcommand(
+      Cli.Command("clean")
+        .about("Remove the target directory")
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        ),
+    )
+    .subcommand(Cli.Command("fmt").about("Format all files using skfmt"))
+    .subcommand(
+      Cli.Command("init")
+        .about("Create a new skargo package")
+        .arg(
+          Cli.StringArg("path")
+            .default(".")
+            .about("Directory where to perform the initialization"),
+        )
+        .arg(
+          Cli.StringArg("test-harness")
+            .short("t")
+            .long("test-harness")
+            .about("Specify the test harness"),
+        ),
+    )
+    .subcommand(
+      Cli.Command("update").about("Update dependencies listed in Skargo.lock"),
+    )
+    .subcommand(
+      Cli.Command("help")
+        .extra()
+        .about("Displays help for a skargo subcommand"),
+    )
+    .parseArgs();
+
+  if (args.getBool("version")) {
+    print_string("skuiargo " + SkargoVersion.kVersion);
+    skipExit(0)
+  } else if (args.maybeGetSubcommand().isNone()) {
+    print_string(Cli.usage(args.cmd, true));
+    skipExit(0)
+  } else {
+    trycall = run ->
+      vtry<Int>(
+        () -> {
+          run();
+          0
+        },
+        exn ->
+          exn match {
+          | Skargo.SystemCallException(code, _) -> code
+          | _ -> throw exn
+          }
+        ,
+      );
+    skipExit(
+      args
+        .maybeGetSubcommand()
+        .map(subcmd ->
+          subcmd match {
+          | "update" -> Some(Skuibuild.execUpdate)
+          | "check" -> Some(Skuibuild.execCheck)
+          | "build" -> Some(bfn)
+          | "browser" -> Some(Skuibuild.execBrowser)
+          | "test" -> Some(Skuibuild.execTest)
+          | "clean" -> Some(Skuibuild.execClean)
+          | "fmt" -> Some(Skuibuild.execFmt)
+          | _ -> None()
+          } match {
+          | Some(subcmd_handler) ->
+            env = Skargo.Env::create(args.getBool("verbose"));
+            trycall(() -> subcmd_handler(args, env))
+          | _ ->
+            trycall(() ->
+              subcmd match {
+              | "init" -> Skuibuild.execInit(args)
+              | "help" -> Skuibuild.execHelp(args)
+              | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
+              }
+            )
+          }
+        )
+        .default(0),
+    )
+  }
+}
+
+fun buildCommand(name: String): Cli.Command {
+  Cli.Command(name)
+    .arg(Cli.BoolArg("debug").about("Build in debug mode"))
+    .arg(Cli.StringArg("target").about("Check for the target triple"))
+    .arg(
+      Cli.StringArg("target-dir").about(
+        "Directory for all generated artifacts",
+      ),
+    )
+}
+
 fun execInit(args: Cli.ParseResults): void {
   path = args
     .maybeGetString("path")
@@ -26,12 +204,7 @@ fun execInit(args: Cli.ParseResults): void {
     name = Path.basename(rootDir);
     FileSystem.writeTextFile(
       manifestFile,
-      toml(
-        name,
-        args.getBool("format-on-check"),
-        args.getBool("auto-remove-state"),
-        args.maybeGetString("test-harness"),
-      ),
+      toml(name, args.maybeGetString("test-harness")),
     );
     srcDir = Path.join(rootDir, "src");
     ensureDirectory(srcDir, args.getBool("verbose"))
@@ -68,17 +241,6 @@ fun execTest(args: Cli.ParseResults, env: Skargo.Env): void {
     ensureDirectory(target, env.verbose);
     manageJs(target, deps, bc, "test", srcDirs, true)
   }
-}
-
-fun execBuild(args: Cli.ParseResults, env: Skargo.Env): void {
-  bc = Skargo.BuildContext::create(
-    env,
-    args.maybeGetString("target"),
-    args.maybeGetString("target-dir"),
-    args.getBool("wasm"),
-  );
-  _ = checkLibraries(bc, Array["src"]);
-  Skargo.execBuild(args, env)
 }
 
 fun execBrowser(args: Cli.ParseResults, env: Skargo.Env): void {
@@ -203,7 +365,7 @@ fun execFormatAndCheck(
   env: Skargo.Env,
   doNotFormat: Bool = false,
 ): void {
-  if (env.manifest.formatOnCheck && !doNotFormat) {
+  if (env.config.formatOnCheck && !doNotFormat) {
     execFmt(args, env)
   };
   Skargo.execCheck(args, env)
@@ -242,216 +404,6 @@ fun execHelp(args: Cli.ParseResults): void {
   };
 }
 
-fun main(): void {
-  args = Cli.Command("skuiargo")
-    .about("Skip UI's package manager")
-    .arg(
-      Cli.BoolArg("version")
-        .short("V")
-        .long("version")
-        .about("Print version info and exit"),
-    )
-    .arg(
-      Cli.BoolArg("verbose")
-        .short("v")
-        .long("verbose")
-        .about("Use verbose output")
-        .global(),
-    )
-    .help()
-    .subcommand(
-      Cli.Command("build")
-        .short("b")
-        .about("Compile a local package")
-        .arg(Cli.StringArg("target").about("Build for the target triple"))
-        .arg(
-          Cli.BoolArg("wasm").about(
-            "Equiavlent to --target wasm32-unknown-unknown",
-          ),
-        )
-        .arg(Cli.BoolArg("debug").about("Build in debug mode"))
-        .arg(
-          Cli.StringArg("target-dir").about(
-            "Directory for all generated artifacts",
-          ),
-        ),
-    )
-    .subcommand(
-      Cli.Command("browser")
-        .about("Build a browsable js package")
-        .arg(
-          Cli.StringArg("entry").about(
-            "If specified, build that entry function else for the first bin one.",
-          ),
-        )
-        .arg(
-          Cli.StringArg("target-dir").about(
-            "Directory for all generated artifacts",
-          ),
-        )
-        .arg(Cli.BoolArg("js").about("Perform only the js part")),
-    )
-    .subcommand(
-      Cli.Command("checkall")
-        .short("a")
-        .about(
-          "Analyze the first-level packages, report first found errors, but don't build object files",
-        )
-        .arg(
-          Cli.BoolArg("wasm").about(
-            "Equiavlent to --target wasm32-unknown-unknown",
-          ),
-        )
-        .arg(Cli.StringArg("target").about("Check for the target triple"))
-        .arg(
-          Cli.StringArg("target-dir").about(
-            "Directory for all generated artifacts",
-          ),
-        ),
-    )
-    .subcommand(
-      Cli.Command("check")
-        .short("c")
-        .about(
-          "Analyze the current package and report errors, but don't build object files",
-        )
-        .arg(
-          Cli.BoolArg("wasm").about(
-            "Equiavlent to --target wasm32-unknown-unknown",
-          ),
-        )
-        .arg(Cli.StringArg("target").about("Check for the target triple"))
-        .arg(
-          Cli.StringArg("target-dir").about(
-            "Directory for all generated artifacts",
-          ),
-        ),
-    )
-    .subcommand(
-      Cli.Command("test")
-        .short("t")
-        .about("Run the tests")
-        .arg(Cli.BoolArg("debug").about("Build in debug mode"))
-        .arg(
-          Cli.StringArg("filter")
-            .positional()
-            .about(
-              "If specified, only run tests with names matching the filter",
-            ),
-        )
-        .arg(Cli.StringArg("target").about("Check for the target triple"))
-        .arg(
-          Cli.BoolArg("wasm").about(
-            "Equiavlent to --target wasm32-unknown-unknown",
-          ),
-        )
-        .arg(
-          Cli.StringArg("target-dir").about(
-            "Directory for all generated artifacts",
-          ),
-        )
-        .arg(Cli.StringArg("junitxml").about("Generate a JUnit XML report")),
-    )
-    .subcommand(
-      Cli.Command("clean")
-        .about("Remove the target directory")
-        .arg(
-          Cli.StringArg("target-dir").about(
-            "Directory for all generated artifacts",
-          ),
-        ),
-    )
-    .subcommand(Cli.Command("fmt").about("Format all files using skfmt"))
-    .subcommand(
-      Cli.Command("init")
-        .about("Create a new skargo package")
-        .arg(
-          Cli.StringArg("path")
-            .default(".")
-            .about("Directory where to perform the initialization"),
-        )
-        .arg(
-          Cli.BoolArg("format-on-check")
-            .short("f")
-            .long("format-on-check")
-            .about("Add format-on-check propertie"),
-        )
-        .arg(
-          Cli.BoolArg("auto-remove-state")
-            .short("a")
-            .long("auto-remove-state")
-            .about("Add auto-remove-state propertie"),
-        )
-        .arg(
-          Cli.StringArg("test-harness")
-            .short("t")
-            .long("test-harness")
-            .about("Specify the test harness"),
-        ),
-    )
-    .subcommand(
-      Cli.Command("update").about("Update dependencies listed in Skargo.lock"),
-    )
-    .subcommand(
-      Cli.Command("help")
-        .extra()
-        .about("Displays help for a skargo subcommand"),
-    )
-    .parseArgs();
-
-  if (args.getBool("version")) {
-    print_string("skuiargo " + SkargoVersion.kVersion);
-    skipExit(0)
-  } else if (args.maybeGetSubcommand().isNone()) {
-    print_string(Cli.usage(args.cmd, true));
-    skipExit(0)
-  } else {
-    trycall = run ->
-      vtry<Int>(
-        () -> {
-          run();
-          0
-        },
-        exn ->
-          exn match {
-          | Skargo.SystemCallException(code, _) -> code
-          | _ -> throw exn
-          }
-        ,
-      );
-    skipExit(
-      args
-        .maybeGetSubcommand()
-        .map(subcmd ->
-          subcmd match {
-          | "update" -> Some(Skuibuild.execUpdate)
-          | "check" -> Some(Skuibuild.execCheck)
-          | "build" -> Some(Skuibuild.execBuild)
-          | "browser" -> Some(Skuibuild.execBrowser)
-          | "test" -> Some(Skuibuild.execTest)
-          | "clean" -> Some(Skuibuild.execClean)
-          | "fmt" -> Some(Skuibuild.execFmt)
-          | _ -> None()
-          } match {
-          | Some(subcmd_handler) ->
-            env = Skargo.Env::create(args.getBool("verbose"));
-            trycall(() -> subcmd_handler(args, env))
-          | _ ->
-            trycall(() ->
-              subcmd match {
-              | "init" -> Skuibuild.execInit(args)
-              | "help" -> Skuibuild.execHelp(args)
-              | "checkall" -> Skuibuild.execCheckAll(args)
-              | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
-              }
-            )
-          }
-        )
-        .default(0),
-    )
-  }
-}
-
 @cpp_extern("SKIP_setenv")
 native fun setenv(name: String, value: String, replace: Bool): Bool;
 
@@ -463,7 +415,7 @@ private fun manageJs(
   srcDirs: Array<String>,
   node: Bool,
 ): void {
-  copyTypescripts(deps, target, bc.env.verbose, srcDirs);
+  copyTypescriptsDeps(deps, target, srcDirs, false, bc.env.verbose);
   tsconfig = Path.join(target, "tsconfig.json");
   FileSystem.writeTextFile(tsconfig, tsConfig(deps));
   Skargo.run(Array["tsc", "--project", tsconfig], bc.env.verbose);
@@ -586,11 +538,12 @@ private fun getExternals(
   files.toArray()
 }
 
-private fun copyTypescripts(
+fun copyTypescriptsDeps(
   deps: readonly Map<String, Skargo.Manifest>,
   target: String,
-  verbose: Bool,
   srcDirs: Array<String>,
+  dip: Bool,
+  verbose: Bool,
 ): void {
   for (dep in deps) {
     srcDirs.each(srcDir -> {
@@ -610,21 +563,42 @@ private fun copyTypescripts(
           )
         });
       };
-      if (FileSystem.exists(tsPath)) {
-        FileSystem.readFilesRecursive(
-          tsPath,
-          f ~> f.endsWith(".ts"),
-          _f ~> false,
-        ).each(f ~>
-          if (FileSystem.exists(f)) {
-            fn = Path.basename(f);
-            targetFile = Path.join(target, fn);
-            Skargo.run(Array["cp", f, targetFile], verbose);
-          }
-        )
-      }
+      copyTypescripts(tsPath, target, dip, verbose)
     })
   }
+}
+
+fun copyFiles(
+  sourceDir: String,
+  targetDir: String,
+  ext: String,
+  except: Bool,
+  dip: Bool,
+  verbose: Bool,
+): void {
+  if (FileSystem.exists(sourceDir)) {
+    FileSystem.readFilesRecursive(
+      sourceDir,
+      f ~> {
+        endsWith = f.endsWith(ext);
+        if (except) !endsWith else endsWith
+      },
+      _f ~> dip,
+    ).each(f ~> {
+      fn = Path.basename(f);
+      targetFile = Path.join(targetDir, fn);
+      Skargo.run(Array["cp", f, targetFile], verbose);
+    })
+  }
+}
+
+fun copyTypescripts(
+  sourceDir: String,
+  targetDir: String,
+  dip: Bool,
+  verbose: Bool,
+): void {
+  copyFiles(sourceDir, targetDir, ".ts", false, dip, verbose)
 }
 
 fun relative(path: String, to: String): ?String {

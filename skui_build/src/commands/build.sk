@@ -1,0 +1,158 @@
+module SkuibuildBuild;
+
+@skui_envcmd
+fun command(): (Cli.Command, (Cli.ParseResults, Skargo.Env) ~> void) {
+  (
+    Skuibuild.buildCommand("build").short("b").about("Compile a local package"),
+    execBuild,
+  )
+}
+
+fun execBuild(args: Cli.ParseResults, env: Skargo.Env): void {
+  bc = Skargo.BuildContext::create(
+    env,
+    args.maybeGetString("target"),
+    args.maybeGetString("target-dir"),
+    args.getBool("debug"),
+  );
+  Skargo.genVersionFile(bc);
+  srcDirs = Array["src"];
+  deps = Skuibuild.checkLibraries(bc, srcDirs);
+  for (bin in env.manifest.bin) {
+    if (bin.allows(bc.target)) {
+      Skargo.compile(bc, bin.name, bin.main);
+      if (bc.isWasm()) {
+        manageJs(bin, deps, bc, srcDirs);
+      }
+    }
+  }
+}
+
+private fun manageJs(
+  bin: Skargo.ManifestBinary,
+  deps: readonly Map<String, Skargo.Manifest>,
+  bc: Skargo.BuildContext,
+  srcDirs: Array<String>,
+): void {
+  target = Path.join(Path.join(bc.targetDir, bin.name), "ts");
+  Skuibuild.ensureDirectory(target, bc.env.verbose);
+  Skuibuild.copyTypescriptsDeps(deps, target, srcDirs, false, bc.env.verbose);
+  // check Configs
+  rootTsDir = Path.join(bc.env.rootDir, "ts");
+  configsDir = Path.join(rootTsDir, "configs");
+  Skuibuild.copyTypescripts(configsDir, target, false, bc.env.verbose);
+  optPDir = bin.optPerformer.map(performer ->
+    performer
+      .dependency(deps)
+      .map(dep -> Path.join(Path.join(dep.path, "ts"), performer.name))
+      .default(Path.join(rootTsDir, performer.name))
+  );
+  optPDir.each(pDir ->
+    Skuibuild.copyTypescripts(pDir, target, false, bc.env.verbose)
+  );
+  tsconfig = Path.join(target, "tsconfig.json");
+  FileSystem.writeTextFile(tsconfig, Skuibuild.tsConfig(deps));
+  Skargo.run(Array["tsc", "--project", tsconfig], bc.env.verbose);
+  (bin.optPerformer, optPDir) match {
+  | (Some(performer), Some(pDir)) ->
+    jsDir = Path.join(target, "js");
+    jsFiles = if (FileSystem.exists(jsDir)) {
+      FileSystem.readFilesRecursive(jsDir, f ~> f.endsWith(".js"), _f ~> false)
+    } else {
+      Vector[]
+    };
+    runDir = Path.join(bc.targetDir, performer.name);
+    performTarget = performer.optTarget match {
+    | Some(t) -> Path.join(runDir, t)
+    | _ -> runDir
+    };
+    _ = copyAndConvertImport(performTarget, bin.name, jsFiles, bc.env.verbose);
+    Skuibuild.copyFiles(pDir, runDir, ".ts", true, true, bc.env.verbose)
+  | _ -> void
+  }
+}
+
+fun copyAndConvertImport(
+  target: String,
+  name: String,
+  jsFiles: Vector<String>,
+  verbose: Bool,
+): (Vector<String>, Vector<String>) {
+  Skuibuild.ensureDirectory(target, verbose);
+  moduleFiles = mutable Vector<String>[];
+  configFiles = mutable Vector<String>[];
+  tmplFiles = mutable Vector<(String, Vector<String>)>[];
+  jsFiles.each(f -> {
+    contents = FileSystem.readTextFile(f);
+    withInit = false;
+    withConfig = false;
+    withTmpl = false;
+    lines = contents.split("\n").map(line -> {
+      if (line.startsWith("import ")) {
+        elements = line.split(" from ");
+        if (elements.size() == 2) {
+          imported = elements[1].split("\"");
+          if (imported.size() == 3) {
+            path = imported[1].split("/");
+            size = path.size();
+            if (size > 1 && path[0].startsWith("#")) {
+              !path = path.mapWithIndex((idx, v) ->
+                if (idx == 0) "." else if (idx == size - 1) {
+                  `${v}.mjs`
+                } else {
+                  v
+                }
+              );
+              !line = `${elements[0]} from "${path.join("/")}"`
+            }
+          }
+        }
+      };
+      cLine = line.trim();
+      if (
+        cLine == "var wasm64 = \"/*--NAME--*/\";" ||
+        cLine == "var modules = [/*--MODULES--*/];" ||
+        cLine == "var congifs = [/*--CONFIGS--*/];"
+      ) {
+        !withTmpl = true;
+      } else if (cLine == "/** @sk config */") {
+        !withConfig = true;
+      } else if (cLine == "/** @sk init */") {
+        !withInit = true;
+      };
+      line;
+    });
+    tf = Path.join(target, Path.basename(f).replace(".js", ".mjs"));
+    if (!withTmpl) {
+      FileSystem.writeTextFile(tf, lines.join("\n"));
+      if (withInit) {
+        moduleFiles.push(Path.basename(tf));
+      } else if (withConfig) {
+        configFiles.push(Path.basename(tf));
+      }
+    } else {
+      tmplFiles.push((tf, lines))
+    };
+  });
+  strModules = moduleFiles.join("\", \"");
+  strConfigs = configFiles.join("\", \"");
+  tmplFiles.each(fi -> {
+    (tf, lines) = fi;
+    !lines = lines.map(line -> {
+      cLine = line.trim();
+      if (cLine == "var wasm64 = \"/*--NAME--*/\";") {
+        `var wasm64 = "${name}";`
+      } else if (cLine == "var modules = [/*--MODULES--*/];") {
+        `var modules = ["${strModules}"];`
+      } else if (cLine == "var congifs = [/*--CONFIGS--*/];") {
+        `var congifs = [${strConfigs}];`
+      } else {
+        line
+      }
+    });
+    FileSystem.writeTextFile(tf, lines.join("\n"));
+  });
+  (unsafe_chill_trust_me(moduleFiles), unsafe_chill_trust_me(configFiles))
+}
+
+module end;
