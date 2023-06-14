@@ -1,0 +1,94 @@
+module Skuibuild;
+
+fun initjs(path: String, modules: Array<String>): String {
+  //base64 | tr '/+' '_-' | tr -d '=' | tr -d
+  p = System.subprocess(Array["base64", path]);
+  strOut = p.stdout.trim();
+  b64 = strOut.replace("\n", "");
+  Array[
+    "import {init} from \"./skui_utils.mjs\";",
+    "",
+    `var wasm64 = "${b64}";`,
+    `var modules = [${modules.map(m -> "\"./" + m + "\"").join(", ")}];`,
+    "var buffer = Uint8Array.from(atob(wasm64), c => c.charCodeAt(0));",
+    "init(window, navigator, modules, buffer).catch(e => console.error(e));",
+    "",
+  ].join("\n")
+}
+
+fun index(path: String): String {
+  Array[
+    "<!DOCTYPE html>",
+    "<html>",
+    "  <head lang=\"en\">",
+    "    <meta charset=\"utf-8\">",
+    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />",
+    `    <script type="module" src=\"${path}\"></script>`,
+    "    <link rel=\"icon\" href=\"data:,\">",
+    "  </head>",
+    "  <body>",
+    "  </body>",
+    "</html>",
+  ].join("\n")
+}
+
+fun runsh(): String {
+  "#!/bin/bash\npython3 -m http.server 8000\n"
+}
+
+fun resources(mName: String, path: String): String {
+  name = Path.basename(path).replace(".", "_");
+  p = System.subprocess(Array["base64", path]);
+  strOut = p.stdout.trim();
+  b64 = strOut.replace("\n", "");
+  Array[
+    `var ${name} = "${b64}";`,
+    "",
+    "interface ToWasm {",
+    `  SKIP_${mName}_${name}: () => number;`,
+    "}",
+    "interface Env {",
+    `  base64Decode: (base64: String) => Uint8Array;`,
+    "}",
+    "",
+    "interface Utils {",
+    "  exportBytes: (s: Uint8Array) => number;",
+    "}",
+    "",
+    "class LinksImpl implements ToWasm {",
+    "  env: Env;",
+    "  constructor(env: Env) {",
+    "    this.env = env;",
+    "  }",
+    `  SKIP_${mName}_${name}: () => number;`,
+    "",
+    "  complete = (utils: Utils, exports: object) => {",
+    `    this.SKIP_${mName}_${name} = () => {`,
+    `      let buffer = this.env.base64Decode(${name});`,
+    "      return utils.exportBytes(buffer);",
+    "    }",
+    "    return null;",
+    "  }",
+    "}",
+    "",
+    "class Manager {",
+    "  env: Env;",
+    "  constructor(env: Env) {",
+    "   this.env = env;",
+    "  }",
+    "  prepare = (wasm: object) => {",
+    "    let toWasm = wasm as ToWasm;",
+    "    let links = new LinksImpl(this.env);",
+    `    toWasm.SKIP_${mName}_${name} =  () => links.SKIP_${mName}_${name}();`,
+    "    return links;",
+    "  }",
+    "}",
+    "",
+    "export function init(env: Env) {",
+    "  return Promise.resolve(new Manager(env));",
+    "}",
+    "",
+  ].join("\n")
+}
+
+module end;

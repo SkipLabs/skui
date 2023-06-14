@@ -1,0 +1,49 @@
+{
+  "skipVersion": "1.0",
+  "variables": {
+    "backend": {
+      "values": ["native"],
+      "default": "native"
+    }
+  },
+  "programUnits": {
+    "skui_argo": {
+      "kind": "Program",
+      "sources": ["src/**","../../skfs_new/skargo/src", "../../skfs_new/toml/src", "target/version.sk"],
+      "references": [
+        { "path": ".", "name": "prelude"},
+        { "path": ".", "name": "cli"},
+        { "path": ".", "name": "skfs"}
+      ]
+    },
+    "skfs": {
+      "kind": "Library",
+      "sources": [
+        "../../skfs_new/skfs/src/**"
+      ],
+      "references": []
+    },
+    "prelude": {
+      "kind": "Library",
+      "sources": [
+        "../../skfs_new/prelude/src/Runtime.sk",
+        "../../skfs_new/prelude/src/core/**",
+        "../../skfs_new/prelude/src/stdlib/**"
+      ],
+      "parameters": {
+        "backend": {
+            "native": {"sources": ["../../skfs_new/prelude/src/native"]}
+        }
+      },
+      "references": []
+    },
+    "cli": {
+      "kind": "Library",
+      "sources": [
+        "../../skfs_new/cli/src/**"
+      ],
+      "references": []
+    }
+  },
+  "default": "skui_argo"
+}

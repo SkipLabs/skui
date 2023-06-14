@@ -1,0 +1,809 @@
+module Skuibuild;
+
+fun execInit(args: Cli.ParseResults): void {
+  path = args
+    .maybeGetString("path")
+    .map(p -> Path.resolve(p))
+    .default(getcwd());
+  if (!FileSystem.exists(path)) {
+    ensureDirectory(path, args.getBool("verbose"));
+  };
+  rootDir = path;
+  optManifestFile = loop {
+    if (FileSystem.exists(Path.join(path, Skargo.kManifestFile))) {
+      break Some(path)
+    };
+    if (Path.isRoot(path)) {
+      break None()
+    };
+    !path = Path.parentname(path)
+  };
+  optManifestFile match {
+  | Some(manifestFile) ->
+    print_string(`\`${Path.parentname(manifestFile)}\` already initialized.`)
+  | _ ->
+    manifestFile = Path.join(rootDir, Skargo.kManifestFile);
+    name = Path.basename(rootDir);
+    FileSystem.writeTextFile(
+      manifestFile,
+      toml(
+        name,
+        args.getBool("format-on-check"),
+        args.getBool("auto-remove-state"),
+        args.maybeGetString("test-harness"),
+      ),
+    );
+    srcDir = Path.join(rootDir, "src");
+    ensureDirectory(srcDir, args.getBool("verbose"))
+  }
+}
+
+fun execUpdate(args: Cli.ParseResults, env: Skargo.Env): void {
+  Skargo.execUpdate(args, env)
+}
+
+fun execTest(args: Cli.ParseResults, env: Skargo.Env): void {
+  srcDirs = Array["src", "tests"];
+  bc = Skargo.BuildContext::create(
+    env,
+    args.maybeGetString("target"),
+    args.maybeGetString("target-dir"),
+    args.getBool("wasm"),
+  );
+  deps = checkLibraries(bc, srcDirs);
+  Skargo.genVersionFile(bc);
+  Skargo.compile(bc, "test", env.manifest.testHarness);
+  filter = args.maybeGetString("filter");
+  junitxml = args.maybeGetString("junitxml").map(f -> `--junitxml=${f}`);
+  if (!bc.isWasm()) {
+    Skargo.run(
+      Array[Path.join(bc.targetDir, "test")].concat(
+        Array[junitxml, filter].filterNone(),
+      ),
+      env.verbose,
+      true,
+    );
+  } else {
+    target = Path.join(bc.targetDir, "ts");
+    ensureDirectory(target, env.verbose);
+    manageJs(target, deps, bc, "test", srcDirs, true)
+  }
+}
+
+fun execBuild(args: Cli.ParseResults, env: Skargo.Env): void {
+  bc = Skargo.BuildContext::create(
+    env,
+    args.maybeGetString("target"),
+    args.maybeGetString("target-dir"),
+    args.getBool("wasm"),
+  );
+  _ = checkLibraries(bc, Array["src"]);
+  Skargo.execBuild(args, env)
+}
+
+fun execBrowser(args: Cli.ParseResults, env: Skargo.Env): void {
+  bc = Skargo.BuildContext::create(
+    env,
+    None(),
+    args.maybeGetString("target-dir"),
+    true,
+  );
+  srcDirs = Array["src"];
+  deps = checkLibraries(bc, srcDirs);
+  (name, entry) = args.maybeGetString("entry").map(main ->
+    (env.manifest.name, main)
+  ) match {
+  | Some((name, entry)) -> (name, entry)
+  | _ ->
+    invariant(
+      !env.manifest.bin.isEmpty(),
+      "An entry must be specified if no binary is defined in the manifest.",
+    );
+    bin = env.manifest.bin[0];
+    (`${env.manifest.name}_${bin.name}`, bin.main)
+  };
+  if (!args.getBool("js")) {
+    Skargo.genVersionFile(bc);
+    Skargo.compile(bc, name, entry);
+  };
+  target = Path.join(bc.targetDir, "ts");
+  ensureDirectory(target, env.verbose);
+  manageJs(target, deps, bc, name, srcDirs, false)
+}
+
+fun checkLibraries(
+  bc: Skargo.BuildContext,
+  dirs: Array<String>,
+): Map<String, Skargo.Manifest> {
+  deps = Skargo.getDependencies(bc.env.manifest) match {
+  | Success(v) -> v
+  | Failure(e) -> throw e
+  };
+  isWasm = bc.isWasm();
+  libraries = mutable Vector<String>[];
+  (dir, ext, resources) = if (isWasm) ("wasm", ".bc", Array[]) else {
+    resources = Array[];
+    for (dep in deps) {
+      refPath = Path.join(dep.path, "resources");
+      if (FileSystem.exists(refPath)) {
+        dirs.each(dir -> {
+          rscsPath = Path.join(refPath, dir);
+          if (FileSystem.exists(rscsPath)) {
+            !resources = resources.concat(buildResources(bc, refPath, rscsPath))
+          }
+        })
+      }
+    };
+    ("native", ".a", resources);
+  };
+  for (dep in deps) {
+    refPath = Path.join(dep.path, dir);
+    if (FileSystem.exists(refPath)) {
+      for (name in dirs) {
+        sourceDir = Path.join(refPath, name);
+        if (FileSystem.exists(sourceDir)) {
+          libname = `lib${dep.name}_${name}${if (bc.debug) "_debug" else {
+            ""
+          }}${ext}`;
+          target = Path.join(bc.targetDir, libname);
+          buildLibrary(bc, refPath, sourceDir, target, resources).each(lib ->
+            libraries.push(lib)
+          )
+        }
+      }
+    }
+  };
+  set = SortedSet[];
+  if (!isWasm) {
+    externals = Array<String>[];
+    dirs.each(srcDir ->
+      !externals = externals.concat(getExternals(deps, `lib/${srcDir}`))
+    );
+    externals.each(external -> {
+      contents = FileSystem.readTextFile(external).split("\n");
+      contents.each(link ->
+        if (!link.trim().isEmpty()) {
+          !set = set.set(link)
+        }
+      )
+    });
+  };
+  //
+  llExt = if (isWasm) "32.ll" else "64.ll";
+  llFiles = Array<String>[];
+  dirs.each(srcDir ->
+    !llFiles = llFiles.concat(getFiles(deps, llExt, `lib/${srcDir}`))
+  );
+  strLlFiles = llFiles.join(" ").trim();
+  strLiraries = libraries.toArray().concat(set.toArray()).join(" ").trim();
+  if (bc.env.verbose) print_error(`>> SET SKC_LINK=${strLiraries}`);
+  invariant(!setenv("SKC_LINK", strLiraries, true), "Unable to set SKC_LINK");
+  if (bc.env.verbose) print_error(`>> SET SKC_PREAMBLE=${strLlFiles}`);
+  invariant(
+    !setenv("SKC_PREAMBLE", strLlFiles, true),
+    "Unable to set SKC_PREAMBLE",
+  );
+  deps.chill();
+}
+
+fun execClean(args: Cli.ParseResults, env: Skargo.Env): void {
+  Skargo.execClean(args, env)
+}
+
+fun execFmt(args: Cli.ParseResults, env: Skargo.Env): void {
+  Skargo.execFmt(args, env)
+}
+
+fun execCheck(args: Cli.ParseResults, env: Skargo.Env): void {
+  execFormatAndCheck(args, env)
+}
+
+fun execFormatAndCheck(
+  args: Cli.ParseResults,
+  env: Skargo.Env,
+  doNotFormat: Bool = false,
+): void {
+  if (env.manifest.formatOnCheck && !doNotFormat) {
+    execFmt(args, env)
+  };
+  Skargo.execCheck(args, env)
+}
+
+fun execCheckAll(args: Cli.ParseResults): void {
+  path = getcwd();
+  manifests = FileSystem.readFilesRecursive(
+    path,
+    f -> Path.basename(f) == Skargo.kManifestFile,
+    d -> {
+      manifestFile = Path.join(d, Skargo.kManifestFile);
+      Path.parentname(d) == path && FileSystem.exists(manifestFile)
+    },
+  );
+  manifests.each(manifest -> {
+    pos = SKFS.newObstack();
+    env = Skargo.Env::forManifest(manifest, args.getBool("verbose"));
+    execFormatAndCheck(args, env, true);
+    SKFS.destroyObstack(pos);
+  });
+}
+
+fun execHelp(args: Cli.ParseResults): void {
+  optSubcmd = args.extra.maybeGet(0);
+  optSubcmd.flatMap(subcmd ->
+    args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
+  ) match {
+  | Some(cmd) -> print_string(Cli.usage(cmd, true, Some(args.cmd)))
+  | _ ->
+    optSubcmd match {
+    | Some(subcmd) -> print_error(`error: Invalid subcommand ${subcmd}.`)
+    | _ -> print_error("error: No subcommand specified.")
+    };
+    print_string(Cli.usage(args.cmd, true))
+  };
+}
+
+fun main(): void {
+  args = Cli.Command("skuiargo")
+    .about("Skip UI's package manager")
+    .arg(
+      Cli.BoolArg("version")
+        .short("V")
+        .long("version")
+        .about("Print version info and exit"),
+    )
+    .arg(
+      Cli.BoolArg("verbose")
+        .short("v")
+        .long("verbose")
+        .about("Use verbose output")
+        .global(),
+    )
+    .help()
+    .subcommand(
+      Cli.Command("build")
+        .short("b")
+        .about("Compile a local package")
+        .arg(Cli.StringArg("target").about("Build for the target triple"))
+        .arg(
+          Cli.BoolArg("wasm").about(
+            "Equiavlent to --target wasm32-unknown-unknown",
+          ),
+        )
+        .arg(Cli.BoolArg("debug").about("Build in debug mode"))
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        ),
+    )
+    .subcommand(
+      Cli.Command("browser")
+        .about("Build a browsable js package")
+        .arg(
+          Cli.StringArg("entry").about(
+            "If specified, build that entry function else for the first bin one.",
+          ),
+        )
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        )
+        .arg(Cli.BoolArg("js").about("Perform only the js part")),
+    )
+    .subcommand(
+      Cli.Command("checkall")
+        .short("a")
+        .about(
+          "Analyze the first-level packages, report first found errors, but don't build object files",
+        )
+        .arg(
+          Cli.BoolArg("wasm").about(
+            "Equiavlent to --target wasm32-unknown-unknown",
+          ),
+        )
+        .arg(Cli.StringArg("target").about("Check for the target triple"))
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        ),
+    )
+    .subcommand(
+      Cli.Command("check")
+        .short("c")
+        .about(
+          "Analyze the current package and report errors, but don't build object files",
+        )
+        .arg(
+          Cli.BoolArg("wasm").about(
+            "Equiavlent to --target wasm32-unknown-unknown",
+          ),
+        )
+        .arg(Cli.StringArg("target").about("Check for the target triple"))
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        ),
+    )
+    .subcommand(
+      Cli.Command("test")
+        .short("t")
+        .about("Run the tests")
+        .arg(Cli.BoolArg("debug").about("Build in debug mode"))
+        .arg(
+          Cli.StringArg("filter")
+            .positional()
+            .about(
+              "If specified, only run tests with names matching the filter",
+            ),
+        )
+        .arg(Cli.StringArg("target").about("Check for the target triple"))
+        .arg(
+          Cli.BoolArg("wasm").about(
+            "Equiavlent to --target wasm32-unknown-unknown",
+          ),
+        )
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        )
+        .arg(Cli.StringArg("junitxml").about("Generate a JUnit XML report")),
+    )
+    .subcommand(
+      Cli.Command("clean")
+        .about("Remove the target directory")
+        .arg(
+          Cli.StringArg("target-dir").about(
+            "Directory for all generated artifacts",
+          ),
+        ),
+    )
+    .subcommand(Cli.Command("fmt").about("Format all files using skfmt"))
+    .subcommand(
+      Cli.Command("init")
+        .about("Create a new skargo package")
+        .arg(
+          Cli.StringArg("path")
+            .default(".")
+            .about("Directory where to perform the initialization"),
+        )
+        .arg(
+          Cli.BoolArg("format-on-check")
+            .short("f")
+            .long("format-on-check")
+            .about("Add format-on-check propertie"),
+        )
+        .arg(
+          Cli.BoolArg("auto-remove-state")
+            .short("a")
+            .long("auto-remove-state")
+            .about("Add auto-remove-state propertie"),
+        )
+        .arg(
+          Cli.StringArg("test-harness")
+            .short("t")
+            .long("test-harness")
+            .about("Specify the test harness"),
+        ),
+    )
+    .subcommand(
+      Cli.Command("update").about("Update dependencies listed in Skargo.lock"),
+    )
+    .subcommand(
+      Cli.Command("help")
+        .extra()
+        .about("Displays help for a skargo subcommand"),
+    )
+    .parseArgs();
+
+  if (args.getBool("version")) {
+    print_string("skuiargo " + SkargoVersion.kVersion);
+    skipExit(0)
+  } else if (args.maybeGetSubcommand().isNone()) {
+    print_string(Cli.usage(args.cmd, true));
+    skipExit(0)
+  } else {
+    trycall = run ->
+      vtry<Int>(
+        () -> {
+          run();
+          0
+        },
+        exn ->
+          exn match {
+          | Skargo.SystemCallException(code, _) -> code
+          | _ -> throw exn
+          }
+        ,
+      );
+    skipExit(
+      args
+        .maybeGetSubcommand()
+        .map(subcmd ->
+          subcmd match {
+          | "update" -> Some(Skuibuild.execUpdate)
+          | "check" -> Some(Skuibuild.execCheck)
+          | "build" -> Some(Skuibuild.execBuild)
+          | "browser" -> Some(Skuibuild.execBrowser)
+          | "test" -> Some(Skuibuild.execTest)
+          | "clean" -> Some(Skuibuild.execClean)
+          | "fmt" -> Some(Skuibuild.execFmt)
+          | _ -> None()
+          } match {
+          | Some(subcmd_handler) ->
+            env = Skargo.Env::create(args.getBool("verbose"));
+            trycall(() -> subcmd_handler(args, env))
+          | _ ->
+            trycall(() ->
+              subcmd match {
+              | "init" -> Skuibuild.execInit(args)
+              | "help" -> Skuibuild.execHelp(args)
+              | "checkall" -> Skuibuild.execCheckAll(args)
+              | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
+              }
+            )
+          }
+        )
+        .default(0),
+    )
+  }
+}
+
+@cpp_extern("SKIP_setenv")
+native fun setenv(name: String, value: String, replace: Bool): Bool;
+
+private fun manageJs(
+  target: String,
+  deps: readonly Map<String, Skargo.Manifest>,
+  bc: Skargo.BuildContext,
+  name: String,
+  srcDirs: Array<String>,
+  node: Bool,
+): void {
+  copyTypescripts(deps, target, bc.env.verbose, srcDirs);
+  tsconfig = Path.join(target, "tsconfig.json");
+  FileSystem.writeTextFile(tsconfig, tsConfig(deps));
+  Skargo.run(Array["tsc", "--project", tsconfig], bc.env.verbose);
+  jsFiles = mutable Vector<String>[];
+  jsDir = Path.join(target, "js");
+  if (FileSystem.exists(jsDir)) {
+    FileSystem.readFilesRecursive(
+      jsDir,
+      f ~> f.endsWith(".js"),
+      _f ~> false,
+    ).each(jsFiles.push)
+  };
+  runDir = Path.join(bc.targetDir, if (node) "node" else "html");
+  ensureDirectory(runDir, bc.env.verbose);
+  moduleFiles = mutable Vector<String>[];
+  jsFiles.each(f -> {
+    contents = FileSystem.readTextFile(f);
+    withInit = false;
+    lines = contents.split("\n").map(line -> {
+      if (line.startsWith("import ")) {
+        elements = line.split(" from ");
+        if (elements.size() == 2) {
+          imported = elements[1].split("\"");
+          if (imported.size() == 3) {
+            path = imported[1].split("/");
+            size = path.size();
+            if (size > 1 && path[0].startsWith("#")) {
+              !path = path.mapWithIndex((idx, v) ->
+                if (idx == 0) "." else if (idx == size - 1) {
+                  `${v}.mjs`
+                } else {
+                  v
+                }
+              );
+              !line = `${elements[0]} from "${path.join("/")}"`
+            }
+          }
+        }
+      };
+      if (line.startsWith("export function init(env)")) {
+        !withInit = true;
+      };
+      line;
+    });
+    tf = Path.join(runDir, Path.basename(f).replace(".js", ".mjs"));
+    FileSystem.writeTextFile(tf, lines.join("\n"));
+    if (withInit) {
+      moduleFiles.push(Path.basename(tf));
+    }
+  });
+  runFile = Path.join(runDir, `${name}.mjs`);
+  wasmFile = Path.join(bc.targetDir, `${name}.wasm`);
+  FileSystem.writeTextFile(
+    runFile,
+    if (node) {
+      testjs(wasmFile, moduleFiles.toArray())
+    } else {
+      initjs(wasmFile, moduleFiles.toArray())
+    },
+  );
+  if (node) {
+    Skargo.run(
+      Array["node", "--experimental-modules", runFile],
+      bc.env.verbose,
+      true,
+    );
+  } else {
+    shFile = Path.join(runDir, "run.sh");
+    FileSystem.writeTextFile(shFile, runsh());
+    Skargo.run(Array["chmod", "+x", shFile], bc.env.verbose);
+    indexFile = Path.join(runDir, "index.html");
+    FileSystem.writeTextFile(indexFile, index(`${name}.mjs`));
+  }
+}
+
+private fun getMakefiles(
+  deps: readonly Map<String, Skargo.Manifest>,
+): Array<(String, String)> {
+  files = mutable Vector<(String, String)>[];
+  for (dep in deps) {
+    makefilePath = Path.join(dep.path, "Libraries.mk");
+    if (FileSystem.exists(makefilePath)) {
+      files.push((dep.path, makefilePath))
+    }
+  };
+  files.collect(Array)
+}
+
+private fun getFiles(
+  deps: readonly Map<String, Skargo.Manifest>,
+  ext: String,
+  path: String,
+  depth: Bool = false,
+): Array<String> {
+  files = mutable Vector<String>[];
+  for (dep in deps) {
+    libPath = Path.join(dep.path, path);
+    if (FileSystem.exists(libPath)) {
+      FileSystem.readFilesRecursive(
+        libPath,
+        f ~> f.endsWith(ext),
+        _f ~> depth,
+      ).each(files.push)
+    }
+  };
+  files.toArray()
+}
+
+private fun getExternals(
+  deps: readonly Map<String, Skargo.Manifest>,
+  path: String,
+): Array<String> {
+  files = mutable Vector<String>[];
+  for (dep in deps) {
+    externalsPath = Path.join(Path.join(dep.path, path), "externals.lnk");
+    if (FileSystem.exists(externalsPath)) {
+      files.push(externalsPath)
+    }
+  };
+  files.toArray()
+}
+
+private fun copyTypescripts(
+  deps: readonly Map<String, Skargo.Manifest>,
+  target: String,
+  verbose: Bool,
+  srcDirs: Array<String>,
+): void {
+  for (dep in deps) {
+    srcDirs.each(srcDir -> {
+      tsPath = Path.join(Path.join(dep.path, "ts"), srcDir);
+      resPath = Path.join(Path.join(dep.path, "resources"), srcDir);
+      if (FileSystem.exists(resPath)) {
+        FileSystem.readFilesRecursive(
+          resPath,
+          f ~> f.endsWith(".bin"),
+          _f ~> false,
+        ).each(f ~> {
+          fn = Path.basename(f).replace(".", "_");
+          tf = Path.join(target, `${dep.name}.${srcDir}.${fn}.ts`);
+          FileSystem.writeTextFile(
+            tf,
+            Skuibuild.resources(`${dep.name}_${srcDir}`, f),
+          )
+        });
+      };
+      if (FileSystem.exists(tsPath)) {
+        FileSystem.readFilesRecursive(
+          tsPath,
+          f ~> f.endsWith(".ts"),
+          _f ~> false,
+        ).each(f ~>
+          if (FileSystem.exists(f)) {
+            fn = Path.basename(f);
+            targetFile = Path.join(target, fn);
+            Skargo.run(Array["cp", f, targetFile], verbose);
+          }
+        )
+      }
+    })
+  }
+}
+
+fun relative(path: String, to: String): ?String {
+  if (!to.endsWith("/")) {
+    !to = to + "/";
+  };
+  if (path.startsWith(to)) {
+    Some(path.sub(path.getIter().drop(to.chars().size()), path.chars().size()))
+  } else {
+    None()
+  }
+}
+
+private fun ensureDirectory(path: String, verbose: Bool): void {
+  if (!FileSystem.exists(path)) {
+    Skargo.run(Array["mkdir", "-p", path], verbose)
+  }
+}
+
+fun mtime(path: String): ?Int {
+  if (FileSystem.exists(path)) {
+    p = System.subprocess(Array["stat", "-c", "%Y", path]);
+    if (p.exitcode != 0) {
+      None()
+    } else {
+      p.stdout.trim().toIntOption()
+    }
+  } else {
+    None()
+  }
+}
+
+fun buildResources(
+  bc: Skargo.BuildContext,
+  refDir: String,
+  rscsDir: String,
+): Array<String> {
+  // TODO: Manage correctly architectures
+  resources = FileSystem.readFilesRecursive(
+    rscsDir,
+    f ~> f.endsWith(".bin"),
+    _f ~> true,
+  ).map(bf -> buildResource(refDir, bc.targetDir, bf, bc.env.verbose));
+  resources.toArray()
+}
+
+fun buildLibrary(
+  bc: Skargo.BuildContext,
+  refDir: String,
+  sourcesDir: String,
+  target: String,
+  resources: Array<String>,
+): ?String {
+  includes = FileSystem.readFilesRecursive(
+    sourcesDir,
+    f ~> f.endsWith(".hpp") || f.endsWith(".h"),
+    _f ~> true,
+  );
+  sources = FileSystem.readFilesRecursive(
+    sourcesDir,
+    f ~> f.endsWith(".cpp") || f.endsWith(".c"),
+    _f ~> true,
+  );
+  if (sources.isEmpty()) {
+    return None()
+  };
+  includeDirs = SortedSet[];
+  optTime = mtime(target);
+  optSTime: ?Int = None();
+  includes.each(i -> {
+    !includeDirs = includeDirs.set(Path.dirname(i));
+    fOptMTime = mtime(i);
+    !optSTime = max(optSTime, fOptMTime)
+  });
+  optITime = optSTime;
+  timedSources = sources.map(s -> {
+    fOptMTime = mtime(s);
+    !optSTime = max(optSTime, fOptMTime);
+    (s, fOptMTime)
+  });
+  includeOptions = includeDirs.toArray().map(i -> `-I${i}`);
+  if (optTime.map(t -> optSTime.map(s -> t < s).default(true)).default(true)) {
+    objects = timedSources
+      .map(f ->
+        compileFile(bc, refDir, f.i0, max(f.i1, optITime), includeOptions)
+      )
+      .toArray();
+    cmd = if (bc.isWasm()) {
+      Array["llvm-link", "-o", target].concat(objects).concat(resources)
+    } else {
+      Array["ar", "rcs", target].concat(objects).concat(resources)
+    };
+    Skargo.run(cmd, bc.env.verbose);
+  };
+  Some(target)
+}
+
+fun compileFile(
+  bc: Skargo.BuildContext,
+  refDir: String,
+  source: String,
+  optTime: ?Int,
+  includes: Array<String>,
+): String {
+  ext = if (bc.isWasm()) ".bc" else ".o";
+  suffix = if (bc.debug) `_debug${ext}` else ext;
+  object = targetPath(
+    bc.targetDir,
+    relative(source, refDir).fromSome(),
+    suffix,
+  );
+  oTime = mtime(object);
+  compile = oTime.isNone() || optTime.isNone() || optTime > oTime;
+  if (compile) {
+    ensureDirectory(Path.dirname(object), bc.env.verbose);
+    cmd = (if (source.endsWith(".c")) Array["clang"] else {
+      Array["clang++", "-std=c++17"]
+    })
+      .concat(
+        if (bc.debug) {
+          Array["-g", "-O0", "-DDEBUG"]
+        } else {
+          Array["-O3"]
+        },
+      )
+      .concat(
+        if (bc.isWasm()) {
+          Array["-DSKIP32", "--target=wasm32", "-emit-llvm"]
+        } else {
+          Array["-DSKIP64"]
+        },
+      )
+      .concat(includes)
+      .concat(Array["-o", object, "-c", source]);
+    Skargo.run(cmd, bc.env.verbose);
+  };
+  object
+}
+
+fun buildResource(
+  refDir: String,
+  targetDir: String,
+  file: String,
+  verbose: Bool,
+): String {
+  optTime = mtime(file);
+  object = targetPath(targetDir, relative(file, refDir).fromSome(), ".o");
+  oTime = mtime(object);
+  create = oTime.isNone() || optTime.isNone() || optTime > oTime;
+  if (create) {
+    ensureDirectory(Path.dirname(object), verbose);
+    cmd = Array[
+      "objcopy",
+      "-B",
+      "i386:x86-64",
+      "-I",
+      "binary",
+      "-O",
+      "elf64-x86-64",
+      file,
+      object,
+    ];
+    Skargo.run(cmd, verbose);
+  };
+  object
+}
+
+fun targetPath(dir: String, file: String, suffix: String): String {
+  dirname = Path.dirname(file);
+  ext = Path.extname(file);
+  basename = Path.basename(file);
+  !basename = basename.take(basename.length() - ext.length());
+  Path.join(dir, Path.join(dirname, `${basename}${suffix}`));
+}
+
+fun max(ot1: ?Int, ot2: ?Int): ?Int {
+  (ot1, ot2) match {
+  | (Some(t1), Some(t2)) -> Some(if (t1 > t2) t1 else t2)
+  | (optTime, None()) -> optTime
+  | (None(), optTime) -> optTime
+  }
+}

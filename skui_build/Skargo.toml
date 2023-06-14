@@ -1,0 +1,12 @@
+[package]
+name = "skui_argo"
+version = "0.1.0"
+format-on-check = true
+auto-remove-state = true
+
+[dependencies]
+skargo = {}
+
+[[bin]]
+name = "skuibuild"
+main = "Skuibuild.main"

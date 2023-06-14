@@ -1,0 +1,55 @@
+module Skuibuild;
+
+fun moduleName(name: String): String {
+  toupper = true;
+  String::fromChars(
+    name
+      .chars()
+      .map(c -> {
+        if (c == '_') {
+          !toupper = true;
+        } else {
+          !c = if (toupper) c.capitalize() else c;
+          !toupper = false;
+        };
+        c
+      })
+      .toArray(),
+  ).replace("_", "");
+}
+
+fun toml(
+  name: String,
+  formatOnCheck: Bool = false,
+  autoRemoveState: Bool = false,
+  optTestHarness: ?String = None(),
+  version: String = "0.1.0",
+): String {
+  Array["[package]", `name = "${name}"`, `version = "${version}"`].concat(
+    if (formatOnCheck) Array["format-on-check = true"] else Array[],
+  )
+    .concat(if (autoRemoveState) Array["auto-remove-state = true"] else Array[])
+    .concat(
+      optTestHarness
+        .map(th -> Array[`test-harness = "${th}"`])
+        .default(Array[]),
+    )
+    .concat(
+      Array[
+        "",
+        "[dependencies]",
+        "prelude = {}",
+        "#depname = { \"path\" = \"deppath\" }",
+        "#depname = { \"version\" = \"version\"  }",
+        "#depname = { \"path\" = \"deppath\", \"version\" = \"version\"  }",
+        "",
+        "#[[bin]]",
+        `#name = "${name.replace("_", "")}"`,
+        `#main = "${moduleName(name)}.main"`,
+        "",
+      ],
+    )
+    .join("\n");
+}
+
+module end;

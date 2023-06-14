@@ -209,7 +209,7 @@ extern "C"
 
 
   char * SKIP_JS_getExceptionMessage(uint32_t actor) {
-    char * message = "SKIP_JS_getExceptionMessage shall not be used here;";
+    char message[] = "SKIP_JS_getExceptionMessage shall not be used here;";
     return sk_string_create(message, strlen(message));
   }
 
