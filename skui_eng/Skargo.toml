@@ -11,5 +11,5 @@ skui_views = {}
 name = "skuieng"
 main = "SkuiEng.main"
 target = "wasm32"
-performer = "html"
+performer = {"name" = "html", "target" = "mjs"}
 

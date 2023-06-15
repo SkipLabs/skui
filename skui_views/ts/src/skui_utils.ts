@@ -1,6 +1,4 @@
-
-
-import { float, int, start, Environment, ToWasmManager, Shared } from "#skui_base/skui_types";
+import { float, int, Environment, Shared } from "#skui_base/skui_types";
 
 interface Views extends Shared {
   update: () => void;
@@ -91,6 +89,7 @@ class Env implements Environment {
   }
 }
 
-export async function init(window: Window, navigator: Navigator, modules: Array<string>, buffer: Uint8Array, configs?: Array<any>, managers?: Array<ToWasmManager>) {
-  await start(modules, buffer, new Env(window, navigator, configs), managers);
+/** @sk env html */
+export function environment(configs?: Array<any>) {
+  return new Env(window, navigator, configs)
 }

@@ -4,11 +4,7 @@ module SkuiEng;
 
 const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/js_engine/");
 
-class Renderer(
-  name: String,
-  optDescription: ?String,
-  renderable: JSON.Value,
-) uses Show {
+class Renderer(name: String, optDescription: ?String) uses Show {
   fun toString(): String {
     this.optDescription match {
     | Some(d) -> `${this.name}: ${d}`
@@ -27,11 +23,7 @@ fun main(): void {
         () -> {
           jso = JSON.decode(arg).expectObject();
           jso.maybeGetString("name").each(name ->
-            jso.maybeGet("renderable").each(renderable ->
-              renderers.push(
-                Renderer(name, jso.maybeGetString("description"), renderable),
-              )
-            )
+            renderers.push(Renderer(name, jso.maybeGetString("description")))
           )
         },
         _ -> {

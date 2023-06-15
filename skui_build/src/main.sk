@@ -216,14 +216,18 @@ fun execUpdate(args: Cli.ParseResults, env: Skargo.Env): void {
 }
 
 fun execTest(args: Cli.ParseResults, env: Skargo.Env): void {
+  deps = Skargo.getDependencies(env.manifest) match {
+  | Success(v) -> v
+  | Failure(e) -> throw e
+  };
   srcDirs = Array["src", "tests"];
   bc = Skargo.BuildContext::create(
     env,
     args.maybeGetString("target"),
     args.maybeGetString("target-dir"),
-    args.getBool("wasm"),
+    args.getBool("debug"),
   );
-  deps = checkLibraries(bc, srcDirs);
+  checkLibraries(bc, srcDirs, deps);
   Skargo.genVersionFile(bc);
   Skargo.compile(bc, "test", env.manifest.testHarness);
   filter = args.maybeGetString("filter");
@@ -244,6 +248,10 @@ fun execTest(args: Cli.ParseResults, env: Skargo.Env): void {
 }
 
 fun execBrowser(args: Cli.ParseResults, env: Skargo.Env): void {
+  deps = Skargo.getDependencies(env.manifest) match {
+  | Success(v) -> v
+  | Failure(e) -> throw e
+  };
   bc = Skargo.BuildContext::create(
     env,
     None(),
@@ -251,7 +259,7 @@ fun execBrowser(args: Cli.ParseResults, env: Skargo.Env): void {
     true,
   );
   srcDirs = Array["src"];
-  deps = checkLibraries(bc, srcDirs);
+  checkLibraries(bc, srcDirs, deps);
   (name, entry) = args.maybeGetString("entry").map(main ->
     (env.manifest.name, main)
   ) match {
@@ -273,79 +281,92 @@ fun execBrowser(args: Cli.ParseResults, env: Skargo.Env): void {
   manageJs(target, deps, bc, name, srcDirs, false)
 }
 
-fun checkLibraries(
+fun checkLibrary(
   bc: Skargo.BuildContext,
   dirs: Array<String>,
-): Map<String, Skargo.Manifest> {
-  deps = Skargo.getDependencies(bc.env.manifest) match {
-  | Success(v) -> v
-  | Failure(e) -> throw e
-  };
+  dep: Skargo.Manifest,
+  libraries: mutable Vector<String>,
+  preambles: mutable Vector<String>,
+  links: mutable Set<String>,
+): void {
   isWasm = bc.isWasm();
-  libraries = mutable Vector<String>[];
   (dir, ext, resources) = if (isWasm) ("wasm", ".bc", Array[]) else {
     resources = Array[];
-    for (dep in deps) {
-      refPath = Path.join(dep.path, "resources");
-      if (FileSystem.exists(refPath)) {
-        dirs.each(dir -> {
-          rscsPath = Path.join(refPath, dir);
-          if (FileSystem.exists(rscsPath)) {
-            !resources = resources.concat(buildResources(bc, refPath, rscsPath))
-          }
-        })
-      }
-    };
-    ("native", ".a", resources);
-  };
-  for (dep in deps) {
-    refPath = Path.join(dep.path, dir);
+    refPath = Path.join(dep.path, "resources");
     if (FileSystem.exists(refPath)) {
-      for (name in dirs) {
-        sourceDir = Path.join(refPath, name);
-        if (FileSystem.exists(sourceDir)) {
-          libname = `lib${dep.name}_${name}${if (bc.debug) "_debug" else {
-            ""
-          }}${ext}`;
-          target = Path.join(bc.targetDir, libname);
-          buildLibrary(bc, refPath, sourceDir, target, resources).each(lib ->
-            libraries.push(lib)
-          )
+      dirs.each(dir -> {
+        rscsPath = Path.join(refPath, dir);
+        if (FileSystem.exists(rscsPath)) {
+          !resources = resources.concat(buildResources(bc, refPath, rscsPath))
         }
+      })
+    };
+    ("native", ".a", resources)
+  };
+  refPath = Path.join(dep.path, dir);
+  if (FileSystem.exists(refPath)) {
+    for (name in dirs) {
+      sourceDir = Path.join(refPath, name);
+      if (FileSystem.exists(sourceDir)) {
+        libname = `lib${dep.name}_${name}${if (bc.debug) "_debug" else {
+          ""
+        }}${ext}`;
+        target = Path.join(bc.targetDir, libname);
+        buildLibrary(bc, refPath, sourceDir, target, resources).each(lib ->
+          libraries.push(lib)
+        )
       }
     }
   };
-  set = SortedSet[];
   if (!isWasm) {
-    externals = Array<String>[];
     dirs.each(srcDir ->
-      !externals = externals.concat(getExternals(deps, `lib/${srcDir}`))
+      getExternals(dep, `lib/${srcDir}`).each(external -> {
+        contents = FileSystem.readTextFile(external).split("\n");
+        contents.each(link ->
+          if (!link.trim().isEmpty()) {
+            links.insert(link)
+          }
+        )
+      })
     );
-    externals.each(external -> {
-      contents = FileSystem.readTextFile(external).split("\n");
-      contents.each(link ->
-        if (!link.trim().isEmpty()) {
-          !set = set.set(link)
-        }
-      )
-    });
   };
-  //
   llExt = if (isWasm) "32.ll" else "64.ll";
-  llFiles = Array<String>[];
   dirs.each(srcDir ->
-    !llFiles = llFiles.concat(getFiles(deps, llExt, `lib/${srcDir}`))
+    getFiles(dep, llExt, `lib/${srcDir}`).each(preambles.push)
   );
-  strLlFiles = llFiles.join(" ").trim();
-  strLiraries = libraries.toArray().concat(set.toArray()).join(" ").trim();
-  if (bc.env.verbose) print_error(`>> SET SKC_LINK=${strLiraries}`);
-  invariant(!setenv("SKC_LINK", strLiraries, true), "Unable to set SKC_LINK");
-  if (bc.env.verbose) print_error(`>> SET SKC_PREAMBLE=${strLlFiles}`);
-  invariant(
-    !setenv("SKC_PREAMBLE", strLlFiles, true),
-    "Unable to set SKC_PREAMBLE",
+}
+
+fun setEnv(name: String, value: String, verbose: Bool): void {
+  if (verbose) print_error(`>> SET ${name}=${value}`);
+  invariant(!setenv(name, value, true), `Unable to set ${name}`);
+}
+
+fun applyLibrairies(
+  libraries: readonly Vector<String>,
+  preambles: readonly Vector<String>,
+  links: readonly Set<String>,
+  verbose: Bool,
+): void {
+  setEnv(
+    "SKC_LINK",
+    libraries.toArray().concat(links.toArray()).join(" ").trim(),
+    verbose,
   );
-  deps.chill();
+  setEnv("SKC_PREAMBLE", preambles.join(" ").trim(), verbose);
+}
+
+fun checkLibraries(
+  bc: Skargo.BuildContext,
+  dirs: Array<String>,
+  deps: readonly Map<String, Skargo.Manifest>,
+): void {
+  libraries = mutable Vector<String>[];
+  preambles = mutable Vector<String>[];
+  links = mutable Set<String>[];
+  for (dep in deps) {
+    checkLibrary(bc, dirs, dep, libraries, preambles, links)
+  };
+  applyLibrairies(libraries, preambles, links, bc.env.verbose)
 }
 
 fun execClean(args: Cli.ParseResults, env: Skargo.Env): void {
@@ -505,37 +526,30 @@ private fun getMakefiles(
 }
 
 private fun getFiles(
-  deps: readonly Map<String, Skargo.Manifest>,
+  dep: Skargo.Manifest,
   ext: String,
   path: String,
   depth: Bool = false,
 ): Array<String> {
-  files = mutable Vector<String>[];
-  for (dep in deps) {
-    libPath = Path.join(dep.path, path);
-    if (FileSystem.exists(libPath)) {
-      FileSystem.readFilesRecursive(
-        libPath,
-        f ~> f.endsWith(ext),
-        _f ~> depth,
-      ).each(files.push)
-    }
-  };
-  files.toArray()
+  libPath = Path.join(dep.path, path);
+  if (FileSystem.exists(libPath)) {
+    FileSystem.readFilesRecursive(
+      libPath,
+      f ~> f.endsWith(ext),
+      _f ~> depth,
+    ).toArray()
+  } else {
+    Array[]
+  }
 }
 
-private fun getExternals(
-  deps: readonly Map<String, Skargo.Manifest>,
-  path: String,
-): Array<String> {
-  files = mutable Vector<String>[];
-  for (dep in deps) {
-    externalsPath = Path.join(Path.join(dep.path, path), "externals.lnk");
-    if (FileSystem.exists(externalsPath)) {
-      files.push(externalsPath)
-    }
-  };
-  files.toArray()
+fun getExternals(dep: Skargo.Manifest, path: String): ?String {
+  externalsPath = Path.join(Path.join(dep.path, path), "externals.lnk");
+  if (FileSystem.exists(externalsPath)) {
+    Some(externalsPath)
+  } else {
+    None()
+  }
 }
 
 fun copyTypescriptsDeps(
@@ -571,20 +585,12 @@ fun copyTypescriptsDeps(
 fun copyFiles(
   sourceDir: String,
   targetDir: String,
-  ext: String,
-  except: Bool,
+  test: String ~> Bool,
   dip: Bool,
   verbose: Bool,
 ): void {
   if (FileSystem.exists(sourceDir)) {
-    FileSystem.readFilesRecursive(
-      sourceDir,
-      f ~> {
-        endsWith = f.endsWith(ext);
-        if (except) !endsWith else endsWith
-      },
-      _f ~> dip,
-    ).each(f ~> {
+    FileSystem.readFilesRecursive(sourceDir, test, _f ~> dip).each(f ~> {
       fn = Path.basename(f);
       targetFile = Path.join(targetDir, fn);
       Skargo.run(Array["cp", f, targetFile], verbose);
@@ -598,7 +604,7 @@ fun copyTypescripts(
   dip: Bool,
   verbose: Bool,
 ): void {
-  copyFiles(sourceDir, targetDir, ".ts", false, dip, verbose)
+  copyFiles(sourceDir, targetDir, f ~> f.endsWith(".ts"), dip, verbose)
 }
 
 fun relative(path: String, to: String): ?String {

@@ -1,0 +1,314 @@
+module SkuibuildJS;
+
+fun performers(name: String): ?Performer {
+  name match {
+  | "html" -> Some(HTMLPreformer())
+  | _ -> None()
+  }
+}
+
+base class Performer {
+  fun generate(
+    root: String,
+    target: String,
+    name: String,
+    env: String,
+    runner: String,
+    configs: String,
+    modules: String,
+    verbose: Bool,
+  ): void;
+
+  protected fun writeLauncher(
+    target: String,
+    name: String,
+    env: String,
+    runner: String,
+    configs: String,
+    modules: String,
+  ): void {
+    FileSystem.writeTextFile(
+      Path.join(target, `${name}.mjs`),
+      `
+import {run} from "${runner}";
+
+var wasm64 = "${name}";
+var environment = "${env}";
+var congifs = [${configs}];
+var modules = [${modules}];
+
+run(wasm64, environment, modules, congifs);
+`,
+    );
+  }
+}
+
+fun manage(
+  bin: Skargo.ManifestBinary,
+  deps: readonly Map<String, Skargo.Manifest>,
+  bc: Skargo.BuildContext,
+  srcDirs: Array<String>,
+): void {
+  bin.optPerformer match {
+  | Some(performer) ->
+    rootTsDir = Path.join(bc.env.rootDir, "ts");
+    performerDir = performer
+      .dependency(deps)
+      .map(dep -> Path.join(Path.join(dep.path, "ts"), performer.name))
+      .default(Path.join(rootTsDir, performer.name));
+    (optPDir, optPerformer) = if (FileSystem.exists(performerDir)) {
+      (Some(performerDir), None())
+    } else {
+      performers(performer.name) match {
+      | None() ->
+        invariant_violation(`Unable to find '${performer.name}' performer`)
+      | opt -> (None(), opt)
+      }
+    };
+    target = Path.join(Path.join(bc.targetDir, bin.name), "ts");
+    Skuibuild.ensureDirectory(target, bc.env.verbose);
+    Skuibuild.copyTypescriptsDeps(deps, target, srcDirs, false, bc.env.verbose);
+    configsDir = Path.join(rootTsDir, "configs");
+    Skuibuild.copyTypescripts(configsDir, target, false, bc.env.verbose);
+    optPDir.each(pDir ->
+      Skuibuild.copyTypescripts(pDir, target, false, bc.env.verbose)
+    );
+    tsconfig = Path.join(target, "tsconfig.json");
+    FileSystem.writeTextFile(tsconfig, Skuibuild.tsConfig(deps));
+    Skargo.run(Array["tsc", "--project", tsconfig], bc.env.verbose);
+    jsDir = Path.join(target, "js");
+    jsFiles = if (FileSystem.exists(jsDir)) {
+      FileSystem.readFilesRecursive(jsDir, f ~> f.endsWith(".js"), _f ~> false)
+    } else {
+      Vector[]
+    };
+    runDir = Path.join(bc.targetDir, performer.name);
+    performDir = Path.join(bc.targetDir, performer.path());
+    Skuibuild.ensureDirectory(performDir, bc.env.verbose);
+    copyAndConvertImport(
+      runDir,
+      performDir,
+      performer,
+      bin.name,
+      jsFiles,
+      optPerformer,
+      bc.env.verbose,
+    );
+    optPDir.each(pDir ->
+      Skuibuild.copyFiles(
+        pDir,
+        runDir,
+        f ~> !f.endsWith(".ts") && Path.basename(f) != "tsconfig.json",
+        true,
+        bc.env.verbose,
+      )
+    );
+    wasmFile = Path.join(bc.targetDir, `${bin.name}.wasm`);
+    wasmTarget = Path.join(performDir, `${bin.name}.wasm.mjs`);
+    FileSystem.writeTextFile(wasmTarget, wasm(wasmFile))
+  | _ -> void
+  }
+}
+
+fun copyAndConvertImport(
+  root: String,
+  target: String,
+  performer: Skargo.Performer,
+  path: String,
+  jsFiles: Vector<String>,
+  optPerformer: ?Performer,
+  verbose: Bool,
+): void {
+  wasm64Line = "var wasm64 = \"/*--NAME--*/\";";
+  envLine = "var environment = \"/*--ENVIRONMENT--*/\";";
+  modulesLines = "var modules = [ /*--MODULES--*/];";
+  configsLines = "var congifs = [ /*--CONFIGS--*/];";
+  moduleFiles = mutable Vector<String>[];
+  configFiles = mutable Vector<String>[];
+  tmplFiles = mutable Vector<(String, Vector<String>)>[];
+  envFiles = mutable Vector<String>[];
+  runFiles = mutable Vector<String>[];
+  jsFiles.each(f -> {
+    contents = FileSystem.readTextFile(f);
+    withInit = false;
+    withConfig = false;
+    withTmpl = false;
+    withEnv = false;
+    withRun = false;
+    lines = contents.split("\n").map(line -> {
+      if (line.startsWith("import ")) {
+        elements = line.split(" from ");
+        if (elements.size() == 2) {
+          imported = elements[1].split("\"");
+          if (imported.size() == 3) {
+            elems = imported[1].split("/");
+            size = elems.size();
+            if (size > 1 && elems[0].startsWith("#")) {
+              !elems = elems.mapWithIndex((idx, v) ->
+                if (idx == 0) "." else if (idx == size - 1) {
+                  `${v}.mjs`
+                } else {
+                  v
+                }
+              );
+              !line = `${elements[0]} from "${elems.join("/")}"`
+            }
+          }
+        }
+      };
+      cLine = line.trim();
+      if (
+        cLine == wasm64Line ||
+        cLine == modulesLines ||
+        cLine == configsLines
+      ) {
+        !withTmpl = true;
+      } else if (cLine == "/** @sk config */") {
+        !withConfig = true;
+      } else if (cLine == "/** @sk init */") {
+        !withInit = true;
+      } else if (cLine == `/** @sk env ${performer.name} */`) {
+        !withEnv = true;
+      } else if (cLine == `/** @sk run */`) {
+        !withRun = true;
+      };
+      line;
+    });
+    tf = Path.join(target, Path.basename(f).replace(".js", ".mjs"));
+    invariant(
+      i(withTmpl) + i(withInit) + i(withConfig) + i(withEnv) + i(withRun) <= 1,
+      `The file ${Path.basename(f).replace(
+        ".js",
+        ".ts",
+      )} cannot have multiple behaviors.`,
+    );
+    if (!withTmpl) {
+      FileSystem.writeTextFile(tf, lines.join("\n"));
+      if (withInit) {
+        moduleFiles.push(Path.basename(tf));
+      } else if (withConfig) {
+        configFiles.push(Path.basename(tf));
+      } else if (withEnv) {
+        envFiles.push(Path.basename(tf));
+      } else if (withRun) {
+        runFiles.push(Path.basename(tf));
+      }
+    } else {
+      tmplFiles.push((tf, lines))
+    };
+  });
+  strConfigs = configFiles.map(c -> `"./${c}"`).join(", ");
+  strModules = moduleFiles.map(m -> `"./${m}"`).join(", ");
+  check("An environment supplier", "environment providers", envFiles);
+  check("A run supplier", "run providers", runFiles);
+  strEnvironment = `./${envFiles[0]}`;
+  strRun = `./${runFiles[0]}`;
+  tmplFiles.each(fi -> {
+    (tf, lines) = fi;
+    !lines = lines.map(line -> {
+      cLine = line.trim();
+      if (cLine == wasm64Line) {
+        `var wasm64 = "${path}";`
+      } else if (cLine == modulesLines) {
+        `var modules = [${strModules}];`
+      } else if (cLine == configsLines) {
+        `var congifs = [${strConfigs}];`
+      } else if (cLine == envLine) {
+        `var environment = "${strEnvironment}";`
+      } else {
+        line
+      }
+    });
+    FileSystem.writeTextFile(tf, lines.join("\n"));
+  });
+  optPerformer.each(p ->
+    p.generate(
+      root,
+      target,
+      path,
+      strEnvironment,
+      strRun,
+      strConfigs,
+      strModules,
+      verbose,
+    )
+  )
+}
+
+fun i(v: Bool): Int {
+  if (v) 1 else 0;
+}
+
+fun wasm(path: String): String {
+  p = System.subprocess(Array["base64", path]);
+  strOut = p.stdout.trim();
+  b64 = strOut.replace("\n", "");
+  `export var base64 = "${b64}";`
+}
+
+class HTMLPreformer() extends Performer {
+  fun generate(
+    root: String,
+    target: String,
+    name: String,
+    env: String,
+    runner: String,
+    configs: String,
+    modules: String,
+    verbose: Bool,
+  ): void {
+    this.writeLauncher(target, name, env, runner, configs, modules);
+    this.writeIndex(
+      root,
+      Skuibuild.relative(target, root)
+        .map(r -> Path.join(r, name))
+        .default(name),
+    );
+    this.writeRun(root, verbose);
+  }
+
+  private fun writeIndex(target: String, name: String): void {
+    FileSystem.writeTextFile(
+      Path.join(target, "index.html"),
+      Array[
+        "<!DOCTYPE html>",
+        "<html>",
+        "  <head lang=\"en\">",
+        "    <meta charset=\"utf-8\">",
+        "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />",
+        `    <script type="module" src=\"./${name}.mjs\"></script>`,
+        "    <link rel=\"icon\" href=\"data:,\">",
+        "  </head>",
+        "  <body>",
+        "  </body>",
+        "</html>",
+      ].join("\n"),
+    )
+  }
+
+  private fun writeRun(target: String, verbose: Bool): void {
+    runFile = Path.join(target, "run.sh");
+    FileSystem.writeTextFile(
+      runFile,
+      "#!/bin/bash\npython3 -m http.server 8000\n",
+    );
+    Skargo.run(Array["chmod", "+x", runFile], verbose);
+  }
+}
+
+fun check(
+  single: String,
+  several: String,
+  files: readonly Vector<String>,
+): void {
+  invariant(!files.isEmpty(), `${single} must be defined.`);
+  if (files.size() > 1) {
+    invariant_violation(
+      `Several ${several} have been found (${files.map(f ->
+        f.split(".").take(files.size() - 1).join(".")
+      )}), please specify which one to use.`,
+    )
+  }
+}
+
+module end;

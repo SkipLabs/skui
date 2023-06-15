@@ -346,11 +346,11 @@ export function humanSize(bytes: int) {
   return bytes.toFixed(1) + ' ' + units[u];
 }
 
-var loadWasm = (
+function loadWasm(
   buffer: ArrayBuffer,
   managers: Array<ToWasmManager>,
   environment: Environment,
-) => {
+) {
   let wasm = {};
   let links = managers.map(manager => manager.prepare(wasm));
   return WebAssembly.instantiate(buffer, { env: wasm }).then(
@@ -373,14 +373,47 @@ var loadWasm = (
   );
 }
 
-export async function start(modules: Array<string>, buffer: Uint8Array, environment: Environment, managers?: Array<ToWasmManager>) {
-  managers = managers ? managers : new Array<ToWasmManager>();
-  for (let i = 0; i < modules.length; i++) {
-    let evnModule = await import(modules[i]);
-    if (evnModule.init) {
-        managers.push(await evnModule.init(environment));
+function start(
+  modules: Array<string>,
+  buffer: Uint8Array,
+  environment: Environment,
+  managers?: Array<ToWasmManager>
+) {
+  let promises = modules.map(name => import(name).then(module => {
+    if (module.init) {
+      return module.init(environment)
+    } else {
+      return null
     }
-  }
-  await loadWasm(buffer, managers, environment);
+  }))
+  return Promise.all(promises).then(cs => cs.filter(c => c != null)).then(
+    ms => loadWasm(buffer, managers ? managers.concat(ms) : ms, environment)
+  )
 }
 
+/** @sk run */
+export function run(
+  wasm64: string,
+  environment: string,
+  modules : Array<string>,
+  congifs : Array<string>,
+  managers?: Array<ToWasmManager>,
+) {
+  let promises = congifs.map(name => import(name).then(config => {
+    if (config.config) {
+      return config.config();
+    } else {
+      return null;
+    }
+  }))
+  let wasm = import("./" + wasm64 + ".wasm.mjs").then(wm => Uint8Array.from(atob(wm.base64), c => c.charCodeAt(0)));
+  return Promise.all(
+    [
+      wasm,
+      import(environment),
+      Promise.all(promises).then(cs => cs.filter(c => c != null)),
+    ]
+  ).then(
+    result => start(modules, result[0], result[1].environment(result[2]), managers)
+  ).catch(e => console.error(e));
+}

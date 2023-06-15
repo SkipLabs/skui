@@ -188,8 +188,8 @@ class LinksImpl implements Links, ToWasm {
         value.forEach(v => exported.SKIP_JSON_addToArray(arr, this.exportValue(path, skPath, v)))
         return exported.SKIP_JSON_endArray(arr);
       } else if (value instanceof RenderableElement) {
-        let render = (skScope: ptr) => {
-          let strScope = utils.importString(skScope);
+        let render = (strScope: string) => {
+          let skScope = utils.exportString(strScope);
           let scope = new ScopeImpl(
               this.alert,
               (dialog: DialogElement) => this.dialog(strScope, dialog),
@@ -357,6 +357,8 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_UiEngineJS_createString =  (value: ptr) => links.SKIP_UiEngineJS_createString(value);
     toWasm.SKIP_UiEngineJS_createBool =  (value: boolean) => links.SKIP_UiEngineJS_createBool(value);
     toWasm.SKUI_UiEngineJS_renderable =  (skPath: Opt<ptr>, skName: ptr) => links.SKUI_UiEngineJS_renderable(skPath, skName);
+    toWasm.SKIP_UiEngineJS_delete =  (id: int) => links.SKIP_UiEngineJS_delete(id);
+    toWasm.SKIP_UiEngineJS_apply =  (id: int, type_: ptr, paremeter: ptr) => links.SKIP_UiEngineJS_apply(id, type_, paremeter);
     return links;
   }
 }
