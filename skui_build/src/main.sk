@@ -303,7 +303,9 @@ fun checkLibrary(
       dirs.each(dir -> {
         rscsPath = Path.join(refPath, dir);
         if (FileSystem.exists(rscsPath)) {
-          !resources = resources.concat(buildResources(bc, refPath, rscsPath))
+          !resources = resources.concat(
+            buildResources(bc, dep.path, refPath, rscsPath),
+          )
         }
       })
     };
@@ -376,7 +378,10 @@ fun checkLibraries(
   optITime: ?Int = None();
   for (dep in deps) {
     dirs.each(dir -> {
-      sourcesDir = Path.join(Path.join(dep.path, if (bc.isWasm()) "wasm" else "native"), dir);
+      sourcesDir = Path.join(
+        Path.join(dep.path, if (bc.isWasm()) "wasm" else "native"),
+        dir,
+      );
       if (FileSystem.exists(sourcesDir)) {
         files = FileSystem.readFilesRecursive(
           sourcesDir,
@@ -384,7 +389,6 @@ fun checkLibraries(
           _f ~> true,
         );
         files.each(i -> {
-          debug(i);
           !includeDirs = includeDirs.set(Path.dirname(i));
           !optITime = max(optITime, mtime(i))
         })
@@ -556,6 +560,7 @@ fun mtime(path: String): ?Int {
 
 fun buildResources(
   bc: Skargo.BuildContext,
+  rootDir: String,
   refDir: String,
   rscsDir: String,
 ): Array<String> {
@@ -564,7 +569,7 @@ fun buildResources(
     rscsDir,
     f ~> f.endsWith(".bin"),
     _f ~> true,
-  ).map(bf -> buildResource(refDir, bc.targetDir, bf, bc.env.verbose));
+  ).map(bf -> buildResource(rootDir, refDir, bc.targetDir, bf, bc.env.verbose));
   resources.toArray()
 }
 
@@ -652,6 +657,7 @@ fun compileFile(
 }
 
 fun buildResource(
+  rootDir: String,
   refDir: String,
   targetDir: String,
   file: String,
@@ -663,6 +669,14 @@ fun buildResource(
   create = oTime.isNone() || optTime.isNone() || optTime > oTime;
   if (create) {
     ensureDirectory(Path.dirname(object), verbose);
+    relative = relative(file, rootDir).fromSome();
+    nf = file.replace("/", "_").replace(".", "_");
+    nr = relative.replace("/", "_").replace(".", "_");
+    redefs = mutable Vector<String>[];
+    Array["start", "size", "end"].each(suffix -> {
+      redefs.push("--redefine-sym");
+      redefs.push(`_binary_${nf}_${suffix}=_binary_${nr}_${suffix}`);
+    });
     cmd = Array[
       "objcopy",
       "-B",
@@ -673,7 +687,7 @@ fun buildResource(
       "elf64-x86-64",
       file,
       object,
-    ];
+    ].concat(redefs.toArray());
     Skargo.run(cmd, verbose);
   };
   object
