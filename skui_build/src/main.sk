@@ -292,6 +292,8 @@ fun checkLibrary(
   libraries: mutable Vector<String>,
   preambles: mutable Vector<String>,
   links: mutable Set<String>,
+  includeDirs: SortedSet<String>,
+  optITime: ?Int,
 ): void {
   isWasm = bc.isWasm();
   (dir, ext, resources) = if (isWasm) ("wasm", ".bc", Array[]) else {
@@ -316,9 +318,15 @@ fun checkLibrary(
           ""
         }}${ext}`;
         target = Path.join(bc.targetDir, libname);
-        buildLibrary(bc, refPath, sourceDir, target, resources).each(lib ->
-          libraries.push(lib)
-        )
+        buildLibrary(
+          bc,
+          refPath,
+          sourceDir,
+          target,
+          resources,
+          includeDirs,
+          optITime,
+        ).each(lib -> libraries.push(lib))
       }
     }
   };
@@ -364,11 +372,39 @@ fun checkLibraries(
   dirs: Array<String>,
   deps: readonly Map<String, Skargo.Manifest>,
 ): void {
+  includeDirs = SortedSet[];
+  optITime: ?Int = None();
+  for (dep in deps) {
+    dirs.each(dir -> {
+      sourcesDir = Path.join(Path.join(dep.path, if (bc.isWasm()) "wasm" else "native"), dir);
+      if (FileSystem.exists(sourcesDir)) {
+        files = FileSystem.readFilesRecursive(
+          sourcesDir,
+          f ~> f.endsWith(".hpp") || f.endsWith(".h"),
+          _f ~> true,
+        );
+        files.each(i -> {
+          debug(i);
+          !includeDirs = includeDirs.set(Path.dirname(i));
+          !optITime = max(optITime, mtime(i))
+        })
+      }
+    });
+  };
   libraries = mutable Vector<String>[];
   preambles = mutable Vector<String>[];
   links = mutable Set<String>[];
   for (dep in deps) {
-    checkLibrary(bc, dirs, dep, libraries, preambles, links)
+    checkLibrary(
+      bc,
+      dirs,
+      dep,
+      libraries,
+      preambles,
+      links,
+      includeDirs,
+      optITime,
+    )
   };
   applyLibrairies(libraries, preambles, links, bc.env.verbose)
 }
@@ -538,12 +574,9 @@ fun buildLibrary(
   sourcesDir: String,
   target: String,
   resources: Array<String>,
+  includeDirs: SortedSet<String>,
+  optITime: ?Int,
 ): ?String {
-  includes = FileSystem.readFilesRecursive(
-    sourcesDir,
-    f ~> f.endsWith(".hpp") || f.endsWith(".h"),
-    _f ~> true,
-  );
   sources = FileSystem.readFilesRecursive(
     sourcesDir,
     f ~> f.endsWith(".cpp") || f.endsWith(".c"),
@@ -552,15 +585,8 @@ fun buildLibrary(
   if (sources.isEmpty()) {
     return None()
   };
-  includeDirs = SortedSet[];
   optTime = mtime(target);
-  optSTime: ?Int = None();
-  includes.each(i -> {
-    !includeDirs = includeDirs.set(Path.dirname(i));
-    fOptMTime = mtime(i);
-    !optSTime = max(optSTime, fOptMTime)
-  });
-  optITime = optSTime;
+  optSTime = optITime;
   timedSources = sources.map(s -> {
     fOptMTime = mtime(s);
     !optSTime = max(optSTime, fOptMTime);
