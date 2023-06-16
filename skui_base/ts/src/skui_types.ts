@@ -29,7 +29,8 @@ export interface Environment {
   timestamp: () => float;
   decodeUTF8: (utf8: Uint8Array) => string;
   onException: () => void;
-  complete(exports: object, shared: Map<string,Shared>)
+  base64Decode: (base64: String) => Uint8Array;
+  complete(exports: object, shared: Map<string,Shared>);
 }
 
 
@@ -406,14 +407,17 @@ export function run(
       return null;
     }
   }))
-  let wasm = import("./" + wasm64 + ".wasm.mjs").then(wm => Uint8Array.from(atob(wm.base64), c => c.charCodeAt(0)));
   return Promise.all(
     [
-      wasm,
       import(environment),
       Promise.all(promises).then(cs => cs.filter(c => c != null)),
     ]
   ).then(
-    result => start(modules, result[0], result[1].environment(result[2]), managers)
+    result => {
+      let env = result[0].environment(result[1]);
+      let wasm = import("./" + wasm64 + ".wasm.mjs").then(wm => env.base64Decode(wm.base64)).then(
+        buffer => start(modules, buffer, env, managers)
+      );
+    }
   ).catch(e => console.error(e));
 }
