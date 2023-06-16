@@ -450,9 +450,13 @@ extension class Configuration {
     value: Map<String, UiEngine.Serializable>,
   ): Configuration {
     Configuration{
-      flex => UiEngine.getInt(value, "flex"),
-      fit => if (UiEngine.getBool(value, "fitLoose")) Loose() else Tight(),
-      ignoreCross => UiEngine.getBool(value, "ignoreCross"),
+      flex => UiEngine.maybeGetInt(value, "flex").default(1),
+      fit => if (UiEngine.maybeGetBool(value, "fitLoose").default(false)) {
+        Loose()
+      } else {
+        Tight()
+      },
+      ignoreCross => UiEngine.maybeGetBool(value, "ignoreCross").default(false),
     }
   }
 }
@@ -485,15 +489,19 @@ extension class Configuration {
     value: Map<String, UiEngine.Serializable>,
   ): Configuration {
     Configuration{
-      fit => UiEngine.getInt(value, "fit") match {
+      fit => UiEngine.maybeGetInt(value, "fit").default(2) match {
       | 0 -> Loose()
       | 1 -> Expand()
       | 2
       | _ ->
         Passthrough()
       },
-      overflow => if (UiEngine.getBool(value, "visible")) Visible() else Clip(),
-      opaque => UiEngine.getBool(value, "opaque"),
+      overflow => if (UiEngine.maybeGetBool(value, "visible").default(false)) {
+        Visible()
+      } else {
+        Clip()
+      },
+      opaque => UiEngine.maybeGetBool(value, "opaque").default(false),
     }
   }
 }

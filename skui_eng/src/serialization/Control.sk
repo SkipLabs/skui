@@ -29,36 +29,44 @@ extension class Button extends SObject {
           },
         ),
         "action" => SOption(this.optAction),
+        "disabled" => SOption(this.optDisabled),
         "configuration" => SOption(this.optConfiguration),
-        "disabled" => this.disabled,
       ],
     )
   }
 
   static fun deserialize(value: Map<String, Serializable>): this {
     Button{
-      kind => getInt(value, "kind") match {
-      | 1 -> UiButton.Primary()
-      | 2 -> UiButton.Accent()
-      | 3 -> UiButton.Warn()
-      | 0
-      | _ ->
-        UiButton.Regular()
-      },
-      mode => getInt(value, "mode") match {
-      | 1 -> UiButton.Stroked()
-      | 2 -> UiButton.Raised()
-      | 3 -> UiButton.Flat()
-      | 4 -> UiButton.Icon(false)
-      | 5 -> UiButton.Icon(true)
-      | 6 -> UiButton.Fab(false)
-      | 7 -> UiButton.Fab(true)
-      | 0
-      | _ ->
-        UiButton.Basic()
-      },
+      kind => maybeGetInt(value, "kind")
+        .map(kind ->
+          kind match {
+          | 1 -> UiButton.Primary()
+          | 2 -> UiButton.Accent()
+          | 3 -> UiButton.Warn()
+          | 0
+          | _ ->
+            UiButton.Regular()
+          }
+        )
+        .default(UiButton.Regular()),
+      mode => maybeGetInt(value, "mode")
+        .map(mode ->
+          mode match {
+          | 1 -> UiButton.Stroked()
+          | 2 -> UiButton.Raised()
+          | 3 -> UiButton.Flat()
+          | 4 -> UiButton.Icon(false)
+          | 5 -> UiButton.Icon(true)
+          | 6 -> UiButton.Fab(false)
+          | 7 -> UiButton.Fab(true)
+          | 0
+          | _ ->
+            UiButton.Basic()
+          }
+        )
+        .default(UiButton.Basic()),
       optAction => maybeGet(value, "action"),
-      disabled => value.get("disabled"),
+      optDisabled => maybeGet(value, "disabled"),
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),
       optTooltip => maybeGet(value, "tooltip"),

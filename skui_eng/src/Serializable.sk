@@ -225,6 +225,8 @@ fun checkSerializable(
     Some(TextView::deserialize(value))
   } else if (type_ == Renderable::identifier) {
     Some(Renderable::deserialize(value))
+  } else if (type_ == Function::identifier) {
+    Some(Function::deserialize(value))
   } else {
     None()
   }

@@ -46,10 +46,9 @@ class Renderable(fn: Function) extends Widgetable {
     optCombined = Ui.combinedPath(optScope);
     UiJSONProp.Property::initCombines(context, optCombined.fromSome());
     H.init(context, optScope);
-    optS = H.get(context, this.fn)
-      .flatMap(h -> h.apply(Vector[JSON.String(scope)]))
-      .map(fromJSON);
-    optS match {
+    optFn = H.get(context, this.fn);
+    optDescription = optFn.flatMap(h -> h.apply(Vector[JSON.String(scope)]));
+    optDescription.map(fromJSON) match {
     | Some(d @ Description _) -> Some(d)
     | _ -> None()
     }

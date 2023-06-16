@@ -51,7 +51,7 @@ fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
         Some(
           `Enable to display '${args.join(
             "/",
-          )}', the avaible renderers are:\n${dExamples.join("\n")}`,
+          )}', the available renderers are:\n${dExamples.join("\n")}`,
         ),
         false,
       )

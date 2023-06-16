@@ -280,6 +280,12 @@ class HTMLPerformer() extends Performer {
     verbose: Bool,
   ): ?() ~> void {
     this.writeLauncher(target, name, env, runner, configs, modules);
+    this.writeIndex(
+      root,
+      Skuibuild.relative(target, root)
+        .map(r -> Path.join(r, name))
+        .default(name),
+    );
     Some(this.writeRun(root, verbose))
   }
 

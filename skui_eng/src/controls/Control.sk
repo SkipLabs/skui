@@ -11,7 +11,7 @@ class Button{
   mode: UiButton.Mode = UiButton.Basic(),
   //
   optAction: ?Serializable = None(),
-  disabled: Serializable = SBool(false),
+  optDisabled: ?Serializable = None(),
   //
   optText: ?Serializable = None(),
   optIcon: ?Serializable = None(),
@@ -31,7 +31,7 @@ class Button{
     path = Ui.Path::create(`#control#${static::identifier}#${name}`);
     textGetter = toTextOptGetter(context, this.optText);
     tooltipGetter = toTextOptGetter(context, this.optTooltip);
-    disabledGetter = toBoolOptGetter(context, Some(this.disabled));
+    disabledGetter = toBoolOptGetter(context, this.optDisabled);
     iconGetter = toIconOptGetter(context, this.optIcon);
     optAction = this.optAction.flatMap(optFunction).map(f ->
       H.ActionPerformer(f)

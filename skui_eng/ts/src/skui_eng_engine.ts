@@ -189,15 +189,13 @@ class LinksImpl implements Links, ToWasm {
         return exported.SKIP_JSON_endArray(arr);
       } else if (value instanceof RenderableElement) {
         let render = (strScope: string) => {
-          let skScope = utils.exportString(strScope);
           let scope = new ScopeImpl(
               this.alert,
               (dialog: DialogElement) => this.dialog(strScope, dialog),
               (value?: any) => this.create(strScope, value),
               (combine: (values: Array<any>) => any, combinables: Array<Readable>,write?: (value: any) => void) => this.combine(strScope, combine, combinables, write),
           );
-          let widget = value.renderable(scope);
-          return this.exportValue(strScope, skScope, widget)
+          return value.renderable(scope);
         };
         let id = this.register(skPath, render);
         return this.exportValue(path, skPath, {
@@ -211,7 +209,7 @@ class LinksImpl implements Links, ToWasm {
         let jso = value;
         if (value.toJSON) {
           jso = value.toJSON();
-        };
+        }
         let obj = exported.SKIP_JSON_startObject();
         for (let key in jso) {
           exported.SKIP_JSON_addToObject(obj, utils.exportString(key), this.exportValue(path, skPath, jso[key]))
@@ -236,7 +234,7 @@ class LinksImpl implements Links, ToWasm {
       let jsonPtr = exported.SKIP_UiEngineJS_getValue(skPath, skName);
       if (jsonPtr) {
         return this.importValue(jsonPtr);
-      };
+      }
       return null;
     };
     this.setter = (path: Opt<string>, name: string, value: any) => {
