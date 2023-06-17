@@ -71,28 +71,6 @@ class Const extends Ui.BoolProperty, Ui.PropertyConst<Bool, Timed> {
   }
 }
 
-class Jsonable extends Ui.BoolProperty, Ui.PropertyJsonable<Bool> {
-  //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
-
-  protected static fun valueFromJSON(s: JSON.Value): Bool {
-    JSON.optBool(s).default(false)
-  }
-
-  protected static fun valueToJSON(v: Bool): JSON.Value {
-    JSON.Bool(v)
-  }
-
-  protected static fun getDefaultValue(): Bool {
-    false
-  }
-
-  fun toggle(context: mutable SKFS.Context, source: Int): void {
-    this.set(context, Some(!this.get(context, true)), source)
-  }
-}
-
 module end;
 
 module UiIntProp;
@@ -153,24 +131,6 @@ class Const extends Ui.IntProperty, Ui.PropertyConst<Int, Timed> {
 
   protected static fun timed(optV: ?Int, tick: SKFS.Tick): Timed {
     Timed(optV, tick, 0)
-  }
-
-  protected static fun getDefaultValue(): Int {
-    0
-  }
-}
-
-class Jsonable extends Ui.IntProperty, Ui.PropertyJsonable<Int> {
-  //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
-
-  protected static fun valueFromJSON(s: JSON.Value): Int {
-    JSON.optInt(s).default(0)
-  }
-
-  protected static fun valueToJSON(v: Int): JSON.Value {
-    JSON.IntNumber(v)
   }
 
   protected static fun getDefaultValue(): Int {
@@ -242,24 +202,6 @@ class Const extends Ui.FloatProperty, Ui.PropertyConst<Float, Timed> {
 
   protected static fun timed(optV: ?Float, tick: SKFS.Tick): Timed {
     Timed(optV, tick, 0)
-  }
-
-  protected static fun getDefaultValue(): Float {
-    0.0
-  }
-}
-
-class Jsonable extends Ui.FloatProperty, Ui.PropertyJsonable<Float> {
-  //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
-
-  protected static fun valueFromJSON(s: JSON.Value): Float {
-    JSON.optFloat(s).default(0.0)
-  }
-
-  protected static fun valueToJSON(v: Float): JSON.Value {
-    JSON.FloatNumber(v)
   }
 
   protected static fun getDefaultValue(): Float {
@@ -446,24 +388,6 @@ class Const extends Ui.StringProperty, Ui.PropertyConst<String, Timed> {
 
   protected static fun timed(optV: ?String, tick: SKFS.Tick): Timed {
     Timed(optV, tick, 0)
-  }
-
-  protected static fun getDefaultValue(): String {
-    ""
-  }
-}
-
-class Jsonable extends Ui.StringProperty, Ui.PropertyJsonable<String> {
-  //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
-
-  protected static fun valueFromJSON(s: JSON.Value): String {
-    JSON.optString(s).default("")
-  }
-
-  protected static fun valueToJSON(v: String): JSON.Value {
-    JSON.String(v)
   }
 
   protected static fun getDefaultValue(): String {
@@ -1090,197 +1014,6 @@ class Const extends Ui.StatusProperty, Ui.PropertyConst<Status, Timed> {
 
   protected static fun getDefaultValue(): Status {
     OK()
-  }
-}
-
-module end;
-
-module UiJSONProp;
-
-class Timed extends Ui.TimedFile<JSON.Value> {
-  static fun fromFile(file: SKFS.File): Timed {
-    file match {
-    | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiJSONProp.Timed", file)
-    }
-  }
-}
-
-class Property extends
-  Ui.JSONProperty,
-  Ui.PropertyFile<JSON.Value, Timed, JSON.File>,
-{
-  //
-  fun get from Ui.PropertyFile;
-  fun getTimed from Ui.PropertyFile;
-
-  protected static fun timed(
-    optV: ?JSON.Value,
-    tick: SKFS.Tick,
-    source: Int,
-  ): Timed {
-    Timed(optV, tick, source)
-  }
-
-  protected static fun timedFromFile(file: SKFS.File): Timed {
-    file match {
-    | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiJSONProp.Timed", file)
-    }
-  }
-
-  protected static fun valueFromFile(file: SKFS.File): JSON.Value {
-    JSON.File::fromFile(file).value
-  }
-
-  protected static fun fileValueFromFile(file: SKFS.File): JSON.File {
-    JSON.File::fromFile(file)
-  }
-
-  protected static fun valueToFile(value: JSON.Value): SKFS.File {
-    JSON.File(value)
-  }
-
-  protected static fun getDefaultValue(): JSON.Value {
-    JSON.Null()
-  }
-
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
-  }
-
-  fun toOptIntGetter(): Ui.GetterOne<?Int, Bool> {
-    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optInt)
-  }
-
-  fun toOptFloatGetter(): Ui.GetterOne<?Float, Bool> {
-    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optFloat)
-  }
-
-  fun toOptStringGetter(): Ui.GetterOne<?String, Bool> {
-    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optString)
-  }
-
-  fun toOptBoolGetter(): Ui.GetterOne<?Bool, Bool> {
-    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(JSON.optBool)
-  }
-
-  fun toOptValueGetter<T>(conv: JSON.Value ~> ?T): Ui.GetterOne<?T, Bool> {
-    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(conv)
-  }
-
-  fun set(
-    context: mutable SKFS.Context,
-    optValue: ?JSON.Value,
-    source: Int,
-  ): void {
-    if (this.timedHdl.hdl.isWritable(context)) {
-      static::toIHandle(this.timedHdl.hdl).write(
-        context,
-        this.timedHdl.key,
-        static::timed(optValue, context.tick.next(), source),
-      );
-    } else {
-      combinesDirName = SKFS.DirName::make(
-        this.timedHdl.hdl.getDirName(),
-        "combines/",
-      );
-      combinesHdl = SKFS.EHandle(Ui.Combine::forFile, combinesDirName);
-      if (combinesHdl.exists(context)) {
-        combinesHdl.maybeGet(context, this.timedHdl.key).each(combine ->
-          combine.write(context, optValue)
-        )
-      }
-    }
-  }
-
-  static fun combine(
-    context: mutable SKFS.Context,
-    optPath: ?String,
-    combine: Ui.Combine,
-  ): SKFS.StrID {
-    optCombined = Ui.combinedPath(optPath);
-    dirName = Ui.toDirName(context, optCombined);
-    className = SKFS.normalize(static::sClassName().lowercase());
-    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
-    combinesDirName = SKFS.DirName::make(timedDirName, "combines/");
-    hdl = SKFS.EHandle(Ui.Combine::forFile, combinesDirName);
-    key = SKFS.StrID(`prop${context.timeStamp().value}`);
-    SKFS.toIHandle(hdl).write(context, key, combine);
-    key;
-  }
-
-  static fun initCombines(context: mutable SKFS.Context, path: String): void {
-    dirName = Ui.toDirName(context, Some(path));
-    className = SKFS.normalize(static::sClassName().lowercase());
-    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
-    combinesDirName = SKFS.DirName::make(timedDirName, "combines/");
-    combinesCacheDirName = SKFS.DirName::make(combinesDirName, "cache/");
-    valueDirName = SKFS.DirName::make(timedDirName, "value/");
-    combinesHdl = context.makeDir(Ui.Combine::forFile, combinesDirName);
-    cache = SKFS.LHandle::lazy(
-      static::timedFromFile,
-      context,
-      combinesCacheDirName,
-      (context, _self, key) ~> {
-        optValue = combinesHdl.maybeGet(context, key).map(combine ->
-          combine.combine(context, path)
-        );
-        static::timed(optValue, context.tick, 0)
-      },
-    );
-    _ = combinesHdl
-      .contextWriterKeyMap(
-        static::timedFromFile,
-        context,
-        timedDirName,
-        (ctx, writer, key, _) ~> writer.write(key, cache.get(ctx, key)),
-      )
-      .contextWriterKeyMap(
-        static::fileValueFromFile,
-        context,
-        valueDirName,
-        (_ctx, writer, key, timed) ~>
-          timed.optValue.each(v -> writer.write(key, static::valueToFile(v)))
-        ,
-      );
-  }
-}
-
-class Const(value: JSON.Value, writer: Ui.JSONWriter) extends Ui.JSONProperty {
-  //
-  fun getName(): String {
-    this.value.toString()
-  }
-
-  fun getPath(): ?String {
-    None()
-  }
-
-  fun maybeGet(
-    _context: mutable SKFS.Context,
-    _isUntracked: Bool = false,
-  ): ?JSON.Value {
-    if (this.value == JSON.Null()) {
-      None()
-    } else {
-      Some(this.value)
-    }
-  }
-
-  fun set(
-    context: mutable SKFS.Context,
-    optValue: ?JSON.Value,
-    _source: Int,
-  ): void {
-    this.writer.write(context, optValue)
-  }
-
-  fun maybeGetTimed(
-    context: mutable SKFS.Context,
-    isUntracked: Bool = false,
-  ): ?(?JSON.Value, SKFS.Tick, Int) {
-    Some((this.maybeGet(context, isUntracked), SKFS.Tick(0), 0))
   }
 }
 

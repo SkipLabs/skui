@@ -54,15 +54,44 @@ class RenderableFn(fn: Function) extends Renderable {
     // initScope
     scope = `sc${context.timeStamp().value}`;
     optScope = Some(scope);
-    UiJSONProp.Property::init(context, optScope);
+    UiSerializableProp.Property::init(context, optScope);
     optCombined = Ui.combinedPath(optScope);
-    UiJSONProp.Property::initCombines(context, optCombined.fromSome());
+    UiSerializableProp.Property::initCombines(context, optCombined.fromSome());
     H.init(context, optScope);
     optFn = H.get(context, this.fn);
     optDescription = optFn.flatMap(h -> h.apply(Vector[JSON.String(scope)]));
     optDescription.map(fromJSON) match {
     | Some(d @ Description _) -> Some(d)
     | _ -> None()
+    }
+  }
+}
+
+base class Writer extends SKFS.File {
+  fun write(context: mutable SKFS.Context, optValue: ?Serializable): void;
+
+  static fun forFile(file: SKFS.File): Writer {
+    file match {
+    | x @ Writer _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Writer", file)
+    }
+  }
+}
+
+base class Combine extends Writer {
+  fun combine(context: mutable SKFS.Context, path: String): Serializable;
+
+  static fun forWriter(file: Writer): Combine {
+    file match {
+    | x @ Combine _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Combine", file)
+    }
+  }
+
+  static fun sinceFile(file: SKFS.File): Combine {
+    file match {
+    | x @ Combine _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Combine", file)
     }
   }
 }

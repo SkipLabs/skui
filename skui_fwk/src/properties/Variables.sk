@@ -1,8 +1,5 @@
 module Ui;
 
-//base class SliderValue
-//base class Var
-
 base class PropKind uses Orderable {
   children =
   | PProp()
@@ -19,15 +16,15 @@ fun combinedPath(optPath: ?String): ?String {
   | _ -> Some("combined")
   }
 }
-
+/*
 class JSONProp extends Prop {
   //
   fun toProperty(context: readonly SKFS.Context): UiJSONProp.Property {
     this.kind match {
     | Ui.PProp() ->
-      UiJSONProp.Property::forName(context, this.optPath, this.name)
+      UiSerializableProp.Property::forName(context, this.optPath, this.name)
     | Ui.PCombined() ->
-      UiJSONProp.Property::forName(
+      UiSerializableProp.Property::forName(
         context,
         combinedPath(this.optPath),
         this.name,
@@ -38,30 +35,7 @@ class JSONProp extends Prop {
     }
   }
 }
+*/
 
-class IntProp extends Prop
-
-class TextProp extends Prop {
-  //
-  static fun fromProperty(prop: UiTextProp.Property): TextProp {
-    TextProp(prop.getName(), prop.optPath, Ui.PProp())
-  }
-
-  fun toProperty(context: readonly SKFS.Context): UiTextProp.Property {
-    this.kind match {
-    | Ui.PProp() ->
-      UiTextProp.Property::forName(context, this.optPath, this.name)
-    | Ui.PCombined() ->
-      UiTextProp.Property::forName(
-        context,
-        combinedPath(this.optPath),
-        this.name,
-      )
-    | Ui.PLoadable()
-    | Ui.PHandle() ->
-      invariant_violation("Must be Ui.PProp or Ui.PCombined property")
-    }
-  }
-}
 
 module end;

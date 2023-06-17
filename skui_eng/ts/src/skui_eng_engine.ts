@@ -105,7 +105,7 @@ class JSONProperty implements Property {
   };
 
   toJSON = () => {
-    return { type: "jsonProp", fields: { name: this.name, path: this.path, combined: this.combined } }
+    return { type: "prop", fields: { name: this.name, path: this.path, combined: this.combined } }
   };
 }
 

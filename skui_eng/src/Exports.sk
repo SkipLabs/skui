@@ -1,14 +1,12 @@
 module UiEngine;
 
-// Serializable property
-
 fun getJSON(
   context: mutable SKFS.Context,
   optPath: ?String,
   name: String,
 ): ?JSON.Value {
-  prop = UiJSONProp.Property::forName(context, optPath, name);
-  prop.maybeGet(context);
+  prop = UiSerializableProp.Property::forName(context, optPath, name);
+  prop.maybeGet(context).map(toJSON);
 }
 
 fun setJSON(
@@ -17,8 +15,8 @@ fun setJSON(
   name: String,
   optValue: ?JSON.Value,
 ): void {
-  prop = UiJSONProp.Property::forName(context, optPath, name);
-  prop.set(context, optValue, 0);
+  prop = UiSerializableProp.Property::forName(context, optPath, name);
+  prop.set(context, optValue.map(fromJSON), 0);
 }
 
 @wasm_export("SKIP_UiEngineJS_getValue")
@@ -36,7 +34,11 @@ fun setValue(optPath: ?String, name: String, optValue: ?JSON.Value): void {
 @wasm_export("SKIP_UiEngineJS_create")
 fun create(optPath: ?String, optValue: ?JSON.Value): String {
   SKFS.Context::withoutGc(context ~> {
-    prop = UiJSONProp.Property::create(context, optPath, optValue);
+    prop = UiSerializableProp.Property::create(
+      context,
+      optPath,
+      optValue.map(fromJSON),
+    );
     prop.getName();
   })
 }
@@ -50,8 +52,8 @@ fun combine(
   SKFS.Context::withoutGc(context ~> {
     combineFn = fromJSON(jsCombine) as Function _;
     optWriteFn = optJsWrite.map(fromJSON).map(f ~> f as Function _);
-    combine = UiEngineHandle.Combine(combineFn, optWriteFn);
-    UiJSONProp.Property::combine(context, optPath, combine).value;
+    combine = UiEngineHandle.ECombine(combineFn, optWriteFn);
+    UiSerializableProp.Property::combine(context, optPath, combine).value;
   })
 }
 

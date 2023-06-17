@@ -87,12 +87,12 @@ fun initEngineWidget(
   H.init(context, optPath);
   optRenderable = getRenderable(optPath, name);
   builder = (ctx, root) ~> {
-    UiJSONProp.Property::initValues(
+    UiSerializableProp.Property::initValues(
       ctx,
       optPath,
-      Array[(SKFS.StrID("root"), optRenderable)],
+      Array[(SKFS.StrID("root"), optRenderable.map(UiEngine.fromJSON))],
     );
-    property = UiJSONProp.Property::forName(ctx, optPath, "root");
+    property = UiSerializableProp.Property::forName(ctx, optPath, "root");
     hdl = UiEngine.widgetPipeline(ctx, property, root);
     (ctx, _root) ~> hdl.get(ctx).widget
   };

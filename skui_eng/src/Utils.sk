@@ -222,20 +222,20 @@ fun widgetableToWidget(
 fun toOptGetter<T: frozen>(
   context: readonly SKFS.Context,
   optVar: ?Serializable,
-  propConv: UiJSONProp.Property ~> Ui.GetterOne<?T, Bool>,
+  propConv: UiSerializableProp.Property ~> Ui.GetterOne<?T, Bool>,
   optConv: Serializable ~> ?T,
   fileConv: SKFS.File ~> T,
 ): Ui.GetterOne<?T, Bool> {
   optVar match {
   | Some(s) ->
     s match {
-    | Ui.JSONProp(name, optPath, kind) ->
+    | UiEngine.Prop(name, optPath, kind) ->
       kind match {
       | Ui.PProp() ->
-        propConv(UiJSONProp.Property::forName(context, optPath, name))
+        propConv(UiSerializableProp.Property::forName(context, optPath, name))
       | Ui.PCombined() ->
         propConv(
-          UiJSONProp.Property::forName(
+          UiSerializableProp.Property::forName(
             context,
             optPath match {
             | Some(p) -> Some(`${p}/combined`)
@@ -311,7 +311,7 @@ fun toIconOptGetter(
   toOptGetter(
     context,
     optVar,
-    p ~> p.toOptValueGetter(jsv ~> optIcon(fromJSON(jsv))),
+    p ~> p.toOptValueGetter(s ~> optIcon(s)),
     optIcon,
     UiIcon.Description::fromFile,
   )
@@ -324,7 +324,7 @@ fun toDecorationOptGetter(
   toOptGetter(
     context,
     optVar,
-    p ~> p.toOptValueGetter(jsv ~> optDecoration(fromJSON(jsv))),
+    p ~> p.toOptValueGetter(s ~> optDecoration(s)),
     optDecoration,
     Ui.Decoration::forFile,
   )
@@ -337,7 +337,7 @@ fun toConstraintsOptGetter(
   toOptGetter(
     context,
     optVar,
-    p ~> p.toOptValueGetter(jsv ~> optConstraints(fromJSON(jsv))),
+    p ~> p.toOptValueGetter(s ~> optConstraints(s)),
     optConstraints,
     Ui.BoxConstraints::fromFile,
   )
@@ -350,7 +350,7 @@ fun toTextOptGetter(
   toOptGetter(
     context,
     optVar,
-    p ~> p.toOptValueGetter(jsv ~> optText(fromJSON(jsv))),
+    p ~> p.toOptValueGetter(s ~> optText(s)),
     optText,
     file ~>
       file match {
@@ -373,7 +373,7 @@ fun toPictureOptGetter(
   /*toOptGetter(
     context,
     optVar,
-    p ~> p.toOptValueGetter(jsv ~> optPicture(fromJSON(jsv))),
+    p ~> p.toOptValueGetter(s ~> optPicture(s)),
     optPicture,
     Picture::forFile,
   )*/
@@ -386,7 +386,7 @@ fun toRangeOptGetter(
   toOptGetter(
     context,
     optVar,
-    p ~> p.toOptValueGetter(jsv ~> optRange(fromJSON(jsv))),
+    p ~> p.toOptValueGetter(s ~> optRange(s)),
     optRange,
     Range::fromFile,
   )
@@ -399,7 +399,7 @@ fun toStyleOptGetter(
   toOptGetter(
     context,
     optVar,
-    p ~> p.toOptValueGetter(jsv ~> optStyle(fromJSON(jsv))),
+    p ~> p.toOptValueGetter(s ~> optStyle(s)),
     optStyle,
     Text.Style::fromFile,
   )
@@ -409,21 +409,21 @@ fun isPropertyNeeded(optS: ?Serializable, allowConst: Bool = true): Bool {
   optS
     .map(s ->
       s match {
-      | Ui.JSONProp _ -> false
-      | UiJSONProp.Const _ -> !allowConst
+      | UiEngine.Prop _ -> false
+      | UiSerializableProp.Const _ -> !allowConst
       | _ -> true
       }
     )
     .default(true)
 }
 
-fun toJSONProperty(
+fun toSerializableProperty(
   context: mutable SKFS.Context,
   optS: ?Serializable,
-): UiJSONProp.Property {
+): UiSerializableProp.Property {
   optS.flatMap(s ->
     s match {
-    | prop @ Ui.JSONProp _ -> Some(prop.toProperty(context))
+    | prop @ Prop _ -> Some(prop.toProperty(context))
     | _ -> None()
     }
   ) match {
@@ -431,23 +431,23 @@ fun toJSONProperty(
   | _ ->
     optScope = Some(`sc${context.timeStamp().value}`);
     key = SKFS.StrID(`prop${context.timeStamp().value}`);
-    UiJSONProp.Property::initValues(
+    UiSerializableProp.Property::initValues(
       context,
       optScope,
-      Array[(key, optS.map(toJSON))],
+      Array[(key, optS)],
     );
-    UiJSONProp.Property::forStrID(context, optScope, key)
+    UiSerializableProp.Property::forStrID(context, optScope, key)
   }
 }
 
-fun toJSONValueProperty(
+fun toValueProperty(
   context: mutable SKFS.Context,
   optS: ?Serializable,
-): Ui.JSONProperty {
+): SerializableProperty {
   optS.flatMap(s ->
     s match {
-    | prop @ Ui.JSONProp _ -> Some(prop.toProperty(context))
-    | c @ UiJSONProp.Const _ -> Some(c)
+    | prop @ Prop _ -> Some(prop.toProperty(context))
+    | c @ UiSerializableProp.Const _ -> Some(c)
     | _ -> None()
     }
   ) match {
@@ -455,12 +455,12 @@ fun toJSONValueProperty(
   | _ ->
     optScope = Some(`sc${context.timeStamp().value}`);
     key = SKFS.StrID(`prop${context.timeStamp().value}`);
-    UiJSONProp.Property::initValues(
+    UiSerializableProp.Property::initValues(
       context,
       optScope,
-      Array[(key, optS.map(toJSON))],
+      Array[(key, optS)],
     );
-    UiJSONProp.Property::forStrID(context, optScope, key)
+    UiSerializableProp.Property::forStrID(context, optScope, key)
   }
 }
 
@@ -477,7 +477,7 @@ class WidgetHandle(hdl: SKFS.EHValue<Ui.WidgetFile>) extends SKFS.File {
 fun isWidgetable(s: Serializable): Bool {
   s match {
   | Widgetable _
-  | Ui.JSONProp _ ->
+  | UiEngine.Prop _ ->
     true
   | _ -> false
   }
@@ -485,7 +485,7 @@ fun isWidgetable(s: Serializable): Bool {
 
 fun widgetPipeline(
   context: mutable SKFS.Context,
-  property: UiJSONProp.Property,
+  property: UiSerializableProp.Property,
   root: UiRoot.Storage,
   prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget = (_ctx, _name) ~>
     None(),
@@ -495,9 +495,9 @@ fun widgetPipeline(
     WidgetableFile::fromFile,
     context,
     "verifiedwidget/",
-    jsv ~>
+    s ~>
       WidgetableFile(
-        fromJSON(jsv) match {
+        s match {
         | widget @ Widgetable _
         | SOption(Some(widget @ Widgetable _)) ->
           widget
@@ -571,7 +571,7 @@ fun widgetPipeline(
 
 fun toWidgetHandle(
   context: mutable SKFS.Context,
-  prop: Ui.JSONProp,
+  prop: UiEngine.Prop,
   root: UiRoot.Storage,
   prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget = (_ctx, _name) ~>
     None(),
@@ -586,7 +586,7 @@ fun toWidgetsCollection(
   root: UiRoot.Storage,
   prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
 ): Ui.WidgetsCollection {
-  property = toJSONProperty(context, optS);
+  property = toSerializableProperty(context, optS);
   dirname = property.valueHdl.getChildDirName;
   verifiedVarsHdl = property.valueHdl.mapChild(
     file ~>
@@ -596,8 +596,8 @@ fun toWidgetsCollection(
       },
     context,
     "verifiedwidgets/",
-    jsv ~>
-      fromJSON(jsv) match {
+    sf ~>
+      sf match {
       | arr @ SArray _ -> SArray(arr.value.filter(isWidgetable))
       | s if (isWidgetable(s)) -> SArray(Array[s])
       | _ -> SArray(Array[])
@@ -640,7 +640,7 @@ fun toWidgetsCollection(
     dirname("properties/"),
     (context, writer, key, file) ~> {
       file match {
-      | prop @ Ui.JSONProp _ ->
+      | prop @ UiEngine.Prop _ ->
         writer.write(key, toWidgetHandle(context, prop, root))
       | _ -> void
       }
@@ -684,7 +684,7 @@ fun toWidgetsCollection(
         Ui.WidgetFile(
           d.build(context, `${key}#${context.timeStamp()}`, root, cPrebuilt),
         )
-      | Ui.JSONProp _ -> propertiesHdl.get(context, key).hdl.get(context)
+      | UiEngine.Prop _ -> propertiesHdl.get(context, key).hdl.get(context)
       | _ -> file
       };
       writer.write(key, toWrite)
@@ -699,7 +699,7 @@ fun toWidgetGetter(
   root: UiRoot.Storage,
   prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
 ): Ui.Getter<Ui.Widget> {
-  property = toJSONProperty(context, optS);
+  property = toSerializableProperty(context, optS);
   hdl = widgetPipeline(context, property, root, prebuilt);
   ctx ~> hdl.get(ctx, false).widget;
 }
@@ -713,7 +713,7 @@ fun toOptWidgetGetter(
   default: ?Ui.Widget = None();
   optS
     .map(s -> {
-      property = toJSONProperty(context, Some(s));
+      property = toSerializableProperty(context, Some(s));
       hdl = widgetPipeline(context, property, root, prebuilt);
       ctx ~> hdl.maybeGet(ctx, false).map(wf -> wf.widget);
     })
@@ -727,8 +727,8 @@ fun toStringPropOptGetter(
   default: ?Ui.StringProperty = None();
   optS
     .map(s -> {
-      property = toJSONValueProperty(context, Some(s));
-      strProp = UiStringProp.JsonableEng(property);
+      property = toValueProperty(context, Some(s));
+      strProp = UiStringProp.Serializable(property);
       Ui.defaultOne(Some(strProp));
     })
     .default(Ui.defaultOne(default));
@@ -741,8 +741,8 @@ fun toIntPropOptGetter(
   default: ?Ui.IntProperty = None();
   optS
     .map(s -> {
-      property = toJSONValueProperty(context, Some(s));
-      strProp = UiIntProp.Jsonable(property);
+      property = toValueProperty(context, Some(s));
+      strProp = UiIntProp.Serializable(property);
       Ui.defaultOne(Some(strProp));
     })
     .default(Ui.defaultOne(default));
@@ -755,8 +755,8 @@ fun toRangePropOptGetter(
   default: ?Ui.RangeProperty = None();
   optS
     .map(s -> {
-      property = toJSONValueProperty(context, Some(s));
-      strProp = UiRangeProp.Jsonable(property);
+      property = toValueProperty(context, Some(s));
+      strProp = UiRangeProp.Serializable(property);
       Ui.defaultOne(Some(strProp));
     })
     .default(Ui.defaultOne(default));
@@ -769,8 +769,8 @@ fun toStatusPropOptGetter(
   default: ?Ui.StatusProperty = None();
   optS
     .map(s -> {
-      property = toJSONValueProperty(context, Some(s));
-      strProp = UiStatusProp.Jsonable(property);
+      property = toValueProperty(context, Some(s));
+      strProp = UiStatusProp.Serializable(property);
       Ui.defaultOne(Some(strProp));
     })
     .default(Ui.defaultOne(default));

@@ -130,7 +130,7 @@ fun toTreeItemChildren(
   context: mutable SKFS.Context,
   items: Serializable,
 ): TreeItemChildren {
-  itemsProperty = toJSONProperty(context, Some(items));
+  itemsProperty = toSerializableProperty(context, Some(items));
   verifiedItemsHdl = itemsProperty.valueHdl.mapChild(
     file ~>
       file match {
@@ -139,13 +139,13 @@ fun toTreeItemChildren(
       },
     context,
     "verifiedItems/",
-    jsv ~> {
+    sf ~> {
       isItem = s ~>
         s match {
         | TreeItem _ -> true
         | _ -> false
         };
-      fromJSON(jsv) match {
+      sf match {
       | arr @ SArray _ -> SArray(arr.value.filter(isItem))
       | s if (isItem(s)) -> SArray(Array[s])
       | _ -> SArray(Array[])

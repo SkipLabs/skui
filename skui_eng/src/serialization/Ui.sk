@@ -412,7 +412,7 @@ fun checkSerializable(
   }*/ else if (type_ == BoxConstraints::identifier) {
     Some(BoxConstraints::deserialize(value))
   } else {
-    checkVariables(type_, value)
+    UiEngine.checkVariables(type_, value)
   }
 }
 

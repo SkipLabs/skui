@@ -1,25 +1,301 @@
 module UiEngine;
 
-extension base class Serializable extends SKFS.File
+class File(value: Serializable) extends SKFS.File
+
+base class SerializableProperty extends Ui.Property<Serializable>
+
+class Prop extends Ui.Prop {
+  //
+  fun toProperty(context: readonly SKFS.Context): UiSerializableProp.Property {
+    this.kind match {
+    | Ui.PProp() ->
+      UiSerializableProp.Property::forName(context, this.optPath, this.name)
+    | Ui.PCombined() ->
+      UiSerializableProp.Property::forName(
+        context,
+        Ui.combinedPath(this.optPath),
+        this.name,
+      )
+    | Ui.PLoadable()
+    | Ui.PHandle() ->
+      invariant_violation("Must be Ui.PProp or Ui.PCombined property")
+    }
+  }
+}
+
+base class PropertySerializable<T: frozen> final (
+  property: SerializableProperty,
+) extends Ui.Property<T> {
+  protected static fun valueFromSerializable(s: Serializable): T;
+  protected static fun valueToSerializable(v: T): Serializable;
+  protected static fun getDefaultValue(): T;
+
+  fun getName(): String {
+    this.property.getName()
+  }
+
+  fun getPath(): ?String {
+    this.property.getPath()
+  }
+
+  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
+    this.property.maybeGet(context, isUntracked).map(
+      static::valueFromSerializable,
+    )
+  }
+
+  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+    this.maybeGet(context, isUntracked) match {
+    | Some(v) -> v
+    | _ -> static::getDefaultValue()
+    }
+  }
+
+  fun maybeGetTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?(?T, SKFS.Tick, Int) {
+    this.property.maybeGetTimed(context, isUntracked).map(t ->
+      (t.i0.map(static::valueFromSerializable), t.i1, t.i2)
+    )
+  }
+
+  fun getTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): (T, SKFS.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked) match {
+    | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
+    | _ -> (static::getDefaultValue(), SKFS.Tick(0), 0)
+    }
+  }
+
+  fun set(context: mutable SKFS.Context, optValue: ?T, source: Int): void {
+    this.property.set(
+      context,
+      optValue.map(static::valueToSerializable),
+      source,
+    )
+  }
+}
+
+module end;
+
+module UiSerializableProp;
+
+class Timed extends Ui.TimedFile<UiEngine.Serializable> {
+  static fun fromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> SKFS.cast_violation("UiSerializableProp.Timed", file)
+    }
+  }
+}
+
+class Property extends
+  UiEngine.SerializableProperty,
+  Ui.PropertyFile<UiEngine.Serializable, Timed, UiEngine.File>,
+{
+  //
+  fun get from Ui.PropertyFile;
+  fun getTimed from Ui.PropertyFile;
+
+  protected static fun timed(
+    optV: ?UiEngine.Serializable,
+    tick: SKFS.Tick,
+    source: Int,
+  ): Timed {
+    Timed(optV, tick, source)
+  }
+
+  protected static fun timedFromFile(file: SKFS.File): Timed {
+    file match {
+    | x @ Timed _ -> x
+    | _ -> SKFS.cast_violation("UiSerializableProp.Timed", file)
+    }
+  }
+
+  protected static fun valueFromFile(file: SKFS.File): UiEngine.Serializable {
+    UiEngine.File::fromFile(file).value
+  }
+
+  protected static fun fileValueFromFile(file: SKFS.File): UiEngine.File {
+    UiEngine.File::fromFile(file)
+  }
+
+  protected static fun valueToFile(value: UiEngine.Serializable): SKFS.File {
+    UiEngine.File(value)
+  }
+
+  protected static fun getDefaultValue(): UiEngine.Serializable {
+    UiEngine.SOption(None())
+  }
+
+  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
+    SKFS.toIHandle(hdl)
+  }
+
+  fun toOptIntGetter(): Ui.GetterOne<?Int, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(UiEngine.optInt)
+  }
+
+  fun toOptFloatGetter(): Ui.GetterOne<?Float, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(UiEngine.optFloat)
+  }
+
+  fun toOptStringGetter(): Ui.GetterOne<?String, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(UiEngine.optString)
+  }
+
+  fun toOptBoolGetter(): Ui.GetterOne<?Bool, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(UiEngine.optBool)
+  }
+
+  fun toOptValueGetter<T>(
+    conv: UiEngine.Serializable ~> ?T,
+  ): Ui.GetterOne<?T, Bool> {
+    (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(conv)
+  }
+
+  fun set(
+    context: mutable SKFS.Context,
+    optValue: ?UiEngine.Serializable,
+    source: Int,
+  ): void {
+    if (this.timedHdl.hdl.isWritable(context)) {
+      static::toIHandle(this.timedHdl.hdl).write(
+        context,
+        this.timedHdl.key,
+        static::timed(optValue, context.tick.next(), source),
+      );
+    } else {
+      combinesDirName = SKFS.DirName::make(
+        this.timedHdl.hdl.getDirName(),
+        "combines/",
+      );
+      combinesHdl = SKFS.EHandle(UiEngine.Combine::sinceFile, combinesDirName);
+      if (combinesHdl.exists(context)) {
+        combinesHdl.maybeGet(context, this.timedHdl.key).each(combine ->
+          combine.write(context, optValue)
+        )
+      }
+    }
+  }
+
+  static fun combine(
+    context: mutable SKFS.Context,
+    optPath: ?String,
+    combine: UiEngine.Combine,
+  ): SKFS.StrID {
+    optCombined = Ui.combinedPath(optPath);
+    dirName = Ui.toDirName(context, optCombined);
+    className = SKFS.normalize(static::sClassName().lowercase());
+    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
+    combinesDirName = SKFS.DirName::make(timedDirName, "combines/");
+    hdl = SKFS.EHandle(UiEngine.Combine::sinceFile, combinesDirName);
+    key = SKFS.StrID(`prop${context.timeStamp().value}`);
+    SKFS.toIHandle(hdl).write(context, key, combine);
+    key;
+  }
+
+  static fun initCombines(context: mutable SKFS.Context, path: String): void {
+    dirName = Ui.toDirName(context, Some(path));
+    className = SKFS.normalize(static::sClassName().lowercase());
+    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
+    combinesDirName = SKFS.DirName::make(timedDirName, "combines/");
+    combinesCacheDirName = SKFS.DirName::make(combinesDirName, "cache/");
+    valueDirName = SKFS.DirName::make(timedDirName, "value/");
+    combinesHdl = context.makeDir(UiEngine.Combine::sinceFile, combinesDirName);
+    cache = SKFS.LHandle::lazy(
+      static::timedFromFile,
+      context,
+      combinesCacheDirName,
+      (context, _self, key) ~> {
+        optValue = combinesHdl.maybeGet(context, key).map(combine ->
+          combine.combine(context, path)
+        );
+        static::timed(optValue, context.tick, 0)
+      },
+    );
+    _ = combinesHdl
+      .contextWriterKeyMap(
+        static::timedFromFile,
+        context,
+        timedDirName,
+        (ctx, writer, key, _) ~> writer.write(key, cache.get(ctx, key)),
+      )
+      .contextWriterKeyMap(
+        static::fileValueFromFile,
+        context,
+        valueDirName,
+        (_ctx, writer, key, timed) ~>
+          timed.optValue.each(v -> writer.write(key, static::valueToFile(v)))
+        ,
+      );
+  }
+}
+
+class Const(
+  value: UiEngine.Serializable,
+  writer: UiEngine.Writer,
+) extends UiEngine.SerializableProperty {
+  //
+  fun getName(): String {
+    UiEngine.toJSON(this.value).toString()
+  }
+
+  fun getPath(): ?String {
+    None()
+  }
+
+  fun maybeGet(
+    _context: mutable SKFS.Context,
+    _isUntracked: Bool = false,
+  ): ?UiEngine.Serializable {
+    this.value match {
+    | UiEngine.SOption(opt) -> opt
+    | _ -> Some(this.value)
+    }
+  }
+
+  fun set(
+    context: mutable SKFS.Context,
+    optValue: ?UiEngine.Serializable,
+    _source: Int,
+  ): void {
+    this.writer.write(context, optValue)
+  }
+
+  fun maybeGetTimed(
+    context: mutable SKFS.Context,
+    isUntracked: Bool = false,
+  ): ?(?UiEngine.Serializable, SKFS.Tick, Int) {
+    Some((this.maybeGet(context, isUntracked), SKFS.Tick(0), 0))
+  }
+}
 
 module end;
 
 module UiSeparationProp;
 
-class Jsonable extends
+class Serializable extends
   Ui.SeparationProperty,
-  Ui.PropertyJsonable<Ui.Separation>,
+  UiEngine.PropertySerializable<Ui.Separation>,
 {
   //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
+  fun get from UiEngine.PropertySerializable;
+  fun getTimed from UiEngine.PropertySerializable;
 
-  protected static fun valueFromJSON(s: JSON.Value): Ui.Separation {
-    UiEngine.optSeparation(UiEngine.fromJSON(s)).default(Ui.FromStart(100))
+  protected static fun valueFromSerializable(
+    s: UiEngine.Serializable,
+  ): Ui.Separation {
+    UiEngine.optSeparation(s).default(Ui.FromStart(100))
   }
 
-  protected static fun valueToJSON(s: Ui.Separation): JSON.Value {
-    UiEngine.toJSON(s)
+  protected static fun valueToSerializable(
+    s: Ui.Separation,
+  ): UiEngine.Serializable {
+    s
   }
 
   protected static fun getDefaultValue(): Ui.Separation {
@@ -31,17 +307,20 @@ module end;
 
 module UiRangeProp;
 
-class Jsonable extends Ui.RangeProperty, Ui.PropertyJsonable<Range> {
+class Serializable extends
+  Ui.RangeProperty,
+  UiEngine.PropertySerializable<Range>,
+{
   //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
+  fun get from UiEngine.PropertySerializable;
+  fun getTimed from UiEngine.PropertySerializable;
 
-  protected static fun valueFromJSON(s: JSON.Value): Range {
-    UiEngine.optRange(UiEngine.fromJSON(s)).default(Range(0, 0))
+  protected static fun valueFromSerializable(s: UiEngine.Serializable): Range {
+    UiEngine.optRange(s).default(Range(0, 0))
   }
 
-  protected static fun valueToJSON(r: Range): JSON.Value {
-    UiEngine.toJSON(r)
+  protected static fun valueToSerializable(r: Range): UiEngine.Serializable {
+    r
   }
 
   protected static fun getDefaultValue(): Range {
@@ -51,45 +330,122 @@ class Jsonable extends Ui.RangeProperty, Ui.PropertyJsonable<Range> {
 
 module end;
 
-module UiStringProp;
+module UiStatusProp;
 
-class JsonableEng extends Ui.StringProperty, Ui.PropertyJsonable<String> {
+class Serializable extends
+  Ui.StatusProperty,
+  UiEngine.PropertySerializable<Status>,
+{
   //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
+  fun get from UiEngine.PropertySerializable;
+  fun getTimed from UiEngine.PropertySerializable;
 
-  protected static fun valueFromJSON(s: JSON.Value): String {
-    UiEngine.optString(UiEngine.fromJSON(s)).default("")
+  protected static fun valueFromSerializable(s: UiEngine.Serializable): Status {
+    UiEngine.optStatus(s).default(OK())
   }
 
-  protected static fun valueToJSON(s: String): JSON.Value {
-    JSON.String(s)
+  protected static fun valueToSerializable(r: Status): UiEngine.Serializable {
+    r
   }
 
-  protected static fun getDefaultValue(): String {
-    ""
+  protected static fun getDefaultValue(): Status {
+    OK()
   }
 }
 
 module end;
 
-module UiStatusProp;
+module UiBoolProp;
 
-class Jsonable extends Ui.StatusProperty, Ui.PropertyJsonable<Status> {
+class Serializable extends Ui.BoolProperty, UiEngine.PropertySerializable<Bool>{
   //
-  fun get from Ui.PropertyJsonable;
-  fun getTimed from Ui.PropertyJsonable;
+  fun get from UiEngine.PropertySerializable;
+  fun getTimed from UiEngine.PropertySerializable;
 
-  protected static fun valueFromJSON(s: JSON.Value): Status {
-    UiEngine.optStatus(UiEngine.fromJSON(s)).default(OK())
+  protected static fun valueFromSerializable(s: UiEngine.Serializable): Bool {
+    UiEngine.optBool(s).default(false)
   }
 
-  protected static fun valueToJSON(r: Status): JSON.Value {
-    UiEngine.toJSON(r)
+  protected static fun valueToSerializable(v: Bool): UiEngine.Serializable {
+    UiEngine.SBool(v)
   }
 
-  protected static fun getDefaultValue(): Status {
-    OK()
+  protected static fun getDefaultValue(): Bool {
+    false
+  }
+
+  fun toggle(context: mutable SKFS.Context, source: Int): void {
+    this.set(context, Some(!this.get(context, true)), source)
+  }
+}
+module end;
+
+module UiIntProp;
+
+class Serializable extends Ui.IntProperty, UiEngine.PropertySerializable<Int> {
+  //
+  fun get from UiEngine.PropertySerializable;
+  fun getTimed from UiEngine.PropertySerializable;
+
+  protected static fun valueFromSerializable(s: UiEngine.Serializable): Int {
+    UiEngine.optInt(s).default(0)
+  }
+
+  protected static fun valueToSerializable(v: Int): UiEngine.Serializable {
+    UiEngine.SInt(v)
+  }
+
+  protected static fun getDefaultValue(): Int {
+    0
+  }
+}
+module end;
+
+module UiFloatProp;
+
+class Serializable extends
+  Ui.FloatProperty,
+  UiEngine.PropertySerializable<Float>,
+{
+  //
+  fun get from UiEngine.PropertySerializable;
+  fun getTimed from UiEngine.PropertySerializable;
+
+  protected static fun valueFromSerializable(s: UiEngine.Serializable): Float {
+    UiEngine.optFloat(s).default(0.0)
+  }
+
+  protected static fun valueToSerializable(v: Float): UiEngine.Serializable {
+    UiEngine.SFloat(v)
+  }
+
+  protected static fun getDefaultValue(): Float {
+    0.0
+  }
+}
+
+module end;
+
+module UiStringProp;
+
+class Serializable extends
+  Ui.StringProperty,
+  UiEngine.PropertySerializable<String>,
+{
+  //
+  fun get from UiEngine.PropertySerializable;
+  fun getTimed from UiEngine.PropertySerializable;
+
+  protected static fun valueFromSerializable(s: UiEngine.Serializable): String {
+    UiEngine.optString(s).default("")
+  }
+
+  protected static fun valueToSerializable(v: String): UiEngine.Serializable {
+    UiEngine.SString(v)
+  }
+
+  protected static fun getDefaultValue(): String {
+    ""
   }
 }
 

@@ -166,25 +166,22 @@ class Tabs{
     time = context.timeStamp();
     ppsPath = `sc${time}`;
     if (tabsNeeded || actionsNeeded) {
-      UiJSONProp.Property::initValues(
+      UiSerializableProp.Property::initValues(
         context,
         Some(ppsPath),
         Array[
-          (
-            SKFS.StrID("tabs"),
-            if (tabsNeeded) this.optTabs.map(toJSON) else None(),
-          ),
+          (SKFS.StrID("tabs"), if (tabsNeeded) this.optTabs else None()),
           (
             SKFS.StrID("actions"),
-            if (actionsNeeded) this.optActions.map(toJSON) else None(),
+            if (actionsNeeded) this.optActions else None(),
           ),
         ],
       )
     };
     tabsProperty = if (tabsNeeded) {
-      UiJSONProp.Property::forName(context, Some(ppsPath), "tabs")
+      UiSerializableProp.Property::forName(context, Some(ppsPath), "tabs")
     } else {
-      toJSONProperty(context, this.optTabs)
+      toSerializableProperty(context, this.optTabs)
     };
     verifiedTabsHdl = tabsProperty.valueHdl.mapChild(
       file ~>
@@ -194,13 +191,13 @@ class Tabs{
         },
       context,
       "verifiedTabs/",
-      jsv ~> {
+      sf ~> {
         isTab = s ~>
           s match {
           | Tab _ -> true
           | _ -> false
           };
-        fromJSON(jsv) match {
+        sf match {
         | arr @ SArray _ -> SArray(arr.value.filter(isTab))
         | s if (isTab(s)) -> SArray(Array[s])
         | _ -> SArray(Array[])
@@ -233,7 +230,7 @@ class Tabs{
       context,
       SKFS.DirName::make(refDir, "widgets/"),
       (context, writer, key, tab) ~> {
-        property = toJSONProperty(context, tab.optWidget);
+        property = toSerializableProperty(context, tab.optWidget);
         hdl = WidgetHandle(widgetPipeline(context, property, root, prebuilt));
         writer.write(key, hdl);
       },
@@ -251,9 +248,9 @@ class Tabs{
       (ctx, g) ~> g.toTab(ctx),
     );
     actionsProperty = if (actionsNeeded) {
-      UiJSONProp.Property::forName(context, Some(ppsPath), "actions")
+      UiSerializableProp.Property::forName(context, Some(ppsPath), "actions")
     } else {
-      toJSONProperty(context, this.optActions)
+      toSerializableProperty(context, this.optActions)
     };
     verifiedActionsHdl = actionsProperty.valueHdl.mapChild(
       file ~>
@@ -263,13 +260,13 @@ class Tabs{
         },
       context,
       "verifiedActions/",
-      jsv ~> {
+      sf ~> {
         isAction = s ~>
           s match {
           | Action _ -> true
           | _ -> false
           };
-        fromJSON(jsv) match {
+        sf match {
         | arr @ SArray _ -> SArray(arr.value.filter(isAction))
         | s if (isAction(s)) -> SArray(Array[s])
         | _ -> SArray(Array[])

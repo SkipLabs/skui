@@ -31,7 +31,12 @@ extension class Button extends SObject {
           },
         ),
         "onFire" => SOption(
-          this.optOnFire.map(ap -> (ap as H.ActionPerformer _).fn),
+          this.optOnFire.flatMap(f ->
+            f match {
+            | ha @ H.ActionPerformer _ -> Some(ha.fn)
+            | _ -> None()
+            }
+          ),
         ),
         "disabled" => SOption(this.optDisabled),
         "configuration" => SOption(this.optConfiguration),
@@ -69,8 +74,13 @@ extension class Button extends SObject {
           }
         )
         .default(UiButton.Basic()),
-      optOnFire => maybeGet(value, "onFire").flatMap(optFunction).map(f ->
-        H.ActionPerformer(f)
+      optOnFire => maybeGet(value, "onFire").flatMap(s ~>
+        s match {
+        | v @ UiEngine.Function _
+        | SOption(Some(v @ UiEngine.Function _)) ->
+          Some(H.ActionPerformer(v))
+        | _ -> None()
+        }
       ),
       optDisabled => maybeGet(value, "disabled"),
       optText => maybeGet(value, "text"),

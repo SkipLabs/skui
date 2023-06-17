@@ -2,28 +2,6 @@ module Ui;
 
 const rootPath: SKFS.DirName = SKFS.DirName::create("/");
 
-base class JSONWriter extends SKFS.File {
-  fun write(context: mutable SKFS.Context, optValue: ?JSON.Value): void;
-
-  static fun sinceFile(file: SKFS.File): JSONWriter {
-    file match {
-    | x @ JSONWriter _ -> x
-    | _ -> invariant_violation("Must be Ui.JSONWriter")
-    }
-  }
-}
-
-base class Combine extends JSONWriter {
-  fun combine(context: mutable SKFS.Context, path: String): JSON.Value;
-
-  static fun forFile(file: SKFS.File): Combine {
-    file match {
-    | x @ Combine _ -> x
-    | _ -> invariant_violation("Must be Ui.Combine")
-    }
-  }
-}
-
 base class Property<T: frozen> uses HasClassName {
   fun getName(): String;
   fun getPath(): ?String;
@@ -70,7 +48,7 @@ base class EndLineProperty extends Property<EndLine>
 base class SeparationProperty extends Property<Separation>
 base class IconProperty extends Property<UiIcon.Description>
 base class DecorationProperty extends Property<Ui.Decoration>
-base class JSONProperty extends Property<JSON.Value>
+//base class JSONProperty extends Property<JSON.Value>
 
 base class TimedFile<T: frozen>(
   optValue: ?T,
@@ -283,56 +261,6 @@ base class FPropertyFile<T: SKFS.File, TT: TimedFile<T>> extends
   }
 }
 
-base class PropertyJsonable<T: frozen> final (
-  property: Ui.JSONProperty,
-) extends Ui.Property<T> {
-  protected static fun valueFromJSON(s: JSON.Value): T;
-  protected static fun valueToJSON(v: T): JSON.Value;
-  protected static fun getDefaultValue(): T;
-
-  fun getName(): String {
-    this.property.getName()
-  }
-
-  fun getPath(): ?String {
-    this.property.getPath()
-  }
-
-  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
-    this.property.maybeGet(context, isUntracked).map(static::valueFromJSON)
-  }
-
-  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
-    this.maybeGet(context, isUntracked) match {
-    | Some(v) -> v
-    | _ -> static::getDefaultValue()
-    }
-  }
-
-  fun maybeGetTimed(
-    context: mutable SKFS.Context,
-    isUntracked: Bool = false,
-  ): ?(?T, SKFS.Tick, Int) {
-    this.property.maybeGetTimed(context, isUntracked).map(t ->
-      (t.i0.map(static::valueFromJSON), t.i1, t.i2)
-    )
-  }
-
-  fun getTimed(
-    context: mutable SKFS.Context,
-    isUntracked: Bool = false,
-  ): (T, SKFS.Tick, Int) {
-    this.maybeGetTimed(context, isUntracked) match {
-    | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
-    | _ -> (static::getDefaultValue(), SKFS.Tick(0), 0)
-    }
-  }
-
-  fun set(context: mutable SKFS.Context, optValue: ?T, source: Int): void {
-    this.property.set(context, optValue.map(static::valueToJSON), source)
-  }
-}
-
 base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
   value: TT,
 ) extends Ui.Property<T> {
@@ -393,18 +321,6 @@ base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
 
   fun set(_context: mutable SKFS.Context, _optValue: ?T, _source: Int): void {
     void
-  }
-}
-
-// DUMMY
-
-class DummyCombine() extends Combine {
-  fun combine(_context: mutable SKFS.Context, _path: String): JSON.Value {
-    dummy()
-  }
-
-  fun write(_context: mutable SKFS.Context, _optValue: ?JSON.Value): void {
-    dummy()
   }
 }
 

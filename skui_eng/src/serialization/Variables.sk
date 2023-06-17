@@ -29,59 +29,25 @@ extension base class Prop {
   }
 }
 
-extension class JSONProp extends UiEngine.SObject {
-  const identifier: String = "jsonProp";
+module end;
+
+module UiEngine;
+
+extension class Prop extends SObject {
+  const identifier: String = "prop";
 
   fun serialize(): (String, Map<String, UiEngine.Serializable>) {
     this.pSerialize(static::identifier)
   }
 
-  static fun deserialize(value: Map<String, UiEngine.Serializable>): JSONProp {
-    JSONProp::pDeserialize(value)
+  static fun deserialize(value: Map<String, UiEngine.Serializable>): Prop {
+    Prop::pDeserialize(value)
   }
 
-  static fun fromSerializable(s: UiEngine.Serializable): JSONProp {
+  static fun fromSerializable(s: UiEngine.Serializable): Prop {
     s match {
-    | x @ JSONProp _ -> x
-    | _ -> SKFS.cast_violation("Ui.JSONProp", s)
-    }
-  }
-}
-
-extension class IntProp extends UiEngine.SObject {
-  const identifier: String = "intProp";
-
-  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
-    this.pSerialize(static::identifier)
-  }
-
-  static fun deserialize(value: Map<String, UiEngine.Serializable>): IntProp {
-    IntProp::pDeserialize(value)
-  }
-
-  static fun fromSerializable(s: UiEngine.Serializable): IntProp {
-    s match {
-    | x @ IntProp _ -> x
-    | _ -> SKFS.cast_violation("Ui.IntProp", s)
-    }
-  }
-}
-
-extension class TextProp extends UiEngine.SObject {
-  const identifier: String = "textProp";
-
-  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
-    this.pSerialize(static::identifier)
-  }
-
-  static fun deserialize(value: Map<String, UiEngine.Serializable>): TextProp {
-    TextProp::pDeserialize(value)
-  }
-
-  static fun fromSerializable(s: UiEngine.Serializable): TextProp {
-    s match {
-    | x @ TextProp _ -> x
-    | _ -> SKFS.cast_violation("Ui.TextProp", s)
+    | x @ Prop _ -> x
+    | _ -> SKFS.cast_violation("UiEngine.Prop", s)
     }
   }
 }
@@ -90,14 +56,10 @@ fun checkVariables(
   type_: String,
   value: Map<String, UiEngine.Serializable>,
 ): ?UiEngine.Serializable {
-  if (type_ == JSONProp::identifier) {
-    Some(JSONProp::deserialize(value))
-  } else if (type_ == IntProp::identifier) {
-    Some(IntProp::deserialize(value))
-  } else if (type_ == TextProp::identifier) {
-    Some(TextProp::deserialize(value))
-  } else if (type_ == UiJSONProp.Const::identifier) {
-    Some(UiJSONProp.Const::deserialize(value))
+  if (type_ == Prop::identifier) {
+    Some(Prop::deserialize(value))
+  } else if (type_ == UiSerializableProp.Const::identifier) {
+    Some(UiSerializableProp.Const::deserialize(value))
   } else {
     None()
   }
@@ -105,32 +67,29 @@ fun checkVariables(
 
 module end;
 
-module UiJSONProp;
+module UiSerializableProp;
 
 extension class Const extends UiEngine.SObject {
-  const identifier: String = "jsonConst";
+  const identifier: String = "const";
 
   fun serialize(): (String, Map<String, UiEngine.Serializable>) {
     (
       static::identifier,
-      Map[
-        "value" => UiEngine.fromJSON(this.value),
-        "writer" => (this.writer as H.Writer _).fn,
-      ],
+      Map["value" => this.value, "writer" => (this.writer as H.EWriter _).fn],
     )
   }
 
   static fun deserialize(value: Map<String, UiEngine.Serializable>): Const {
     Const(
-      UiEngine.toJSON(value.get("value")),
-      H.Writer(value.get("writer") as UiEngine.Function _),
+      value.get("value"),
+      H.EWriter(value.get("writer") as UiEngine.Function _),
     )
   }
 
   static fun fromSerializable(s: UiEngine.Serializable): Const {
     s match {
     | x @ Const _ -> x
-    | _ -> SKFS.cast_violation("Ui.Const", s)
+    | _ -> SKFS.cast_violation("UiSerializableProp.Const", s)
     }
   }
 }

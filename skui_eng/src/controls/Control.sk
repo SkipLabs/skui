@@ -9,7 +9,6 @@ base class ActionPerformer {
 class LamActionPerformer(
   perform_: (mutable SKFS.Context, Int) ~> void,
 ) extends ActionPerformer {
-  //
   fun perform(context: mutable SKFS.Context, count: Int): void {
     this.perform_(context, count)
   }
@@ -101,7 +100,7 @@ class Slider{
     stepGetter = toIntOptGetter(context, this.optStep);
     ticksGetter = toIntOptGetter(context, this.optTicks);
     boundsGetter = toRangeOptGetter(context, this.optBounds);
-    property = toJSONValueProperty(context, Some(this.value));
+    property = toValueProperty(context, Some(this.value));
     Ui.Slider::create(
       context,
       path,
@@ -118,9 +117,9 @@ class Slider{
           value => (ctx, iu) ~> {
             isRange = rangeGetter(ctx, iu).default(false);
             if (isRange) {
-              (UiSlider.RangeProp(UiRangeProp.Jsonable(property)))
+              (UiSlider.RangeProp(UiRangeProp.Serializable(property)))
             } else {
-              UiSlider.IntProp(UiIntProp.Jsonable(property))
+              UiSlider.IntProp(UiIntProp.Serializable(property))
             }
           },
           rangeKind => (ctx, iu) ~> rangeGetter(ctx, iu).default(false),
@@ -160,8 +159,8 @@ class Split{
     verticalGetter = toBoolOptGetter(context, this.optVertical);
     firstGetter = toWidgetGetter(context, this.optFirst, root, prebuilt);
     secondGetter = toWidgetGetter(context, this.optSecond, root, prebuilt);
-    property = toJSONValueProperty(context, this.optSeparation);
-    separationProp = UiSeparationProp.Jsonable(property);
+    property = toValueProperty(context, this.optSeparation);
+    separationProp = UiSeparationProp.Serializable(property);
     Ui.Split::create(
       context,
       path,
@@ -209,12 +208,12 @@ class Toggle{
     iconGetter = toIconOptGetter(context, this.optIcon);
     kindGetter = toIntOptGetter(context, this.optKind);
     indeterminateProp = this.optIndeterminate.map(v -> {
-      property = toJSONValueProperty(context, Some(v));
-      indProperty = UiBoolProp.Jsonable(property);
+      property = toValueProperty(context, Some(v));
+      indProperty = UiBoolProp.Serializable(property);
       Ui.defaultOne(Some(indProperty));
     }).default(Ui.defaultOne(None()));
-    property = toJSONValueProperty(context, Some(this.selected));
-    selectedProp = Ui.defaultOne(UiBoolProp.Jsonable(property));
+    property = toValueProperty(context, Some(this.selected));
+    selectedProp = Ui.defaultOne(UiBoolProp.Serializable(property));
     Ui.Toggle::create(
       context,
       path,
@@ -267,31 +266,25 @@ class Scroll{
     time = context.timeStamp();
     ppsPath = `sc${time}`;
     if (hNeeded || hNeeded) {
-      UiJSONProp.Property::initValues(
+      UiSerializableProp.Property::initValues(
         context,
         Some(ppsPath),
         Array[
-          (
-            SKFS.StrID("hScroll"),
-            if (hNeeded) this.optHScroll.map(toJSON) else None(),
-          ),
-          (
-            SKFS.StrID("vScroll"),
-            if (vNeeded) this.optHScroll.map(toJSON) else None(),
-          ),
+          (SKFS.StrID("hScroll"), if (hNeeded) this.optHScroll else None()),
+          (SKFS.StrID("vScroll"), if (vNeeded) this.optHScroll else None()),
         ],
       )
     };
     widgetGetter = toWidgetGetter(context, this.optWidget, root, prebuilt);
     hScrollProperty = if (hNeeded) {
-      UiJSONProp.Property::forName(context, Some(ppsPath), "hScroll")
+      UiSerializableProp.Property::forName(context, Some(ppsPath), "hScroll")
     } else {
-      toJSONValueProperty(context, this.optHScroll)
+      toValueProperty(context, this.optHScroll)
     };
     vScrollProperty = if (vNeeded) {
-      UiJSONProp.Property::forName(context, Some(ppsPath), "vScroll")
+      UiSerializableProp.Property::forName(context, Some(ppsPath), "vScroll")
     } else {
-      toJSONValueProperty(context, this.optVScroll)
+      toValueProperty(context, this.optVScroll)
     };
     hPolicyGetter = toIntOptGetter(context, this.optHPolicy);
     vPolicyGetter = toIntOptGetter(context, this.optVPolicy);
@@ -302,8 +295,8 @@ class Scroll{
       path,
       UiScroll.LamController{
         widget => widgetGetter,
-        hScroll => Ui.defaultOne(UiIntProp.Jsonable(hScrollProperty)),
-        vScroll => Ui.defaultOne(UiIntProp.Jsonable(vScrollProperty)),
+        hScroll => Ui.defaultOne(UiIntProp.Serializable(hScrollProperty)),
+        vScroll => Ui.defaultOne(UiIntProp.Serializable(vScrollProperty)),
         hPolicy => ctx ~>
           hPolicyGetter(ctx, false)
             .map(UiScroll.Policy::fromCode)

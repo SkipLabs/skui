@@ -259,30 +259,40 @@ class DropdownSupplier(
   }
 }
 
-class Writer(fn: UiEngine.Function) extends Ui.JSONWriter {
+class EWriter(fn: UiEngine.Function) extends UiEngine.Writer {
   //
-  fun write(context: mutable SKFS.Context, optValue: ?JSON.Value): void {
+  fun write(
+    context: mutable SKFS.Context,
+    optValue: ?UiEngine.Serializable,
+  ): void {
     _ = get(context, this.fn).map(h ->
-      h.apply(Vector[optValue.default(JSON.Null())])
+      h.apply(Vector[optValue.map(UiEngine.toJSON).default(JSON.Null())])
     )
   }
 }
 
-class Combine(
+class ECombine(
   combineFn: UiEngine.Function,
   optWriteFn: ?UiEngine.Function,
-) extends Ui.Combine {
+) extends UiEngine.Combine {
   //
-  fun combine(context: mutable SKFS.Context, path: String): JSON.Value {
-    get(context, this.combineFn)
+  fun combine(
+    context: mutable SKFS.Context,
+    path: String,
+  ): UiEngine.Serializable {
+    value = get(context, this.combineFn)
       .flatMap(h -> h.apply(Vector[JSON.String(path)]))
-      .default(JSON.Null())
+      .default(JSON.Null());
+    UiEngine.fromJSON(value)
   }
 
-  fun write(context: mutable SKFS.Context, optValue: ?JSON.Value): void {
+  fun write(
+    context: mutable SKFS.Context,
+    optValue: ?UiEngine.Serializable,
+  ): void {
     this.optWriteFn.each(writeFn -> {
       _ = get(context, writeFn).map(h ->
-        h.apply(Vector[optValue.default(JSON.Null())])
+        h.apply(Vector[optValue.map(UiEngine.toJSON).default(JSON.Null())])
       )
     })
   }
