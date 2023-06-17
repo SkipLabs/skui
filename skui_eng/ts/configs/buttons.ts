@@ -68,6 +68,7 @@ var render = (scope: eng.Scope) => {
     widgets: widgets,
     vertical: true,
     mainAlignment: eng.Alignment.Center,
+    crossAlignment: eng.FlCrossAlign.Center,
   })
 };
 

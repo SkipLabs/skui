@@ -4,8 +4,10 @@
     "outDir": "js",
     "baseUrl": ".",
     "paths": {
-      "#skui_eng/*": ["../src/*"]
+      "#skui_eng/*": ["../src/*"],
+      "#skui_base/*": ["../../../skui_base/ts/src/*"],
     },
+    "module": "esnext",
     "strictNullChecks":true
   }
 }

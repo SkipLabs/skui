@@ -211,8 +211,16 @@ class Impl private (
   }
 }
 
+private fun delete(actor: UInt32): void {
+  if (SkargoVersion.kWasm) {
+    delete_(actor)
+  } else {
+    invariant_violation("Shall not be called in non wasm version")
+  }
+}
+
 @cpp_extern("SKIP_UiEnginePicture_delete")
-private native fun delete(actor: UInt32): void;
+private native fun delete_(actor: UInt32): void;
 
 @cpp_extern("SKIP_UiEnginePicture_resize")
 private native fun resize(picture: UInt32, width: UInt32, height: UInt32): void;

@@ -223,7 +223,7 @@ base class Widgetable extends SObject {
   }
 }
 
-extension class Renderable {
+extension class RenderableFn {
   const identifier: String = "renderable";
 
   fun serialize(): (String, Map<String, Serializable>) {

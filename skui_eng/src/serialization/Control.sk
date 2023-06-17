@@ -1,3 +1,5 @@
+module alias H = UiEngineHandle;
+
 module UiEngine;
 
 extension class Button extends SObject {
@@ -28,7 +30,9 @@ extension class Button extends SObject {
           | UiButton.Fab(mini) -> if (!mini) 6 else 7
           },
         ),
-        "action" => SOption(this.optAction),
+        "onFire" => SOption(
+          this.optOnFire.map(ap -> (ap as H.ActionPerformer _).fn),
+        ),
         "disabled" => SOption(this.optDisabled),
         "configuration" => SOption(this.optConfiguration),
       ],
@@ -65,7 +69,9 @@ extension class Button extends SObject {
           }
         )
         .default(UiButton.Basic()),
-      optAction => maybeGet(value, "action"),
+      optOnFire => maybeGet(value, "onFire").flatMap(optFunction).map(f ->
+        H.ActionPerformer(f)
+      ),
       optDisabled => maybeGet(value, "disabled"),
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),

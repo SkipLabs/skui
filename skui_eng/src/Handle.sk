@@ -23,7 +23,11 @@ class Handle private (
   }
 
   fun apply(parameters: Vector<JSON.Value>): ?JSON.Value {
-    apply(this.eptr.value, this.type_, JSON.Array(parameters))
+    if (SkargoVersion.kWasm) {
+      apply(this.eptr.value, this.type_, JSON.Array(parameters))
+    } else {
+      invariant_violation("Shall not be called in non wasm version")
+    }
   }
 
   fun hash(): Int {
@@ -37,8 +41,16 @@ fun init(context: mutable SKFS.Context, optPath: ?String): void {
   _ = context.makeDir(Handle::fromFile, toDirName(optPath), Array[]);
 }
 
+private fun delete(actor: UInt32): void {
+  if (SkargoVersion.kWasm) {
+    delete_(actor)
+  } else {
+    invariant_violation("Shall not be called in non wasm version")
+  }
+}
+
 @cpp_extern("SKIP_UiEngineJS_delete")
-private native fun delete(actor: UInt32): void;
+private native fun delete_(actor: UInt32): void;
 
 @cpp_extern("SKIP_UiEngineJS_apply")
 private native fun apply(

@@ -6,11 +6,20 @@ base class ActionPerformer {
   fun perform(context: mutable SKFS.Context, count: Int): void;
 }
 
+class LamActionPerformer(
+  perform_: (mutable SKFS.Context, Int) ~> void,
+) extends ActionPerformer {
+  //
+  fun perform(context: mutable SKFS.Context, count: Int): void {
+    this.perform_(context, count)
+  }
+}
+
 class Button{
   kind: UiButton.Kind = UiButton.Regular(),
   mode: UiButton.Mode = UiButton.Basic(),
   //
-  optAction: ?Serializable = None(),
+  optOnFire: ?ActionPerformer = None(),
   optDisabled: ?Serializable = None(),
   //
   optText: ?Serializable = None(),
@@ -33,9 +42,6 @@ class Button{
     tooltipGetter = toTextOptGetter(context, this.optTooltip);
     disabledGetter = toBoolOptGetter(context, this.optDisabled);
     iconGetter = toIconOptGetter(context, this.optIcon);
-    optAction = this.optAction.flatMap(optFunction).map(f ->
-      H.ActionPerformer(f)
-    );
     Ui.Button::create(
       context,
       path,
@@ -50,7 +56,9 @@ class Button{
           kind => _ctx ~> this.kind,
           mode => _ctx ~> this.mode,
           onFire => (ctx, optCount) ~>
-            optAction.each(action -> action.perform(ctx, optCount.default(0))),
+            this.optOnFire.each(action ->
+              action.perform(ctx, optCount.default(0))
+            ),
           disabled => ctx ~> disabledGetter(ctx, false).default(false),
         },
         UiButton.init(context, path),
