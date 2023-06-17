@@ -1,0 +1,16 @@
+[package]
+name = "skui_engex"
+version = "0.1.0"
+
+[dependencies]
+skui_eng = {}
+
+[[bin]]
+name = "skuiengex"
+main = "SkuiEngex.main"
+
+[[bin]]
+name = "skuiengex"
+main = "SkuiEngex.main"
+target = "wasm32"
+performer = {"name" = "html", "target" = "mjs"}

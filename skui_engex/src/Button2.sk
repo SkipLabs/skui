@@ -1,0 +1,82 @@
+module SKUIEngExButton2;
+@skuiengex
+fun example(): SkuiEngex.Example {
+  SkuiEngex.Example(
+    Cli.Command("button2").about("Button that change label example"),
+    _args ~> Renderable(),
+    ("SKUIEngExButton2.Renderable", Renderable::deserialize),
+  )
+}
+
+class Renderable() extends UiEngine.Renderable uses HasClassName {
+  fun getId(): String {
+    this.getClassName()
+  }
+
+  fun render(ctx: mutable SKFS.Context): ?UiEngine.Description {
+    time = ctx.timeStamp();
+    path = time.toString();
+    UiSerializableProp.Property::initValues(
+      ctx,
+      Some(path),
+      Array[(SKFS.StrID("text"), Some(!"Updated text on button click."))],
+    );
+    textProp = UiSerializableProp.Property::forName(ctx, Some(path), "text");
+    icon = name ~> UiIcon.Description(UiIcon.KCategory("themify"), name);
+    optIcon = name ~> Some(icon(name));
+    label = UiEngine.Label{
+      optText => Some(UiEngine.Prop("text", Some(path), Ui.PProp())),
+      optIcon => optIcon("comment"),
+    };
+    decorated = UiEngine.Decorated{
+      optDecoration => Some(
+        Ui.Nested(
+          Array[
+            Ui.Padding(Geometry.Insets::all(6.0)),
+            Ui.Background(
+              Colors.aliceblue(),
+              Geometry.Insets::all(6.0),
+              Some(Ui.RHeight(50.0)),
+            ),
+          ],
+        ),
+      ),
+      optWidget => Some(label),
+    };
+    bName = "My Button";
+    button = UiEngine.Button{
+      //
+      optOnFire => Some(
+        UiEngine.LamActionPerformer((ctx, count) ~>
+          textProp.set(
+            ctx,
+            Some(
+              !`The '${bName}' button was fired with a click count of ${count}`,
+            ),
+            0,
+          )
+        ),
+      ),
+      optText => Some(!bName),
+      optIcon => optIcon("heart"),
+    };
+    Some(
+      UiEngine.Flex{
+        optWidgets => Some(UiEngine.SArray(Array[decorated, button])),
+        optVertical => Some(UiEngine.SBool(true)),
+        optMainAlignment => Some(UiEngine.SInt(2)),
+        optCrossAlignment => Some(UiEngine.SInt(2)),
+      },
+    )
+  }
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (this.getClassName(), Map[])
+  }
+
+  static fun deserialize(_value: Map<String, UiEngine.Serializable>): this {
+    Renderable()
+  }
+}
+
+module end;

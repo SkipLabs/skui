@@ -1,0 +1,145 @@
+module alias H = UiEngineHandle;
+
+module SkuiEngex;
+
+const kName: String = "skuiengex";
+const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/eng/ex/");
+
+class Example(
+  command: Cli.Command,
+  getter: Cli.ParseResults ~> UiEngine.Renderable,
+  deserializer: (
+    String,
+    Map<String, UiEngine.Serializable> ~> UiEngine.Serializable,
+  ),
+)
+
+fun main(): void {
+  available = mutable Vector[
+    SKUIEngExButton.example(),
+    SKUIEngExButton2.example(),
+  ];
+  /*#forEachFunction (@skuiengex, #function, #functionName) {
+    available.push(#function())
+  };*/
+  perform(available);
+}
+
+fun perform(available: readonly Vector<Example>): void {
+  command = Cli.Command(kName)
+    .about("SKUI's Engine example viewer")
+    .arg(
+      Cli.BoolArg("version")
+        .short("V")
+        .long("version")
+        .about("Print version info and exit"),
+    );
+  if (!SkargoVersion.kWasm) {
+    !command = command
+      .arg(
+        Cli.StringArg("screen")
+          .short("s")
+          .long("screen")
+          .about("The screen where to open the window")
+          .default("0"),
+      )
+      .arg(
+        Cli.StringArg("fps")
+          .about("The frame per second refresh rate")
+          .default("60"),
+      )
+  };
+  !command = command
+    .help()
+    .subcommand(
+      Cli.Command("help").extra().about("Displays help for a subcommand"),
+    );
+  available.each(v -> !command = command.subcommand(v.command));
+  args = Cli.parseArgs(command);
+  args.error match {
+  | Some(err) ->
+    error = args.subcommand match {
+    | Some(subcmd) ->
+      command._subcommands.find(c -> c.name == subcmd) match {
+      | Some(cmd) -> Cli.usage(cmd, false, Some(command))
+      | None() -> `Unknown subcommand ${subcmd}`
+      }
+    | None() -> Cli.usage(command, false)
+    };
+    SkuiViews.display(None(), Some(`error: ${err.getMessage()}\n${error}`))
+  | _ ->
+    if (args.getBool("version")) {
+      SkuiViews.display(Some(kName + " " + SkargoVersion.kVersion))
+    } else {
+      args.maybeGetSubcommand() match {
+      | Some(subcmd) ->
+        if (subcmd == "help") {
+          optSubcmd = args.extra.maybeGet(0);
+          optSubcmd.flatMap(subcmd ->
+            args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
+          ) match {
+          | Some(cmd) ->
+            SkuiViews.display(Some(Cli.usage(cmd, true, Some(args.cmd))))
+          | _ ->
+            error = optSubcmd
+              .map(cmd -> `error: Invalid subcommand ${cmd}`)
+              .default("error: No subcommand specified");
+            SkuiViews.display(Some(Cli.usage(args.cmd, true)), Some(error))
+          };
+        } else {
+          available.filter(v -> v.command.name == subcmd).maybeGet(0) match {
+          | Some(example) ->
+            wId = 0;
+            title = example.command._about match {
+            | Some(t) -> t
+            | _ -> command._about.fromSome()
+            };
+            _ = SKFS.initMainContext(SKFS.Context{});
+            SKFS.Context::withGc(context ~> {
+              initEngineWidget(context, args, wId, example);
+              context.initPre();
+            });
+            if (SkargoVersion.kWasm) {
+              SKUIJS.init(uint32(wId), title);
+            } else {
+              screen = args.getString("screen").toIntOption().default(0);
+              fps = args.getString("fps").toIntOption().default(60);
+              SKUIX11.launch(wId, title, screen, fps);
+            }
+          | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
+          }
+        }
+      | None() -> SkuiViews.display(Some(Cli.usage(args.cmd, true)))
+      }
+    }
+  }
+}
+
+fun initEngineWidget(
+  context: mutable SKFS.Context,
+  args: Cli.ParseResults,
+  wId: Int,
+  example: Example,
+): void {
+  context.setGlobal(
+    `UiEngine.Deserializer.${example.deserializer.i0}`,
+    UiEngine.Deserializer(example.deserializer.i1),
+  );
+  context.setGlobal("Ui.Properties.Root", rootPath);
+  support = SKUIGL.DrawableSupport(SkuiViews.pictureToTexturable);
+  optPath: ?String = None();
+  H.init(context, optPath);
+  builder = (ctx, root) ~> {
+    UiSerializableProp.Property::initValues(
+      ctx,
+      optPath,
+      Array[(SKFS.StrID("root"), Some(example.getter(args)))],
+    );
+    property = UiSerializableProp.Property::forName(ctx, optPath, "root");
+    hdl = UiEngine.widgetPipeline(ctx, property, root);
+    (ctx, _root) ~> hdl.get(ctx).widget
+  };
+  SkuiViews.initUi(context, wId, builder, support);
+}
+
+module end;
