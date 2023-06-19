@@ -341,6 +341,7 @@ class NodePerformer(args: Array<String>) extends Performer {
           Array[Path.join(target, `${name}.mjs`)],
         ),
         verbose,
+        true,
       )
     )
   }

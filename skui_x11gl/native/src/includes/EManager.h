@@ -1,6 +1,8 @@
 #ifndef __SKUI_EVENT_MANAGER_H__
 #define __SKUI_EVENT_MANAGER_H__
 
+#include <stdint.h>
+#include <string>
 #include <functional>
 #include <X11/Xlib.h>
 

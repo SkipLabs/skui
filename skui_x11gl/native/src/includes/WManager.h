@@ -1,9 +1,11 @@
 #ifndef __SKUI_WINDOW_MANAGER_H__
 #define __SKUI_WINDOW_MANAGER_H__
 
+#include <string>
 #include <functional>
 #include <X11/Xutil.h>
 #include <limits.h>
+
 
 namespace skui
 {

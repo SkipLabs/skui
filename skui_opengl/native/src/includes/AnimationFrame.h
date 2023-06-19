@@ -2,6 +2,8 @@
 #define __SKUI_ANIMATION_FRAME_H__
 
 #include <functional>
+#include <stdint.h>
+#include <fstream>
 
 namespace skui
 {

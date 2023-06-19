@@ -677,14 +677,15 @@ fun buildResource(
       redefs.push("--redefine-sym");
       redefs.push(`_binary_${nf}_${suffix}=_binary_${nr}_${suffix}`);
     });
+    (b, o) = copyObjOptions();
     cmd = Array[
       "objcopy",
       "-B",
-      "i386:x86-64",
+      b,
       "-I",
       "binary",
       "-O",
-      "elf64-x86-64",
+      o,
       file,
       object,
     ].concat(redefs.toArray());
@@ -706,5 +707,19 @@ fun max(ot1: ?Int, ot2: ?Int): ?Int {
   | (Some(t1), Some(t2)) -> Some(if (t1 > t2) t1 else t2)
   | (optTime, None()) -> optTime
   | (None(), optTime) -> optTime
+  }
+}
+
+fun arch(): String {
+  p = System.subprocess(Array["gcc", "-dumpmachine"]);
+  p.stdout.trim();
+}
+
+fun copyObjOptions(): (String, String) {
+  arch().split("-").maybeGet(0) match {
+  | Some("x86_64") -> ("i386:x86-64", "elf64-x86-64")
+  | Some("aarch64")
+  | _ ->
+    ("aarch64", "elf64-littleaarch64")
   }
 }

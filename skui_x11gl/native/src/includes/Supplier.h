@@ -1,10 +1,10 @@
 #ifndef __SKUI_WINDOW_SUPPLIER_H__
 #define __SKUI_WINDOW_SUPPLIER_H__
 
+
 #include "EManager.h"
 #include "WManager.h"
 #include <exception>
-#include <string>
 #include <map>
 
 namespace skui
