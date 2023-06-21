@@ -39,7 +39,7 @@ class LinksImpl implements Links {
     };
     this.SKIP_print_raw = utils.log;
     this.SKIP_print_string = utils.log;
-    this.__cxa_throw = (strPtr: ptr) => utils.ethrow(strPtr);
+    this.__cxa_throw = (exc: ptr) => utils.ethrow(exc);
     this.SKIP_throw_cruntime = (code: int) => {
       if (this.env) this.env.throwRuntime(code);
     }

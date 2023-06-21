@@ -57,6 +57,7 @@ interface Exported {
   SKIP_chillByteArray: (skArray: ptr) => ptr;
   SKIP_SKUIMessage_manage: (skMsg: ptr) => void;
   SKIP_SKUIMessage_messageFailure: (skMsg: ptr) => void;
+  SKIP_getExceptionMessage: (skExc: ptr) => ptr;
 }
 
 export function toBeDefined(fn: String) {
@@ -203,9 +204,9 @@ export class Utils {
       return this.callWithException(exn_handler, exception);
     }
   }
-  ethrow = (strPtr: ptr) => {
+  ethrow = (skExc: ptr) => {
     if (this.env && this.env.onException) this.env.onException();
-    let message = strPtr != null && strPtr != 0 ? this.importString(strPtr) : "SKFS Internal error";
+    let message = skExc != null && skExc != 0 ? this.importString(this.exports.SKIP_getExceptionMessage(skExc)) : "SKFS Internal error";
     throw new Error(message);
   }
   deleteException = (actor: int) => {
