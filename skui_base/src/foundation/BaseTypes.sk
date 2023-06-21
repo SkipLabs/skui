@@ -165,9 +165,12 @@ class JSException(private eptr: SKFS.ExternalPointer) extends Exception {
 
 @export("SKIP_callWithException")
 fun callWithException(f: () -> void, exc: UInt32): void {
-  saveExn(JSException::make(exc));
+  saveException(JSException::make(exc));
   f();
 }
+
+@cpp_extern("SKIP_SKUI_saveException")
+native fun saveException(exn: Exception): void;
 
 @cpp_extern("SKIP_JS_getExceptionMessage")
 native fun getJSExceptionMessage(actor: UInt32): String;

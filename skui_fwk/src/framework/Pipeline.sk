@@ -295,6 +295,7 @@ fun initPipeline(
       }
     ,
   );
+  // Update viewport constraints for next update
   _ = viewportLeafsHdl.contextWriterKeyMap(
     Ui.BoxConstraints::fromFile,
     context,

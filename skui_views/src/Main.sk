@@ -41,7 +41,10 @@ fun initUi(
   inits.each(i -> i(context));
   getter = builder(context, root);
   FWKPipeline.initPipeline(context, getter, windowHdl, root, support);
-  context.!optPreOnChanged = Some(_ctx ~> FWK.update(uint32(wId)));
+  context.setGlobal(
+    "SKFS.Updater",
+    SKFS.Updater(_ctx ~> FWK.update(uint32(wId))),
+  );
   context.clearProfile();
 }
 

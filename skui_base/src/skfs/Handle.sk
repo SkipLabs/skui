@@ -538,7 +538,13 @@ class IHandle<T: frozen>(
     value: Array<T>,
   ): void {
     if (context.currentArrow().isSome()) {
-      context.postpone(ctx ~> this.writeArray(ctx, baseName, value))
+      context.postpone(
+        SKFS.ToWrite(
+          this.dirName,
+          baseName,
+          value.map(v -> this.converter.toFile(v)),
+        ),
+      )
     } else {
       invariant(context.currentArrow().isNone(), "Must be call on root.");
       context.maybeGetEagerDir(this.dirName) match {

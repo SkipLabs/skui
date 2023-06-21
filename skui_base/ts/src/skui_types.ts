@@ -204,7 +204,7 @@ export class Utils {
     }
   }
   ethrow = (strPtr: ptr) => {
-    this.env.onException();
+    if (this.env && this.env.onException) this.env.onException();
     let message = strPtr != null && strPtr != 0 ? this.importString(strPtr) : "SKFS Internal error";
     throw new Error(message);
   }
@@ -415,7 +415,7 @@ export function run(
   ).then(
     result => {
       let env = result[0].environment(result[1]);
-      let wasm = import("./" + wasm64 + ".wasm.mjs").then(wm => env.base64Decode(wm.base64)).then(
+      return import("./" + wasm64 + ".wasm.mjs").then(wm => env.base64Decode(wm.base64)).then(
         buffer => start(modules, buffer, env, managers)
       );
     }

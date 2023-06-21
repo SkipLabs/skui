@@ -366,6 +366,7 @@ class NodePerformer(args: Array<String>) extends Performer {
         "    this.appendTextTo = fs.appendFileSync;",
         "    this.base64Decode = (base64) => Buffer.from(base64, \"base64\");",
         "    this.complete = (exports, shared) => exports.skip_main();",
+        "    this.throwRuntime = (code) => process.exit(code);",
         "  }",
         "}",
         "",

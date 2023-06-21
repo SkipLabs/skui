@@ -123,8 +123,8 @@ fun main(): void {
           | _ ->
             trycall(() ->
               subcmd match {
-              | "init" -> Skuibuild.execInit(args)
-              | "help" -> Skuibuild.execHelp(args)
+              | "init" -> Skargo.execInit(args)
+              | "help" -> Skargo.execHelp(args)
               | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
               }
             )
@@ -246,39 +246,6 @@ fun buildCommand(name: String): Cli.Command {
         "Directory for all generated artifacts",
       ),
     )
-}
-
-fun execInit(args: Cli.ParseResults): void {
-  path = args
-    .maybeGetString("path")
-    .map(p -> Path.resolve(p))
-    .default(getcwd());
-  if (!FileSystem.exists(path)) {
-    ensureDirectory(path, args.getBool("verbose"));
-  };
-  rootDir = path;
-  optManifestFile = loop {
-    if (FileSystem.exists(Path.join(path, Skargo.kManifestFile))) {
-      break Some(path)
-    };
-    if (Path.isRoot(path)) {
-      break None()
-    };
-    !path = Path.parentname(path)
-  };
-  optManifestFile match {
-  | Some(manifestFile) ->
-    print_string(`\`${Path.parentname(manifestFile)}\` already initialized.`)
-  | _ ->
-    manifestFile = Path.join(rootDir, Skargo.kManifestFile);
-    name = Path.basename(rootDir);
-    FileSystem.writeTextFile(
-      manifestFile,
-      toml(name, args.maybeGetString("test-harness")),
-    );
-    srcDir = Path.join(rootDir, "src");
-    ensureDirectory(srcDir, args.getBool("verbose"))
-  }
 }
 
 fun execUpdate(args: Cli.ParseResults, env: Skargo.Env): void {
@@ -452,21 +419,6 @@ fun execCheckAll(args: Cli.ParseResults): void {
     execFormatAndCheck(args, env, true);
     SKFS.destroyObstack(pos);
   });
-}
-
-fun execHelp(args: Cli.ParseResults): void {
-  optSubcmd = args.extra.maybeGet(0);
-  optSubcmd.flatMap(subcmd ->
-    args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
-  ) match {
-  | Some(cmd) -> print_string(Cli.usage(cmd, true, Some(args.cmd)))
-  | _ ->
-    optSubcmd match {
-    | Some(subcmd) -> print_error(`error: Invalid subcommand ${subcmd}.`)
-    | _ -> print_error("error: No subcommand specified.")
-    };
-    print_string(Cli.usage(args.cmd, true))
-  };
 }
 
 @cpp_extern("SKIP_setenv")

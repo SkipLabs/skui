@@ -87,6 +87,7 @@ extern "C"
   void SKIP_destroy_Obstack(void *saved);
 }
 
+extern thread_local void* exn;
 
 bool _exec(std::string command, std::string &result, bool exep)
 {
@@ -216,4 +217,9 @@ extern "C"
   void SKIP_JS_deleteException(uint32_t actor) {
     // Nothing
   }
+
+  void SKIP_SKUI_saveException(void* e) {
+    exn = e;
+  }
+
 }

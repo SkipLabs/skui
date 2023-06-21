@@ -1,5 +1,7 @@
 module SKFS;
 
+class Updater(fn: mutable Context ~> void) extends File
+
 class Random(value: .Random) extends File {
   //
   static fun fromFile(obj: SKFS.File): this {
@@ -39,7 +41,11 @@ extension class Context {
 
   mutable fun updateIfRoot(): void {
     if (this.currentArrow().isNone()) {
-      this.update()
+      if (this.updateWithStatus(0)) {
+        this.getGlobal("SKFS.Updater").map(Updater::fromFile).each(u ->
+          u.fn(this)
+        )
+      }
     }
   }
 

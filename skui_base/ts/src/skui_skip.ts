@@ -4,6 +4,7 @@ interface Env extends Environment {
   window: () => Window | null;
   arguments: Array<string>;
   appendTextTo: (name: string, content: string) => void;
+  throwRuntime: (code: int) => void;
 }
 
 class LinksImpl implements Links {
@@ -21,6 +22,7 @@ class LinksImpl implements Links {
   SKIP_print_string: (strPtr: ptr) => void;
   SKIP_etry: (f: ptr, exn_handler: ptr) => ptr;
   __cxa_throw: (strPtr: ptr) => void;
+  SKIP_throw_cruntime: (code: int) => void;
   SKIP_JS_timeStamp: () => float;
 
   SKIP_JS_deleteException: (actor: int) => void;
@@ -37,10 +39,10 @@ class LinksImpl implements Links {
     };
     this.SKIP_print_raw = utils.log;
     this.SKIP_print_string = utils.log;
-    this.__cxa_throw = (strPtr: ptr) => {
-      let message = strPtr != null && strPtr != 0 ? utils.importString(strPtr) : "SKFS Internal error";
-      throw new Error(message);
-    };
+    this.__cxa_throw = (strPtr: ptr) => utils.ethrow(strPtr);
+    this.SKIP_throw_cruntime = (code: int) => {
+      if (this.env) this.env.throwRuntime(code);
+    }
     this.SKIP_print_char = (c: int) => {
       var str = String.fromCharCode(c);
       if (str == "\n") {
@@ -98,9 +100,8 @@ class Manager implements ToWasmManager {
     toWasm.__setErrNo = (err: ptr) => {
         throw new Error("ErrNo " + err);
     };
-    toWasm.__cxa_throw = (strPtr: ptr) => {
-      return links.__cxa_throw(strPtr)
-    };
+    toWasm.__cxa_throw = (strPtr: ptr) => links.__cxa_throw(strPtr);
+    toWasm.SKIP_throw_cruntime = (code: int) => links.SKIP_throw_cruntime(code);
     toWasm.cos =  Math.cos;
     toWasm.sin =  Math.sin;
     toWasm.sqrt =  Math.sqrt;
@@ -140,6 +141,7 @@ interface ToWasm {
   abortOnCannotGrowMemory: (err: ptr) => void;
   __setErrNo: (err: ptr) => void;
   __cxa_throw: (strPtr: ptr) => void;
+  SKIP_throw_cruntime: (code: int) => void;
   SKIP_JS_timeStamp: () => float;
   cos: (v: float) => float;
   sin: (v: float) => float;
