@@ -492,6 +492,7 @@ fun tsResource(mName: String, path: String): String {
     "  }",
     "}",
     "",
+    "/** @sk init */",
     "export function init(env: Env) {",
     "  return Promise.resolve(new Manager(env));",
     "}",
