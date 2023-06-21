@@ -25,7 +25,13 @@ class Env implements Environment {
   start: (wId: int) => Promise<int>;
   imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
   arguments: Array<string>;
-  configs?: Array<any>
+  configs?: Array<any>;
+  throwRuntime = (code: int) => {
+    this.onException();
+    if (code != 0) {
+      throw new Error("Error with code: " + code);
+    }
+  }
 
   constructor(window: Window, navigator: Navigator, configs?: Array<any>) {
     this.configs = configs;
