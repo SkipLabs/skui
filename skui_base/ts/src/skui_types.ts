@@ -42,7 +42,7 @@ interface Exported {
   SKIP_checkObstack: () => ptr;
   SKIP_cleanObstack: (ptr: ptr) => void;
   SKIP_getFloatAt: (addr: ptr, index: int) => float;
-  SKIP_skfs_init: () => void;
+  SKIP_skfs_init: (size: int) => void;
   SKIP_initializeSkip: () => void;
   SKIP_skfs_end_of_init: () => void;
   SKIP_printCall: (txtPtr: ptr) => void;
@@ -58,6 +58,8 @@ interface Exported {
   SKIP_SKUIMessage_manage: (skMsg: ptr) => void;
   SKIP_SKUIMessage_messageFailure: (skMsg: ptr) => void;
   SKIP_getExceptionMessage: (skExc: ptr) => ptr;
+  SKIP_get_persistent_size: () => int;
+  __heap_base: any;
 }
 
 export function toBeDefined(fn: String) {
@@ -148,9 +150,14 @@ export class Utils {
   };
   runWithGc = <T>(fn: () => T) => {
     let obsPos = this.exports.SKIP_checkObstack();
-    let res = fn();
-    this.exports.SKIP_cleanObstack(obsPos);
-    return res;
+    try {
+      let res = fn();
+      this.exports.SKIP_cleanObstack(obsPos);
+      return res;
+    } catch (ex) {
+      this.exports.SKIP_cleanObstack(obsPos);
+      throw ex;
+    }
   };
   getBytesFromBuffer = (dataPtr: ptr, length: int) => {
     return new Uint8ClampedArray(this.memory.buffer, dataPtr, length);
@@ -163,7 +170,9 @@ export class Utils {
     return values;
   };
   init = () => {
-    this.exports.SKIP_skfs_init();
+    let heapBase = this.exports.__heap_base.valueOf();
+    let size = this.memory.buffer.byteLength - heapBase;
+    this.exports.SKIP_skfs_init(size);
     this.exports.SKIP_initializeSkip();
     this.exports.SKIP_skfs_end_of_init();
   }
@@ -206,7 +215,8 @@ export class Utils {
   }
   ethrow = (skExc: ptr) => {
     if (this.env && this.env.onException) this.env.onException();
-    let message = skExc != null && skExc != 0 ? this.importString(this.exports.SKIP_getExceptionMessage(skExc)) : "SKFS Internal error";
+    let skMessage = skExc != null && skExc != 0 ? this.exports.SKIP_getExceptionMessage(skExc) : null;
+    let message = skMessage != null && skMessage != 0 ? this.importString(skMessage) : "SKFS Internal error";
     throw new Error(message);
   }
   deleteException = (actor: int) => {

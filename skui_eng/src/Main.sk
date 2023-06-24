@@ -21,7 +21,8 @@ fun main(): void {
     if (isExample) {
       vtry<void>(
         () -> {
-          jso = JSON.decode(arg).expectObject();
+          jsv = JSON.decode(arg);
+          jso = jsv.expectObject();
           jso.maybeGetString("name").each(name ->
             renderers.push(Renderer(name, jso.maybeGetString("description")))
           )

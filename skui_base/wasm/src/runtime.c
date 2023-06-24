@@ -44,10 +44,3 @@ void SKIP_SKUI_cleanObstack(void* saved) {
     initialized = 0;
   }
 }
-
-void* exec = (void*)0;
-
-
-void SKIP_SKUI_saveException(void* e) {
-  exec = e;
-}

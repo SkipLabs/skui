@@ -1,5 +1,7 @@
 module Ui;
 
+const kCompensate: Bool = false;
+
 class LinePortion(start: Int, optEnd: ?Int) extends SKFS.File uses Orderable {
   fun contains(column: Int): Bool {
     column >= this.start && this.optEnd.map(end -> column < end).default(true)
@@ -795,7 +797,7 @@ class FontIcon(
 }
 
 fun thickness(size: Float, isNotBold: Bool = true): Float {
-  if (isNotBold && size < 20.0) {
+  if (kCompensate && isNotBold && size < 20.0) {
     a = -1.0 / 350.0;
     b = 2.0 / 35.0;
     a * size + b;

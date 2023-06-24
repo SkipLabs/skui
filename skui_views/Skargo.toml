@@ -11,3 +11,9 @@ skui_x11gl = {}
 [[bin]]
 name = "skuiviews"
 main = "SkuiViews.main"
+
+[[bin]]
+name = "skuiviews"
+main = "SkuiViews.main"
+target = "wasm32"
+performer = {"name" = "html", "target" = "mjs"}

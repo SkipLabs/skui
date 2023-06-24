@@ -1,5 +1,7 @@
 module SKUIGL;
 
+const kAlwaysDraw: Bool = false;
+
 const webglPath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/webgl/");
 const webglProgramsPath: SKFS.DirName = SKFS.DirName::create(
   "/ui/skuigl/programs/",
@@ -197,7 +199,7 @@ class DrawableSupport(
       Ui.Handles::fromFile,
       context,
       layerHandlesPath,
-      (_context, writer, key, handles) ~> {
+      (_, writer, key, handles) ~> {
         ctxLayer = key as CtxLayer _;
         !ctxLayer.layer.path = handles.optViewport.fromSome();
         writer.write(ctxLayer, handles);
@@ -594,19 +596,21 @@ fun drawFrame(
   width: UInt32,
   height: UInt32,
 ): void {
-  optVersion = context
-    .getGlobal("SKUIGL.Version")
-    .map(SKFS.IntFile::fromFile)
-    .map(f -> f.value);
   frame = context
     .getGlobal("SKUIGL.AnimationFrame")
     .map(SKFS.IntFile::fromFile)
     .map(f -> f.value + 1)
     .default(0);
   context.setGlobal("SKUIGL.AnimationFrame", SKFS.IntFile(frame));
+  optVersion = context
+    .getGlobal("SKUIGL.Version")
+    .map(SKFS.IntFile::fromFile)
+    .map(f -> f.value);
   optDrawTick = getDrawTick(context);
   optDrawTick match {
-  | Some(tick) if (!optVersion.map(v -> tick.value <= v).default(false)) ->
+  | Some(
+    tick,
+  ) if (optVersion.map(v -> tick.value > v).default(true) || kAlwaysDraw) ->
     drawCtxFrame(context, GL.Ctx(cid), width, height, tick.value)
   | _ -> void
   };
