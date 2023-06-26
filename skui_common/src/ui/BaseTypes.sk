@@ -620,4 +620,119 @@ class DummyVpDefinition() extends ViewportDefinition {
   }
 }
 
+class DummyDrawableSupport() extends DrawableSupport {
+  //
+  fun init(
+    _context: mutable SKFS.Context,
+    _drawables: SKFS.EHandle<Ui.Drawables>,
+  ): void {
+    dummy()
+  }
+
+  fun msdf(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _picture: Picture,
+    _conv: Geometry.Rect ~> Geometry.Rect,
+    _pxRange: Int,
+    _thickness: Float,
+    _paint: Ui.Paint,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun ellipse(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _paint: Ui.Paint,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun disk(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _paint: Ui.Paint,
+    _thickness: Float,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun roundedRectangle(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _color: .Color,
+    _radius: Float,
+    _smooth: Float = 2.0,
+    _optBorder: ?Ui.Border = None(),
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun rectangle(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _paint: Ui.Paint,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun diagonal(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _fromTopLeft: Bool,
+    _thickness: Float,
+    _color: .Color,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun triangle(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _paint: Ui.Paint,
+    _side: .UiSide,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun progress(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _progress: Float,
+    _color1: .Color,
+    _color2: .Color,
+    _thickness: Float,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun loading(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _color1: .Color,
+    _color2: .Color,
+    _step: Int,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun image(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _picture: Picture,
+  ): Ui.Drawable {
+    dummy()
+  }
+
+  fun boxShadow(
+    _offset: Geometry.Offset,
+    _size: Geometry.Size,
+    _sigma: Float,
+    _paint: Ui.Paint,
+  ): Ui.Drawable {
+    dummy()
+  }
+}
+
 module end;

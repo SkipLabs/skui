@@ -457,10 +457,10 @@ fun toDrawables(
   top = 0.0;
   left = 0.0;
   optPrevious: ?Char = None();
-  (ratio, faceId) = support match {
+  faceId = support match {
   | Ui.RatioDrawableSupport(_, ratio) ->
-    (ratio, style.faceId with {size => style.faceId.size * ratio})
-  | _ -> (1.0, style.faceId)
+    style.faceId with {size => style.faceId.size * ratio}
+  | _ -> style.faceId
   };
 
   for (char in text) {
