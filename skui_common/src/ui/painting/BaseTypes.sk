@@ -1,14 +1,24 @@
 module Ui;
 
 base class Handle extends SKFS.File {
-  fun draw(shift: Ui.Shift, window: Geometry.Rectangle, height: Int): void;
+  fun draw(
+    shift: Ui.Shift,
+    window: Geometry.Rectangle,
+    height: Int,
+    ratio: Float,
+  ): void;
 }
 
 class LambdaHandle(
-  fn: (Ui.Shift, Geometry.Rectangle, Int) ~> void,
+  fn: (Ui.Shift, Geometry.Rectangle, Int, Float) ~> void,
 ) extends Ui.Handle {
-  fun draw(shift: Ui.Shift, window: Geometry.Rectangle, height: Int): void {
-    this.fn(shift, window, height);
+  fun draw(
+    shift: Ui.Shift,
+    window: Geometry.Rectangle,
+    height: Int,
+    ratio: Float,
+  ): void {
+    this.fn(shift, window, height, ratio);
   }
 }
 

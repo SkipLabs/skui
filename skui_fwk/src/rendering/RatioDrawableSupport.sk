@@ -1,0 +1,128 @@
+module Ui;
+
+class RatioDrawableSupport(
+  support: DrawableSupport,
+  ratio: Float,
+) extends DrawableSupport {
+  //
+  fun init(
+    context: mutable SKFS.Context,
+    drawables: SKFS.EHandle<Ui.Drawables>,
+  ): void {
+    this.support.init(context, drawables);
+  }
+
+  fun msdf(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    picture: Picture,
+    conv: Geometry.Rect ~> Geometry.Rect,
+    pxRange: Int,
+    thickness: Float,
+    paint: Ui.Paint,
+  ): Ui.Drawable {
+    this.support.msdf(offset, size, picture, conv, pxRange, thickness, paint);
+  }
+
+  fun ellipse(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+  ): Ui.Drawable {
+    this.support.ellipse(offset, size, paint)
+  }
+
+  fun disk(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    thickness: Float,
+  ): Ui.Drawable {
+    this.support.disk(offset, size, paint, thickness)
+  }
+
+  fun roundedRectangle(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    color: .Color,
+    radius: Float,
+    smooth: Float = 2.0,
+    optBorder: ?Ui.Border = None(),
+  ): Ui.Drawable {
+    this.support.roundedRectangle(
+      offset,
+      size,
+      color,
+      radius,
+      smooth,
+      optBorder,
+    )
+  }
+
+  fun rectangle(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+  ): Ui.Drawable {
+    this.support.rectangle(offset, size, paint)
+  }
+
+  fun diagonal(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    fromTopLeft: Bool,
+    thickness: Float,
+    color: .Color,
+  ): Ui.Drawable {
+    this.support.diagonal(offset, size, fromTopLeft, thickness, color)
+  }
+
+  fun triangle(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    paint: Ui.Paint,
+    side: .UiSide,
+  ): Ui.Drawable {
+    this.support.triangle(offset, size, paint, side)
+  }
+
+  fun progress(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    progress: Float,
+    color1: .Color,
+    color2: .Color,
+    thickness: Float,
+  ): Ui.Drawable {
+    this.support.progress(offset, size, progress, color1, color2, thickness)
+  }
+
+  fun loading(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    color1: .Color,
+    color2: .Color,
+    step: Int,
+  ): Ui.Drawable {
+    this.support.loading(offset, size, color1, color2, step)
+  }
+
+  fun image(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    picture: Picture,
+  ): Ui.Drawable {
+    this.support.image(offset, size, picture)
+  }
+
+  fun boxShadow(
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+    sigma: Float,
+    paint: Ui.Paint,
+  ): Ui.Drawable {
+    this.support.boxShadow(offset, size, sigma, paint)
+  }
+}
+
+module end;

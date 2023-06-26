@@ -2,7 +2,7 @@ import {int, ptr, Links, Utils, ToWasmManager, Environment, Shared} from "#skui_
 import {Factory} from "#skui_opengl/skui_glcontext";
 
 interface Exported {
-  SKIP_SKUIGL_performFrame: (cid: int, width: int, height: int) => void;
+  SKIP_SKUIGL_performFrame: (cid: int, width: int, height: int, ratio: int) => void;
   SKIP_SKUIGL_setWindowContext: (wId: int, cid: int) => void;
 }
 

@@ -10,6 +10,7 @@ base class PathEdge extends PathEntity {}
 
 base class PathElement() uses Hashable, Equality {
   fun getEndOffset(previous: Geometry.Offset): Geometry.Offset;
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): this;
 }
 
 class ClosePath() extends PathElement, PathSegment {

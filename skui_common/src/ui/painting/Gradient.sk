@@ -133,6 +133,10 @@ class LinearGradient(
   fun scaleAlpha(factor: Float): LinearGradient {
     this.withAlpha(this.alpha * factor);
   }
+
+  fun scale(s: Float): LinearGradient {
+    static(this.start * s, this.end * s, this.stops)
+  }
 }
 
 /**
@@ -220,6 +224,10 @@ class RadialGradient(
 
   fun scaleAlpha(factor: Float): RadialGradient {
     this.withAlpha(this.alpha * factor);
+  }
+
+  fun scale(s: Float): RadialGradient {
+    static(this.center * s, this.radius * s, this.stops)
   }
 }
 

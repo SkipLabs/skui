@@ -91,11 +91,11 @@ private fun manageMouseButton(_wId: Int, button: Int, pressed: Bool): void {
 }
 
 @cpp_export("SKIP_SKUIX11_manageResize")
-fun manageResize(wId: Int, w: Int, h: Int): void {
+fun manageResize(wId: Int, w: Int, h: Int, r: Int): void {
   pos = SKFS.newObstack();
   SKFS.Context::withoutGc(context ~> {
     context.getGlobal("FWK.Window.Size").map(FWK.Sizer::fromFile).each(sizer ->
-      sizer.value(context, wId, w, h)
+      sizer.value(context, wId, w, h, r.toFloat() / 100.0)
     );
     context.updateIfRoot();
   });

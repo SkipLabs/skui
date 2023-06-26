@@ -1,4 +1,4 @@
-import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/skui_types";
+import {int, float, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/skui_types";
 
 type MouseEventManager = (
   wId: int, type: int,
@@ -45,7 +45,7 @@ export interface Exported {
   SKIP_SKUIJS_manageWheelEvent: WheelEventManager
   SKIP_SKUIJS_manageKeyboardEvent: KeyboardEventManager
   SKIP_SKUIJS_clearKeyboardEvent: (wId: int) => void;
-  SKIP_SKUIJS_manageResize: (wId: int, width: int, height: int) => void;
+  SKIP_SKUIJS_manageResize: (wId: int, width: int, height: int, ratio: int) => void;
   SKIP_SKUIJS_performPaste: (wId: int, mimeType: ptr, data: ptr) => void;
 }
 
@@ -83,19 +83,20 @@ class LinksImpl implements Links, ToWasm {
       evt.cancelBubble = true;
     }
   };
-  synchronizeWindowSize = (resize: (width: int, height: int) => void) => {
+  synchronizeWindowSize = (resize: (width: int, height: int, ratio: int) => void) => {
     let window = this.env ? this.env.window() : null;
     if (window) {
       let fWindow = window;
       let canvas = window.document.getElementById("skui_canvas") as HTMLCanvasElement;
       let resizeFn = () => {
+        let ratio = fWindow.devicePixelRatio || 1;
         let width = Math.trunc(fWindow.innerWidth);
         let height = Math.trunc(fWindow.innerHeight);
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = ratio * width;
+        canvas.height = ratio * height;
         canvas.style.width = width + "px";
         canvas.style.height = height + "px";
-        resize(width, height);
+        resize(width, height, Math.trunc(ratio * 100));
       };
       fWindow.onresize = resizeFn;
       resizeFn();
@@ -155,7 +156,7 @@ class LinksImpl implements Links, ToWasm {
           let strTitle = utils.importString(title);
           this.env.window().document.title = strTitle;
           this.manageEvents(wId);
-          this.synchronizeWindowSize((width: int, height: int) => exported.SKIP_SKUIJS_manageResize(wId, width, height));
+          this.synchronizeWindowSize((width: int, height: int, ratio: int) => exported.SKIP_SKUIJS_manageResize(wId, width, height, ratio));
           this.env.start(wId).then(
             cId => exported.SKIP_SKUIJS_windowInitialized(wId)
           ).catch(e => console.error(e));

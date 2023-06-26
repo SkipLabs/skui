@@ -39,9 +39,16 @@ const ctxHandle: SKFS.IHandle<Int> = SKFS.IHandle(
 class Useless()
 
 @export("SKIP_SKUIGL_performFrame")
-fun performFrame(cid: UInt32, width: UInt32, height: UInt32): void {
+fun performFrame(
+  cid: UInt32,
+  width: UInt32,
+  height: UInt32,
+  ratio: UInt32,
+): void {
   pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> drawFrame(context, cid, width, height));
+  SKFS.Context::withoutGc(context ~>
+    drawFrame(context, cid, width, height, ratio)
+  );
   SKFS.destroyObstack(pos);
 }
 
@@ -246,12 +253,12 @@ class DrawableSupport(
     size: Geometry.Size,
     color: .Color,
     radius: Float,
-    smooth: Int = 2,
+    smooth: Float = 2.0,
     optBorder: ?Ui.Border = None(),
   ): Ui.Drawable {
     GLDrawable.RoundedRectangle(
       color,
-      radius.toInt(),
+      radius,
       smooth,
       optBorder,
       Geometry.Rect::fromOffsetSize(offset, size),
@@ -567,22 +574,22 @@ fun populateViewport(
   viewport: Ui.NViewport,
   handles: Array<Array<Ui.Handles>>,
   height: Int,
+  ratio: Float,
 ): void {
   top = height - viewport.window.height() - viewport.window.top();
+  fLeft = (viewport.window.left().toFloat() * ratio).toInt();
+  fTop = (top.toFloat() * ratio).toInt();
+  fWidth = (viewport.window.width().toFloat() * ratio).toInt();
+  fHeight = (viewport.window.height().toFloat() * ratio).toInt();
   gl.save();
   gl.enableBlend();
   gl.srcAlphaBlendOneMinus();
-  gl.viewport(
-    Int32::truncate(viewport.window.left()),
-    Int32::truncate(top),
-    UInt32::truncate(viewport.window.width()),
-    UInt32::truncate(viewport.window.height()),
-  );
+  gl.viewport(int32(fLeft), int32(fTop), uint32(fWidth), uint32(fHeight));
   fOffset = Ui.Shift(viewport.offset.x, viewport.offset.y);
   fWindow = viewport.window;
   handles.each(hdls ->
     hdls.each(v ->
-      v.value.each(handle -> handle.draw(fOffset, fWindow, height))
+      v.value.each(handle -> handle.draw(fOffset, fWindow, height, ratio))
     )
   );
   gl.flush();
@@ -595,6 +602,7 @@ fun drawFrame(
   cid: UInt32,
   width: UInt32,
   height: UInt32,
+  ratio: UInt32,
 ): void {
   frame = context
     .getGlobal("SKUIGL.AnimationFrame")
@@ -611,7 +619,7 @@ fun drawFrame(
   | Some(
     tick,
   ) if (optVersion.map(v -> tick.value > v).default(true) || kAlwaysDraw) ->
-    drawCtxFrame(context, GL.Ctx(cid), width, height, tick.value)
+    drawCtxFrame(context, GL.Ctx(cid), width, height, ratio, tick.value)
   | _ -> void
   };
 }
@@ -622,15 +630,19 @@ fun drawCtxFrame(
   ctx: GL.Ctx,
   width: UInt32,
   height: UInt32,
+  ratio: UInt32,
   time: Int,
 ): void {
+  fRatio = ratio.toFloat() / 100.0;
+  fWidth = (width.toFloat() * fRatio).toInt();
+  fHeight = (height.toFloat() * fRatio).toInt();
   ctx.bindMainFrameBuffer();
   ctx.enableBlend();
   ctx.straitAlphaBlending();
-  ctx.viewport(Int32::truncate(0), Int32::truncate(0), width, height);
+  ctx.viewport(int32(0), int32(0), uint32(fWidth), uint32(fHeight));
   ctx.clearColor(1.0, 1.0, 1.0, 1.0);
   ctx.clear();
-  drawViewports(ctx, context, width.toInt(), height.toInt());
+  drawViewports(ctx, context, width.toInt(), height.toInt(), fRatio);
   context.setGlobal("SKUIGL.Version", SKFS.IntFile(time));
 }
 
@@ -639,6 +651,7 @@ fun drawViewports(
   context: mutable SKFS.Context,
   width: Int,
   height: Int,
+  ratio: Float,
 ): void {
   doOnDirectory(context, Ui.viewportsPath, viewportsDir ->
     doOnDirectory(context, layerHandlesPath, layerHandlesDir ->
@@ -661,6 +674,7 @@ fun drawViewports(
           ),
           width,
           height,
+          ratio,
           layerHandlesDir,
           vpInfosDir,
         );
@@ -676,6 +690,7 @@ fun drawViewport(
   absolute: Ui.NViewport,
   width: Int,
   height: Int,
+  ratio: Float,
   layerHandlesDir: SKFS.EagerDir,
   vpInfosDir: SKFS.EagerDir,
 ): void {
@@ -693,7 +708,7 @@ fun drawViewport(
         CtxLayer(ctxId, Ui.KLayer(vpPath, Ui.MainLayer())),
         CtxLayer(ctxId, Ui.KLayer(vpPath, Ui.ForegroundLayer())),
       ].map(key -> getValues(layerHandlesDir, key, Ui.Handles::fromFile));
-      populateViewport(gCtx, toPopulate, layerHandles, height);
+      populateViewport(gCtx, toPopulate, layerHandles, height, ratio);
       !absolute = Ui.NViewport(diff, visibleBounds);
     }
   };
@@ -705,6 +720,7 @@ fun drawViewport(
       absolute,
       width,
       height,
+      ratio,
       layerHandlesDir,
       vpInfosDir,
     )

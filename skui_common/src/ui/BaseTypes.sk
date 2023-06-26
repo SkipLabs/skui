@@ -342,7 +342,11 @@ class Image(
   }
 }
 
-class Border(color: .Color = Colors.transparent(), thickness: Int = 0)
+class Border(color: .Color = Colors.transparent(), thickness: Float = 0.0) {
+  fun scale(s: Float): this {
+    static(this.color, this.thickness * s)
+  }
+}
 
 base class DrawableSupport {
   //
@@ -379,7 +383,7 @@ base class DrawableSupport {
     size: Geometry.Size,
     color: .Color,
     radius: Float,
-    smooth: Int = 2,
+    smooth: Float = 2.0,
     optBorder: ?Ui.Border = None(),
   ): Ui.Drawable;
 

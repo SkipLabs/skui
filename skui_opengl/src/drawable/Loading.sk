@@ -17,8 +17,8 @@ class Loading(
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.loading().map(drawer ->
-      Ui.LambdaHandle((shift, window, _height) ~> {
-        rect = this.bounds.shift(shift.toOffset());
+      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+        rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
           GLProgram.LoadingParameters(
             rect,
@@ -27,7 +27,7 @@ class Loading(
             this.color2,
           ),
           GLProgram.RectangleParameters(rect, buffer),
-          window.size(),
+          window.size() * ratio,
         )
       })
     )
@@ -52,18 +52,18 @@ class Progress(
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.progress().map(drawer ->
-      Ui.LambdaHandle((shift, window, _height) ~> {
-        rect = this.bounds.shift(shift.toOffset());
+      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+        rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
           GLProgram.ProgressParameters(
             rect,
             this.color1,
             this.color2,
-            this.thickness,
+            this.thickness * ratio,
             this.progress,
           ),
           GLProgram.RectangleParameters(rect, buffer),
-          window.size(),
+          window.size() * ratio,
         )
       })
     )

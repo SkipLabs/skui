@@ -35,12 +35,13 @@ fun initUi(
   context.initTextSupport(support);
   root = UiRoot.HStorage::create(context, SKFS.DirName::create("/ui/root/"));
   context.setGlobal("FWK.Root", root);
-  windowHdl = initSizeManager(context);
+  (windowHdl, _ratioHdl) = initSizeManager(context);
   SystemProperties.init(context);
   Ui.init(context);
   inits.each(i -> i(context));
   getter = builder(context, root);
-  FWKPipeline.initPipeline(context, getter, windowHdl, root, support);
+
+  FWKPipeline.initPipeline(context, getter, windowHdl, root, support, wId);
   context.setGlobal(
     "SKFS.Updater",
     SKFS.Updater(_ctx ~> FWK.update(uint32(wId))),
@@ -68,19 +69,33 @@ fun pictureToTexturable(
   }
 }
 
-fun initSizeManager(context: mutable SKFS.Context): SKFS.EHandle<UiEvent.Size> {
+fun initSizeManager(
+  context: mutable SKFS.Context,
+): (SKFS.EHandle<UiEvent.Size>, SKFS.EHandle<SKFS.FloatFile>) {
   windowHdl = context.makeDir(
     UiEvent.Size::fromFile,
     SKFS.DirName::create("/ui/window/"),
   );
+  ratioHdl = context.makeDir(
+    SKFS.FloatFile::fromFile,
+    SKFS.DirName::create("/ui/window/ratio/"),
+  );
   iWindowHdl = SKFS.toIHandle(windowHdl);
+  iRatioHdl = SKFS.toIHandle(ratioHdl);
   context.setGlobal(
     "FWK.Window.Size",
-    FWK.Sizer((ctx, wId, w, h) ~>
-      iWindowHdl.write(ctx, SKFS.IID(wId), UiEvent.Size(w, h))
+    FWK.Sizer((ctx, wId, w, h, r) ~> {
+      iWindowHdl.write(ctx, SKFS.IID(wId), UiEvent.Size(w, h));
+      iRatioHdl.write(ctx, SKFS.IID(wId), SKFS.FloatFile(r));
+    }),
+  );
+  context.setGlobal(
+    "FWK.Ratio",
+    FWK.Ratio((ctx, wId) ~>
+      iRatioHdl.maybeGet(ctx, SKFS.IID(wId)).map(v -> v.value).default(1.0)
     ),
   );
-  windowHdl;
+  (windowHdl, ratioHdl);
 }
 
 fun perform(

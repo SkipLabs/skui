@@ -164,9 +164,9 @@ class TriangleShader(side: .UiSide) extends RectangleBaseShader {
 class RoundedRectangleParameters(
   size: Geometry.Size,
   color: .Color,
-  radius: Int,
+  radius: Float,
   optBorder: ?Ui.Border,
-  smooth: Int,
+  smooth: Float,
 ) extends Parameters {
   static fun fromParams(obj: Parameters): this {
     obj match {

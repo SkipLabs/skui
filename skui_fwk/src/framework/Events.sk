@@ -118,13 +118,23 @@ fun isScrolling(context: mutable SKFS.Context): Bool {
 }
 
 class Sizer(
-  value: (mutable SKFS.Context, Int, Int, Int) ~> void,
+  value: (mutable SKFS.Context, Int, Int, Int, Float) ~> void,
 ) extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Sizer _ -> x
     | _ -> SKFS.cast_violation("FWK.Sizer", obj)
+    }
+  }
+}
+
+class Ratio(fn: (mutable SKFS.Context, Int) ~> Float) extends SKFS.File {
+  //
+  static fun fromFile(obj: SKFS.File): this {
+    obj match {
+    | x @ Ratio _ -> x
+    | _ -> SKFS.cast_violation("FWK.Ratio", obj)
     }
   }
 }

@@ -147,6 +147,10 @@ class Path{elements: Array<PathElement> = Array[]} {
     }
   }
 
+  fun transform(conv: Geometry.Offset ~> Geometry.Offset): this {
+    static{elements => this.elements.map(e -> e.transform(conv))}
+  }
+
   fun add(element: PathElement): Path {
     vec = Vector::mcreateFromItems(this.elements);
     vec.push(element);

@@ -22,12 +22,12 @@ class Bilinear(texture: GL.Ctx ~> ?GL.Texture) extends GLRectangleDrawable {
     array = data as GLProgram.VertexArray _;
     supplier.bilinearDrawer().flatMap(drawer -> {
       this.texture(gl).map(texture -> {
-        Ui.LambdaHandle((shift, window, _height) ~> {
-          bounds = this.bounds.shift(shift.toOffset());
+        Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+          bounds = this.bounds.shift(shift.toOffset()).scale(ratio);
           drawer.run(
             GLProgram.TextureParameters(texture),
             GLProgram.BoundsParameters(bounds, array),
-            window.size(),
+            window.size() * ratio,
           )
         })
       })
@@ -37,6 +37,7 @@ class Bilinear(texture: GL.Ctx ~> ?GL.Texture) extends GLRectangleDrawable {
 
 class Msdf(
   texture: GL.Ctx ~> ?GL.Texture,
+  conv: Geometry.Rect ~> Geometry.Rect,
   pxRange: Int,
   color: .Color,
   thickness: Float,
@@ -53,10 +54,11 @@ class Msdf(
   ): this {
     static(
       texture,
+      conv,
       pxRange,
       color,
       thickness,
-      conv(Geometry.Rect::fromOffsetSize(offset, size)),
+      Geometry.Rect::fromOffsetSize(offset, size),
     )
   }
 
@@ -72,19 +74,17 @@ class Msdf(
     array = data as GLProgram.VertexArray _;
     supplier.msdfDrawer().flatMap(drawer ->
       this.texture(gl).map(texture ->
-        Ui.LambdaHandle((shift, window, _height) ~> {
+        Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+          rect = this.conv(this.bounds.shift(shift.toOffset()).scale(ratio));
           drawer.run(
             GLProgram.MsdfParameters(
               texture,
               this.pxRange,
               this.color,
-              this.thickness,
+              this.thickness * ratio,
             ),
-            GLProgram.BoundsParameters(
-              this.bounds.shift(shift.toOffset()),
-              array,
-            ),
-            window.size(),
+            GLProgram.BoundsParameters(rect, array),
+            window.size() * ratio,
           )
         })
       )

@@ -787,10 +787,24 @@ class FontIcon(
     drawables: mutable Vector<Ui.Drawable>,
   ): void {
     iconSupport = context.getIconSupport();
-    face = UiIcon.Face::create(this.collection, this.fontSize);
+    ratio = support match {
+    | Ui.RatioDrawableSupport(_, ratio) -> ratio
+    | _ -> 1.0
+    };
+    debug(("fillDrawables", ratio));
+    face = UiIcon.Face::create(this.collection, this.fontSize * ratio);
     iconSupport.getMSDF(context, this.icon, face).each(msdf ->
       drawables.push(
-        support.msdf(offset, size, msdf.image, msdf.conv, 8, 0.0, paint),
+        support.msdf(
+          offset,
+          size,
+          msdf.image,
+          msdf.conv,
+          //r ~> msdf.conv(r).scale(1.0 / ratio),
+          8,
+          0.0,
+          paint,
+        ),
       )
     )
   }

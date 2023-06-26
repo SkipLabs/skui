@@ -26,13 +26,18 @@ class Line(offset: Geometry.Offset, glyphs: Vector<Glyph>) extends SKFS.File {
     paint: Ui.Paint,
     drawables: mutable Vector<Ui.Drawable>,
   ): void {
+    ratio = support match {
+    | Ui.RatioDrawableSupport(_, ratio) -> ratio
+    | _ -> 1.0
+    };
     fontSupport = context.getFontSupport();
     offset = absolute.move(this.offset);
     this.glyphs.each(glyph -> {
       size = glyph.glyph.glyph.optPath
         .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
         .default(Geometry.Size(0.0, 0.0));
-      fontSupport.getMSDF(context, glyph.gid).each(msdf ->
+      dGid = glyph.gid.scale(ratio);
+      fontSupport.getMSDF(context, dGid).each(msdf ->
         drawables.push(
           support.msdf(
             offset.move(glyph.offset),
@@ -452,8 +457,15 @@ fun toDrawables(
   top = 0.0;
   left = 0.0;
   optPrevious: ?Char = None();
+  (ratio, faceId) = support match {
+  | Ui.RatioDrawableSupport(_, ratio) ->
+    (ratio, style.faceId with {size => style.faceId.size * ratio})
+  | _ -> (1.0, style.faceId)
+  };
+
   for (char in text) {
     gid = Font.GlyphID::create(style.faceId, char, pxRange);
+    dGid = Font.GlyphID::create(faceId, char, pxRange);
     glyph = fontSupport.getGlyphForId(context, gid);
     kern = glyph.getKern(optPrevious);
     width = glyph.width() + kern;
@@ -461,7 +473,7 @@ fun toDrawables(
     size = glyph.glyph.optPath
       .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
       .default(Geometry.Size(0.0, 0.0));
-    fontSupport.getMSDF(context, gid).each(msdf ->
+    fontSupport.getMSDF(context, dGid).each(msdf ->
       drawables.push(
         support.msdf(
           offset,

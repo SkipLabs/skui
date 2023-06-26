@@ -13,14 +13,14 @@ class SolidTriangle(color: .Color, side: .UiSide) extends GLRectangleDrawable {
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.solidTriangle(this.side).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height) ~>
+      Ui.LambdaHandle((shift, window, _height, ratio) ~>
         drawer.run(
           GLProgram.SolidParameters(this.color),
           GLProgram.RectangleParameters(
-            this.bounds.shift(shift.toOffset()),
+            this.bounds.shift(shift.toOffset()).scale(ratio),
             buffer,
           ),
-          window.size(),
+          window.size() * ratio,
         )
       )
     )
@@ -45,12 +45,15 @@ class LinearGradientTriangle(
     buffer = data as GLProgram.Buffer _;
     count = this.linearGradient.stops.size();
     supplier.linearGradientTriangle(count, this.side).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height) ~> {
-        rect = this.bounds.shift(shift.toOffset());
+      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+        rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
-          GLProgram.LinearGradientParameters(this.bounds, this.linearGradient),
+          GLProgram.LinearGradientParameters(
+            this.bounds,
+            this.linearGradient.scale(ratio),
+          ),
           GLProgram.RectangleParameters(rect, buffer),
-          window.size(),
+          window.size() * ratio,
         )
       })
     )
@@ -75,12 +78,15 @@ class RadialGradientTriangle(
     buffer = data as GLProgram.Buffer _;
     count = this.radialGradient.stops.size();
     supplier.radialGradientTriangle(count, this.side).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height) ~> {
-        rect = this.bounds.shift(shift.toOffset());
+      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+        rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
-          GLProgram.RadialGradientParameters(rect, this.radialGradient),
+          GLProgram.RadialGradientParameters(
+            rect,
+            this.radialGradient.scale(ratio),
+          ),
           GLProgram.RectangleParameters(rect, buffer),
-          window.size(),
+          window.size() * ratio,
         )
       })
     )

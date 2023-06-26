@@ -421,8 +421,14 @@ class FaceID(
 }
 
 class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
+  //
   static fun create(fid: FaceID, char: Char, pxRange: Int = 8): this {
     GlyphID(fid, char, pxRange);
+  }
+
+  fun scale(s: Float): GlyphID {
+    !this.fid.size = this.fid.size * s;
+    this
   }
 
   fun sameCompare(other: SKFS.FileName): Order {

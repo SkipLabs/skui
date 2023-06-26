@@ -20,7 +20,7 @@ class Size(width: Int, height: Int) extends SKFS.File {
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ Size _ -> x
-    | _ -> invariant_violation("Must be UiEvent.Size")
+    | _ -> SKFS.cast_violation("UiEvent.Size", obj)
     }
   }
 }

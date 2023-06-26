@@ -232,8 +232,8 @@ class Button protected {
           size,
           Colors.transparent(),
           mode.getRadius(size),
-          2,
-          Some(Ui.Border(color, 1)),
+          2.0,
+          Some(Ui.Border(color, 1.0)),
         ),
       )
     | _ -> void

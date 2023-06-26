@@ -32,9 +32,9 @@ fun rounded(ctx: GL.Ctx, width: Int, height: Int): Context {
     Vector[
       GLDrawable.RoundedRectangle(
         .Colors.beige(),
-        (height.toFloat() / 10.0).toInt(),
-        2,
-        Some(Ui.Border(.Colors.black(), 5)),
+        height.toFloat() / 10.0,
+        2.0,
+        Some(Ui.Border(.Colors.black(), 5.0)),
         Geometry.Rect::fromOffsetSize(
           Geometry.Offset(10.0, 10.0),
           Geometry.Size(width.toFloat() - 20.0, height.toFloat() - 20.0),

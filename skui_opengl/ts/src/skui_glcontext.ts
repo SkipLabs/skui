@@ -86,7 +86,7 @@ export class Factory {
   private loading: Loading;
   private wId : int;
 
-  render?: (id: int, width: int, height: int) => void;
+  render?: (id: int, width: int, height: int, ratio: int) => void;
   setGlContext?: (wId: int, cId: int) => void;
 
 
@@ -343,7 +343,7 @@ export class Context {
   private lostCall: (context: Context, ev?: Event) => void;
   private onMainBinding: () => void;
   private animationFrameRequest: int;
-  private render?: (id: int, width: int, height: int) => void;
+  private render?: (id: int, width: int, height: int, ratio: int) => void;
   private setGlContext?: (id: int) => void;
   
 
@@ -351,7 +351,7 @@ export class Context {
     id: int, canvas: HTMLCanvasElement, gl: WebGL2RenderingContext, 
     env: Env, lostCall: (context: Context, ev?: Event) => void, 
     onMainBinding: () => void,
-    render?: (id: int, width: int, height: int) => void,
+    render?: (id: int, width: int, height: int, ratio: int) => void,
     setGlContext?: (id: int) => void,
   ) {
     this.id = id;
@@ -393,7 +393,9 @@ export class Context {
   onAnimationFrame = () => {
     if (!this.gl.isContextLost()) {
       if (this.render) {
-        this.render(this.id, this.canvas.width, this.canvas.height);
+        let devRatio = this.env.window().devicePixelRatio;
+        let ratio = Math.trunc(devRatio * 100);
+        this.render(this.id, Math.trunc(this.canvas.width / devRatio), Math.trunc(this.canvas.height / devRatio), ratio);
       }
       this.animationFrameRequest = this.env.requestAnimationFrame(this.onAnimationFrame)
     }

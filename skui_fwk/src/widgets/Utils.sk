@@ -85,7 +85,7 @@ fun themeShadow(
       size + Geometry.Size::square(2.0 * shift),
       color,
       radius + shift,
-      smooth,
+      smooth.toFloat(),
     ),
   ]
 }

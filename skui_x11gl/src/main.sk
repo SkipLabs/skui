@@ -77,6 +77,7 @@ fun performFrame(
   optContext: ?Context,
   width: Int,
   height: Int,
+  ratio: Float,
 ): Context {
   pos = SKFS.newObstack();
   ctx = GL.Ctx(UInt32::truncate(cid));
@@ -95,7 +96,7 @@ fun performFrame(
     Geometry.Point(0, 0),
     Geometry.Point(width, height),
   );
-  context.handles.each(a -> a.draw(shift, window, height));
+  context.handles.each(a -> a.draw(shift, window, height, ratio));
   ctx.flush();
   destroyObstackKeep(pos, context);
 }

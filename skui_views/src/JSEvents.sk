@@ -80,11 +80,22 @@ fun manageWheelEvent(
 }
 
 @wasm_export("SKIP_SKUIJS_manageResize")
-fun manageResize(wId: UInt32, width: UInt32, height: UInt32): void {
+fun manageResize(
+  wId: UInt32,
+  width: UInt32,
+  height: UInt32,
+  ratio: UInt32,
+): void {
   pos = SKFS.newObstack();
   SKFS.Context::withoutGc(context ~> {
     context.getGlobal("FWK.Window.Size").map(FWK.Sizer::fromFile).each(sizer ->
-      sizer.value(context, wId.toInt(), width.toInt(), height.toInt())
+      sizer.value(
+        context,
+        wId.toInt(),
+        width.toInt(),
+        height.toInt(),
+        ratio.toFloat() / 100.0,
+      )
     );
     context.updateIfRoot();
   });
