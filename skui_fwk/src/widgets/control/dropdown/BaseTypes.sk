@@ -126,24 +126,21 @@ base class State extends Ui.StateWithScroll {
     isUntracked: Bool = false,
   ): Active;
 
-  fun emitHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
+  fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
+  fun setGoto(context: mutable SKFS.Context, value: Spot): void;
+  fun setClose(context: mutable SKFS.Context): void;
+  
   fun emitSelect(
     context: mutable SKFS.Context,
     value: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
-  fun emitGoto(context: mutable SKFS.Context, value: Spot): void;
-  fun emitAll(context: mutable SKFS.Context, commands: Array<Command>): void;
-  fun emitClose(context: mutable SKFS.Context): void;
-
-  fun gotoMessage(value: Spot): SKUIMessage.Message;
 }
 
 base class Storage extends Ui.StorageWithScroll {
   fun getName(): String;
   fun getScope(): String;
 
-  fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
   fun setTodo(context: mutable SKFS.Context, cmd: Ui.Executable): void;
 }
 

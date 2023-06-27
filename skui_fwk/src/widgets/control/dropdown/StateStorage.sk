@@ -93,24 +93,19 @@ class HStorage(
     this.handle
   }
 
-  fun setHover(context: mutable SKFS.Context, optValue: ?Ui.Path): void {
-    this.handle.writeOrRemove(context, Ui.hoverProp, optValue)
-  }
-
   fun setTodo(context: mutable SKFS.Context, value: Ui.Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+    Ui.setTodo(context, this.handle, value)
   }
 }
 
 class HState(
-  storage: SKFS.EHandle<SKFS.File>,
+  storage: SKFS.IHandle<SKFS.File>,
   splitted: SKFS.EHandle<SKFS.BoolFile>,
   computed: SKFS.EHandle<SKFS.File>,
 ) extends State uses Ui.ScrollingState {
   //
-
   protected fun getHandle(): SKFS.EHandle<SKFS.File> {
-    this.storage
+    this.storage.toEHandle()
   }
 
   protected fun getComputed(): SKFS.EHandle<SKFS.File> {
@@ -188,24 +183,16 @@ class HState(
     this.emit(context, Select(value, optRepeatOn));
   }
 
-  fun emitGoto(context: mutable SKFS.Context, value: Spot): void {
-    this.emit(context, Goto(value));
+  fun setGoto(context: mutable SKFS.Context, value: Spot): void {
+    Ui.setTodo(context, this.storage, Goto(value));
   }
 
-  fun emitClose(context: mutable SKFS.Context): void {
-    this.emit(context, Close());
+  fun setClose(context: mutable SKFS.Context): void {
+    Ui.setTodo(context, this.storage, Close());
   }
 
-  fun emitHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void {
-    this.emit(context, SetHover(optPath));
-  }
-
-  fun emitAll(context: mutable SKFS.Context, commands: Array<Command>): void {
-    this.emit(context, All(commands))
-  }
-
-  fun gotoMessage(value: Spot): SKUIMessage.Message {
-    this.message(Goto(value))
+  fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void {
+    this.storage.writeOrRemove(context, Ui.hoverProp, optPath)
   }
 
   fun getActive(
@@ -218,14 +205,6 @@ class HState(
       Active::fromFile,
       isUntracked,
     ).fromSome()
-  }
-
-  private fun message(command: SKUIMessage.Command): SKUIMessage.Message {
-    SKUIMessage.Message(
-      statePath,
-      this.storage.getDirName().toString(),
-      command,
-    );
   }
 }
 
@@ -267,7 +246,7 @@ fun init(
       }
     },
   );
-  Parameters(controller, HState(stateHdl, splittedHdl, computedHdl))
+  Parameters(controller, HState(SKFS.toIHandle(stateHdl), splittedHdl, computedHdl))
 }
 
 @debug

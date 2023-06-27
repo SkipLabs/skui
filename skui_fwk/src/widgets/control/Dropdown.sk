@@ -216,11 +216,7 @@ class Dropdown protected {
                   ctx.getThemeIcon(UiTheme.Back()).buildIcon(ctx, size),
                 kind => _ctx ~> UiButton.Regular(),
                 mode => _ctx ~> UiButton.Icon(),
-                onFire => (ctx, _) ~>
-                  SKUIMessage.emitMessage(
-                    ctx,
-                    params.state.gotoMessage(UiDropdown.Backward()),
-                  ),
+                onFire => (ctx, _) ~> params.state.setGoto(ctx, UiDropdown.Backward())
               },
               UiButton.init(context, backPath),
             ),

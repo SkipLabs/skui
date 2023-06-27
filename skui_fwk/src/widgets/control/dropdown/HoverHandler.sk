@@ -14,7 +14,7 @@ class IVHoverHandler(
 
   fun enter(context: mutable SKFS.Context): void {
     if (!this.item.disabled(context)) {
-      this.state.emitHover(context, Some(this.itemPath));
+      this.state.setHover(context, Some(this.itemPath));
       FWKPointer.setCursor(context, Ui.HandCursor());
     };
   }
@@ -35,7 +35,7 @@ class IVHoverHandler(
         | i @ Item _ ->
           this.optOnClose.each(perform -> perform(context));
           i.perform(context)
-        | _m @ Menu _ -> this.state.emitGoto(context, Forward(this.idx))
+        | _m @ Menu _ -> this.state.setGoto(context, Forward(this.idx))
         };
         true
       } else {
@@ -46,7 +46,7 @@ class IVHoverHandler(
 
   fun exit(context: mutable SKFS.Context): void {
     FWKPointer.resetCursor(context);
-    this.state.emitHover(context, None());
+    this.state.setHover(context, None());
   }
 
   fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {

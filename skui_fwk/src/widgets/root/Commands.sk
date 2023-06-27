@@ -313,7 +313,7 @@ class HStorage private (
         w match {
         | ml @ Ui.MenuLayout _ ->
           ml.controller.getWidget(context) match {
-          | dd @ Ui.Dropdown _ -> dd.state.emitClose(context)
+          | dd @ Ui.Dropdown _ -> dd.state.setClose(context)
           | _ -> void
           }
         | _ -> void

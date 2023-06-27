@@ -563,7 +563,7 @@ class BDrawables(
   static fun fromFile(obj: SKFS.File): this {
     obj match {
     | x @ BDrawables _ -> x
-    | _ -> invariant_violation("Must be SKUIGL.BDrawables")
+    | _ -> SKFS.cast_violation("SKUIGL.BDrawables", obj)
     }
   }
 }

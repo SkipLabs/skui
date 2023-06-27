@@ -44,7 +44,7 @@ class IVFocusHandler{
                 UiEvent.pureKeyPressed(UiEvent.KeyInfo::space),
               ],
             ),
-            FWK.Standard(ctx ~> this.state.emitGoto(ctx, Forward(this.idx))),
+            FWK.Standard(ctx ~> this.state.setGoto(ctx, Forward(this.idx))),
           ),
         )
       };
@@ -90,7 +90,7 @@ class FocusHandler{
         FWK.Skipable(ctx ~>
           this.state.getSelected(ctx, true) match {
           | Some(selected) ->
-            this.state.emitGoto(ctx, Forward(selected));
+            this.state.setGoto(ctx, Forward(selected));
             true
           | _ -> false
           }
@@ -114,7 +114,7 @@ class FocusHandler{
             | i @ Item _ ->
               this.optOnClose.each(perform -> perform(ctx));
               i.perform(ctx)
-            | _m @ Menu _ -> this.state.emitGoto(ctx, Forward(selected))
+            | _m @ Menu _ -> this.state.setGoto(ctx, Forward(selected))
             };
             true
           | _ -> false
@@ -129,7 +129,7 @@ class FocusHandler{
           FWK.Shortcut(
             Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowLeft)],
           ),
-          FWK.Standard(ctx ~> this.state.emitGoto(ctx, Backward())),
+          FWK.Standard(ctx ~> this.state.setGoto(ctx, Backward())),
         ),
       )
     };

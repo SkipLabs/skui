@@ -1,11 +1,13 @@
 module UiDropdown;
 
-base class Executable extends Ui.Executable
+base class Executable extends Ui.Executable {
+  children =
+  | SetHover(optItem: ?Ui.Path)
+  | Close()
+}
 
 base class Command extends SKUIMessage.Command {
   children =
-  | SetHover(optItem: ?Ui.Path)
-  | All(commands: Array<Command>)
   | SetScroll(optScroll: ?Ui.Scroll)
   | CancelScrolling(tick: SKFS.Tick)
 }
@@ -14,7 +16,6 @@ base class ExecCommand extends Command, Executable {
   children =
   | ManageScrolling(value: Int, tick: SKFS.Tick)
   | Goto(stop: Spot)
-  | Close()
 }
 
 base class Repeatable(
