@@ -1,0 +1,118 @@
+module alias J = JSON;
+
+module Skuibuild;
+
+fun compile(
+  bc: Skargo.BuildContext,
+  binName: String,
+  binMain: String,
+  libraries: Array<String>,
+  _preambles: Array<String>,
+): void {
+  prjDir = Path.join(bc.targetDir, `prj_${binName}`);
+  Skuibuild.ensureDirectory(prjDir, bc.env.verbose);
+  prjFile = Path.join(prjDir, "skip.project.json");
+  nativePrelude = "";
+  files = bc.files.filter(file -> {
+    dirname = Path.dirname(file);
+    if (nativePrelude == "" && dirname.endsWith("/prelude/src/native")) {
+      !nativePrelude = dirname
+    };
+    dirname != nativePrelude && !dirname.contains("/sktest/");
+  });
+  invariant(!nativePrelude.isEmpty(), "Cannot find native prelude");
+  FileSystem.writeTextFile(
+    prjFile,
+    project(binName, files, nativePrelude).toString(),
+  );
+  llfile = Path.join(prjDir, `${binName}.ll`);
+  cmd = Array[
+    "skip_to_llvm",
+    "--export-function-as",
+    `${binMain}=skip_main`,
+    "--preamble",
+    if (bc.isWasm()) "/usr/local/lib/skip_preamble32.ll" else {
+      "/usr/local/lib/skip_preamble64.ll"
+    },
+    if (bc.isWasm()) "--embedded32" else "--embedded64",
+    `${prjDir}:${binName}`,
+    "--output",
+    llfile,
+  ];
+  Skargo.run(cmd, bc.env.verbose);
+  output = bc.target match {
+  | Some(t) if (t.isWasm()) -> binName + ".wasm"
+  | _ -> if (bc.debug) `${binName}_debug` else binName
+  };
+  if (bc.isWasm()) {
+    invariant_violation("TODO: Wasm exports collector binary");
+  } else {
+    Skargo.run(
+      Array[
+        "clang++",
+        "-no-pie",
+        if (bc.debug) "-O0" else "-O3",
+        "-mllvm",
+        "-inline-threshold=0",
+        llfile,
+        "-o",
+        Path.join(bc.targetDir, output),
+        "/usr/local/lib/libskip_runtime64.a",
+        "/usr/local/lib/libbacktrace.a",
+        "-lrt",
+        "-lpthread",
+      ].concat(libraries),
+      bc.env.verbose,
+    )
+  }
+}
+
+fun project(
+  name: String,
+  files: Array<String>,
+  nativePrelude: String,
+): J.Value {
+  J.Object(
+    Map[
+      "skipVersion" => J.String("1.0"),
+      "variables" => J.Object(
+        Map[
+          "backend" => J.Object(
+            Map[
+              "values" => J.Array(Vector[J.String("native")]),
+              "default" => J.String("native"),
+            ],
+          ),
+        ],
+      ),
+      "programUnits" => J.Object(
+        Map[
+          name => J.Object(
+            Map[
+              "kind" => J.String("Program"),
+              "sources" => J.Array(
+                Vector::createFromItems(files).map(v -> J.String(v)),
+              ),
+              "parameters" => J.Object(
+                Map[
+                  "backend" => J.Object(
+                    Map[
+                      "native" => J.Object(
+                        Map[
+                          "sources" => J.Array(Vector[J.String(nativePrelude)]),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+      "default" => J.String(name),
+    ],
+  )
+}
+
+module end;

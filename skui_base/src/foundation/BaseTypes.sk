@@ -166,7 +166,8 @@ class JSException(private eptr: SKFS.ExternalPointer) extends Exception {
 @cpp_runtime("SKIP_saveExn")
 native fun saveExn(exn: Exception): void;
 
-@export("SKIP_callWithException")
+@wasm_export("SKIP_callWithException")
+@cpp_export("SKIP_callWithException")
 fun callWithException(f: () -> void, exc: UInt32): void {
   saveExn(JSException::make(exc));
   f();
@@ -184,12 +185,14 @@ native fun skuiCheckObstack(): ?SKFS.Obstack;
 @cpp_extern("SKIP_SKUI_cleanObstack")
 native fun skuiCleanObstack(optObstack: ?SKFS.Obstack): void;
 
-@export("SKIP_checkObstack")
+@wams_export("SKIP_checkObstack")
+@cpp_export("SKIP_checkObstack")
 fun checkObstack(): ?SKFS.Obstack {
   skuiCheckObstack()
 }
 
-@export("SKIP_cleanObstack")
+@wasm_export("SKIP_cleanObstack")
+@cpp_export("SKIP_checkObstack")
 fun cleanObstack(optObstack: ?SKFS.Obstack): void {
   skuiCleanObstack(optObstack)
 }

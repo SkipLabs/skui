@@ -191,7 +191,8 @@ fun perform(
   }
 }
 
-@export("SKIP_SkuiViews_update")
+@wasm_export("SKIP_SkuiViews_update")
+@cpp_export("SKIP_SkuiViews_update")
 fun update(): void {
   pos = checkObstack();
   SKFS.Context::withoutGc(context ~> context.updateIfRoot());

@@ -59,7 +59,8 @@ private native fun apply(
   parameters: JSON.Array,
 ): ?JSON.Value;
 
-@export("SKIP_UiEngineJS_register")
+@wasm_export("SKIP_UiEngineJS_register")
+@cpp_export("SKIP_UiEngineJS_register")
 fun register(id: UInt32, optPath: ?String, type_: String): void {
   SKFS.Context::withoutGc(context ~> {
     handlesHdl = handlesHdl(optPath);
@@ -69,7 +70,8 @@ fun register(id: UInt32, optPath: ?String, type_: String): void {
   })
 }
 
-@export("SKIP_UiEngineJS_unregister")
+@wasm_export("SKIP_UiEngineJS_unregister")
+@cpp_export("SKIP_UiEngineJS_unregister")
 fun unregister(id: UInt32, optPath: ?String): void {
   SKFS.Context::withoutGc(context ~> {
     handlesHdl = handlesHdl(optPath);

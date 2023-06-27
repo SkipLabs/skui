@@ -138,7 +138,10 @@ fun main(): void {
 @skui_envcmd
 fun buildInfo(): (Cli.Command, (Cli.ParseResults, Skargo.Env) ~> void) {
   (
-    Skuibuild.buildCommand("build").short("b").about("Compile a local package"),
+    Skuibuild.buildCommand("build")
+      .short("b")
+      .arg(Cli.BoolArg("sk2llvm").about("Build with skip_to_llvm"))
+      .about("Compile a local package"),
     execBuild,
   )
 }
@@ -152,10 +155,10 @@ fun build(
     Skargo.ManifestBinary,
     Array<String>,
   ) ~> void,
-  allows: (Skargo.ManifestBinary, Skargo.BuildContext) ~> Bool = (bin, bc) ~>
-    bin.allows(bc.target),
-  dirs: Array<String> = Array["src"],
-  binaries: ?Array<Skargo.ManifestBinary> = None(),
+  allows: (Skargo.ManifestBinary, Skargo.BuildContext) ~> Bool,
+  dirs: Array<String>,
+  binaries: ?Array<Skargo.ManifestBinary>,
+  allowSk2Llvm: Bool,
 ): void {
   deps = Skargo.getDependencies(env.manifest) match {
   | Success(v) -> v
@@ -168,20 +171,31 @@ fun build(
     args.getBool("debug"),
   );
   Skargo.genVersionFile(bc);
-  checkLibraries(bc, dirs, deps);
+  (libraries, preambles) = checkLibraries(bc, dirs, deps);
   for (bin in binaries.default(env.manifest.bin)) {
     if (allows(bin, bc)) {
-      Skargo.compile(bc, bin.name, bin.main);
+      if (allowSk2Llvm && args.getBool("sk2llvm")) {
+        compile(bc, bin.name, bin.main, libraries, preambles)
+      } else {
+        Skargo.compile(bc, bin.name, bin.main)
+      };
       then(deps, bc, bin, dirs)
     }
   };
 }
 
 fun execBuild(args: Cli.ParseResults, env: Skargo.Env): void {
-  build(args, env, (deps, bc, bin, dirs) ~>
-    if (bc.isWasm()) {
-      _ = SkuibuildJS.manage(bin, deps, bc, dirs);
-    }
+  build(
+    args,
+    env,
+    (deps, bc, bin, dirs) ~>
+      if (bc.isWasm()) {
+        _ = SkuibuildJS.manage(bin, deps, bc, dirs);
+      },
+    (bin, bc) ~> bin.allows(bc.target),
+    Array["src"],
+    None(),
+    true,
   )
 }
 
@@ -234,6 +248,7 @@ fun execTest(args: Cli.ParseResults, env: Skargo.Env): void {
     (_bin, _bc) ~> true,
     Array["src", "tests"],
     Some(Array[bin]),
+    false,
   );
 }
 
@@ -340,7 +355,7 @@ fun checkLibraries(
   bc: Skargo.BuildContext,
   dirs: Array<String>,
   deps: readonly Map<String, Skargo.Manifest>,
-): void {
+): (Array<String>, Array<String>) {
   includeDirs = SortedSet[];
   optITime: ?Int = None();
   for (dep in deps) {
@@ -377,7 +392,8 @@ fun checkLibraries(
       optITime,
     )
   };
-  applyLibrairies(libraries, preambles, links, bc.env.verbose)
+  applyLibrairies(libraries, preambles, links, bc.env.verbose);
+  (libraries.toArray(), preambles.toArray())
 }
 
 fun execClean(args: Cli.ParseResults, env: Skargo.Env): void {

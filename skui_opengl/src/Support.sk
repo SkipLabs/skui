@@ -38,7 +38,8 @@ const ctxHandle: SKFS.IHandle<Int> = SKFS.IHandle(
 
 class Useless()
 
-@export("SKIP_SKUIGL_performFrame")
+@wasm_export("SKIP_SKUIGL_performFrame")
+@cpp_export("SKIP_SKUIGL_performFrame")
 fun performFrame(
   cid: UInt32,
   width: UInt32,
@@ -52,7 +53,8 @@ fun performFrame(
   SKFS.destroyObstack(pos);
 }
 
-@export("SKIP_SKUIGL_setWindowContext")
+@wasm_export("SKIP_SKUIGL_setWindowContext")
+@cpp_export("SKIP_SKUIGL_setWindowContext")
 fun setWindowContext(window: UInt32, cid: UInt32): void {
   pos = SKFS.newObstack();
   win = window.toInt();
