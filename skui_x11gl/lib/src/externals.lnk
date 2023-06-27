@@ -1,3 +1,4 @@
 -lX11
 -lXcursor
 -lXext
+-lXrandr

@@ -9,7 +9,7 @@ skui::WindowSupplier supplier;
 extern "C"
 {
   uint32_t SKIP_String_byteSize(char *str);
-  void*  SKIP_SkuiX11gl_performFrame(void* enviroment, uint32_t ctxId, void* userContext, uint32_t width, uint32_t height);
+  void*  SKIP_SkuiX11gl_performFrame(void* enviroment, uint32_t ctxId, void* userContext, uint32_t width, uint32_t height, uint32_t ratio);
 }
 
 namespace skui
@@ -19,13 +19,13 @@ class SKIPEventManager: public EventManager
 {
 public:
   SKIPEventManager() {}
-  void resize(uint32_t wId, uint32_t width, uint32_t height) {}
+  void resize(uint32_t wId, uint32_t width, uint32_t height, uint32_t ratio) {}
   void performFrame(
     void* enviroment, uint32_t ctxId, void* userContext,
-    uint32_t width, uint32_t height,
+    uint32_t width, uint32_t height, uint32_t ratio,
     std::function<void(void*)> onDone)
   {
-    void* nContext = SKIP_SkuiX11gl_performFrame(enviroment, ctxId, userContext, width, height);
+    void* nContext = SKIP_SkuiX11gl_performFrame(enviroment, ctxId, userContext, width, height, ratio);
     onDone(nContext);
   }
   

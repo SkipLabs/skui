@@ -3,6 +3,8 @@
 #include "GLWManager.h"
 #include "GLUtils.h"
 #include <fstream>
+#include <X11/extensions/Xrandr.h>
+#include <X11/Xresource.h>
 
 std::string utf8datatype("text/plain; charset=utf-8");
 
@@ -124,8 +126,57 @@ namespace skui
   {
     if (this->eventManager != nullptr)
     {
-      this->eventManager->resize(this->config.wId, width, height);
+      auto ratio = this->computeRatio();
+      this->eventManager->resize(this->config.wId, width, height, 100);
     }
+  }
+
+  float GLWindowManager::computeRatio() {
+      XRRScreenResources *screenResources = XRRGetScreenResources(this->display, this->window);
+      XRRCrtcInfo *crtcInfo = XRRGetCrtcInfo(this->display, screenResources, screenResources->crtcs[0]);
+      if (crtcInfo->noutput > 0) {
+        XRROutputInfo *outputInfo = XRRGetOutputInfo(display, screenResources, crtcInfo->outputs[0]);
+        
+        int widthInPixels = crtcInfo->width;
+        int heightInPixels = crtcInfo->height;
+        int widthInMillimeters = outputInfo->mm_width;
+        int heightInMillimeters = outputInfo->mm_height;
+
+        float pixelRatioX = widthInMillimeters > 0 ? (float)widthInPixels / ((float)widthInMillimeters / 25.4) : 1.0;
+        float pixelRatioY = heightInMillimeters > 0 ? (float)heightInPixels / ((float)heightInMillimeters / 25.4): 1.0;
+        
+        XRRFreeOutputInfo(outputInfo);
+        XRRFreeCrtcInfo(crtcInfo);
+        XRRFreeScreenResources(screenResources);
+
+        printf("Resolution: %dx%d pixels\n", widthInPixels, heightInPixels);
+        printf("Physical Size: %dx%d mm\n", widthInMillimeters, heightInMillimeters);
+        printf("Pixel Ratio (X): %f\n", pixelRatioX);
+        printf("Pixel Ratio (Y): %f\n", pixelRatioY);
+        return (pixelRatioX + pixelRatioY) / 2.0;
+      }
+      return 1.0;
+  }
+
+  float GLWindowManager::computeDpi() {
+      char *resourceString = XResourceManagerString(this->display);
+      XrmDatabase db;
+      XrmValue value;
+
+      char *type = NULL;
+      double dpi = 1.0;
+
+      XrmInitialize(); /* Need to initialize the DB before calling Xrm* functions */
+      db = XrmGetStringDatabase(resourceString);
+
+      if (resourceString) {
+        if (XrmGetResource(db, "Xft.dpi", "String", &type, &value) == True) {
+            if (value.addr) {
+                dpi = atof(value.addr);
+            }
+        }
+      }
+      return dpi;
   }
 
   void GLWindowManager::performFrame()
@@ -137,7 +188,7 @@ namespace skui
       glXMakeCurrent(this->display, this->window, this->context);
       this->eventManager->performFrame(
         this->userEnviroment, this->config.wId, this->userContext,
-        gwa.width, gwa.height, 
+        gwa.width, gwa.height, 100,
         [this](void* userContext){
         this->userContext = userContext;
         this->animationFrame.framePerformed();

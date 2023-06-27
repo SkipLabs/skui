@@ -25,10 +25,10 @@ extern "C"
   void SKIP_SKUIX11_manageMouseButton(uint64_t wId, uint64_t button, bool pressed);
   void SKIP_SKUIX11_manageMouseLocation(uint64_t wId, uint64_t x, uint64_t y, uint64_t screenX, uint64_t screenY);
   bool SKIP_SKUIX11_manageRequestClose(uint64_t wId);
-  void SKIP_SKUIX11_manageResize(uint64_t wId, uint64_t w, uint64_t h);
+  void SKIP_SKUIX11_manageResize(uint64_t wId, uint64_t w, uint64_t h, uint64_t r);
   void SKIP_SKUIX11_performPaste(uint64_t wId, char *type, char *content);
   void SKIP_SKUIX11_windowInitialized(uint32_t wId);
-  void SKIP_SKUIGL_performFrame(uint32_t ctxId, uint32_t width, uint32_t height);
+  void SKIP_SKUIGL_performFrame(uint32_t ctxId, uint32_t width, uint32_t height, uint32_t ratio);
   void SKIP_SKUIGL_setWindowContext(uint32_t wId, uint32_t ctxId);
   void SKIP_SKUIMessage_manage(char* message);
   void SKIP_SkuiViews_update();
@@ -93,15 +93,15 @@ namespace skui
     SKIPEventManager() {}
     void performFrame(
       void* enviroment, uint32_t ctxId, void* userContext,
-      uint32_t width, uint32_t height,
+      uint32_t width, uint32_t height, uint32_t ratio,
       std::function<void(void*)> onDone)
     {
-      SKIP_SKUIGL_performFrame(ctxId, width, height);
+      SKIP_SKUIGL_performFrame(ctxId, width, height, ratio);
       onDone(nullptr);
     }
 
-    void resize(uint32_t wId, uint32_t width, uint32_t height) {
-      SKIP_SKUIX11_manageResize(wId, width, height);
+    void resize(uint32_t wId, uint32_t width, uint32_t height, uint32_t ratio) {
+      SKIP_SKUIX11_manageResize(wId, width, height, ratio);
     }
     
     void requestClose(uint32_t wId)  {

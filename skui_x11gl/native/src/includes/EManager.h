@@ -12,10 +12,10 @@ namespace skui
 class EventManager
 {
 public:
-  virtual void resize(uint32_t wId, uint32_t width, uint32_t height) = 0;
+  virtual void resize(uint32_t wId, uint32_t width, uint32_t height, uint32_t ratio) = 0;
   virtual void performFrame(
     void* enviroment, uint32_t ctxId, void* userContext,
-    uint32_t width, uint32_t height, 
+    uint32_t width, uint32_t height, uint32_t ratio,
     std::function<void(void*)> onDone
   ) = 0;
   virtual void requestClose(uint32_t wId) = 0;

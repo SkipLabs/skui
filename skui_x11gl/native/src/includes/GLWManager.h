@@ -67,6 +67,8 @@ namespace skui
   private:
     void requestClose();
     void close();
+    float computeRatio();
+    float computeDpi();
 
     WindowConfig config;
     GLXFBConfig *gLXFBConfig;
