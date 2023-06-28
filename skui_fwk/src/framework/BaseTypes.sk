@@ -503,8 +503,8 @@ class Shortcut(keyStrokes: Array<UiEvent.KeyStroke>) {
 
 base class FocusHandler{category: String} extends DropdownHandler, SKFS.File {
   fun getIdentifier(): Ui.Path;
-  fun fillSources(path: mutable Set<Ui.Path>): void;
-  fun getSource(sources: Set<Ui.Path>): ?Ui.Path;
+  fun fillSources(path: mutable FWK.SSet<Ui.Path>): void;
+  fun getSource(sources: SortedSet<Ui.Path>): ?Ui.Path;
   fun hasSource(source: Ui.Path): Bool;
 
   fun isGotoNext(

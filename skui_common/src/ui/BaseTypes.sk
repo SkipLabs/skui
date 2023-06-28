@@ -452,19 +452,6 @@ class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
     static(name)
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | ok @ Path _ ->
-      iComp = this.id.compare(ok.id);
-      if (iComp == EQ()) {
-        this.optParent.compare(ok.optParent)
-      } else {
-        iComp
-      }
-    | _ -> SKFS.cast_violation("UI.Path", other)
-    }
-  }
-
   fun toString(): String {
     this.optParent match {
     | Some(parent) -> parent.toString() + "/" + this.id
@@ -560,16 +547,6 @@ base class ViewportDefinition(
 class KLayer(path: Ui.Path, layer: Ui.LayerId) extends SKFS.BaseName {
   fun toString(): String {
     `${this.path}:${this.layer}`
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as KLayer _);
-    sComp = this.path.compare(oKey.path);
-    if (sComp == EQ()) {
-      this.layer.compare(oKey.layer);
-    } else {
-      sComp
-    }
   }
 }
 

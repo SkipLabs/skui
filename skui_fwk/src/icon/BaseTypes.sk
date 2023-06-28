@@ -28,29 +28,6 @@ class Face(
     Face(collection, size, dpi, hinting)
   }
 
-  fun sameCompare(y: SKFS.BaseName): Order {
-    y match {
-    | other @ Face _ ->
-      cComp = this.collection.compare(other.collection);
-      if (cComp == EQ()) {
-        sComp = this.size.compare(other.size);
-        if (sComp == EQ()) {
-          dComp = this.dpi.compare(other.dpi);
-          if (dComp == EQ()) {
-            this.hinting.compare(other.hinting);
-          } else {
-            dComp
-          }
-        } else {
-          sComp
-        }
-      } else {
-        cComp
-      }
-    | obj -> SKFS.cast_violation("UiIcon.Face", obj)
-    }
-  }
-
   fun toString(): String {
     `Face:${this.size}:${this.dpi}`;
   }
@@ -58,12 +35,12 @@ class Face(
 
 class Glyph(face: Face, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
   //
-  fun sameCompare(y: SKFS.BaseName): Order {
+  fun compare(y: SKFS.BaseName): Order {
     y match {
     | other @ Glyph _ ->
       cComp = this.char.compare(other.char);
       if (cComp == EQ()) {
-        fComp = this.face.sameCompare(other.face);
+        fComp = this.face.compare(other.face);
         if (fComp == EQ()) {
           this.pxRange.compare(other.pxRange);
         } else {
@@ -72,7 +49,7 @@ class Glyph(face: Face, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
       } else {
         cComp
       }
-    | obj -> SKFS.cast_violation("UiIcon.Glyph", obj)
+    | _ -> this.getClassName().compare(y.getClassName())
     }
   }
 

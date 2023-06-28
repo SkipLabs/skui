@@ -13,24 +13,9 @@ base class OptPath(optPath: ?Ui.Path) extends SKFS.BaseName {
   fun toString(): String {
     `${this.optPath}`
   }
-
-  overridable macro fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | oKey @ #ThisClass _ -> this.optPath.compare(oKey.optPath)
-    }
-  }
 }
 
-class Selected(optIndex: ?Int) extends OptPath {
-  fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | oKey @ Selected _ ->
-      iComp = this.optIndex.compare(oKey.optIndex);
-      if (iComp == EQ()) this.optPath.compare(oKey.optPath) else iComp
-    | _ -> SKFS.cast_violation("UiDropdown.Selected", other)
-    }
-  }
-}
+class Selected(optIndex: ?Int) extends OptPath
 
 base class PathKey(path: Ui.Path) extends SKFS.BaseName {
   children =
@@ -41,12 +26,6 @@ base class PathKey(path: Ui.Path) extends SKFS.BaseName {
   //
   fun toString(): String {
     `${this.path}`
-  }
-
-  macro fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | oKey @ #ThisClass _ -> this.path.compare(oKey.path)
-    }
   }
 }
 
@@ -246,14 +225,17 @@ fun init(
       }
     },
   );
-  Parameters(controller, HState(SKFS.toIHandle(stateHdl), splittedHdl, computedHdl))
+  Parameters(
+    controller,
+    HState(SKFS.toIHandle(stateHdl), splittedHdl, computedHdl),
+  )
 }
 
 @debug
 fun update(
   context: mutable SKFS.Context,
   _scope: String,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   todo: SKFS.File,
   optUtils: ?Controller,
 ): void {
@@ -264,7 +246,7 @@ fun update(
 fun execute(
   context: mutable SKFS.Context,
   executable: Ui.Executable,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   controller: Controller,
 ): void {
   current = values

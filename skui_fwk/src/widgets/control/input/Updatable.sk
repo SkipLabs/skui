@@ -2,7 +2,7 @@ module UiInput;
 
 fun undoRedo(
   context: mutable SKFS.Context,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   selector: History ~> (mutable Verifier, tick: SKFS.Tick) ~> (History, Bool),
   source: Int,
 ): void {
@@ -16,7 +16,7 @@ fun undoRedo(
 
 fun copy(
   context: mutable SKFS.Context,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
 ): ?Range {
   text = getText(values);
   (toCopy, optSelection) = getSelection(values) match {
@@ -32,7 +32,7 @@ fun copy(
 
 fun cut(
   context: mutable SKFS.Context,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   source: Int,
 ): void {
   copy(context, values) match {
@@ -45,7 +45,7 @@ fun cut(
 }
 
 fun paste(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   content: FWKClipboard.Content,
   charFilter: Char ~> Bool,
   source: Int,
@@ -58,7 +58,7 @@ fun paste(
 }
 
 fun delete(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   range: Range,
   source: Int,
 ): void {
@@ -77,13 +77,13 @@ fun delete(
 
 fun ensureVisible(
   context: mutable SKFS.Context,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
 ): void {
   values.set(Ui.ensureVisibleProp, Some(Pos(getPosition(values), context.tick)))
 }
 
 fun insert(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   charFilter: Char ~> Bool,
   text: String,
   source: Int,
@@ -121,7 +121,7 @@ fun insert(
 }
 
 fun doInsert(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   txt: String,
   position: Int,
   source: Int,
@@ -134,7 +134,7 @@ fun doInsert(
 }
 
 fun modify(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   m: Char ~> Char,
   source: Int,
 ): void {
@@ -159,7 +159,7 @@ fun modify(
 }
 
 fun manageGoTo(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   target: Target,
   source: Int,
 ): void {
@@ -182,7 +182,7 @@ fun manageGoTo(
 }
 
 fun manageSelectTo(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   target: Target,
   source: Int,
 ): void {
@@ -249,7 +249,7 @@ fun manageSelectTo(
 }
 
 fun manageDeleteTo(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   target: Target,
   source: Int,
 ): void {
@@ -283,7 +283,7 @@ fun manageDeleteTo(
 }
 
 fun manageDiacritic(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   charFilter: Char ~> Bool,
   char: Char,
   source: Int,
@@ -311,7 +311,7 @@ fun manageDiacritic(
 }
 
 fun manageUnicode(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   charFilter: Char ~> Bool,
   optValue: ?Int,
   source: Int,
@@ -348,7 +348,7 @@ fun manageUnicode(
 }
 
 fun computeTarget(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   target: Target,
 ): ?(Int, ?Bool) {
   text = getText(values);

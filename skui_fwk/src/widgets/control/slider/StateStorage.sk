@@ -283,7 +283,7 @@ fun init(
 fun update(
   context: mutable SKFS.Context,
   _scope: String,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   todo: Ui.Todo,
   optUserData: ?UserData,
 ): void {

@@ -10,7 +10,7 @@ base class Layer extends SKFS.BaseName {
     this.getClassName();
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
+  fun compare(other: SKFS.BaseName): Order {
     other match {
     | oLayer @ Layer _ ->
       (this, oLayer) match {
@@ -24,7 +24,7 @@ base class Layer extends SKFS.BaseName {
       | (Tooltip(), Main()) -> GT()
       | (Tooltip(), Menu()) -> GT()
       }
-    | _ -> invariant_violation("Must be compared with a UiRoot.Layer")
+    | _ -> this.getClassName().compare(other.getClassName())
     }
   }
 }

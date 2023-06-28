@@ -82,6 +82,180 @@ class DummyEquals<T: frozen>() extends Equals<T> {
   }
 }
 
-class EqualsFile(fn: (SKFS.File, SKFS.File) ~> Bool) extends SKFS.File {}
+class EqualsFile(fn: (SKFS.File, SKFS.File) ~> Bool) extends SKFS.File
+
+mutable class SMap<+K: Orderable, +V>(
+  mutable smap: SortedMap<K, V>,
+) /* extends MutableKeyedSequence<K, V> */ {
+  // # Creating Sequences
+
+  // Create a mutable container with the given capacity.
+  static fun mcreate(): mutable this {
+    mutable static(SortedMap::create())
+  }
+
+  // Create a frozen container from a sequence of items.
+  static fun createFromItems<I: readonly Sequence<(K, V)>>(items: I): this {
+    static(SortedMap::createFromItems(items))
+  }
+
+  // Create a mutable container from a sequence of items.
+  static fun mcreateFromItems<I: readonly Sequence<(K, V)>>(
+    items: I,
+  ): mutable this {
+    mutable static(SortedMap::createFromItems(items))
+  }
+
+  readonly fun clone(): mutable this {
+    mutable static(this.smap)
+  }
+
+  // # Sizing
+
+  // Remove all items, setting the container's size to 0 without changing its
+  // capacity.
+  mutable fun clear(): void {
+    this.!smap = SortedMap::create();
+  }
+
+  // # Modifying Items
+
+  // Associate key with value in this Map:
+  // - If the key already exists in this Map, associates it to the new value.
+  // - Else add the key/value association.
+  mutable fun set(k: K, v: V): void {
+    this.!smap = this.smap.set(k, v);
+  }
+
+  // Like set(), but throws a Duplicate() exception if the key already exists.
+  mutable fun add(k: K, v: V): void {
+    this.!smap = this.smap.add(k, v);
+  }
+
+  // If the key does not already exist, inserts it and returns true. Else
+  // returns false.
+  mutable fun maybeSet(k: K, v: V): Bool {
+    this.smap.maybeGet(k) match {
+    | None() ->
+      this.!smap = this.smap.add(k, v);
+      true
+    | _ -> false
+    }
+  }
+
+  // If k exists in this map, returns its value. Else, runs f() to get
+  // a new value, inserts it, and returns that new value.
+  mutable fun getOrAdd(k: K, f: () -> V): V {
+    this.smap.maybeGet(k) match {
+    | Some(cv) -> cv
+    | _ ->
+      v = f();
+      this.!smap = this.smap.add(k, v);
+      v
+    }
+  }
+
+  // Remove the given key from this Map:
+  // - If the key is present remove it and return true.
+  // - Otherwise do nothing and return false.
+  mutable fun maybeRemove(k: K): Bool {
+    this.smap.maybeGet(k) match {
+    | Some _ ->
+      this.!smap = this.smap.remove(k);
+      true
+    | _ -> false
+    }
+  }
+
+  // Remove the key from this Map if present, otherwise throw.
+  mutable fun remove(k: K): void {
+    this.!smap = this.smap.remove(k);
+  }
+
+  readonly fun maybeGetItem<K2: Orderable>[K: K2](k: K2): ?(K, V) {
+    this.smap.maybeGetItem(k);
+  }
+
+  readonly fun getItem<K2: Orderable>[K: K2](key: K2): (K, V) {
+    this.smap.getItem(key);
+  }
+
+  readonly fun maybeGet<K2: Orderable, V2>[K: K2, V: V2](k: K2): ?V2 {
+    this.smap.maybeGet(k);
+  }
+
+  readonly fun get<K2: Orderable>[K: K2](key: K2): V {
+    this.smap.get(key);
+  }
+
+  readonly fun isEmpty(): Bool {
+    this.smap.isEmpty();
+  }
+
+  readonly fun size(): Int {
+    this.smap.size();
+  }
+
+  readonly fun each(f: (K, V) -> void): void {
+    this.smap.each(f);
+  }
+}
+
+mutable class SSet<T: Orderable>(mutable sset: SortedSet<T>) {
+  // # Creating Sequences
+
+  // Create a mutable container with the given capacity.
+  static fun mcreate(): mutable this {
+    mutable static(SortedSet[])
+  }
+
+  static fun createFromIterator(items: mutable Iterator<T>): this {
+    static(SortedSet::createFromIterator(items))
+  }
+
+  static fun createFromItems(items: readonly Sequence<T>): this {
+    static(SortedSet::createFromItems(items))
+  }
+
+  static fun mcreateFromItems(items: readonly Sequence<T>): mutable this {
+    mutable static(SortedSet::createFromItems(items))
+  }
+
+  readonly fun clone(): mutable this {
+    mutable static(this.sset)
+  }
+
+  // # Sizing
+
+  // Remove all items, setting the container's size to 0 without changing its
+  // capacity.
+  mutable fun clear(): void {
+    this.!sset = SortedSet[];
+  }
+
+  mutable fun add(s: T): void {
+    this.!sset = this.sset.add(s);
+  }
+
+  mutable fun set(s: T): void {
+    this.!sset = this.sset.set(s);
+  }
+
+  mutable fun remove(s: T): void {
+    this.!sset = this.sset.remove(s);
+  }
+
+  readonly fun isEmpty(): Bool {
+    this.sset.isEmpty();
+  }
+
+  readonly fun size(): Int {
+    this.sset.size();
+  }
+
+  readonly fun contains(s: T): Bool {
+    this.sset.contains(s)
+  }
+}
 
 module end;

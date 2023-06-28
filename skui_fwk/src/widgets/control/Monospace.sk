@@ -113,10 +113,10 @@ class Monospace protected {
             ) {
               !index = index + 1;
             };
-            portions = mutable Map<
+            portions: mutable FWK.SMap<
               SKFS.BaseName,
               mutable Vector<UiMonospace.LinePortion>,
-            >[];
+            > = mutable FWK.SMap[];
             add = (key, portion) -> {
               vec = portions.maybeGet(key) match {
               | Some(vec) -> vec

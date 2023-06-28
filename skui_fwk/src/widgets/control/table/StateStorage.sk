@@ -90,7 +90,7 @@ fun init(
 fun update(
   context: mutable SKFS.Context,
   _scope: String,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   todo: Ui.Todo,
   optInfo: ?Info,
 ): void {
@@ -101,7 +101,7 @@ fun update(
 fun execute(
   context: mutable SKFS.Context,
   executable: Executable,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   info: Info,
 ): void {
   executable match {

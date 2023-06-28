@@ -691,7 +691,7 @@ fun split(text: String): Vector<Part> {
 fun update(
   context: mutable SKFS.Context,
   _scope: String,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   todo: Ui.Todo,
   optUserData: ?UserData,
 ): void {
@@ -750,7 +750,7 @@ fun update(
 fun execute(
   context: mutable SKFS.Context,
   executable: Ui.Executable,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   charFilter: Char ~> Bool,
   source: Int,
 ): Bool {
@@ -825,7 +825,7 @@ fun execute(
   check
 }
 
-fun getText(values: mutable Map<SKFS.BaseName, ?SKFS.File>): String {
+fun getText(values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>): String {
   values
     .get(Ui.textProp)
     .map(SourcedText::fromFile)
@@ -833,13 +833,13 @@ fun getText(values: mutable Map<SKFS.BaseName, ?SKFS.File>): String {
     .default("");
 }
 
-fun getSelection(values: mutable Map<SKFS.BaseName, ?SKFS.File>): ?Range {
+fun getSelection(values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>): ?Range {
   values.get(Ui.selectionProp).map(SourcedSel::fromFile).flatMap(f ->
     f.optRange
   )
 }
 
-fun getPosition(values: mutable Map<SKFS.BaseName, ?SKFS.File>): Int {
+fun getPosition(values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>): Int {
   values
     .get(Ui.positionProp)
     .map(SourcedPos::fromFile)
@@ -847,7 +847,7 @@ fun getPosition(values: mutable Map<SKFS.BaseName, ?SKFS.File>): Int {
     .default(0)
 }
 
-fun getUserStatus(values: mutable Map<SKFS.BaseName, ?SKFS.File>): Status {
+fun getUserStatus(values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>): Status {
   values
     .get(Ui.userStatusProp)
     .map(SourcedStatus::fromFile)
@@ -855,16 +855,16 @@ fun getUserStatus(values: mutable Map<SKFS.BaseName, ?SKFS.File>): Status {
     .default(OK())
 }
 
-fun getUnicode(values: mutable Map<SKFS.BaseName, ?SKFS.File>): ?Int {
+fun getUnicode(values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>): ?Int {
   values.get(Ui.unicodeProp).map(SKFS.IntFile::fromFile).map(f -> f.value)
 }
 
-fun getDiacritic(values: mutable Map<SKFS.BaseName, ?SKFS.File>): ?Char {
+fun getDiacritic(values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>): ?Char {
   values.get(Ui.diacriticProp).map(SKFS.CharFile::fromFile).map(f -> f.value)
 }
 
 fun setText(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   text: String,
   source: Int,
 ): void {
@@ -872,7 +872,7 @@ fun setText(
 }
 
 fun setPosition(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   position: Int,
   source: Int,
 ): void {
@@ -880,14 +880,14 @@ fun setPosition(
 }
 
 fun setUnicode(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   optValue: ?Int,
 ): void {
   values.set(Ui.unicodeProp, optValue.map(v -> SKFS.IntFile(v)));
 }
 
 fun setSelection(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   optSelection: ?Range,
   source: Int,
 ): void {
@@ -895,14 +895,14 @@ fun setSelection(
 }
 
 fun setDiacritic(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   optDiacritic: ?Char,
 ): void {
   values.set(Ui.diacriticProp, optDiacritic.map(char -> SKFS.CharFile(char)));
 }
 
 fun setUserStatus(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   status: Status,
   source: Int,
 ): void {

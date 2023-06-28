@@ -240,7 +240,7 @@ class Behavior(
   }
 }
 
-base class Kind extends SKFS.File uses Hashable, Equality {
+base class Kind extends SKFS.File uses Equality {
   children =
   | Text()
   | Password()
@@ -290,7 +290,7 @@ base class Kind extends SKFS.File uses Hashable, Equality {
 }
 
 mutable class Verifier(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   source: Int,
 ) {
   mutable fun writePosition(pos: Int): void {

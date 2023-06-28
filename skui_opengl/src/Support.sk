@@ -390,16 +390,6 @@ class CtxLayer(ctxId: Int, layer: Ui.KLayer) extends SKFS.BaseName {
   fun toString(): String {
     `${this.ctxId}:${this.layer}`
   }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as CtxLayer _);
-    sComp = this.ctxId.compare(oKey.ctxId);
-    if (sComp == EQ()) {
-      this.layer.compare(oKey.layer);
-    } else {
-      sComp
-    }
-  }
 }
 
 class PrgKey(
@@ -416,13 +406,11 @@ class PrgKey(
     Hashable.combine(h, this.name);
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as PrgKey _);
-    sComp = this.webgl.compare(oKey.webgl);
-    if (sComp == EQ()) {
-      this.name.compare(oKey.name);
-    } else {
-      sComp
+  fun compare(other: SKFS.BaseName): Order {
+    other match {
+    | oKey @ PrgKey _ ->
+      (this.webgl, this.name).compare((oKey.webgl, oKey.name))
+    | _ -> this.getClassName().compare(other.getClassName())
     }
   }
 
@@ -441,16 +429,6 @@ class PrgId(webgl: Int, name: String) extends SKFS.BaseName {
     !h = Hashable.combine(h, this.webgl);
     Hashable.combine(h, this.name);
   }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as PrgId _);
-    sComp = this.webgl.compare(oKey.webgl);
-    if (sComp == EQ()) {
-      this.name.compare(oKey.name);
-    } else {
-      sComp
-    }
-  }
 }
 
 class BufKey(
@@ -468,13 +446,11 @@ class BufKey(
     Hashable.combine(h, this.name);
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as BufKey _);
-    sComp = this.webgl.compare(oKey.webgl);
-    if (sComp == EQ()) {
-      this.name.compare(oKey.name);
-    } else {
-      sComp
+  fun compare(other: SKFS.BaseName): Order {
+    other match {
+    | oKey @ BufKey _ ->
+      (this.webgl, this.name).compare((oKey.webgl, oKey.name))
+    | _ -> this.getClassName().compare(other.getClassName())
     }
   }
 
@@ -493,16 +469,6 @@ class BufId(webgl: Int, name: String) extends SKFS.BaseName {
     !h = Hashable.combine(h, this.webgl);
     Hashable.combine(h, this.name);
   }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as BufId _);
-    sComp = this.webgl.compare(oKey.webgl);
-    if (sComp == EQ()) {
-      this.name.compare(oKey.name);
-    } else {
-      sComp
-    };
-  }
 }
 
 class ArrayKey(
@@ -520,13 +486,11 @@ class ArrayKey(
     Hashable.combine(h, this.name);
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as ArrayKey _);
-    sComp = this.webgl.compare(oKey.webgl);
-    if (sComp == EQ()) {
-      this.name.compare(oKey.name);
-    } else {
-      sComp
+  fun compare(other: SKFS.BaseName): Order {
+    other match {
+    | oKey @ ArrayKey _ ->
+      (this.webgl, this.name).compare((oKey.webgl, oKey.name))
+    | _ -> this.getClassName().compare(other.getClassName())
     }
   }
 
@@ -544,16 +508,6 @@ class ArrayId(webgl: Int, name: String) extends SKFS.BaseName {
     h = this.getClassName().hash();
     !h = Hashable.combine(h, this.webgl);
     Hashable.combine(h, this.name);
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as ArrayId _);
-    sComp = this.webgl.compare(oKey.webgl);
-    if (sComp == EQ()) {
-      this.name.compare(oKey.name);
-    } else {
-      sComp
-    };
   }
 }
 

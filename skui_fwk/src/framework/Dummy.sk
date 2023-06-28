@@ -5,11 +5,11 @@ class DummyFH{} extends FocusHandler {
     dummy()
   }
 
-  fun fillSources(_path: mutable Set<Ui.Path>): void {
+  fun fillSources(_path: mutable FWK.SSet<Ui.Path>): void {
     dummy()
   }
 
-  fun getSource(_sources: Set<Ui.Path>): ?Ui.Path {
+  fun getSource(_sources: SortedSet<Ui.Path>): ?Ui.Path {
     dummy()
   }
 

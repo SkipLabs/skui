@@ -188,7 +188,7 @@ class Multiple() extends SelectionModel {
       if (count == 0) {
         Selection(Array[], selection.optMain)
       } else {
-        sSet = Set::createFromItems(selection.multiple);
+        sSet = SortedSet::createFromItems(selection.multiple);
         selectedItems = items
           .mapWithIndex((idx, p) -> (idx, p, sSet.contains(p)))
           .filter(i -> i.i2);
@@ -222,12 +222,12 @@ class Multiple() extends SelectionModel {
               }
             )
             .default(lastSelected);
-          set = mutable Set<Ui.Path>[];
+          set: mutable FWK.SSet<Ui.Path> = mutable FWK.SSet[];
           selections = mutable Vector<Ui.Path>[];
           if (keep) {
             selectedItems.each(i -> {
               selections.push(i.i1);
-              set.insert(i.i1)
+              set.set(i.i1)
             });
           };
           other = if (item < firstSelected.i0) {
@@ -249,7 +249,7 @@ class Multiple() extends SelectionModel {
             toAdd = items[idx];
             if (!set.contains(toAdd)) {
               selections.push(toAdd);
-              set.insert(toAdd)
+              set.set(toAdd)
             }
           };
           Selection(selections.toArray(), Some(path))

@@ -3,7 +3,7 @@ module Text;
 class Display(
   faceId: Font.FaceID,
   fill: Ui.Paint = Colors.black(),
-) extends SKFS.File uses Hashable, Orderable {
+) extends SKFS.File uses Orderable {
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {
@@ -52,6 +52,6 @@ class Style{
   wrapping: Text.Wrapping = Text.NoWrap(),
   overrun: Text.Overrun = Text.EndingChar(),
   transform: Text.Transform = Text.NoCapitalization(),
-} extends StyleBase uses Hashable, Orderable {}
+} extends StyleBase uses Orderable {}
 
 module end;

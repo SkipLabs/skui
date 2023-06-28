@@ -54,14 +54,14 @@ fun initKeys(
         consumed = false;
         context.doProfile("Update keys states", context -> {
           optRequired = SystemProperties.getRequiredFocus(context);
-          tmp = mutable Map<Ui.Path, FWK.FocusHandler>[];
-          tmp2 = mutable Set<Ui.Path>[];
+          tmp: mutable FWK.SMap<Ui.Path, FWK.FocusHandler> = mutable FWK.SMap[];
+          tmp2: mutable FWK.SSet<Ui.Path> = mutable FWK.SSet[];
           focusables.value.each(focusable -> {
             tmp.add(focusable.getIdentifier(), focusable);
             focusable.fillSources(tmp2);
           });
-          focusablesMap = unsafe_chill_trust_me(tmp);
-          sources = unsafe_chill_trust_me(tmp2);
+          focusablesMap = tmp.smap;
+          sources = tmp2.sset;
           focusState = previousKeysStateHdl.get(context, ksKey);
           optFocused = optRequired.flatMap(required ->
             focusablesMap.maybeGet(required)

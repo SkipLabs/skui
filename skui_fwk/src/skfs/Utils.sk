@@ -51,7 +51,7 @@ fun derive<T: File, U: UserData>(
   updater: (
     mutable Context,
     String,
-    mutable Map<BaseName, ?File>,
+    mutable FWK.SMap<BaseName, ?File>,
     file: T,
     optUserData: ?U,
   ) ~> void,
@@ -75,12 +75,14 @@ fun derive<T: File, U: UserData>(
       if (srcKey == key) {
         f = preComputedHdl.getValue(context, KKeys(), true);
         keys = Keys::fromFile(f);
-        map = mutable Map<BaseName, ?File>[];
+        //map = mutable FWK.SMap<BaseName, ?File>[];
+        //=>  Invariant violation: We shouldn't be printing those elements!
+        map: mutable FWK.SMap<BaseName, ?File> = mutable FWK.SMap[];
         for (k in keys.value) {
           map.set(k, preComputedHdl.maybeGetValue(context, k, true))
         };
         updater(context, scope, map, file, optUserData);
-        nKeys = Array::createFromIterator(map.keys());
+        nKeys = Array::createFromIterator(map.smap.keys());
         map.each((k, opt) -> opt.each(v -> writer.write(k, v)));
         writer.write(KKeys(), Keys(nKeys));
       }

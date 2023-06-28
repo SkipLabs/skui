@@ -129,7 +129,7 @@ base class State extends Ui.StateWithScroll {
   fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
   fun setGoto(context: mutable SKFS.Context, value: Spot): void;
   fun setClose(context: mutable SKFS.Context): void;
-  
+
   fun emitSelect(
     context: mutable SKFS.Context,
     value: Target,

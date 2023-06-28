@@ -1,7 +1,7 @@
 module UiMonospace;
 
 mutable class Updater(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   redo: mutable Vector<Vector<Step>>,
   undo: mutable Vector<Vector<Step>>,
   bracketsChecker: BracketsBuilder,

@@ -198,24 +198,6 @@ class TypefaceInfo(
     `${this.family}:${this.slant}:${this.weight}`;
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | otf @ TypefaceInfo _ ->
-      fOrder = this.family.compare(otf.family);
-      if (fOrder == EQ()) {
-        sOrder = this.slant.compare(otf.slant);
-        if (sOrder == EQ()) {
-          this.weight.compare(otf.weight);
-        } else {
-          sOrder
-        }
-      } else {
-        fOrder
-      }
-    | _ -> invariant_violation("Must be compared with a Font.TypefaceInfo")
-    }
-  }
-
   // TODO select familly lower/upper/normalized
   fun select(sources: Array<FaceSource>): ?FaceSource {
     family = sources.filter(a -> a.typeface.family == this.family);
@@ -392,29 +374,6 @@ class FaceID(
     !this.typeface.weight.isBold()
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | ofid @ FaceID _ ->
-      tfOrder = this.typeface.compare(ofid.typeface);
-      if (tfOrder == EQ()) {
-        sOrder = this.size.compare(ofid.size);
-        if (sOrder == EQ()) {
-          dOrder = this.dpi.compare(ofid.dpi);
-          if (dOrder == EQ()) {
-            this.hinting.compare(ofid.hinting);
-          } else {
-            sOrder
-          }
-        } else {
-          sOrder
-        }
-      } else {
-        tfOrder
-      }
-    | _ -> invariant_violation("Must be compared with a Font.FaceID")
-    }
-  }
-
   fun toString(): String {
     `${this.typeface}:${this.hinting}:${this.size}:${this.dpi}`;
   }
@@ -431,7 +390,7 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
     this
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
+  fun compare(other: SKFS.BaseName): Order {
     other match {
     | oid @ GlyphID _ ->
       cOrder = this.char.compare(oid.char);
@@ -445,7 +404,7 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
       } else {
         cOrder
       }
-    | _ -> invariant_violation("Must be compared with a Font.GlyphID")
+    | _ -> this.getClassName().compare(other.getClassName())
     }
   }
 

@@ -35,13 +35,10 @@ class ItemKey(path: Ui.Path, info: Int) extends SKFS.BaseName {
     `${this.info}:${this.path}`
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as ItemKey _);
-    dComp = this.info.compare(oKey.info);
-    if (dComp == EQ()) {
-      this.path.compare(oKey.path);
-    } else {
-      dComp
+  fun compare(other: SKFS.BaseName): Order {
+    other match {
+    | oKey @ ItemKey _ -> (this.info, this.path).compare((oKey.info, oKey.path))
+    | _ -> this.getClassName().compare(other.getClassName())
     }
   }
 }
@@ -150,7 +147,7 @@ fun create(
             items = SKFS.Keys::fromFile(itemsHdl.get(context, SKFS.KKeys()))
               .value.map(ItemKey::fromFile)
               .map(i -> i.path);
-            set = Set::createFromItems(files.map(Ui.Path::fromFile));
+            set = SortedSet::createFromItems(files.map(Ui.Path::fromFile));
             writer.write(SKFS.KKeys(), SKFS.Keys(items.filter(set.contains)));
             writer.write(SKFS.KSize(), SKFS.IntFile(files.size()))
           } else {

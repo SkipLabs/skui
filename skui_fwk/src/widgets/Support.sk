@@ -17,13 +17,7 @@ const childrensPath: SKFS.DirName = SKFS.DirName::create(
 );
 
 class KConstraints(constraints: BoxConstraints) extends SKFS.BaseName {
-  fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | ok @ KConstraints _ -> this.constraints.compare(ok.constraints)
-    | _ -> invariant_violation("Must be compared with a KConstraints")
-    }
-  }
-
+  //
   fun toString(): String {
     width = this.intervalToString(this.constraints.width);
     height = this.intervalToString(this.constraints.height);

@@ -41,7 +41,7 @@ class Key(
     }`;
   }
 
-  fun sameCompare(other: SKFS.FileName): Order {
+  fun compare(other: SKFS.BaseName): Order {
     other match {
     | ok @ Key _ ->
       (
@@ -51,7 +51,7 @@ class Key(
         this.oWidth,
         this.oHeight,
       ).compare((ok.picture, ok.width, ok.height, ok.oWidth, ok.oHeight))
-    | _ -> SKFS.cast_violation("UiEnginePicture.Key", other)
+    | _ -> this.getClassName().compare(other.getClassName())
     }
   }
 }
@@ -64,16 +64,6 @@ class RKey(
   //
   fun toString(): String {
     `${this.picture}:${this.width}x${this.height}`;
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    other match {
-    | ok @ Key _ ->
-      (this.picture, this.width, this.height).compare(
-        (ok.picture, ok.width, ok.height),
-      )
-    | _ -> SKFS.cast_violation("UiEnginePicture.RKey", other)
-    }
   }
 }
 

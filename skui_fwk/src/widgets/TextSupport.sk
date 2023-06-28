@@ -58,16 +58,6 @@ class FacedText(value: String, faceId: Font.FaceID) extends SKFS.BaseName {
   fun toString(): String {
     `${this.value}:${this.faceId}`
   }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as FacedText _);
-    sComp = this.value.compare(oKey.value);
-    if (sComp == EQ()) {
-      this.faceId.compare(oKey.faceId);
-    } else {
-      sComp
-    }
-  }
 }
 
 class TextKey(
@@ -77,21 +67,6 @@ class TextKey(
 ) extends SKFS.BaseName {
   fun toString(): String {
     `${this.value}:${Utils.toString(this.style)}:${this.pxRange}`
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as TextKey _);
-    sComp = this.value.compare(oKey.value);
-    if (sComp == EQ()) {
-      stComp = this.style.compare(oKey.style);
-      if (stComp == EQ()) {
-        this.pxRange.compare(oKey.pxRange);
-      } else {
-        stComp
-      }
-    } else {
-      sComp
-    }
   }
 }
 

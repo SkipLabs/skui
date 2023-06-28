@@ -206,7 +206,9 @@ class Dropdown protected {
       (context, writer, key, _) ~> {
         subPath = path.makeChild("widgets").makeChild(key.toString());
         if (key == titleKey && !params.state.isRoot(context)) {
-          backPath = subPath.makeChild("back").makeChild(context.timeStamp().toString());
+          backPath = subPath
+            .makeChild("back")
+            .makeChild(context.timeStamp().toString());
           button = Ui.Button::create(
             context,
             backPath,
@@ -216,7 +218,8 @@ class Dropdown protected {
                   ctx.getThemeIcon(UiTheme.Back()).buildIcon(ctx, size),
                 kind => _ctx ~> UiButton.Regular(),
                 mode => _ctx ~> UiButton.Icon(),
-                onFire => (ctx, _) ~> params.state.setGoto(ctx, UiDropdown.Backward())
+                onFire => (ctx, _) ~>
+                  params.state.setGoto(ctx, UiDropdown.Backward()),
               },
               UiButton.init(context, backPath),
             ),

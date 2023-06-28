@@ -33,21 +33,11 @@ class KOffsets(path: Ui.Path) extends SKFS.BaseName {
   fun toString(): String {
     this.path.toString()
   }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as KOffsets _);
-    this.path.compare(oKey.path);
-  }
 }
 
 class RPath(path: Ui.Path) extends SKFS.BaseName {
   fun toString(): String {
     this.path.toString()
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as RPath _);
-    this.path.compare(oKey.path);
   }
 }
 

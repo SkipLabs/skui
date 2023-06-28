@@ -7,64 +7,7 @@ fun cast_violation<T: frozen>(name: String, casted: T): _ {
   )
 }
 
-extension base class BaseName uses HasClassName {
-  overridable fun compare(y: BaseName): Order {
-    (this, y) match {
-    | (SKFS.DirTag(), SKFS.DirTag()) -> EQ()
-    | (SKFS.DirTag(), _) -> LT()
-    | (_, SKFS.DirTag()) -> GT()
-
-    | (SKFS.FilesTag(), SKFS.FilesTag()) -> EQ()
-    | (SKFS.FilesTag(), _) -> LT()
-    | (_, SKFS.FilesTag()) -> GT()
-
-    | (SKFS.SizeTag(), SKFS.SizeTag()) -> EQ()
-    | (SKFS.SizeTag(), _) -> LT()
-    | (_, SKFS.SizeTag()) -> GT()
-
-    | (SKFS.IsEmptyTag(), SKFS.IsEmptyTag()) -> EQ()
-    | (SKFS.IsEmptyTag(), _) -> LT()
-    | (_, SKFS.IsEmptyTag()) -> GT()
-
-    | (dir1 @ SKFS.DirName _, SKFS.DirName _) ->
-      dir1.toString().compare(y.toString())
-    | (SKFS.DirName _, _) -> LT()
-    | (_, SKFS.DirName _) -> GT()
-
-    | (SKFS.IID(n1), SKFS.IID(n2)) -> n1.compare(n2)
-    | (SKFS.IID(_), _) -> LT()
-    | (_, SKFS.IID(_)) -> GT()
-
-    | (SKFS.SID(n1), SKFS.SID(n2)) -> n1.compare(n2)
-    | (SKFS.SID(_), _) -> LT()
-    | (_, SKFS.SID(_)) -> GT()
-
-    | (SKFS.StrID(n1), SKFS.StrID(n2)) -> n1.compare(n2)
-    | (SKFS.StrID(_), _) -> LT()
-    | (_, SKFS.StrID(_)) -> GT()
-
-    | _ ->
-      order = this.getClassName().compare(y.getClassName());
-      order match {
-      | EQ() -> this.sameCompare(y)
-      | _ -> order
-      }
-    }
-  }
-
-  overridable fun sameCompare(y: BaseName): Order {
-    this.hash().compare(y.hash())
-  }
-}
-
 class StrID(value: String) extends BaseName {
-  fun sameCompare(key: BaseName): Order {
-    key match {
-    | StrID(v2) -> this.value.compare(v2)
-    | _ -> SKFS.cast_violation("SKFS.StrID", key)
-    }
-  }
-
   fun toString(): String {
     this.value
   }

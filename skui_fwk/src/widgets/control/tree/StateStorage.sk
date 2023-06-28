@@ -13,7 +13,7 @@ class Items(value: Array<Ui.Path>) extends SKFS.File {
   }
 }
 
-class ItemsSet(value: Set<Ui.Path>) extends SKFS.File {
+class ItemsSet(value: SortedSet<Ui.Path>) extends SKFS.File {
   //
   static fun fromFile(obj: SKFS.File): this {
     obj match {
@@ -332,7 +332,7 @@ fun init(
     (context, writer, key, file) ~>
       if (key == Ui.selectionProp) {
         items = getItems(context, false);
-        itemsSet = Set::createFromItems(items);
+        itemsSet = SortedSet::createFromItems(items);
         writer.write(
           key,
           Items(Items::fromFile(file).value.filter(itemsSet.contains)),
@@ -413,7 +413,7 @@ fun init(
 fun update(
   context: mutable SKFS.Context,
   _scope: String,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   todo: Ui.Todo,
   optInfo: ?Info,
 ): void {
@@ -424,7 +424,7 @@ fun update(
 fun execute(
   context: mutable SKFS.Context,
   executable: Ui.Executable,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   info: Info,
 ): void {
   expand = (path, expansion) -> {
@@ -432,11 +432,11 @@ fun execute(
       .get(Ui.expansionProp)
       .map(ItemsSet::fromFile)
       .map(is -> is.value)
-      .default(Set[]);
+      .default(SortedSet[]);
     !expansionSet = if (expansion) {
-      Sets.insert(expansionSet, path)
+      expansionSet.set(path)
     } else {
-      Sets.remove(expansionSet, path)
+      expansionSet.remove(path)
     };
     values.set(Ui.expansionProp, Some(ItemsSet(expansionSet)))
   };
@@ -445,11 +445,11 @@ fun execute(
       .get(Ui.expansionProp)
       .map(ItemsSet::fromFile)
       .map(is -> is.value)
-      .default(Set[]);
+      .default(SortedSet[]);
     !expansionSet = if (expansionSet.contains(path)) {
-      Sets.remove(expansionSet, path)
+      expansionSet.remove(path)
     } else {
-      Sets.insert(expansionSet, path)
+      expansionSet.set(path)
     };
     values.set(Ui.expansionProp, Some(ItemsSet(expansionSet)));
   };
@@ -578,7 +578,7 @@ fun execute(
 }
 
 fun target(
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   property: SKFS.BaseName,
   items: Array<Ui.Path>,
   optTarget: ?GTarget,

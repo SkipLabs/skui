@@ -14,11 +14,6 @@ class KIdx(value: Int) extends SKFS.BaseName {
   fun toString(): String {
     this.value.toString()
   }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as KIdx _);
-    this.value.compare(oKey.value);
-  }
 }
 
 class CountKey() extends SKFS.BaseName {
@@ -38,11 +33,6 @@ class Indexed(idx: Int, widget: Ui.Widget) extends SKFS.File
 class TextKey(value: Array<Char>) extends SKFS.BaseName {
   fun toString(): String {
     String::fromChars(this.value)
-  }
-
-  fun sameCompare(other: SKFS.FileName): Order {
-    oKey = (other as TextKey _);
-    this.value.compare(oKey.value);
   }
 }
 

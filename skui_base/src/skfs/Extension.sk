@@ -76,8 +76,6 @@ class ArrayFile(value: Array<File>) extends File {
   }
 }
 
-extension base class FileName uses Hashable {}
-
 class OptFile(value: ?File) extends File {
   fun each(f: File -> void): void {
     this.value.each(f);

@@ -8,11 +8,11 @@ class FocusHandler{
     this.button.path;
   }
 
-  fun fillSources(path: mutable Set<Ui.Path>): void {
-    path.insert(this.getIdentifier())
+  fun fillSources(path: mutable FWK.SSet<Ui.Path>): void {
+    path.set(this.getIdentifier())
   }
 
-  fun getSource(sources: Set<Ui.Path>): ?Ui.Path {
+  fun getSource(sources: SortedSet<Ui.Path>): ?Ui.Path {
     identifier = this.getIdentifier();
     if (sources.contains(identifier)) {
       Some(identifier)

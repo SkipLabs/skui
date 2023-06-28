@@ -150,7 +150,7 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
 fun update(
   context: mutable SKFS.Context,
   _scope: String,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
   todo: Ui.Todo,
   _optUserData: ?SKFS.UserData,
 ): void {
@@ -160,7 +160,7 @@ fun update(
 fun execute(
   context: mutable SKFS.Context,
   executable: Ui.Executable,
-  values: mutable Map<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
 ): void {
   keys = values.get(Ui.keysProp).map(Infos::fromFile).default(Infos());
   executable match {
