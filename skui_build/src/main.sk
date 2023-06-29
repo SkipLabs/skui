@@ -56,7 +56,11 @@ fun main(): void {
           ),
         ),
     )
-    .subcommand(Cli.Command("fmt").about("Format all files using skfmt"))
+    .subcommand(
+      Cli.Command("fmt")
+        .arg(Cli.BoolArg("one").about("Format file one by one"))
+        .about("Format all files using skfmt"),
+    )
     .subcommand(
       Cli.Command("init")
         .about("Create a new skargo package")
@@ -401,7 +405,12 @@ fun execClean(args: Cli.ParseResults, env: Skargo.Env): void {
 }
 
 fun execFmt(args: Cli.ParseResults, env: Skargo.Env): void {
-  Skargo.execFmt(args, env)
+  if (args.getBool("one")) {
+    files = env.manifest.srcs.concat(env.manifest.tests);
+    files.each(f -> Skargo.run(Array["skfmt", "-i", f], env.verbose))
+  } else {
+    Skargo.execFmt(args, env)
+  }
 }
 
 fun execCheck(args: Cli.ParseResults, env: Skargo.Env): void {
