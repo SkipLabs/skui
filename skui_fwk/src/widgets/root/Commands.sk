@@ -320,7 +320,11 @@ class HStorage private (
         }
       );
     };
-    this.state.write(context, Ui.closedProp, SKFS.IntFile(context.tick.value))
+    this.state.write(
+      context,
+      Ui.closedProp,
+      SKFS.IntFile(context.tick.value + 1),
+    )
   }
 
   fun buildDropdown(
