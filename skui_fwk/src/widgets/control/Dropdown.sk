@@ -109,10 +109,11 @@ class Dropdown protected {
         }
       },
     );
+    settingsDirName = UiDropdown.dataDirName(path.makeChild("settings"));
     settingsHdl = mainHdl.contextWriterKeyMap(
       f ~> f,
       context,
-      UiDropdown.dataDirName(path.makeChild("settings")),
+      settingsDirName,
       (context, writer, _key, _file) ~> {
         keys = (builtHdl.get(context, SKFS.KKeys()) as SKFS.Keys _).value;
         nKeys = mutable Vector<SKFS.BaseName>[];
@@ -169,10 +170,11 @@ class Dropdown protected {
         writer.write(SKFS.KSize(), SKFS.IntFile(nKeys.size()));
       },
     );
+    widgetsDirName = UiDropdown.dataDirName(path.makeChild("widgets"));
     itemWidgets = settingsHdl.contextWriterKeyMap(
       f ~> f,
       context,
-      UiDropdown.dataDirName(path.makeChild("widgets")),
+      widgetsDirName,
       (context, writer, key, file) ~> {
         key match {
         | SKFS.StrID _ ->
@@ -206,9 +208,7 @@ class Dropdown protected {
       (context, writer, key, _) ~> {
         subPath = path.makeChild("widgets").makeChild(key.toString());
         if (key == titleKey && !params.state.isRoot(context)) {
-          backPath = subPath
-            .makeChild("back")
-            .makeChild(context.timeStamp().toString());
+          backPath = subPath.makeChild("back");
           button = Ui.Button::create(
             context,
             backPath,

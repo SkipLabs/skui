@@ -222,7 +222,7 @@ fun cancelMessage(context: mutable SKFS.Context, message: String): void {
 }
 
 @wasm_export("SKIP_SKUIMessage_manage")
-@wasm_export("SKIP_SKUIMessage_manage")
+@cpp_export("SKIP_SKUIMessage_manage")
 fun manage(message: String): void {
   SKFS.Context::withoutGc(context ~> {
     jsv = vtry<JSON.Value>(

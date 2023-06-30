@@ -538,11 +538,12 @@ class IHandle<T: frozen>(
     value: Array<T>,
   ): void {
     if (context.currentArrow().isSome()) {
+      files = value.map(v -> this.converter.toFile(v));
       context.postpone(
         SKFS.ToWrite(
           this.dirName,
           baseName,
-          value.map(v -> this.converter.toFile(v)),
+          _ctx ~> files,
         ),
       )
     } else {
@@ -557,6 +558,36 @@ class IHandle<T: frozen>(
           context,
           baseName,
           value.map(v -> this.converter.toFile(v)),
+        )
+      }
+    }
+  }
+
+  fun writeDeferredArray(
+    context: mutable Context,
+    baseName: BaseName,
+    valuesGetter: readonly Context ~> Array<T>,
+  ): void {
+    if (context.currentArrow().isSome()) {
+      context.postpone(
+        SKFS.ToWrite(
+          this.dirName,
+          baseName,
+          ctx ~> valuesGetter(ctx).map(v -> this.converter.toFile(v)),
+        ),
+      )
+    } else {
+      invariant(context.currentArrow().isNone(), "Must be call on root.");
+      context.maybeGetEagerDir(this.dirName) match {
+      | None() ->
+        invariant_violation(`Could not find input directory: ${this.dirName}`)
+      | Some(dir) if (!dir.isInput()) ->
+        invariant_violation(`Not an input Dir: ${this.dirName}`)
+      | Some(dir) ->
+        dir.writeArray(
+          context,
+          baseName,
+          valuesGetter(context).map(v -> this.converter.toFile(v)),
         )
       }
     }

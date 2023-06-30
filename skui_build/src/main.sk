@@ -423,7 +423,7 @@ fun execFormatAndCheck(
   doNotFormat: Bool = false,
 ): void {
   if (env.config.formatOnCheck && !doNotFormat) {
-    execFmt(args, env)
+    Skargo.execFmt(args, env)
   };
   Skargo.execCheck(args, env)
 }

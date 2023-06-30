@@ -705,19 +705,26 @@ fun setTodo(
   handle: SKFS.IHandle<SKFS.File>,
   value: Executable,
 ): void {
-  optExecutable = handle
-    .maybeGetValue(context, Ui.todoProp, true)
-    .map(Ui.Todo::fromFile)
-    .flatMap(t -> if (t.tick == context.tick) Some(t.command) else None());
-  executable = optExecutable match {
-  | Some(command) ->
-    command match {
-    | Multiple(cmds) -> Multiple(Arrays.add(cmds, value))
-    | _ -> Multiple(Array[command, value])
-    }
-  | _ -> value
+  getter = ctx ~> {
+    optExecutable = handle
+      .uMaybeGet(ctx, Ui.todoProp)
+      .map(Ui.Todo::fromFile)
+      .flatMap(t -> if (t.tick == ctx.tick) Some(t.command) else None());
+    Array[
+      Ui.Todo(
+        optExecutable match {
+        | Some(command) ->
+          command match {
+          | Multiple(cmds) -> Multiple(Arrays.add(cmds, value))
+          | _ -> Multiple(Array[command, value])
+          }
+        | _ -> value
+        },
+        ctx.tick,
+      ),
+    ]
   };
-  handle.write(context, todoProp, Ui.Todo(executable, context.tick))
+  handle.writeDeferredArray(context, todoProp, getter)
 }
 
 class Shortcut(

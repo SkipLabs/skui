@@ -5,6 +5,7 @@
 #include <fstream>
 #include <X11/extensions/Xrandr.h>
 #include <X11/Xresource.h>
+#include <math.h>
 
 std::string utf8datatype("text/plain; charset=utf-8");
 
@@ -126,12 +127,12 @@ namespace skui
   {
     if (this->eventManager != nullptr)
     {
-      auto ratio = this->computeRatio();
+      // in X11 the pixel ratio is 1.0
       this->eventManager->resize(this->config.wId, width, height, 100);
     }
   }
 
-  float GLWindowManager::computeRatio() {
+  float GLWindowManager::computeDpi() {
       XRRScreenResources *screenResources = XRRGetScreenResources(this->display, this->window);
       XRRCrtcInfo *crtcInfo = XRRGetCrtcInfo(this->display, screenResources, screenResources->crtcs[0]);
       if (crtcInfo->noutput > 0) {
@@ -149,22 +150,18 @@ namespace skui
         XRRFreeCrtcInfo(crtcInfo);
         XRRFreeScreenResources(screenResources);
 
-        printf("Resolution: %dx%d pixels\n", widthInPixels, heightInPixels);
-        printf("Physical Size: %dx%d mm\n", widthInMillimeters, heightInMillimeters);
-        printf("Pixel Ratio (X): %f\n", pixelRatioX);
-        printf("Pixel Ratio (Y): %f\n", pixelRatioY);
-        return (pixelRatioX + pixelRatioY) / 2.0;
+        return floor((pixelRatioX + pixelRatioY) / 2.0);
       }
-      return 1.0;
+      return 96.0;
   }
 
-  float GLWindowManager::computeDpi() {
+  float GLWindowManager::getDpiFromResource() {
       char *resourceString = XResourceManagerString(this->display);
       XrmDatabase db;
       XrmValue value;
 
       char *type = NULL;
-      double dpi = 1.0;
+      double dpi = 96.0;
 
       XrmInitialize(); /* Need to initialize the DB before calling Xrm* functions */
       db = XrmGetStringDatabase(resourceString);
