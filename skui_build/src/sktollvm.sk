@@ -39,10 +39,11 @@ fun compile(
     "--output",
     llfile,
   ];
+  debugMode = bc.isDebug();
   Skargo.run(cmd, bc.env.verbose);
   output = bc.target match {
   | Some(t) if (t.isWasm()) -> binName + ".wasm"
-  | _ -> if (bc.debug) `${binName}_debug` else binName
+  | _ -> if (debugMode) `${binName}_debug` else binName
   };
   if (bc.isWasm()) {
     invariant_violation("TODO: Wasm exports collector binary");
@@ -51,7 +52,7 @@ fun compile(
       Array[
         "clang++",
         "-no-pie",
-        if (bc.debug) "-O0" else "-O3",
+        if (bc.isRelease()) "-O3" else "-O0",
         "-mllvm",
         "-inline-threshold=0",
         llfile,

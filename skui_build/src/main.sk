@@ -19,20 +19,6 @@ fun main(): void {
     )
     .help();
   envCommands.each((_, ci) -> !cmd = cmd.subcommand(ci.i0));
-  /*.subcommand(
-      Cli.Command("checkall")
-        .short("a")
-        .about(
-          "Analyze the first-level packages, report first found errors, but don't build object files",
-        )
-        .arg(Cli.StringArg("target").about("Check for the target triple"))
-        .arg(
-          Cli.StringArg("target-dir").about(
-            "Directory for all generated artifacts",
-          ),
-        ),
-    )*/
-
   args = cmd
     .subcommand(
       Cli.Command("check")
@@ -45,6 +31,17 @@ fun main(): void {
           Cli.StringArg("target-dir").about(
             "Directory for all generated artifacts",
           ),
+        )
+        .arg(
+          Cli.StringArg("profile").about(
+            "Build artifacts with the specified profile",
+          ),
+        )
+        .arg(
+          Cli.BoolArg("release")
+            .short("r")
+            .long("release")
+            .about("Build artifacts in release mode, with optimizations"),
         ),
     )
     .subcommand(
@@ -54,6 +51,17 @@ fun main(): void {
           Cli.StringArg("target-dir").about(
             "Directory for all generated artifacts",
           ),
+        )
+        .arg(
+          Cli.StringArg("profile").about(
+            "Build artifacts with the specified profile",
+          ),
+        )
+        .arg(
+          Cli.BoolArg("release")
+            .short("r")
+            .long("release")
+            .about("Build artifacts in release mode, with optimizations"),
         ),
     )
     .subcommand(
@@ -168,11 +176,12 @@ fun build(
   | Success(v) -> v
   | Failure(e) -> throw e
   };
+  profile = Skargo.getProfile(args);
   bc = Skargo.BuildContext::create(
     env,
     args.maybeGetString("target"),
     args.maybeGetString("target-dir"),
-    args.getBool("debug"),
+    profile,
   );
   Skargo.genVersionFile(bc);
   (libraries, preambles) = checkLibraries(bc, dirs, deps);
@@ -181,7 +190,7 @@ fun build(
       if (allowSk2Llvm && args.getBool("sk2llvm")) {
         compile(bc, bin.name, bin.main, libraries, preambles)
       } else {
-        Skargo.compile(bc, bin.name, bin.main)
+        simpleCompile(bc, bin.name, bin.main)
       };
       then(deps, bc, bin, dirs)
     }
@@ -258,12 +267,22 @@ fun execTest(args: Cli.ParseResults, env: Skargo.Env): void {
 
 fun buildCommand(name: String): Cli.Command {
   Cli.Command(name)
-    .arg(Cli.BoolArg("debug").about("Build in debug mode"))
     .arg(Cli.StringArg("target").about("Check for the target triple"))
     .arg(
       Cli.StringArg("target-dir").about(
         "Directory for all generated artifacts",
       ),
+    )
+    .arg(
+      Cli.StringArg("profile").about(
+        "Build artifacts with the specified profile",
+      ),
+    )
+    .arg(
+      Cli.BoolArg("release")
+        .short("r")
+        .long("release")
+        .about("Build artifacts in release mode, with optimizations"),
     )
 }
 
@@ -298,11 +317,12 @@ fun checkLibrary(
     ("native", ".a", resources)
   };
   refPath = Path.join(dep.path, dir);
+
   if (FileSystem.exists(refPath)) {
     for (name in dirs) {
       sourceDir = Path.join(refPath, name);
       if (FileSystem.exists(sourceDir)) {
-        libname = `lib${dep.name}_${name}${if (bc.debug) "_debug" else {
+        libname = `lib${dep.name}_${name}${if (bc.isDebug()) "_debug" else {
           ""
         }}${ext}`;
         target = Path.join(bc.targetDir, libname);
@@ -426,24 +446,6 @@ fun execFormatAndCheck(
     Skargo.execFmt(args, env)
   };
   Skargo.execCheck(args, env)
-}
-
-fun execCheckAll(args: Cli.ParseResults): void {
-  path = getcwd();
-  manifests = FileSystem.readFilesRecursive(
-    path,
-    f -> Path.basename(f) == Skargo.kManifestFile,
-    d -> {
-      manifestFile = Path.join(d, Skargo.kManifestFile);
-      Path.parentname(d) == path && FileSystem.exists(manifestFile)
-    },
-  );
-  manifests.each(manifest -> {
-    pos = SKFS.newObstack();
-    env = Skargo.Env::forManifest(manifest, args.getBool("verbose"));
-    execFormatAndCheck(args, env, true);
-    SKFS.destroyObstack(pos);
-  });
 }
 
 @cpp_extern("SKIP_setenv")
@@ -598,8 +600,9 @@ fun compileFile(
   optTime: ?Int,
   includes: Array<String>,
 ): String {
+  debugMode = bc.isDebug();
   ext = if (bc.isWasm()) ".bc" else ".o";
-  suffix = if (bc.debug) `_debug${ext}` else ext;
+  suffix = if (debugMode) `_debug${ext}` else ext;
   object = targetPath(
     bc.targetDir,
     relative(source, refDir).fromSome(),
@@ -613,10 +616,12 @@ fun compileFile(
       Array["clang++", "-std=c++17"]
     })
       .concat(
-        if (bc.debug) {
+        if (debugMode) {
           Array["-g", "-O0", "-DDEBUG"]
-        } else {
+        } else if (bc.isRelease()) {
           Array["-O3"]
+        } else {
+          Array["-O0"]
         },
       )
       .concat(
@@ -700,3 +705,50 @@ fun copyObjOptions(): (String, String) {
     ("aarch64", "elf64-littleaarch64")
   }
 }
+
+fun simpleCompile(
+  bc: Skargo.BuildContext,
+  binName: String,
+  main: String,
+): void {
+  output = bc.target match {
+  | Some(t) if (t.isWasm()) -> binName + ".wasm"
+  | _ if (bc.isDebug()) -> binName + "_debug"
+  | _ -> binName
+  };
+  Skargo.invokeSkc(
+    bc,
+    Array[
+      "--export-function-as",
+      `${main}=skip_main`,
+      "-o",
+      Path.join(bc.targetDir, output),
+    ].concat(profileOptions(bc.profile)),
+  )
+}
+
+fun profileOptions(profile: String): Array<String> {
+  if (profile == Skargo.kReleaseProfile) {
+    Array["-O3"]
+  } else {
+    Array["-O0"]
+  }
+}
+
+module end;
+
+module Skargo;
+
+const kDebugProfile: String = "debug";
+
+extension class BuildContext {
+  fun isDebug(): Bool {
+    this.profile == kDebugProfile;
+  }
+
+  fun isRelease(): Bool {
+    this.profile == kReleaseProfile;
+  }
+}
+
+module end;
