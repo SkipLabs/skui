@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Clone skui
           command: |
-            git clone "$CIRCLE_BRANCH" "$CIRCLE_REPOSITORY_URL"
+            git clone -b "$CIRCLE_BRANCH" "$CIRCLE_REPOSITORY_URL"
       - run:
           name: Skip job if irrelevant
           command: |
