@@ -24,7 +24,7 @@ commands:
 jobs:
   skui_common:
     docker:
-      - image: beauby/skiplabs:circleci-0.0.1
+      - image: skiplabsdaniel/skui:circleci-0.0.1
     steps:
       - add_ssh_keys:
           fingerprints:
