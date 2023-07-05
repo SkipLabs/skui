@@ -26,6 +26,9 @@ jobs:
     docker:
       - image: beauby/skiplabs:circleci-0.0.1
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "a5:96:bf:61:22:02:b6:5c:d9:82:14:d7:9b:01:39:61"
       - run:
           name: Clone skfs
           command: |
