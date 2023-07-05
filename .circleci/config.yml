@@ -43,9 +43,11 @@ jobs:
       - run:
           name: Skip job if irrelevant
           command: |
-            cd skui && if git diff --quiet HEAD master -- skui_common/
+            cd skui
+            if git diff --quiet HEAD master -- skui_common/
             then
               circleci-agent step halt
+            fi
       - skuisetup
       - run:
           name: Run common tests
