@@ -1,0 +1,57 @@
+version: 2.1
+
+commands:
+  skfssetup:
+    description: "Setup skip toolchain"
+    steps:
+      - run:
+          name: Fetch submodules
+          command: |
+            cd skfs && git submodule update --init --recursive
+      - run:
+          name: Build compiler
+          command: |
+            cd skfs/compiler && make STAGE=0 && sudo make install STAGE=0
+  skuisetup:
+    description: "Setup skui toolchain"
+    steps:
+      - run:
+          name: Build and builder
+          command: |
+            cat "skfs\nskui\n" > .skargoreps
+            cd skui/skui_build && make build && sudo make install
+
+jobs:
+  skui_common:
+    docker:
+      - image: beauby/skiplabs:circleci-0.0.1
+    steps:
+      - run:
+          name: Clone skfs
+          command: |
+            git clone -b skuimerge https://github.com/SkipLabs/skfs
+      - skfssetup
+      - run:
+          name: Clone skui
+          command: |
+            git clone "$CIRCLE_BRANCH" "$CIRCLE_REPOSITORY_URL"
+      - run:
+          name: Skip job if irrelevant
+          command: |
+            cd skui && if git diff --quiet HEAD master -- skui_common/
+            then
+              circleci-agent step halt
+      - skuisetup
+      - run:
+          name: Run common tests
+          no_output_timeout: 1m
+          command: |
+            mkdir -p ~/test-results
+            cd skui/skui_common && skuibuild test --junitxml ~/test-results/skui_common.xml
+      - store_test_results:
+          path: ~/test-results/skui_common.xml
+
+workflows:
+  compiler:
+    jobs:
+      - skui_common

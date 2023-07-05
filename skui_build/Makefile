@@ -3,11 +3,12 @@ CPP				= clang++
 BCLINK		= llvm-link
 VERSION	 	?= $(shell lsb_release -sc)
 LIBDIR		?= lib
-BINARCH		?= i386:x86-64
-ELFARCH		?= elf64-x86-64
-OBCOPY		?= objcopy
 BUILDDIR	?= target
 SRCDIR    ?= src
+
+USR_LOCAL     ?= /usr/local
+USR_LOCAL_BIN ?= $(USR_LOCAL)/bin
+USR_LOCAL_LIB ?= $(USR_LOCAL)/lib
 
 ifdef DEBUG
 SKSUFFIX ?= _debug
@@ -44,12 +45,6 @@ RULE64				:= $(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
 INC64     		:= $(foreach dir,$(SKARGO_INCLUDEDIRS64),"-I$(dir)")
 endif #("$(wildcard native)","")
 
-
-ifneq ("$(RESOURCES)","")
-ORESOURCES64	:= $(addprefix $(BUILDDIR)/,$(RESOURCES:.bin=.bin.o))
-RULE64				?= $(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_64$(SKSUFFIX).a
-endif #("$(RESOURCES)","")
-
 ifneq ("$(wildcard wasm/$(SRCDIR))","")
 SOURCES32			:= $(shell find -L wasm -name "*.c")
 FILES32				:= $(addprefix $(BUILDDIR)/,$(SOURCES32:.c=.bc))
@@ -57,10 +52,6 @@ RULE32				:= $(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_32.bc
 endif #("$(wildcard native)","")
 
 default: build
-
-$(BUILDDIR)/resources/%.bin.o: resources/%.bin
-	[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	${OBCOPY} -B $(BINARCH) -I binary -O $(ELFARCH) $< $@
 
 $(BUILDDIR)/native/%$(SKSUFFIX).o: native/%.cpp $(IFILES64)
 	[ -d $(dir $@) ] || mkdir -p $(dir $@)
@@ -88,12 +79,8 @@ $(LIBDIR)/$(SRCDIR)/lib$(SKNAME)_32.bc: $(BUILDDIR)/$(SRCDIR)/lib$(SKNAME)_32.bc
 
 .PHONY: build
 build: $(RULE64) $(RULE32)
-	export SKC_LINK=$(RULE64);skargo b
+	export SKC_LINK=$(RULE64);skargo b --release
 
-.PHONY: check
-check:
-	make -f SkipToLLVM.mk check
-
-.PHONY: clean
-clean:
-	rm -Rf $(BUILDDIR)
+.PHONY: install
+install: build
+	install -m 644 target/skuibuild $(USR_LOCAL_BIN)
