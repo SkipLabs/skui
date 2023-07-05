@@ -18,7 +18,7 @@ commands:
       - run:
           name: Build and builder
           command: |
-            cat "skfs\nskui\n" > .skargoreps
+            printf "skfs\nskui\n" > .skargoreps
             cd skui/skui_build && make build && sudo make install
 
 jobs:
