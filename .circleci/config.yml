@@ -52,6 +52,6 @@ jobs:
           path: ~/test-results/skui_common.xml
 
 workflows:
-  compiler:
+  skui_common:
     jobs:
       - skui_common
