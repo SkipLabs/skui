@@ -19,7 +19,7 @@ commands:
           name: Build and builder
           command: |
             printf "skfs\nskui\n" > .skargoreps
-            cd skui/skui_build && make build && sudo make install
+            cd skui/skui_build && make build
 
 jobs:
   skui_common:
@@ -54,7 +54,7 @@ jobs:
           no_output_timeout: 1m
           command: |
             mkdir -p ~/test-results
-            cd skui/skui_common && skuibuild test --junitxml ~/test-results/skui_common.xml
+            cd skui/skui_common && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_common.xml
       - store_test_results:
           path: ~/test-results/skui_common.xml
 
