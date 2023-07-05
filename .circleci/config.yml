@@ -32,7 +32,7 @@ jobs:
       - run:
           name: Clone skfs
           command: |
-            git clone -b skuimerge https://github.com/SkipLabs/skfs
+            git clone -b skuimerge git@github.com:skiplabsdaniel/SkipLabs/skfs
       - skfssetup
       - run:
           name: Clone skui
