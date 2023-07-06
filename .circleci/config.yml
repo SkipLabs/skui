@@ -68,6 +68,7 @@ jobs:
   skui_font:
     docker:
       - image: skiplabsdaniel/skui:circleci-0.0.1
+    resource_class: xlarge
     steps:
       - cloneskfs
       - skfssetup
