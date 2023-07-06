@@ -107,7 +107,7 @@ jobs:
       - skuisetup
       - run:
           name: Run common tests
-          no_output_timeout: 5m
+          no_output_timeout: 10m
           command: |
             mkdir -p ~/test-results
             cd skui/skui_mtsdf && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_mtsdf.xml
