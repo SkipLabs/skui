@@ -83,7 +83,7 @@ jobs:
             fi
       - skuisetup
       - run:
-          name: Run common tests
+          name: Run font tests
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
@@ -107,7 +107,7 @@ jobs:
             fi
       - skuisetup
       - run:
-          name: Run common tests
+          name: Run mtsdf tests
           no_output_timeout: 2m
           command: |
             mkdir -p ~/test-results
