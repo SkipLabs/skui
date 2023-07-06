@@ -20,11 +20,8 @@ commands:
           command: |
             printf "skfs\nskui\n" > .skargoreps
             cd skui/skui_build && make build
-
-jobs:
-  skui_common:
-    docker:
-      - image: skiplabsdaniel/skui:circleci-0.0.1
+  cloneskfs:
+    description: "Clone skfs"
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -35,11 +32,22 @@ jobs:
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
             git clone -b skuimerge git@github.com:SkipLabs/skfs
-      - skfssetup
+  cloneskui:
+    description: "Clone skui"
+    steps:
       - run:
           name: Clone skui
           command: |
             git clone -b "$CIRCLE_BRANCH" "$CIRCLE_REPOSITORY_URL"
+
+jobs:
+  skui_common:
+    docker:
+      - image: skiplabsdaniel/skui:circleci-0.0.1
+    steps:
+      - cloneskfs
+      - skfssetup
+      - cloneskui
       - run:
           name: Skip job if irrelevant
           command: |
@@ -57,8 +65,62 @@ jobs:
             cd skui/skui_common && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_common.xml
       - store_test_results:
           path: ~/test-results/skui_common.xml
+  skui_font:
+    docker:
+      - image: skiplabsdaniel/skui:circleci-0.0.1
+    steps:
+      - cloneskfs
+      - skfssetup
+      - cloneskui
+      - run:
+          name: Skip job if irrelevant
+          command: |
+            cd skui
+            if git diff --quiet HEAD master -- skui_font/
+            then
+              circleci-agent step halt
+            fi
+      - skuisetup
+      - run:
+          name: Run common tests
+          no_output_timeout: 1m
+          command: |
+            mkdir -p ~/test-results
+            cd skui/skui_font && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_font.xml
+      - store_test_results:
+          path: ~/test-results/skui_font.xml
+  skui_mtsdf:
+    docker:
+      - image: skiplabsdaniel/skui:circleci-0.0.1
+    steps:
+      - cloneskfs
+      - skfssetup
+      - cloneskui
+      - run:
+          name: Skip job if irrelevant
+          command: |
+            cd skui
+            if git diff --quiet HEAD master -- skui_mtsdf/
+            then
+              circleci-agent step halt
+            fi
+      - skuisetup
+      - run:
+          name: Run common tests
+          no_output_timeout: 1m
+          command: |
+            mkdir -p ~/test-results
+            cd skui/skui_mtsdf && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_mtsdf.xml
+      - store_test_results:
+          path: ~/test-results/skui_mtsdf.xml
 
 workflows:
-  skui_common:
+  common:
     jobs:
       - skui_common
+  font:
+    jobs:
+      - skui_font
+  mtsdf:
+    jobs:
+      - skui_mtsdf
