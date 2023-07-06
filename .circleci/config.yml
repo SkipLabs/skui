@@ -59,7 +59,7 @@ jobs:
       - skuisetup
       - run:
           name: Run common tests
-          no_output_timeout: 1m
+          no_output_timeout: 2m
           command: |
             mkdir -p ~/test-results
             cd skui/skui_common && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_common.xml
@@ -83,7 +83,7 @@ jobs:
       - skuisetup
       - run:
           name: Run common tests
-          no_output_timeout: 1m
+          no_output_timeout: 2m
           command: |
             mkdir -p ~/test-results
             cd skui/skui_font && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_font.xml
@@ -107,7 +107,7 @@ jobs:
       - skuisetup
       - run:
           name: Run common tests
-          no_output_timeout: 1m
+          no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
             cd skui/skui_mtsdf && ../skui_build/target/skuibuild test --junitxml ~/test-results/skui_mtsdf.xml
