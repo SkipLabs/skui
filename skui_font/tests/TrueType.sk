@@ -75,7 +75,7 @@ class FontCase(
   got: (TrueType.Font) ~> SKFS.File,
   expected: SKFS.File,
   name: String = "luxisr",
-) extends Case {}
+) extends Case
 
 base class TrueType(r: String ~> TrueType.Font) {
   //

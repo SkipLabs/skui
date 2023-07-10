@@ -27,12 +27,19 @@ export interface Shared {
 
 export interface Environment {
   timestamp: () => float;
-  decodeUTF8: (utf8: Uint8Array) => string;
+  decodeUTF8: (utf8: ArrayBuffer) => string;
+  encodeUTF8: (str: string) => Uint8Array;
   onException: () => void;
   base64Decode: (base64: String) => Uint8Array;
-  complete(exports: object, shared: Map<string,Shared>);
+  complete: (exports: object, shared: Map<string,Shared>) => void;
+  main: (new_args: Array<string>, new_stdin: string) => string;
+  initMainFunction: (fn: ptr) => void;
+  clearMainEnvironment: () => void;
 }
 
+interface Memory {
+  buffer: ArrayBuffer;
+}
 
 interface Exported {
   SKIP_String_byteSize: (strPtr: ptr) => int;
@@ -59,6 +66,8 @@ interface Exported {
   SKIP_SKUIMessage_messageFailure: (skMsg: ptr) => void;
   SKIP_getExceptionMessage: (skExc: ptr) => ptr;
   SKIP_get_persistent_size: () => int;
+  SKIP_get_version: () => number;
+  memory: Memory;
   __heap_base: any;
 }
 
@@ -72,18 +81,15 @@ export interface WasmSupplier {
 
 export class Utils {
   exports: Exported;
-  memory: WebAssembly.Memory;
   lastCall: ptr;
   env: Environment;
   state: State;
 
   constructor(
     exports: WebAssembly.Exports,
-    memory: WebAssembly.Memory,
     env: Environment,
   ) {
     this.exports = exports as any as Exported;
-    this.memory = memory;
     this.lastCall = 0;
     this.env = env;
     this.state = new State();
@@ -102,11 +108,11 @@ export class Utils {
   };
   importString = (strPtr: ptr) => {
     let size = this.exports.SKIP_String_byteSize(strPtr);
-    let utf8 = new Uint8Array(this.memory.buffer, strPtr, size);
+    let utf8 = new Uint8Array(this.exports.memory.buffer, strPtr, size);
     return this.env.decodeUTF8(utf8);
   };
   exportString: (s: string) => ptr = (s: string) => {
-    var data = new Uint8Array(this.memory.buffer);
+    var data = new Uint8Array(this.exports.memory.buffer);
     // @ts-ignore
     var i = 0, addr = this.exports.SKIP_Obstack_alloc(s.length * 4);
     for (var ci = 0; ci != s.length; ci++) {
@@ -160,7 +166,7 @@ export class Utils {
     }
   };
   getBytesFromBuffer = (dataPtr: ptr, length: int) => {
-    return new Uint8ClampedArray(this.memory.buffer, dataPtr, length);
+    return new Uint8ClampedArray(this.exports.memory.buffer, dataPtr, length);
   };
   getFloats32 = (dataPtr: ptr, length: int) => {
     let values = new Float32Array(length);
@@ -171,7 +177,7 @@ export class Utils {
   };
   init = () => {
     let heapBase = this.exports.__heap_base.valueOf();
-    let size = this.memory.buffer.byteLength - heapBase;
+    let size = this.exports.memory.buffer.byteLength - heapBase;
     this.exports.SKIP_skfs_init(size);
     this.exports.SKIP_initializeSkip();
     this.exports.SKIP_skfs_end_of_init();
@@ -245,6 +251,9 @@ export class Utils {
       )
     )
   }
+  getPersistentSize = () => this.exports.SKIP_get_persistent_size();
+  getVersion = () => this.exports.SKIP_get_version();
+  getMemoryBuffer = () => this.exports.memory.buffer;
 }
 
 export interface Links {
@@ -358,7 +367,7 @@ export function humanSize(bytes: int) {
   return bytes.toFixed(1) + ' ' + units[u];
 }
 
-function loadWasm(
+export function loadWasm(
   buffer: ArrayBuffer,
   managers: Array<ToWasmManager>,
   environment: Environment,
@@ -369,7 +378,7 @@ function loadWasm(
     result => {
       let instance = result.instance;
       let exports = instance.exports as any;
-      let utils = new Utils(instance.exports, exports.memory, environment);
+      let utils = new Utils(instance.exports, environment);
       let shared = new Map<string, Shared>();
       links.forEach(link => {
         if (link) {

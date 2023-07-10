@@ -147,4 +147,12 @@ class DummyBaseName() extends BaseName {
   }
 }
 
+fun destroyObstackKeep<T>(pos: Obstack, value: T): T {
+  copied = destroyObstackWithValue(pos, List.Cons(value, List.Nil()));
+  copied match {
+  | List.Cons(v, _) -> v
+  | _ -> cast_violation("List.Cons", "List.Nil")
+  }
+}
+
 module end;
