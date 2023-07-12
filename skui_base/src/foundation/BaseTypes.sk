@@ -169,7 +169,7 @@ native fun saveExn(exn: Exception): void;
 @wasm_export("SKIP_callWithException")
 @cpp_export("SKIP_callWithException")
 fun callWithException(f: () -> void, exc: UInt32): void {
-  saveExn(JSException::make(exc));
+  if (exc.toInt() > 0) saveExn(JSException::make(exc));
   f();
 }
 

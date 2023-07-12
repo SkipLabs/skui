@@ -4,6 +4,11 @@ export type ptr = number;
 
 export type Opt<T> = T | null;
 
+export enum Stream {
+  OUT,
+  ERR,
+  DEBUG,
+}
 
 export class State {
   exceptionId = 0;
@@ -21,20 +26,32 @@ export class Exception {
   }
 }
 
+class SkException extends Error {
+  constructor(msg: string) {
+      super(msg);
+  }
+}
+
 export interface Shared {
   getName: () => string;
 }
 
+export interface FileSystem {
+  openFile(filename: string): number;
+  closeFile(fd: int): void;
+  watchFile(filename: string, f: (change: string) => void): void;
+  writeToFile(fd: int, content: string): void;
+  appendToFile(filename: string, content: string): void;
+}
+
 export interface Environment {
+  arguments: Array<string>;
   timestamp: () => float;
   decodeUTF8: (utf8: ArrayBuffer) => string;
   encodeUTF8: (str: string) => Uint8Array;
   onException: () => void;
   base64Decode: (base64: String) => Uint8Array;
-  complete: (exports: object, shared: Map<string,Shared>) => void;
-  main: (new_args: Array<string>, new_stdin: string) => string;
-  initMainFunction: (fn: ptr) => void;
-  clearMainEnvironment: () => void;
+  fs: () => FileSystem;
 }
 
 interface Memory {
@@ -42,6 +59,7 @@ interface Memory {
 }
 
 interface Exported {
+  SKIP_throw_EndOfFile: () => void;
   SKIP_String_byteSize: (strPtr: ptr) => int;
   SKIP_Obstack_alloc: (size: int) => ptr;
   sk_string_create: (addr: ptr, size: int) => ptr;
@@ -67,12 +85,9 @@ interface Exported {
   SKIP_getExceptionMessage: (skExc: ptr) => ptr;
   SKIP_get_persistent_size: () => int;
   SKIP_get_version: () => number;
+  skip_main: () => void;
   memory: Memory;
   __heap_base: any;
-}
-
-export function toBeDefined(fn: String) {
-  console.log("To be defined: " + fn);
 }
 
 export interface WasmSupplier {
@@ -80,26 +95,78 @@ export interface WasmSupplier {
 }
 
 export class Utils {
-  exports: Exported;
-  lastCall: ptr;
-  env: Environment;
-  state: State;
+  private exports: Exported;
+  private env: Environment;
+  private state: State;
+
+  args: Array<string>;
+  private current_stdin: number;
+  private stdin: string;
+  private stdout: Array<string>;
+  private stderr: Array<string>;
+  private stddebug: Array<string>;
+  private exitCode: int;
+  private mainFn ?: string;
+  
+  exit = (code: int) => this.exitCode = code;
 
   constructor(
     exports: WebAssembly.Exports,
     env: Environment,
+    mainFn ?: string,
   ) {
+    this.args = new Array();
+    this.current_stdin = 0;
+    this.exitCode = 0;
+    this.stdin = "";
+    this.stdout = new Array();
+    this.stderr = new Array();
     this.exports = exports as any as Exported;
-    this.lastCall = 0;
     this.env = env;
     this.state = new State();
+    this.mainFn = mainFn;
   }
-  log = (strPtr: ptr) => {
-    let toDisplay = this.importString(strPtr).trim();
+  log = (strPtr: ptr, kind?: Stream) => {
+    let toDisplay = this.importString(strPtr);
     if (toDisplay != "") {
-      console.log(toDisplay);
+      kind = kind ? kind : Stream.OUT;
+      if (kind == Stream.DEBUG) {
+        this.stddebug.push(toDisplay);
+      } else if (kind == Stream.ERR) {
+          this.stderr.push(toDisplay);
+      } else {
+        this.stdout.push(toDisplay);
+      }
     }
   };
+
+  clearMainEnvironment = (new_args: Array<string> = [], new_stdin: string = "") => {
+    this.args = new_args;
+    this.current_stdin = 0;
+    this.exitCode = 0;
+    this.stdin = new_stdin;
+    this.stdout = new Array();
+    this.stderr = new Array();
+    this.stddebug = new Array();
+  }
+
+  main = (new_args: Array<string>, new_stdin: string) => {
+    this.clearMainEnvironment(new_args, new_stdin);
+    if (!this.mainFn) {
+      this.exports.skip_main();
+    } else {
+      this.exports[this.mainFn]();
+    }
+    if (this.stddebug.length > 0) {
+      console.log(this.stddebug.join(""));
+    }
+    if (this.exitCode != 0 || this.stderr.length > 0) {
+      let message = this.stderr.length > 0 ? this.stderr.join("") : "Internal error with code: " + this.exitCode;
+      throw new Error(message)
+    }
+    return this.stdout.join("");
+  }
+
   importOptString = (strPtr: ptr) => {
     if (strPtr > 0)  {
       return this.importString(strPtr)
@@ -151,8 +218,8 @@ export class Utils {
   call = (fnId: ptr) => {
     return this.exports.SKIP_call0(fnId);
   };
-  callWithException = (fnId: ptr, exception: Exception) => {
-    return this.exports.SKIP_callWithException(fnId, exception.id);
+  callWithException = (fnId: ptr, exception: Exception | null) => {
+    return this.exports.SKIP_callWithException(fnId, exception ? exception.id : 0);
   };
   runWithGc = <T>(fn: () => T) => {
     let obsPos = this.exports.SKIP_checkObstack();
@@ -211,11 +278,10 @@ export class Utils {
     }
   }
   etry = (f: ptr, exn_handler: ptr) => {
-    this.lastCall = f;
     try {
       return this.call(f);
     } catch (exn) {
-      let exception = new Exception(exn, this.state);
+      let exception = (exn instanceof SkException) ? null : new Exception(exn, this.state);
       return this.callWithException(exn_handler, exception);
     }
   }
@@ -223,7 +289,7 @@ export class Utils {
     if (this.env && this.env.onException) this.env.onException();
     let skMessage = skExc != null && skExc != 0 ? this.exports.SKIP_getExceptionMessage(skExc) : null;
     let message = skMessage != null && skMessage != 0 ? this.importString(skMessage) : "SKFS Internal error";
-    throw new Error(message);
+    throw new SkException(message);
   }
   deleteException = (actor: int) => {
     this.state.exceptions.delete(actor);
@@ -254,6 +320,36 @@ export class Utils {
   getPersistentSize = () => this.exports.SKIP_get_persistent_size();
   getVersion = () => this.exports.SKIP_get_version();
   getMemoryBuffer = () => this.exports.memory.buffer;
+
+  readStdInLine = () => {
+    let lineBuffer = new Array<int>();
+    const endOfLine = 10;
+    if (this.current_stdin >= this.stdin.length) {
+      this.exports.SKIP_throw_EndOfFile();
+    }
+    while (this.stdin.charCodeAt(this.current_stdin) !== endOfLine) {
+      if (this.current_stdin >= this.stdin.length) {
+        if (lineBuffer.length == 0) {
+          this.exports.SKIP_throw_EndOfFile();
+        } else {
+          return lineBuffer;
+        }
+      }
+      lineBuffer.push(this.stdin.charCodeAt(this.current_stdin));
+      this.current_stdin++;
+    }
+    this.current_stdin++;
+    return lineBuffer;
+  }
+
+  getStdInChar = () => {
+    if (this.current_stdin >= this.stdin.length) {
+      this.exports.SKIP_throw_EndOfFile();
+    }
+    let result = this.stdin.charCodeAt(this.current_stdin);
+    this.current_stdin++;
+    return result;
+  }
 }
 
 export interface Links {
@@ -370,7 +466,8 @@ export function humanSize(bytes: int) {
 export function loadWasm(
   buffer: ArrayBuffer,
   managers: Array<ToWasmManager>,
-  environment: Environment,
+  environment : Environment,
+  main ?: string,
 ) {
   let wasm = {};
   let links = managers.map(manager => manager.prepare(wasm));
@@ -378,7 +475,8 @@ export function loadWasm(
     result => {
       let instance = result.instance;
       let exports = instance.exports as any;
-      let utils = new Utils(instance.exports, environment);
+      let utils = new Utils(instance.exports, environment, main);
+      utils.init();
       let shared = new Map<string, Shared>();
       links.forEach(link => {
         if (link) {
@@ -388,8 +486,10 @@ export function loadWasm(
           }          
         }
       });
-      utils.init();
-      environment.complete(exports, shared);
+      if (!main) {
+        utils.main(environment.arguments, "");
+      }
+      return shared;
     }
   );
 }
@@ -398,6 +498,7 @@ function start(
   modules: Array<string>,
   buffer: Uint8Array,
   environment: Environment,
+  main ?: string,
   managers?: Array<ToWasmManager>
 ) {
   let promises = modules.map(name => import(name).then(module => {
@@ -408,7 +509,7 @@ function start(
     }
   }))
   return Promise.all(promises).then(cs => cs.filter(c => c != null)).then(
-    ms => loadWasm(buffer, managers ? managers.concat(ms) : ms, environment)
+    ms => loadWasm(buffer, managers ? managers.concat(ms) : ms, environment, main)
   )
 }
 
@@ -418,7 +519,8 @@ export function run(
   environment: string,
   modules : Array<string>,
   congifs : Array<string>,
-  managers?: Array<ToWasmManager>,
+  main ?: string,
+  managers ?: Array<ToWasmManager>,
 ) {
   let promises = congifs.map(name => import(name).then(config => {
     if (config.config) {
@@ -436,8 +538,8 @@ export function run(
     result => {
       let env = result[0].environment(result[1]);
       return import("./" + wasm64 + ".wasm.mjs").then(wm => env.base64Decode(wm.base64)).then(
-        buffer => start(modules, buffer, env, managers)
+        buffer => start(modules, buffer, env, main, managers)
       );
     }
-  ).catch(e => console.error(e));
+  ).catch(e => {throw e;});
 }

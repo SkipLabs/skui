@@ -6,15 +6,17 @@ export interface Utility {
   trackedQuery: (request: string, start?: number, end?: number) => any;
   runner: (fn: () => string) => Promise<Array<any>>;
   registerFun: <T1, T2>(f: (obj: T1) => T2) => SKDBCallable<T1, T2>;
+  addSubscribedRoot: (name: string, value: any) => void;
+  removeSubscribedRoot: (name: string) => void;
+  getRootChangeListeners: () => Array<(rootName: string) => void>;
+  addRootChangeListener: (f: (rootName: string) => void) => void;
+  main: (new_args: Array<string>, new_stdin: string) => string;
 }
 
 export interface SKDB {
-  openFile: (filename: string) => number;
-  watchFile: (filename: string, f: (change: string) => void) => void;
   onRootChange: (f: (rootName: string) => void) => void;
   subscribe: (viewName: string, f: (change: string) => void) => void;
 
-  save:() => Promise<boolean>;
   sqlRaw: (query: string) => Promise<string>;
   sql(query: string): Promise<Array<any>>;
   cmd(new_args: Array<string>, new_stdin: string): Promise<string>;
@@ -29,6 +31,7 @@ export interface SKDB {
   getRoot: (rootName: string) => any;
   trackedCall: <T1, T2>(callable: SKDBCallable<T1, T2>, arg: T1) => T2;
   trackedQuery: (request: string, start?: number, end?: number) => any;
+  save(): Promise<boolean>;
 }
 
 export interface Orchestrable {
@@ -48,12 +51,21 @@ export var metadataTable = (tableName: string) => {
 }
 
 export interface Storage {
-  copyPage(start: number, end: number): Promise<ArrayBuffer>;
-  storePages(): Promise<boolean>;
   save(): Promise<boolean>;
 }
 
 export interface Server {}
+
+
+export type Page = { pageid: number, content: any };
+
+export interface PagedMemory {
+  init(fn: (page: Page) => void): void;
+  restore(pages: Array<Page>): void;
+  clear() : void;
+  update() : void;
+  getPages(): Promise<Array<Page>>;
+}
 
 
 /* ***************************************************************************/
@@ -70,22 +82,4 @@ export class SKDBCallable<T1, T2> {
   getId(): number {
     return this.id;
   }
-}
-
-export class ExternalFuns {
-  private externalFuns: Array<(any) => any>;
-
-  constructor() {
-    this.externalFuns = [];
-  }
-
-  register<T1, T2>(f: (obj: T1) => T2): SKDBCallable<T1, T2> {
-    let funId = this.externalFuns.length;
-    this.externalFuns.push(f);
-    return new SKDBCallable(funId);
-  }
-
-  call(funId: number, jso: object) {
-    return this.externalFuns[funId]!(jso);
-  }  
 }

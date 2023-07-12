@@ -1,4 +1,5 @@
-import {int, float, ptr, Environment, Links, Utils, ToWasmManager, Shared} from "#skui_base/skui_types";
+/** @sk factory SKDB */
+import {int, ptr, Environment, Links, Utils, ToWasmManager} from "#skui_base/skui_types";
 
 type MouseEventManager = (
   wId: int, type: int,
@@ -27,15 +28,7 @@ interface Env extends Environment {
   storage: () => Storage;
   window: () => Window;
   start: (wId: int) => Promise<int>;
-}
-
-export class ViewsShared implements Shared {
-  getName = () => "views";
   update: () => void;
-
-  constructor(update: () => void) {
-    this.update = update;
-  }
 }
 
 export interface Exported {
@@ -313,7 +306,10 @@ class LinksImpl implements Links, ToWasm {
         );
       }
     };
-    return new ViewsShared(this.update);
+    if (this.env) {
+      this.env.update = this.update;
+    }
+    return null;
   }
 }
 class Manager implements ToWasmManager {

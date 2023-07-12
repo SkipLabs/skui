@@ -1,4 +1,4 @@
-import {int, ptr, Links, Utils, ToWasmManager, Environment, Shared} from "#skui_base/skui_types";
+import {int, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_base/skui_types";
 import {Factory} from "#skui_opengl/skui_glcontext";
 
 interface Exported {
@@ -128,22 +128,18 @@ interface ToWasm {
   SKIP_GL_getProgramInfoLog:(program: int, ctxId: int) => ptr | null;
 }
 
-export class WebglShared implements Shared {
-  getName = () => "webgl";
+interface Webgl extends Environment {
   start: (wId: int) => Promise<int>;
   imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
-
-  constructor(factory:  Factory) {
-    this.start = (wId: int) => factory.createContext(wId).then(ctx => ctx.id);
-    this.imageAsTexture = factory.imageAsTexture;
-  }
 }
 
 export class LinksImpl implements Links {
-  factory:  Factory;
+  private factory:  Factory;
+  private env:  Environment;
 
-  constructor(factory:  Factory) {
+  constructor(factory:  Factory, env:  Environment) {
     this.factory = factory;
+    this.env = env;
   }
 
   complete = (utils: Utils, exports: object) => {
@@ -151,20 +147,25 @@ export class LinksImpl implements Links {
     this.factory.utils = utils;
     this.factory.render = exported.SKIP_SKUIGL_performFrame;
     this.factory.setGlContext = exported.SKIP_SKUIGL_setWindowContext;
-    return new WebglShared(this.factory);
+    let env = this.env as Webgl;
+    env.start = (wId: int) => this.factory.createContext(wId).then(ctx => ctx.id);
+    env.imageAsTexture = this.factory.imageAsTexture;
+    return null;
   }
 }
 
 class Manager implements ToWasmManager {
-  factory:  Factory;
+  private factory:  Factory;
+  private env:  Environment;
 
-  constructor(factory:  Factory) {
+  constructor(factory:  Factory, env:  Environment) {
     this.factory = factory;
+    this.env = env;
   }
 
   prepare = (wasm: object) => {
     let toWasm = wasm as ToWasm;
-    let links = new LinksImpl(this.factory);
+    let links = new LinksImpl(this.factory, this.env);
     //////////////////////// TEXTURES ///////////////////////////////
     toWasm.SKIP_GL_activateTextureAt = (texture: int, location: int, index: int, ctxId: int) => this.factory.activateTextureAt(texture, location, index, ctxId);
     toWasm.SKIP_GL_activeTexture = (index: int, ctxId: int) => this.factory.activeTexture(index, ctxId);
@@ -453,10 +454,43 @@ class ToConsole implements ToWasmManager {
   }
 }
 
-/** @sk init */
+interface Env extends Environment {
+  window: () => Window; 
+  canvas: () => HTMLCanvasElement; 
+}
+
+/** @sk loader */
 export function init(env?: Environment) {
   if (env) {
-    return Factory.init(env).then(factory => new Manager(factory));
+    let wenv = env as Env;
+    let window = wenv.window();
+    let document = wenv.window().document;
+    let container = document.getElementById("skui_container") as HTMLElement;
+    container = container ? container : document.body;
+    let texthook = document.getElementById("skui_texthook");
+    if (!texthook) {
+      texthook = document.createElement("textarea");
+      texthook.id = "skui_texthook";
+      container.appendChild(texthook);
+    }
+    let canvas = document.getElementById("skui_canvas") as HTMLCanvasElement;
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      canvas.id = "skui_canvas";
+      container.appendChild(canvas);
+    }
+    canvas.style.overflow = "hidden";
+    canvas.style.position = "absolute";
+    canvas.style.top = "0px";
+    canvas.style.left = "0px";
+    let width = Math.trunc(window.innerWidth);
+    let height = Math.trunc(window.innerHeight);
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    wenv.canvas = () => canvas;
+    return Factory.init(env).then(factory => new Manager(factory, wenv));
   } else {
     return Promise.resolve(new ToConsole());
   }

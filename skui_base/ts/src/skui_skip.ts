@@ -1,22 +1,27 @@
-import {int, float, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_base/skui_types";
+import {int, float, ptr, Links, Utils, ToWasmManager, Environment, Stream} from "#skui_base/skui_types";
 
 interface Env extends Environment {
   window: () => Window | null;
-  arguments: Array<string>;
-  appendTextTo: (name: string, content: string) => void;
   throwRuntime: (code: int) => void;
 }
 
 class LinksImpl implements Links {
   env: Env | undefined;
-  arguments: Array<string>;
+  lineBuffer: Array<int>;
 
   constructor(env?: Env) {
     this.env = env;
-    this.arguments = env ? env.arguments : new Array();
   }
 
+  SKIP_read_line_fill: () => int;
+  SKIP_read_line_get: (index: int) => ptr;
+  SKIP_getchar: () => int;
+  SKIP_unix_open: (skFileName: ptr)  => int;
+  SKIP_unix_close: (fs: int)  => void;
+  SKIP_write_to_file: (fd: int, skContents: ptr)  => void;
+
   SKIP_print_error: (strPtr: ptr) => void;
+  SKIP_print_debug: (strPtr: ptr) => void;
   SKIP_print_raw: (strPtr: ptr) => void;
   SKIP_print_char: (code: int) => void;
   SKIP_print_string: (strPtr: ptr) => void;
@@ -29,25 +34,29 @@ class LinksImpl implements Links {
   SKIP_JS_getExceptionMessage: (actor: int) => ptr;
   SKIP_getArgN: (index: int) => ptr;
   SKIP_FileSystem_appendTextFile: (path: ptr, contents: ptr) => void;
-
-  SKIP_getArgc = () => this.arguments.length;
+  SKIP_getArgc: () => int;
+  SKIP_glock() {}
+  SKIP_gunlock() {}
 
   complete = (utils: Utils, exports: object) => {
+    this.SKIP_getArgc = () => utils.args.length;
     this.SKIP_etry = utils.etry;
     this.SKIP_print_error = (msg: ptr) => {
-      utils.log(msg);
+      utils.log(msg, Stream.ERR);
+    };
+
+    this.SKIP_print_debug = (msg: ptr) => {
+      utils.log(msg, Stream.DEBUG);
     };
     this.SKIP_print_raw = utils.log;
     this.SKIP_print_string = utils.log;
     this.__cxa_throw = (exc: ptr) => utils.ethrow(exc);
-    this.SKIP_throw_cruntime = (code: int) => {
-      if (this.env) this.env.throwRuntime(code);
-    }
+    this.SKIP_throw_cruntime = utils.exit;
     this.SKIP_print_char = (c: int) => {
       var str = String.fromCharCode(c);
       if (str == "\n") {
         if (consoleBuffer.trim() != "") {
-          console.log(consoleBuffer);
+          console.log(consoleBuffer + "\n");
         }
         consoleBuffer = "";
       } else {
@@ -58,12 +67,35 @@ class LinksImpl implements Links {
     this.SKIP_JS_deleteException = utils.deleteException;
     this.SKIP_JS_getExceptionMessage = utils.getExceptionMessage;
 
-    this.SKIP_getArgN = (index: int) => utils.exportString(this.arguments[index]);
+    this.SKIP_getArgN = (index: int) => utils.exportString(utils.args[index]);
+    
+    this.SKIP_read_line_fill = () => {
+      this.lineBuffer = utils.readStdInLine();
+      return this.lineBuffer.length;
+    };
+    this.SKIP_read_line_get = (i : int) =>  {
+      return this.lineBuffer[i];
+    };
+    this.SKIP_getchar = utils.getStdInChar;
+    this.SKIP_unix_open = (skFileName: ptr)  => {
+      if (!this.env) throw new Error("Environment must be specified");
+      let fileName = utils.importString(skFileName);
+      return this.env.fs().openFile(fileName);
+    };
+    this.SKIP_unix_close = (fs: int)  => {
+      if (!this.env) throw new Error("Environment must be specified");
+      return this.env.fs().closeFile(fs);
+    };
+    this.SKIP_write_to_file = (fd: int, skContents: ptr)  => {
+      let jsStr = utils.importString(skContents);
+      if (jsStr == "" || !this.env) return;
+      this.env.fs().writeToFile(fd, jsStr);
+    }
     this.SKIP_FileSystem_appendTextFile = (path: ptr, contents: ptr) => {
       let strPath = utils.importString(path);
       let strContents = utils.importString(contents);
       if (this.env) {
-        this.env.appendTextTo(strPath, strContents);
+        this.env.fs().appendToFile(strPath, strContents);
       }
     }
     return null;
@@ -117,6 +149,7 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_Math_exp =  Math.exp;
     toWasm.SKIP_JS_timeStamp = () => links.SKIP_JS_timeStamp();
     toWasm.SKIP_print_error =  (strPtr: ptr) => links.SKIP_print_error(strPtr);
+    toWasm.SKIP_print_debug =  (strPtr: ptr) => links.SKIP_print_debug(strPtr);
     toWasm.SKIP_print_raw =  (strPtr: ptr) => links.SKIP_print_raw(strPtr);
     toWasm.SKIP_print_char =  (strPtr: ptr) => links.SKIP_print_char(strPtr);
     toWasm.SKIP_print_string =  (strPtr: ptr) => links.SKIP_print_string(strPtr);
@@ -126,6 +159,12 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_getArgc = () => links.SKIP_getArgc();
     toWasm.SKIP_getArgN = (index: int) => links.SKIP_getArgN(index);
     toWasm.SKIP_FileSystem_appendTextFile = (path: ptr, contents: ptr) => links.SKIP_FileSystem_appendTextFile(path, contents);
+    toWasm.SKIP_read_line_fill = () => links.SKIP_read_line_fill();
+    toWasm.SKIP_read_line_get = (index: int) => links.SKIP_read_line_get(index);
+    toWasm.SKIP_getchar = () => links.SKIP_getchar();
+    toWasm.SKIP_unix_open = (skFileName: ptr)  => links.SKIP_unix_open(skFileName);
+    toWasm.SKIP_unix_close = (fs: int)  => links.SKIP_unix_close(fs);
+    toWasm.SKIP_write_to_file = (fd: int, skContents: ptr)  => links.SKIP_write_to_file(fd, skContents);
     return links;
   }
 }
@@ -157,6 +196,7 @@ interface ToWasm {
   SKIP_Math_log10: (v: float) => float;
   SKIP_Math_exp: (v: float) => float;
   SKIP_print_error: (strPtr: ptr) => void;
+  SKIP_print_debug: (strPtr: ptr) => void;
   SKIP_print_raw: (strPtr: ptr) => void;
   SKIP_print_char: (strPtr: ptr) => void;
   SKIP_print_string: (strPtr: ptr) => void;
@@ -166,9 +206,15 @@ interface ToWasm {
   SKIP_getArgc: () => int;
   SKIP_getArgN: (index: int) => ptr;
   SKIP_FileSystem_appendTextFile: (path: ptr, contents: ptr) => void;
+  SKIP_read_line_fill: () => int;
+  SKIP_read_line_get: (index: int) => ptr;
+  SKIP_getchar: () => int;
+  SKIP_unix_open: (skFileName: ptr)  => int;
+  SKIP_unix_close: (fs: int)  => void;
+  SKIP_write_to_file: (fd: int, skContents: ptr)  => void;
 }
 
-/** @sk init */
+/** @sk runtime */
 export function init(env?: Environment) {
   return Promise.resolve(new Manager(env ? env as Env : undefined));
 }
