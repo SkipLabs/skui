@@ -1,8 +1,8 @@
 
-import { int, ptr, Environment, Links, ToWasmManager, Utils, Shared, run} from "#skui_base/skui_types";
-import {PagedMemory, Page, Utility, SKDBCallable, Storage, SKDB} from "#skui_skdb/skdb_types";
-import {IDBStorage} from "#skui_skdb/skdb_storage";
-import {SKDBImpl} from "#skui_skdb/skdb_database";
+import { int, ptr, Environment, Links, ToWasmManager, Utils, Shared} from "#skui_base/skui_types";
+import {PagedMemory, Page, Utility, SKDBCallable, Storage, SKDB, ExternalFuns} from "#skfs_skdb/skdb_types";
+import {IDBStorage} from "#skfs_skdb/skdb_storage";
+import {SKDBImpl} from "#skfs_skdb/skdb_database";
 
 
 interface Exported {
@@ -212,7 +212,7 @@ class SKDBMemory implements PagedMemory {
   }
 }
 
-export class SKDBShared implements Shared {
+class SKDBShared implements Shared {
   getName = () => "SKDB";
   create: (dbName ?: string, asWorker ?: boolean) => Promise<SKDB>;
   constructor(create: (dbName ?: string) => Promise<SKDB>) {
@@ -221,26 +221,6 @@ export class SKDBShared implements Shared {
       // todo Manage worker
       return await create(dbName);
     };
-  }
-}
-
-
-
-export class ExternalFuns {
-  private externalFuns: Array<(any) => any>;
-
-  constructor() {
-    this.externalFuns = [];
-  }
-
-  register<T1, T2>(f: (obj: T1) => T2): SKDBCallable<T1, T2> {
-    let funId = this.externalFuns.length;
-    this.externalFuns.push(f);
-    return new SKDBCallable(funId);
-  }
-
-  call(funId: number, jso: object) {
-    return this.externalFuns[funId]!(jso);
   }
 }
 
@@ -378,7 +358,6 @@ class Manager implements ToWasmManager {
 }
 
 
-/** @sk factory SKDB | SKDB_factory | create as createDatabase | dbName | asWorker */
 /** @sk init */
 export function init(env?: Environment) {
   return Promise.resolve(new Manager(env!));

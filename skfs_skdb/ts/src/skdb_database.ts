@@ -1,7 +1,7 @@
 
 import { Environment, FileSystem} from "#skui_base/skui_types";
-import { Orchestrable, SKDB, Server, SKDBCallable, Utility} from "#skui_skdb/skdb_types";
-import { connect } from "#skui_skdb/skdb_orchestration";
+import { Orchestrable, SKDB, Server, SKDBCallable, Utility} from "#skfs_skdb/skdb_types";
+import { connect } from "#skfs_skdb/skdb_orchestration";
 
 class OrchestrableImpl implements Orchestrable {
   writeCsv: (table: string, payload: string) => void;
@@ -68,12 +68,12 @@ export class SKDBImpl implements SKDB {
   private clientUuid: string = "";
   private fs: FileSystem;
 
-  registerFun: <T1, T2>(f: (obj: T1) => T2) => SKDBCallable<T1, T2>;
-  addRoot: <T1, T2>(rootName: string, callable: (obj: T1) => T2 | SKDBCallable<T1, T2>, arg: T1) => void;
-  removeRoot: (rootName: string) => void;
-  getRoot: (rootName: string) => any;
-  trackedCall: <T1, T2>(callable: SKDBCallable<T1, T2>, arg: T1) => T2;
-  trackedQuery: (request: string, start?: number, end?: number) => any;
+  registerFun: <T1, T2>(f: (obj: T1) => T2) => Promise<SKDBCallable<T1, T2>>;
+  addRoot: <T1, T2>(rootName: string, callable: (obj: T1) => T2 | SKDBCallable<T1, T2>, arg: T1) => Promise<void>;
+  removeRoot: (rootName: string) => Promise<void>;
+  getRoot: (rootName: string) => Promise<any>;
+  trackedCall: <T1, T2>(callable: SKDBCallable<T1, T2>, arg: T1) => Promise<T2>;
+  trackedQuery: (request: string, start?: number, end?: number) => Promise<any>;
   onRootChange: (f: (rootName: string) => void) => void;
   save: () => Promise<boolean>;
   runLocal: (new_args: Array<string>, new_stdin: string) => string;
@@ -98,13 +98,13 @@ export class SKDBImpl implements SKDB {
     client.onRootChange =  (f: (rootName: string) => void) => {
       utility.addRootChangeListener(f);
     };
-    client.addRoot = utility.addRoot;
-    client.removeRoot = utility.removeRoot;
-    client.getRoot = utility.getRoot;
-    client.trackedCall = utility.trackedCall;
-    client.trackedQuery = utility.trackedQuery;
+    client.addRoot = async <T1, T2>(rootName: string, callable: (obj: T1) => T2 | SKDBCallable<T1, T2>, arg: T1) => utility.addRoot(rootName, callable, arg);
+    client.removeRoot = async (rootName) => utility.removeRoot(rootName);
+    client.getRoot = async (rootName) => utility.getRoot(rootName);
+    client.trackedCall = async <T1, T2>(callable: SKDBCallable<T1, T2>, arg: T1) => utility.trackedCall(callable, arg);
+    client.trackedQuery = async (request: string, start?: number, end?: number) => utility.trackedQuery(request, start, end);
     client.runner = utility.runner;
-    client.registerFun = utility.registerFun;
+    client.registerFun = async <T1, T2>(f: (obj: T1) => T2) => utility.registerFun(f);
     client.runSubscribeRoots(utility);
     return client;
   }
@@ -148,7 +148,7 @@ export class SKDBImpl implements SKDB {
     return Promise.resolve(this.runLocal(new_args, new_stdin));
   }
 
-  subscribe(viewName: string, f: (change: string) => void): void {
+  subscribe = async (viewName: string, f: (change: string) => void) => {
     const fileName = "/subscriptions/sub" + this.subscriptionCount;
     this.fs.watchFile(fileName, f);
     this.subscriptionCount++;
@@ -158,37 +158,37 @@ export class SKDBImpl implements SKDB {
     );
   }
 
-  sqlRaw = (stdin: string) => {
-    return Promise.resolve(this.runLocal([], stdin));
+  sqlRaw = async (stdin: string) => {
+    return this.runLocal([], stdin);
   }
 
-  sql = (stdin: string) => {
-    return this.runner(() => this.runLocal(["--format=js"], stdin));
+  sql = async (stdin: string) => {
+    return await this.runner(() => this.runLocal(["--format=js"], stdin));
   }
 
-  tableExists = (tableName: string) => {
-    return Promise.resolve(this.runLocal(["dump-table", tableName], "").trim() != "");
+  tableExists = async (tableName: string) => {
+    return this.runLocal(["dump-table", tableName], "").trim() != "";
   }
 
-  tableSchema = (tableName: string) => {
-    return Promise.resolve(this.runLocal(["dump-table", tableName], ""));
+  tableSchema = async (tableName: string) => {
+    return this.runLocal(["dump-table", tableName], "");
   }
 
-  viewExists = (viewName: string) => {
-    return Promise.resolve(this.runLocal(["dump-view", viewName], "") != "");
+  viewExists = async (viewName: string) => {
+    return this.runLocal(["dump-view", viewName], "") != "";
   }
 
-  viewSchema = (viewName: string) => {
-    return Promise.resolve(this.runLocal(["dump-view", viewName], ""));
+  viewSchema = async (viewName: string) => {
+    return this.runLocal(["dump-view", viewName], "");
   }
 
-  schema = () => {
+  schema = async () => {
     const tables = this.runLocal(["dump-tables"], "");
     const views = this.runLocal(["dump-views"], "");
-    return Promise.resolve(tables + views);
+    return tables + views;
   }
 
-  insert = (tableName: string, values: Array<any>) => {
+  insert = async (tableName: string, values: Array<any>) => {
     values = values.map((x) => {
       if (typeof x == "string") {
         if (x == undefined) {
@@ -200,7 +200,7 @@ export class SKDBImpl implements SKDB {
     });
     let stdin =
       "insert into " + tableName + " values (" + values.join(", ") + ");";
-    return Promise.resolve(this.runLocal([], stdin) == "");
+    return this.runLocal([], stdin) == "";
   }
 
   assertCanBeMirrored(tableName: string): void {

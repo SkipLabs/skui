@@ -1,6 +1,6 @@
 
 
-import { Storage, PagedMemory } from "#skui_skdb/skdb_types";
+import { Storage, PagedMemory } from "#skfs_skdb/skdb_types";
 
 
 

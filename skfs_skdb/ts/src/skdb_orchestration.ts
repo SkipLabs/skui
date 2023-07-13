@@ -1,7 +1,7 @@
 
-import { npmVersion } from "#skui_skdb/skdb_version";
+import { npmVersion } from "#skfs_skdb/skdb_version";
 import { Environment } from "#skui_base/skui_types";
-import { Orchestrable, metadataTable, Server } from "#skui_skdb/skdb_types";
+import { Orchestrable, metadataTable, Server } from "#skfs_skdb/skdb_types";
 
 /* ***************************************************************************/
 /* Orchestration protocol. */

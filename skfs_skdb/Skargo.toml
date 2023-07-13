@@ -1,5 +1,5 @@
 [package]
-name = "skui_skdb"
+name = "skfs_skdb"
 version = "0.1.0"
 
 [dependencies]

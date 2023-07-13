@@ -1,71 +1,5 @@
 module SkuibuildJS;
 
-class Factory(
-  shared: String,
-  sharedFun: String,
-  entry: String,
-  jsName: String,
-  parameter: Array<String>,
-) {
-  /** @sk factory name | param1 | param2 */
-  static fun parse(line: String): ?Factory {
-    prefix = "/** @sk factory ";
-    suffix = " */";
-    if (!line.startsWith(prefix) || !line.endsWith(suffix)) {
-      return None()
-    };
-    chars = line.chars().drop(prefix.length());
-    !chars = chars.take(chars.size() - suffix.length());
-    info = String::fromChars(chars.toArray()).trim();
-    if (info.isEmpty()) {
-      return None()
-    };
-    factory = info.split("|").map(v -> v.trim());
-    if (
-      factory.size() < 3 ||
-      factory[0].isEmpty() ||
-      factory[1].isEmpty() ||
-      factory[2].isEmpty()
-    ) {
-      return None()
-    };
-    tmp = factory[2].split(" as ").map(v -> v.trim());
-    sharedFun = tmp[0];
-    jsName = tmp.maybeGet(1).default(sharedFun);
-    Some(
-      Factory(
-        factory.first(),
-        sharedFun,
-        factory[1],
-        jsName,
-        factory.drop(3).toArray().filter(v -> !v.isEmpty()),
-      ),
-    );
-  }
-
-  fun toFunction(): String {
-    `${this.jsName}(${this.parameter.join(", ")})`
-  }
-
-  fun toParameters(): String {
-    defs = this.parameter.map(p -> `${p} : ${p}`);
-    `{${defs.join(", ")}}`
-  }
-
-  fun toJS(): String {
-    `
- export async function ${this.toFunction()} {
-  let shared = await run(wasm64, environment, modules, congifs, "${
-      this.entry
-    }");
-  return shared.get("${this.shared}").${
-      this.sharedFun
-    }(${this.parameter.join(", ")});
-}
- `
-  }
-}
-
 fun performers(name: String): ?Performer {
   name match {
   | "html" -> Some(HTMLPerformer())
@@ -83,7 +17,7 @@ base class Performer {
     runner: String,
     configs: String,
     modules: String,
-    factories: Array<Factory>,
+    withBinary: Bool,
     verbose: Bool,
   ): ?() ~> void;
 
@@ -96,7 +30,6 @@ base class Performer {
     runner: String,
     configs: String,
     modules: String,
-    factories: Array<Factory>,
   ): void {
     contents = `
 import {run} from "${runner}";
@@ -108,35 +41,7 @@ var modules = [${modules}];
 
 run(wasm64, environment, modules, congifs, true);
 `;
-    factories.each(f -> !contents = contents + f.toJS());
     FileSystem.writeTextFile(Path.join(target, `${name}.mjs`), contents);
-  }
-
-  protected fun writeFactory(
-    target: String,
-    name: String,
-    factory: String,
-    env: String,
-    runner: String,
-    configs: String,
-    modules: String,
-  ): void {
-    FileSystem.writeTextFile(
-      Path.join(target, `${name}.mjs`),
-      `
-import {run} from "${runner}";
-
-var wasm64 = "${name}";
-var environment = "${env}";
-var congifs = [${configs}];
-var modules = [${modules}];
-
-export async function load() {
-  let shared = await run(wasm64, environment, modules, congifs, false);
-  return shared.get("${factory}")
-}
-`,
-    );
   }
 }
 
@@ -188,6 +93,7 @@ fun manage(
     runDir = Path.join(bc.targetDir, performer.name);
     performDir = Path.join(bc.targetDir, performer.path());
     Skuibuild.ensureDirectory(performDir, bc.env.verbose);
+    withBinary = FileSystem.exists(Path.join(target, `${bin.name}.ts`));
     res = copyAndConvertImport(
       runDir,
       performDir,
@@ -195,6 +101,7 @@ fun manage(
       bin.name,
       jsFiles,
       optPerformer,
+      withBinary,
       bc.env.verbose,
     );
     optPDir.each(pDir ->
@@ -218,9 +125,10 @@ fun copyAndConvertImport(
   root: String,
   target: String,
   performer: String,
-  path: String,
+  binName: String,
   jsFiles: Vector<String>,
   optPerformer: ?Performer,
+  withBinary: Bool,
   verbose: Bool,
 ): ?() ~> void {
   wasm64Line = "var wasm64 = \"/*--NAME--*/\";";
@@ -234,7 +142,6 @@ fun copyAndConvertImport(
   tmplFiles = mutable Vector<(String, Vector<String>)>[];
   envFiles = mutable Vector<String>[];
   runFiles = mutable Vector<String>[];
-  factories = mutable Vector<Factory>[];
   jsFiles.each(f -> {
     contents = FileSystem.readTextFile(f);
     withInit = false;
@@ -245,49 +152,45 @@ fun copyAndConvertImport(
     withEnv = false;
     withRun = false;
     lines = contents.split("\n").map(line -> {
-      Factory::parse(line) match {
-      | Some(factory) -> factories.push(factory)
-      | _ ->
-        if (line.startsWith("import ")) {
-          elements = line.split(" from ");
-          if (elements.size() == 2) {
-            imported = elements[1].split("\"");
-            if (imported.size() == 3) {
-              elems = imported[1].split("/");
-              size = elems.size();
-              if (size > 1 && elems[0].startsWith("#")) {
-                !elems = elems.mapWithIndex((idx, v) ->
-                  if (idx == 0) "." else if (idx == size - 1) {
-                    `${v}.mjs`
-                  } else {
-                    v
-                  }
-                );
-                !line = `${elements[0]} from "${elems.join("/")}"`
-              }
+      if (line.startsWith("import ")) {
+        elements = line.split(" from ");
+        if (elements.size() == 2) {
+          imported = elements[1].split("\"");
+          if (imported.size() == 3) {
+            elems = imported[1].split("/");
+            size = elems.size();
+            if (size > 1 && elems[0].startsWith("#")) {
+              !elems = elems.mapWithIndex((idx, v) ->
+                if (idx == 0) "." else if (idx == size - 1) {
+                  `${v}.mjs`
+                } else {
+                  v
+                }
+              );
+              !line = `${elements[0]} from "${elems.join("/")}"`
             }
           }
-        };
-        cLine = line.trim();
-        if (
-          cLine == wasm64Line ||
-          cLine == modulesLines ||
-          cLine == configsLines
-        ) {
-          !withTmpl = true;
-        } else if (cLine == "/** @sk config */") {
-          !withConfig = true;
-        } else if (cLine == "/** @sk init */") {
-          !withInit = true;
-        } else if (cLine == "/** @sk loader */") {
-          !withLoader = true;
-        } else if (cLine == "/** @sk runtime */") {
-          !withRuntime = true;
-        } else if (cLine == `/** @sk env ${performer} */`) {
-          !withEnv = true;
-        } else if (cLine == `/** @sk run */`) {
-          !withRun = true;
         }
+      };
+      cLine = line.trim();
+      if (
+        cLine == wasm64Line ||
+        cLine == modulesLines ||
+        cLine == configsLines
+      ) {
+        !withTmpl = true;
+      } else if (cLine == "/** @sk config */") {
+        !withConfig = true;
+      } else if (cLine == "/** @sk init */") {
+        !withInit = true;
+      } else if (cLine == "/** @sk loader */") {
+        !withLoader = true;
+      } else if (cLine == "/** @sk runtime */") {
+        !withRuntime = true;
+      } else if (cLine == `/** @sk env ${performer} */`) {
+        !withEnv = true;
+      } else if (cLine == `/** @sk run */`) {
+        !withRun = true;
       };
       line;
     });
@@ -337,7 +240,7 @@ fun copyAndConvertImport(
   | Some(env) -> env
   | _ ->
     optPerformer match {
-    | Some(p) -> p.generateEnv(target, path)
+    | Some(p) -> p.generateEnv(target, binName)
     | _ ->
       invariant_violation(
         `An environment supplier must be defined for '${performer}'.`,
@@ -351,7 +254,7 @@ fun copyAndConvertImport(
     !lines = lines.map(line -> {
       cLine = line.trim();
       if (cLine == wasm64Line) {
-        `var wasm64 = "${path}";`
+        `var wasm64 = "${binName}";`
       } else if (cLine == modulesLines) {
         `var modules = [${strModules}];`
       } else if (cLine == configsLines) {
@@ -368,12 +271,12 @@ fun copyAndConvertImport(
     p.generate(
       root,
       target,
-      path,
+      binName,
       strEnvironment,
       strRun,
       strConfigs,
       strModules,
-      factories.toArray(),
+      withBinary,
       verbose,
     )
   )
@@ -400,10 +303,12 @@ class HTMLPerformer() extends Performer {
     runner: String,
     configs: String,
     modules: String,
-    factories: Array<Factory>,
+    withBinary: Bool,
     verbose: Bool,
   ): ?() ~> void {
-    this.writeLauncher(target, name, env, runner, configs, modules, factories);
+    if (!withBinary) {
+      this.writeLauncher(target, name, env, runner, configs, modules)
+    };
     this.writeIndex(
       root,
       Skuibuild.relative(target, root)
@@ -456,10 +361,12 @@ class NodePerformer(args: Array<String>) extends Performer {
     runner: String,
     configs: String,
     modules: String,
-    factories: Array<Factory>,
+    withBinary: Bool,
     verbose: Bool,
   ): ?() ~> void {
-    this.writeLauncher(target, name, env, runner, configs, modules, factories);
+    if (!withBinary) {
+      this.writeLauncher(target, name, env, runner, configs, modules);
+    };
     Some(() ~>
       Skargo.run(
         Array["node", "--experimental-modules"].concat(this.args).concat(

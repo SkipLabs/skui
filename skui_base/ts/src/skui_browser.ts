@@ -28,11 +28,10 @@ class Env implements Environment {
   }
   
 
-  constructor(window: Window, navigator: Navigator, configs?: Array<any>) {
+  constructor(global: WindowOrWorkerGlobalScope, navigator: Navigator, configs?: Array<any>) {
     this.fileSystem = new MemFS();
     this.configs = configs;
-    this.timestamp = () => window.performance.now();
-    this.window = () => window;
+    this.timestamp = () => global.performance.now();
     this.clipboard = () => navigator.clipboard;
     var decoder = new TextDecoder('utf8');
     this.decodeUTF8 = (utf8: ArrayBuffer) => decoder.decode(utf8);
@@ -41,17 +40,22 @@ class Env implements Environment {
     this.base64Decode = (base64: string) => Uint8Array.from(atob(base64), c => c.charCodeAt(0));;
     this.storage = () => localStorage;
     this.onException = () => { };
-    let search = window.location.search.trim().substring(1);
-    this.arguments = search.split("/").map(t => decodeURI(t));
-    if (configs) {
-      this.arguments = configs.map(o  => JSON.stringify(o)).concat(this.arguments);
-    }
-    this.requestAnimationFrame = (callback) => window.requestAnimationFrame(callback);
-    this.cancelAnimationFrame = (handle) => window.cancelAnimationFrame(handle);
+    if ('location' in global) {
+      let win = global as any;
+      this.window = () => win;
+      let search = win.location.search.trim().substring(1);
+      this.arguments = search.split("/").map(t => decodeURI(t));
+      if (configs) {
+        this.arguments = configs.map(o  => JSON.stringify(o)).concat(this.arguments);
+      }
+      this.requestAnimationFrame = (callback) => win.requestAnimationFrame(callback);
+      this.cancelAnimationFrame = (handle) => win.cancelAnimationFrame(handle);
+    };
   };
 }
 
 /** @sk env html */
 export function environment(configs?: Array<any>) {
-  return new Env(window, navigator, configs)
+  let global = (typeof window == "undefined") ? self : window;
+  return new Env(global, navigator, configs)
 }
