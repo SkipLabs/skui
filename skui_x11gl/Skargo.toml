@@ -3,8 +3,11 @@ name = "skui_x11gl"
 version = "0.1.0"
 
 [dependencies]
-skui_opengl = {}
-cli = {}
+skui_opengl = { "path" = "../skui_opengl" }
+cli = "*"
+
+[build-dependencies]
+skbuild = "*"
 
 [[bin]]
 name = "skuix11gl"

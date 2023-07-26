@@ -85,18 +85,16 @@ extension class Context {
     conv: File ~> T,
     dirName: DirName,
     content: Array<(BaseName, T)> = Array[],
-    reallyRemove: Bool = false,
   ): EHandle<T> {
-    this.mkdir(conv, dirName, reallyRemove, content);
+    this.mkdir(conv, dirName, content);
   }
 
   mutable fun makePreDir<T: File>(
     conv: File ~> T,
     dirName: DirName,
     content: Array<(BaseName, T)> = Array[],
-    reallyRemove: Bool = false,
   ): EHandle<T> {
-    value = this.makeDir(conv, dirName.pre(), content, reallyRemove);
+    value = this.makeDir(conv, dirName.pre(), content);
     if (!this.hasPre.contains(dirName)) {
       this.!hasPre = this.hasPre.add(dirName);
     };

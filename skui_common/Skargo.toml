@@ -2,5 +2,8 @@
 name = "skui_common"
 version = "0.1.0"
 
+[build-dependencies]
+skbuild = "*"
+
 [dependencies]
-skui_base = { }
+skui_base = { "path" = "../skui_base" }

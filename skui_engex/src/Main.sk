@@ -99,7 +99,7 @@ fun perform(available: readonly Vector<Example>): void {
               initEngineWidget(context, args, wId, example);
               context.initPre();
             });
-            if (SkargoVersion.kWasm) {
+            if (SkargoVersion.kWasm32) {
               SKUIJS.init(uint32(wId), title);
             } else {
               screen = args.getString("screen").toIntOption().default(0);

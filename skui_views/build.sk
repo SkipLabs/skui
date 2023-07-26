@@ -1,0 +1,29 @@
+module SkuiViewsBuild;
+
+@skbuild_source_dirs
+fun source_dirs(_env: Skbuild.Env): Array<String> {
+  Array["native/src"]
+}
+
+@skbuild_include_dirs
+fun include_dirs(_env: Skbuild.Env): Array<String> {
+  Array[
+    "../skui_opengl/native/src/includes",
+    "../skui_base/native/src/includes",
+    "../skui_x11gl/native/src/includes",
+  ]
+}
+
+
+@skbuild_resources
+fun resources(_env: Skbuild.Env): Array<String> {
+  Array[
+    "resources/src/big.bin",
+    "resources/src/small.bin"
+  ]
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build(false);
+}

@@ -2,11 +2,9 @@
 name = "skui_eng"
 version = "0.1.0"
 [dependencies]
-skui_views = {}
+skui_views = { "path" = "../skui_views" }
 
 [[bin]]
 name = "skuieng"
 main = "SkuiEng.main"
-target = "wasm32"
-performer = {"name" = "html", "target" = "mjs"}
 

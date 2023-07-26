@@ -500,9 +500,6 @@ class IHandle<T: frozen>(
   dirName: DirName,
 ) extends Handle<T> {
   //
-  fun destroy(context: mutable SKFS.Context): void {
-    context.removeDir(this.dirName, true)
-  }
 
   fun toEHandle(): EHandle<T> {
     EHandle(this.converter.fromFile, this.dirName)

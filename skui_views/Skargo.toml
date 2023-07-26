@@ -3,15 +3,12 @@ name = "skui_views"
 version = "0.1.0"
 
 [dependencies]
-skui_fwk = {}
-skui_x11gl = {}
+skui_fwk = { "path" = "../skui_fwk" }
+skui_x11gl = { "path" = "../skui_x11gl" }
+
+[build-dependencies]
+skbuild = "*"
 
 [[bin]]
 name = "skuiviews"
 main = "SkuiViews.main"
-
-[[bin]]
-name = "skuiviews"
-main = "SkuiViews.main"
-target = "wasm32"
-performer = {"name" = "html", "target" = "mjs"}

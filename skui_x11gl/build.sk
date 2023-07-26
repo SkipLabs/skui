@@ -1,0 +1,25 @@
+module SkuiX11glBuild;
+
+@skbuild_source_dirs
+fun source_dirs(_env: Skbuild.Env): Array<String> {
+  Array["native/src"]
+}
+
+@skbuild_include_dirs
+fun include_dirs(_env: Skbuild.Env): Array<String> {
+  Array[
+    "native/src/includes",
+    "../skui_opengl/native/src/includes",
+    "../skui_base/native/src/includes",
+  ]
+}
+
+@skbuild_links
+fun links(_env: Skbuild.Env): Array<String> {
+  Array["-lX11", "-lXcursor", "-lXext", "-lXrandr"]
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build(false);
+}

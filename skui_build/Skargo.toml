@@ -3,7 +3,7 @@ name = "skui_argo"
 version = "0.1.0"
 
 [dependencies]
-skargo = {}
+skargo = "*"
 
 [[bin]]
 name = "skuibuild"

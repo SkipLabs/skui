@@ -23,7 +23,7 @@ class Handle private (
   }
 
   fun apply(parameters: Vector<JSON.Value>): ?JSON.Value {
-    if (SkargoVersion.kWasm) {
+    if (SkargoVersion.kWasm32) {
       apply(this.eptr.value, this.type_, JSON.Array(parameters))
     } else {
       invariant_violation("Shall not be called in non wasm version")
@@ -42,7 +42,7 @@ fun init(context: mutable SKFS.Context, optPath: ?String): void {
 }
 
 private fun delete(actor: UInt32): void {
-  if (SkargoVersion.kWasm) {
+  if (SkargoVersion.kWasm32) {
     delete_(actor)
   } else {
     invariant_violation("Shall not be called in non wasm version")

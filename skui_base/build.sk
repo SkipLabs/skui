@@ -1,0 +1,22 @@
+
+module SkuiBaseBuild;
+
+@skbuild_source_dirs
+fun source_dirs(_env: Skbuild.Env): Array<String> {
+  Array["native/src"]
+}
+
+@skbuild_include_dirs
+fun include_dirs(_env: Skbuild.Env): Array<String> {
+  Array["native/src/includes"]
+}
+
+@skbuild_links
+fun links(_env: Skbuild.Env): Array<String> {
+  Array["-lssl","-lcrypto","-lstdc++fs"]
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build(false);
+}

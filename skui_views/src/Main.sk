@@ -111,7 +111,7 @@ fun perform(
         .long("version")
         .about("Print version info and exit"),
     );
-  if (!SkargoVersion.kWasm) {
+  if (!SkargoVersion.kWasm32) {
     !command = command
       .arg(
         Cli.StringArg("screen")
@@ -175,7 +175,7 @@ fun perform(
               initUiWidget(context, wId, fn(args));
               context.initPre();
             });
-            if (SkargoVersion.kWasm) {
+            if (SkargoVersion.kWasm32) {
               SKUIJS.init(uint32(wId), title);
             } else {
               screen = args.getString("screen").toIntOption().default(0);
@@ -204,7 +204,7 @@ fun display(
   optError: ?String = None(),
   html: Bool = false,
 ): void {
-  if (SkargoVersion.kWasm) {
+  if (SkargoVersion.kWasm32) {
     SKUIJS.display(optOutput, optError, html)
   } else {
     optError.each(print_error);

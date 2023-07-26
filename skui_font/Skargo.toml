@@ -4,7 +4,10 @@ version = "0.1.0"
 test-harness = "SKUIFontTest.main"
 
 [dependencies]
-skui_common = {}
+skui_common = { "path" = "../skui_common" }
+
+[build-dependencies]
+skbuild = "*"
 
 #[[bin]]
 #name = "skuifont"

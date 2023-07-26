@@ -4,4 +4,4 @@ version = "0.1.0"
 test-harness = "SKUIFwkTest.main"
 
 [dependencies]
-skui_mtsdf = {}
+skui_mtsdf = { "path" = "../skui_mtsdf" }

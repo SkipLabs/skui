@@ -3,7 +3,10 @@ name = "skui_opengl"
 version = "0.1.0"
 
 [dependencies]
-skui_mtsdf = {}
+skui_mtsdf = { "path" = "../skui_mtsdf" }
+
+[build-dependencies]
+skbuild = "*"
 
 #[[bin]]
 #name = "skuiopengl"
