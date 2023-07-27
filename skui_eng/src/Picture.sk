@@ -212,10 +212,10 @@ private fun delete(actor: UInt32): void {
 @cpp_extern("SKIP_UiEnginePicture_delete")
 private native fun delete_(actor: UInt32): void;
 
-@wasm_export("SKIP_UiEnginePicture_resize")
+@cpp_extern("SKIP_UiEnginePicture_resize")
 private native fun resize(picture: UInt32, width: UInt32, height: UInt32): void;
 
-@wasm_export("SKIP_UiEnginePicture_asTexture")
+@cpp_extern("SKIP_UiEnginePicture_asTexture")
 private native fun asTexture(picture: UInt32, ctx: UInt32): UInt32;
 
 @wasm_export("SKIP_UiEnginePicture_register")
@@ -232,7 +232,6 @@ fun register(id: UInt32, width: UInt32, height: UInt32): void {
 }
 
 @wasm_export("SKIP_UiEnginePicture_unregister")
-@cpp_export("SKIP_UiEnginePicture_unregister")
 fun unregister(picture: UInt32): void {
   SKFS.Context::withoutGc(context ~>
     if (pictureHdl.exists(context)) {
@@ -242,7 +241,6 @@ fun unregister(picture: UInt32): void {
 }
 
 @wasm_export("SKIP_UiEnginePicture_resized")
-@cpp_export("SKIP_UiEnginePicture_resized")
 fun resized(
   picture: UInt32,
   width: UInt32,

@@ -34,7 +34,7 @@ fun perform(available: readonly Vector<Example>): void {
         .long("version")
         .about("Print version info and exit"),
     );
-  if (!SkargoVersion.kWasm) {
+  if (!SkargoVersion.kWasm32) {
     !command = command
       .arg(
         Cli.StringArg("screen")
