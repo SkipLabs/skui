@@ -1,0 +1,12 @@
+
+module SkuiBaseBuild;
+
+@skbuild_source_dirs
+fun source_dirs(_env: Skbuild.Env): Array<String> {
+  Array["wasm/src"]
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build(true);
+}

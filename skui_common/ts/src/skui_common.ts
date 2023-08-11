@@ -1,4 +1,4 @@
-import {int, ptr, Links, Utils, ToWasmManager, Shared, Environment} from "#skui_base/skui_types";
+import {int, ptr, Links, Utils, ToWasmManager, Shared, Environment, Memory} from "#std/sk_types";
 
 interface ToWasm {
   SKIP_IO_isExternalBinary: (id: int) => boolean;
@@ -32,9 +32,9 @@ class Data {
     this.data = data;
   }
   isBinary = () => this.data instanceof Uint8Array;
-  getBytes = (utils: Utils) =>  {
+  getBytes = (exportBytes: (view: Uint8Array) => ptr) =>  {
     if (this.data instanceof Uint8Array) {
-      return utils.exportBytes(this.data)
+      return exportBytes(this.data)
     }
     return null;
   };
@@ -76,7 +76,7 @@ class LinksImpl implements Links, ToWasm {
     this.SKIP_IO_getExternalBytes = (id: int) => {
       let data = this.state.data.get(id);
       if (data) {
-        return data.getBytes(utils);
+        return data.getBytes(utils.exportBytes);
       }
       return null;
     }

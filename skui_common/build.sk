@@ -1,4 +1,3 @@
-
 module SkuiCommonBuild;
 
 @skbuild_source_dirs

@@ -84,12 +84,6 @@ fun getFloatAt(array: readonly Array<Float>, index: Int32): Float {
   array.get(index.toInt());
 }
 
-@wasm_export("SKIP_createByteArray")
-@cpp_export("SKIP_createByteArray")
-fun createByteArray(size: Int32): mutable Array<UInt8> {
-  Array<UInt8>::mfill(size.toInt(), UInt8::truncate(0));
-}
-
 @wasm_export("SKIP_getBytesSize")
 @cpp_export("SKIP_getBytesSize")
 fun getBytesSize(array: Array<UInt8>): Int32 {

@@ -1,4 +1,4 @@
-import {int, ptr, Links, Utils, ToWasmManager, Environment} from "#skui_base/skui_types";
+import {int, ptr, Links, Utils, ToWasmManager, Environment} from "#std/sk_types";
 
 interface Exported {
   SKIP_RegExp_createRangeArray: (size: int) => ptr;

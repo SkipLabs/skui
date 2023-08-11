@@ -49,7 +49,7 @@ namespace skui
   }
 
   void AnimationFrame::print(std::ostream & buffer)  {
-    auto avgFPS = floor((this->total - this->totalDropped) * 60 / (this->total - this->maxDropped));
+    auto avgFPS = floor((this->total - this->totalDropped) * this->framePerSecond / (this->total - this->maxDropped));
     buffer << "For FPS: " << this->framePerSecond << " Total: " << this->total << ", Dropped: " << this->totalDropped;
     buffer << ", Max drop size: " << this->maxDropped << " at " << this->maxDroppedAt << ", Avg FPS " << avgFPS;
   }

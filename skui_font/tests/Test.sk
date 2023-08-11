@@ -74,43 +74,48 @@ class File(font: TrueType.Font) extends SKFS.File
 
 fun main(): void {
   pos = SKFS.newObstack();
-  resources = (name) ~>
+  p = (fn: () ~> Array<UInt8>) ~> {
+    TrueType.parse(fn())
+  };
+  resources = (name: String) ~> {
     name match {
-    | "luximr" -> TrueType.parse(SKIP_SKUIFontTestsRes.luximrBin())
-    | "luxirr" -> TrueType.parse(SKIP_SKUIFontTestsRes.luxirrBin())
-    | "luxisr" -> TrueType.parse(SKIP_SKUIFontTestsRes.luxisrBin())
-    | "xab" -> TrueType.parse(SKIP_SKUIFontTestsRes.xabBin())
-    | "xdsff" -> TrueType.parse(SKIP_SKUIFontTestsRes.xdsffBin())
-    | "xdvso" -> TrueType.parse(SKIP_SKUIFontTestsRes.xdvsoBin())
-    | "xtnr" -> TrueType.parse(SKIP_SKUIFontTestsRes.xtnrBin())
+    | "luximr" -> p(SKIP_SKUIFontTestsRes.luximrBin)
+    | "luxirr" -> p(SKIP_SKUIFontTestsRes.luxirrBin)
+    | "luxisr" -> p(SKIP_SKUIFontTestsRes.luxisrBin)
+    | "xab" -> p(SKIP_SKUIFontTestsRes.xabBin)
+    | "xdsff" -> p(SKIP_SKUIFontTestsRes.xdsffBin)
+    | "xdvso" -> p(SKIP_SKUIFontTestsRes.xdvsoBin)
+    | "xtnr" -> p(SKIP_SKUIFontTestsRes.xtnrBin)
     | _ -> invariant_violation(`Unknown resource named ${name}`)
     };
+  };
   tests = mutable Map[];
   #forEachFunction (@testr, #function, #functionName) {
-    // TODO: Properly handle tests outside of module/suite?
     (testSuite, testName) = #functionName.splitFirst(".");
     if (!tests.containsKey(testSuite)) {
-      tests.set(testSuite, mutable Map[])
+      tests.set(testSuite, mutable Vector[])
     };
-    tests[testSuite].set(testName, () ~> #function(resources))
+    tests[testSuite].push(
+      SKTest.Test{name => testName, func => () ~> #function(resources)},
+    );
   };
   mute(resources);
   #forEachFunction (@test, #function, #functionName) {
-    // TODO: Properly handle tests outside of module/suite?
     (testSuite, testName) = #functionName.splitFirst(".");
     if (!tests.containsKey(testSuite)) {
-      tests.set(testSuite, mutable Map[])
+      tests.set(testSuite, mutable Vector[])
     };
-    tests[testSuite].set(testName, #function)
+    tests[testSuite].push(SKTest.Test{name => testName, func => #function})
   };
   fTests = SKFS.destroyObstackWithValue(
     pos,
     List.Cons(unsafe_chill_trust_me(tests), List.Nil()),
-  ) match {
-  | List.Cons(x, _) -> x
-  | _ -> invariant_violation("error")
-  };
-  SKTest.test_harness(fTests);
+  ).getHead();
+  if (SkargoVersion.kWasm32) {
+    SKTest.wtest_harness(fTests);
+  } else {
+    SKTest.test_harness(fTests);
+  }
 }
 
 module end;
