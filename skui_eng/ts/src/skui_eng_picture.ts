@@ -1,4 +1,4 @@
-import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared, l, f, check, Text, Raw} from "#skui_base/skui_types";
+import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared, l, f, check, Text, Raw} from "#std/sk_types";
 
 interface Exported {
   SKIP_UiEnginePicture_register: (id: int, width: int, height: int) => void;

@@ -1,5 +1,5 @@
 /** @sk factory SKDB */
-import {int, ptr, Environment, Links, Utils, ToWasmManager} from "#skui_base/skui_types";
+import {int, ptr, Environment, Links, Utils, ToWasmManager} from "#std/sk_types";
 
 type MouseEventManager = (
   wId: int, type: int,
@@ -40,6 +40,7 @@ export interface Exported {
   SKIP_SKUIJS_clearKeyboardEvent: (wId: int) => void;
   SKIP_SKUIJS_manageResize: (wId: int, width: int, height: int, ratio: int) => void;
   SKIP_SKUIJS_performPaste: (wId: int, mimeType: ptr, data: ptr) => void;
+  SKIP_SKUIMessage_manage: (skMsg: ptr) => void;
 }
 
 interface ToWasm {
@@ -95,15 +96,21 @@ class LinksImpl implements Links, ToWasm {
       resizeFn();
     }
   };
-  
   complete = (utils: Utils, exports: object) => {
     let exported = exports as Exported;
     this.SKIP_SKUIJS_sendMessage = (wId: int, message: ptr, async: boolean, delay: int) => {
       let strMessage = utils.importString(message);
       delay = delay ? delay : 0;
       // TODO manage async
+      let manageMessage = (message: string) => {
+        utils.runWithGc(
+          () => exported.SKIP_SKUIMessage_manage(
+            utils.exportString(message)
+          )
+        )
+      }
       if (this.env) {
-        setTimeout(utils.manageMessage, Math.max(delay, 0), strMessage);
+        setTimeout(manageMessage, Math.max(delay, 0), strMessage);
       } else {
         console.log(["Message sent", strMessage, delay]);
       }

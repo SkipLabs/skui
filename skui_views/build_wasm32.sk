@@ -1,0 +1,14 @@
+module SkuiViewsBuild;
+
+@skbuild_resources
+fun resources(_env: Skbuild.Env): Array<String> {
+  Array[
+    "resources/src/big.bin",
+    "resources/src/small.bin"
+  ]
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build(true);
+}

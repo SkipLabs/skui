@@ -1,5 +1,5 @@
 
-import {int} from "#skui_base/skui_types";
+import {int} from "#std/sk_types";
 import { Matrix } from "#skui_opengl/skui_matrix";
 
 export class Loading {

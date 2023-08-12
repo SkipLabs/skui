@@ -1,5 +1,5 @@
 
-import {int, float, ptr, Environment, Utils} from "#skui_base/skui_types";
+import {int, float, ptr, Environment, Utils} from "#std/sk_types";
 import { Loading } from "#skui_opengl/skui_glloading";
 
 interface Env extends Environment {
@@ -278,10 +278,12 @@ export class Factory {
     ctxId: int
   ) => this.doOnContext(ctxId, ctx => ctx.copyTexture(toPaste, srcX, srcY, srcWidth, srcHeight, target, dstX, dstY, width, height, reverted));
   uniform4fv =(location: int, count: int, valuesPtr: ptr, ctxId: int) => this.doOnContext(ctxId, ctx => {
-    ctx.uniform4fv(location, this.utils!.getFloats32(valuesPtr, count * 4))
+    let values = this.utils!.importFloats(valuesPtr);
+    ctx.uniform4fv(location, Float32Array.from(values))
   });
   uniform1fv =(location: int, count: int, valuesPtr: ptr, ctxId: int) => {
-    this.doOnContext(ctxId, ctx => ctx.uniform1fv(location, this.utils!.getFloats32(valuesPtr, count)));
+    let values = this.utils!.importFloats(valuesPtr);
+    this.doOnContext(ctxId, ctx => ctx.uniform1fv(location, Float32Array.from(values)));
   }
   setTexture2DRGBASubImage =(
     level: int,
@@ -294,7 +296,7 @@ export class Factory {
   ) => this.doOnContext(ctxId, ctx =>  {
     let pixels: Uint8ClampedArray | null = null;
     if (dataPtr !== undefined && dataPtr !== null && this.utils != null) {
-      pixels = this.utils.getBytesFromBuffer(dataPtr, width * height * 4);
+      pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr));
     };
     ctx.setTexture2DRGBASubImage(level, x, y, width, height, pixels);
   });
@@ -307,7 +309,7 @@ export class Factory {
   ) => this.doOnContext(ctxId, ctx => {
     let pixels: Uint8ClampedArray | null = null;
     if (dataPtr !== undefined && dataPtr !== null && this.utils != null) {
-      pixels = this.utils.getBytesFromBuffer(dataPtr, width * height * 4);
+      pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr));
     };
     ctx.setTexture2DRGBAImage(level, width, height, pixels);
   });
@@ -316,7 +318,10 @@ export class Factory {
     let message = ctx.getShaderInfoLog(shader);
     return message ? this.utils!.exportString(message) : null;
   });
-  staticDrawData = (dataPtr: ptr, len: int, ctxId: int) => this.doOnContext(ctxId, ctx => ctx.staticDrawData(this.utils!.getFloats32(dataPtr, len)));
+  staticDrawData = (dataPtr: ptr, len: int, ctxId: int) => this.doOnContext(ctxId, ctx => {
+    let values = this.utils!.importFloats(dataPtr);
+    ctx.staticDrawData(Float32Array.from(values));
+  });
   getProgramInfoLog = (program: int, ctxId: int) => this.doOnContext(ctxId, ctx => {
     let message = ctx.getProgramInfoLog(program);
     return message ? this.utils!.exportString(message) : null;

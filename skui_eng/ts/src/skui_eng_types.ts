@@ -1,4 +1,4 @@
-import {int, float, Text, Opt} from "#skui_base/skui_types";
+import {int, float, Text, Opt} from "#std/sk_types";
 
 export interface Readable {
   get: () => any;

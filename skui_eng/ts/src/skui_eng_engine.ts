@@ -1,4 +1,4 @@
-import {int, float, ptr, Environment, Links, Utils, ToWasmManager, Shared, Text, Opt} from "#skui_base/skui_types";
+import {int, float, ptr, Environment, Links, Utils, ToWasmManager, Shared, Text, Opt} from "#std/sk_types";
 import { RenderableElement, Scope, Property, Readable, DialogElement, Renderable} from "#skui_eng/skui_eng_types";
 
 interface Exported {
