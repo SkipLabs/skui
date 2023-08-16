@@ -24,11 +24,11 @@ char* createBuffer(uint8_t* start, uint8_t* end) {
 
 extern "C"
 {
-  char* SKIP_skui_views_src_big_bin() {
+  char* SKIP_skui_views_resources_src_big_bin() {
     return createBuffer(big_start, big_end);
   }
 
-  char* SKIP_skui_views_src_small_bin() {
+  char* SKIP_skui_views_resources_src_big_bin() {
     return createBuffer(small_start, small_end);
   }
 }

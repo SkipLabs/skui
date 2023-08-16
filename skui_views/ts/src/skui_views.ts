@@ -1,4 +1,3 @@
-/** @sk factory SKDB */
 import {int, ptr, Environment, Links, Utils, ToWasmManager} from "#std/sk_types";
 
 type MouseEventManager = (

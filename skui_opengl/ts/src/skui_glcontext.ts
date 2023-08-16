@@ -3,7 +3,7 @@ import {int, float, ptr, Environment, Utils} from "#std/sk_types";
 import { Loading } from "#skui_opengl/skui_glloading";
 
 interface Env extends Environment {
-  window: () => Window; 
+  window: () => Window;
   canvas: () => HTMLCanvasElement;
   requestAnimationFrame: (callback: FrameRequestCallback) => number;
   cancelAnimationFrame: (handle: number) => void;
@@ -296,7 +296,7 @@ export class Factory {
   ) => this.doOnContext(ctxId, ctx =>  {
     let pixels: Uint8ClampedArray | null = null;
     if (dataPtr !== undefined && dataPtr !== null && this.utils != null) {
-      pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr));
+      pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr, 4));
     };
     ctx.setTexture2DRGBASubImage(level, x, y, width, height, pixels);
   });
@@ -309,8 +309,8 @@ export class Factory {
   ) => this.doOnContext(ctxId, ctx => {
     let pixels: Uint8ClampedArray | null = null;
     if (dataPtr !== undefined && dataPtr !== null && this.utils != null) {
-      pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr));
-    };
+      pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr, 4));
+    }
     ctx.setTexture2DRGBAImage(level, width, height, pixels);
   });
   shaderSource =(shader: int, source: ptr, ctxId: int) => this.doOnContext(ctxId, ctx => ctx.shaderSource(shader, this.utils!.importString(source)));

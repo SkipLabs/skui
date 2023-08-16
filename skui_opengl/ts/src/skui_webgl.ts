@@ -454,43 +454,10 @@ class ToConsole implements ToWasmManager {
   }
 }
 
-interface Env extends Environment {
-  window: () => Window; 
-  canvas: () => HTMLCanvasElement; 
-}
-
 /** @sk loader */
 export function init(env?: Environment) {
   if (env) {
-    let wenv = env as Env;
-    let window = wenv.window();
-    let document = wenv.window().document;
-    let container = document.getElementById("skui_container") as HTMLElement;
-    container = container ? container : document.body;
-    let texthook = document.getElementById("skui_texthook");
-    if (!texthook) {
-      texthook = document.createElement("textarea");
-      texthook.id = "skui_texthook";
-      container.appendChild(texthook);
-    }
-    let canvas = document.getElementById("skui_canvas") as HTMLCanvasElement;
-    if (!canvas) {
-      canvas = document.createElement("canvas");
-      canvas.id = "skui_canvas";
-      container.appendChild(canvas);
-    }
-    canvas.style.overflow = "hidden";
-    canvas.style.position = "absolute";
-    canvas.style.top = "0px";
-    canvas.style.left = "0px";
-    let width = Math.trunc(window.innerWidth);
-    let height = Math.trunc(window.innerHeight);
-    canvas.width = width;
-    canvas.height = height;
-    canvas.style.width = width + "px";
-    canvas.style.height = height + "px";
-    wenv.canvas = () => canvas;
-    return Factory.init(env).then(factory => new Manager(factory, wenv));
+    return Factory.init(env).then(factory => new Manager(factory, env));
   } else {
     return Promise.resolve(new ToConsole());
   }

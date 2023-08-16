@@ -98,45 +98,8 @@ fun chillStringArray(array: mutable Array<String>): Array<String> {
   array.chill();
 }
 
-@cpp_export("SKIP_getUInt32sSize")
-fun getUInt32sSize(array: Array<UInt32>): Int32 {
-  Int32::truncate(array.size())
-}
 
-@cpp_export("SKIP_createUInt32Array")
-fun createUInt32Array(size: Int32): mutable Array<UInt32> {
-  Array::mfill(size.toInt(), UInt32::truncate(0));
-}
 
-@cpp_export("SKIP_setUInt32")
-fun setUInt32(array: mutable Array<UInt32>, index: Int32, value: UInt32): void {
-  array.set(index.toInt(), value);
-}
-
-@cpp_export("SKIP_chillUInt32Array")
-fun chillUInt32Array(array: mutable Array<UInt32>): Array<UInt32> {
-  array.chill();
-}
-
-@cpp_export("SKIP_getFloatsSize")
-fun getFloatsSize(array: Array<Float>): Int32 {
-  Int32::truncate(array.size())
-}
-
-@cpp_export("SKIP_createFloatArray")
-fun createFloatArray(size: Int32): mutable Array<Float> {
-  Array::mfill(size.toInt(), 0.0);
-}
-
-@cpp_export("SKIP_setFloat")
-fun setFloat(array: mutable Array<Float>, index: Int32, value: Float): void {
-  array.set(index.toInt(), value);
-}
-
-@cpp_export("SKIP_chillFloatArray")
-fun chillFloatArray(array: mutable Array<Float>): Array<Float> {
-  array.chill();
-}
 
 @cpp_export("SKIP_createCharArray")
 fun createCharArray(size: Int32): mutable Array<Char> {
