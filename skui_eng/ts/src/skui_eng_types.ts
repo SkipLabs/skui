@@ -700,7 +700,7 @@ export class SkuiEngUtils {
 
 
   importValue(value: ptr) {
-    this.state.delete(this.exports.SKIP_UiEngineJS_toJS(value));
+    return this.state.delete(this.exports.SKIP_UiEngineJS_toJS(value));
   }
 
   register(skPath: Opt<ptr>, value: (...args: any[]) => any) {

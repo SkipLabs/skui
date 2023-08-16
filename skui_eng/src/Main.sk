@@ -22,7 +22,10 @@ fun main(): void {
       })
     )
     .default(Vector[]);
-  perform(unsafe_chill_trust_me(renderers), Environ.args().drop(1).collect(Vector));
+  perform(
+    unsafe_chill_trust_me(renderers),
+    Environ.args().drop(1).collect(Vector),
+  );
 }
 
 fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
