@@ -98,8 +98,10 @@ fun chillStringArray(array: mutable Array<String>): Array<String> {
   array.chill();
 }
 
-
-
+@cpp_export("SKIP_getFloatAt")
+fun getFloatAt(array: Array<Float>, idx: UInt32): Float {
+  array[idx.toInt()]
+}
 
 @cpp_export("SKIP_createCharArray")
 fun createCharArray(size: Int32): mutable Array<Char> {

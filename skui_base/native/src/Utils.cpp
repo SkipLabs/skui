@@ -75,7 +75,6 @@ bool computeHash(const std::string &unhashed, std::string &hashed)
 extern "C"
 {
   char *SKIP_createByteArray(int32_t);
-  void SKIP_setByte(char *, int32_t, uint8_t);
   char *SKIP_chillByteArray(char *);
   void SKIP_throw(void *);
   uint32_t SKIP_String_byteSize(char *str);
