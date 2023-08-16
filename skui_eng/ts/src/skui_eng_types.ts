@@ -1,4 +1,4 @@
-import {int, float, Text, Opt} from "#std/sk_types";
+import {int, float, ptr, Text, Opt, Utils, Shared} from "#std/sk_types";
 
 export interface Readable {
   get: () => any;
@@ -202,7 +202,7 @@ export type IconKind = string | IconType;
 
 export type Value<T> = T | Readable;
 
-export class Object {
+export class JSObject {
   type: string;
   fields: object;
 
@@ -222,46 +222,23 @@ export class Object {
   }
 }
 
-export class Congif {
-  name: string;
-  description: string;
-  renderable: Renderable;
-
-  constructor(
-    name: string,
-    description: string,
-    renderable: Renderable,
-  ) {
-    this.name = name;
-    this.description = description;
-    this.renderable = renderable;
-  }
-
-  toJSON = () => {
-    return {
-      name: this.name,
-      description: this.description,
-    }
-  }
-}
-
-export class WidgetElement extends Object {}
-export class IconElement extends Object {}
-export class Configuration extends Object {}
-export class Decoration extends Object {}
-export class RangeElement extends Object {}
-export class InputKindElement extends Object {}
-export class SeparationElement extends Object {}
-export class StatusElement extends Object {}
-export class InsetsElement extends Object {}
-export class ConstraintsElement extends Object {}
-export class TextStyleElement extends Object {}
-export class IconedActionElement extends Object {}
-export class TabElement extends Object {}
-export class TreeItemElement extends Object {}
-export class DropdownElement extends Object {}
-export class ShorcutElement extends Object {}
-export class DialogElement extends Object {}
+export class WidgetElement extends JSObject {}
+export class IconElement extends JSObject {}
+export class Configuration extends JSObject {}
+export class Decoration extends JSObject {}
+export class RangeElement extends JSObject {}
+export class InputKindElement extends JSObject {}
+export class SeparationElement extends JSObject {}
+export class StatusElement extends JSObject {}
+export class InsetsElement extends JSObject {}
+export class ConstraintsElement extends JSObject {}
+export class TextStyleElement extends JSObject {}
+export class IconedActionElement extends JSObject {}
+export class TabElement extends JSObject {}
+export class TreeItemElement extends JSObject {}
+export class DropdownElement extends JSObject {}
+export class ShorcutElement extends JSObject {}
+export class DialogElement extends JSObject {}
 
 export class RenderableElement {
   renderable: Renderable
@@ -637,11 +614,148 @@ export var renderable = (renderable: Renderable) => new RenderableElement(render
 
 export interface Scope {
   alert: (text: string | Text, title: Opt<string | Text>) => void;
-  dialog: (dialog: Object)  => void;
+  dialog: (dialog: JSObject)  => void;
   create: (value?: any) => Property;
   combine: (
     combine: (values: Array<any>) => any, 
     combinables: Array<Readable>, 
     onWrite?: (value: any) => void
   ) => Property;
+}
+
+
+interface Exports {
+  SKIP_UiEngineJS_register: (id: int, path: Opt<ptr>, type_: ptr) => void;
+  SKIP_UiEngineJS_toJS: (json: ptr) => int;
+  SKIP_JSON_startObject: () => ptr;
+  SKIP_JSON_addToObject: (obj: ptr, name: ptr, value: ptr) => void;
+  SKIP_JSON_endObject: (obj: ptr) => ptr;
+  SKIP_JSON_startArray: () => ptr;
+  SKIP_JSON_addToArray: (arr: ptr, value: ptr) => void;
+  SKIP_JSON_endArray: (arr: ptr) => ptr;
+  SKIP_JSON_createNull: () => ptr;
+  SKIP_JSON_createIntNumber: (v: int) => ptr;
+  SKIP_JSON_createFloatNumber: (v: float) => ptr;
+  SKIP_JSON_createString: (str: ptr) => ptr;
+  SKIP_JSON_createBool: (v: boolean) => ptr;
+}
+
+export class State {
+  valueId = 0;
+  values = new Map<int,any>();
+
+  register = (value: any) => {
+    let id = ++this.valueId;
+    if (value != null && value != undefined) {
+      this.values.set(id, value);
+    }
+    return id;
+  }
+
+  delete = (id : int) => {
+    let value = this.values.get(id);
+    this.values.delete(id);
+    return value;
+  }
+
+  get = (id : int) => {
+    return this.values.get(id);
+  }
+
+  apply = (id: int, paremeter: Array<any>) => {
+    let fn = this.values.get(id);
+    if (fn && typeof fn == "function") {
+      return fn.apply(null, paremeter);
+    }
+    return null;
+  }
+}
+
+export class EngShared implements Shared {
+  getName = () => "skuieng";
+  createScope: (data: string) => Scope;
+  constructor(createScope: (data: string) => Scope) {
+    this.createScope = createScope;
+  }
+}
+
+export class SkuiEngUtils {
+  utils: Utils;
+  exports: Exports;
+  state: State;
+  createScope: (name: string) => Scope;
+
+  constructor(
+    utils: Utils,
+    exports: any,
+    createScope: (name: string) => Scope,
+    state?: State
+  ) {
+    this.state = state ?? new State();
+    this.utils = utils;
+    this.exports = exports as Exports;
+    this.createScope = createScope;
+  }
+
+
+
+  importValue(value: ptr) {
+    this.state.delete(this.exports.SKIP_UiEngineJS_toJS(value));
+  }
+
+  register(skPath: Opt<ptr>, value: (...args: any[]) => any) {
+    let id = this.state.register(value);
+    this.exports.SKIP_UiEngineJS_register(id, skPath, this.utils.exportString(typeof value));
+    return id;
+  };
+  
+  exportValue(path: Opt<string>, skPath: Opt<ptr>, value: any) {
+    let type = typeof value;
+    if (value == null || value == undefined) {
+      return this.exports.SKIP_JSON_createNull(); 
+    } else if (type == "number") {
+      return this.exports.SKIP_JSON_createFloatNumber(value);
+    } else if (type == "boolean") {
+      return this.exports.SKIP_JSON_createBool(value);
+    } else if (type == "string") {
+      return this.exports.SKIP_JSON_createString(this.utils.exportString(value));
+    } else if (Array.isArray(value)) {
+      let arr = this.exports.SKIP_JSON_startArray();
+      value.forEach(v => this.exports.SKIP_JSON_addToArray(arr, this.exportValue(path, skPath, v)))
+      return this.exports.SKIP_JSON_endArray(arr);
+    } else if (value instanceof RenderableElement) {
+      let render = (strScope: string) => {
+        return value.renderable(this.createScope(strScope));
+      };
+      let id = this.register(skPath, render);
+      return this.exportValue(path, skPath, {
+        type: "renderable",
+        fields: {
+          id: id,
+          scope: path
+        }
+      });
+    } else if (type == "object") {
+      let jso = value;
+      if (value.toJSON) {
+        jso = value.toJSON();
+      }
+      let obj = this.exports.SKIP_JSON_startObject();
+      for (let key in jso) {
+        this.exports.SKIP_JSON_addToObject(obj, this.utils.exportString(key), this.exportValue(path, skPath, jso[key]))
+      }
+      return this.exports.SKIP_JSON_endObject(obj);
+    } else if (type == "function") {
+      let id = this.register(skPath, value);
+      return this.exportValue(path, skPath, {
+        type: "function",
+        fields: {
+          id: id,
+          scope: path
+        }
+      });
+    } else {
+      throw new Error("'" + type + "' cannot be exported to engine.")
+    }
+  }
 }

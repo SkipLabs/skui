@@ -48,6 +48,12 @@ class Data {
 }
 
 class LinksImpl implements Links, ToWasm {
+  env: Environment;
+
+  constructor(env: Environment) {
+    this.env = env;
+  }
+
   state = new State();
 
   SKIP_IO_isExternalBinary: (id: int) => boolean;
@@ -80,14 +86,20 @@ class LinksImpl implements Links, ToWasm {
       }
       return null;
     }
-    return new CommonShared(this.state.registerData)
+    this.env.shared.set("common", new CommonShared(this.state.registerData))
   }
 }
 
 class Manager implements ToWasmManager {
+  env: Environment;
+
+  constructor(env: Environment) {
+    this.env = env;
+  }
+
   prepare = (wasm: object) => {
     let toWasm = wasm as ToWasm;
-    let links = new LinksImpl();
+    let links = new LinksImpl(this.env);
     toWasm.SKIP_IO_isExternalBinary =  (id: int) => links.SKIP_IO_isExternalBinary(id);
     toWasm.SKIP_IO_deleteExternalData =  (id: int) => links.SKIP_IO_deleteExternalData(id);
     toWasm.SKIP_IO_getExternalText =  (id: int) => links.SKIP_IO_getExternalText(id);
@@ -98,5 +110,5 @@ class Manager implements ToWasmManager {
 
 /** @sk init */
 export function init(env?: Environment) {
-  return Promise.resolve(new Manager());
+  return Promise.resolve(new Manager(env!));
 }

@@ -28,7 +28,7 @@ extern "C"
     return createBuffer(big_start, big_end);
   }
 
-  char* SKIP_skui_views_resources_src_big_bin() {
+  char* SKIP_skui_views_resources_src_small_bin() {
     return createBuffer(small_start, small_end);
   }
 }

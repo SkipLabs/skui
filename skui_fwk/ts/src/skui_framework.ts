@@ -66,7 +66,6 @@ class LinksImpl implements Links, ToWasm {
         console.log("Update")
       }
     };
-    return null;
   }
 }
 

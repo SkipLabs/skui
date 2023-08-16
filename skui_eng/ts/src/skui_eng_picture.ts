@@ -1,4 +1,5 @@
-import {int, ptr, Environment, Links, Utils, ToWasmManager, Shared, l, f, check, Text, Raw} from "#std/sk_types";
+import { int, ptr, Environment, Links, Utils, ToWasmManager, Shared, l, f, check, Text, Raw } from "#std/sk_types";
+import { SkuiUtils } from "#skui_base/skui_types";
 
 interface Exported {
   SKIP_UiEnginePicture_register: (id: int, width: int, height: int) => void;
@@ -20,7 +21,7 @@ interface Env extends Environment {
 async function resize(
   document: Document,
   image: HTMLImageElement,
-  width: int, 
+  width: int,
   height: int,
   then: (img: HTMLImageElement) => void,
   otherwise: (msg: Text | string) => void
@@ -55,7 +56,7 @@ export class PictureShared implements Shared {
 
 class State {
   imgId = 0;
-  images = new Map<int,HTMLImageElement>();
+  images = new Map<int, HTMLImageElement>();
 
   register = (image: HTMLImageElement) => {
     let id = ++this.imgId;
@@ -63,11 +64,11 @@ class State {
     return id;
   }
 
-  delete = (id : int) => {
+  delete = (id: int) => {
     this.images.delete(id);
   }
 
-  get = (id : int) => {
+  get = (id: int) => {
     return this.images.get(id);
   }
 }
@@ -83,17 +84,18 @@ class LinksImpl implements Links, ToWasm {
 
   SKIP_UiEnginePicture_delete: (id: int) => void;
   SKIP_UiEnginePicture_resize: (id: int, width: int, height: int) => void;
-  
+
   SKIP_UiEnginePicture_asTexture = (id: int, ctx: int) => {
     let image = this.env ? this.state.get(id) : null;
     if (image) {
       return this.env!.imageAsTexture(ctx, image);
     } {
-      return  0;
+      return 0;
     }
   };
 
   complete = (utils: Utils, exports: object) => {
+    let skuiUtils = new SkuiUtils(utils, exports);
     let exported = exports as Exported;
     this.SKIP_UiEnginePicture_delete = (id: int) => {
       this.state.delete(id);
@@ -105,7 +107,7 @@ class LinksImpl implements Links, ToWasm {
           if (msg) {
             let format = l("Unable to resize image: {1}.");
             let message = f(format, [msg]);
-            skError = utils.exportLocale(message);
+            skError = skuiUtils.exportLocale(message);
           }
           exported.SKIP_UiEnginePicture_resized(id, width, height, img ? img : 0, skError)
         });
@@ -129,35 +131,37 @@ class LinksImpl implements Links, ToWasm {
           notify(null, f(l("Image not found {1}"), [new Raw('' + id)]));
         }
       } else {
-        notify(null,l("Environment not initialized"));
+        notify(null, l("Environment not initialized"));
       }
     }
-    return new PictureShared(
-      (img: HTMLImageElement) => {
-        let imgId = this.state.register(img);
-        exported.SKIP_UiEnginePicture_register(imgId, img.width, img.height);
-        return imgId;
-      },
-      (id: int) => {
-        exported.SKIP_UiEnginePicture_unregister(id);
-      }
-    );
+    if (this.env) {
+      this.env.shared.set("picture", new PictureShared(
+        (img: HTMLImageElement) => {
+          let imgId = this.state.register(img);
+          exported.SKIP_UiEnginePicture_register(imgId, img.width, img.height);
+          return imgId;
+        },
+        (id: int) => {
+          exported.SKIP_UiEnginePicture_unregister(id);
+        }
+      ));
+    }
   }
 }
 
 class Manager implements ToWasmManager {
-  env:  Env | undefined;
+  env: Env | undefined;
 
-  constructor(env?:  Env) {
+  constructor(env?: Env) {
     this.env = env;
   }
 
   prepare = (wasm: object) => {
     let toWasm = wasm as ToWasm;
     let links = new LinksImpl(this.env);
-    toWasm.SKIP_UiEnginePicture_delete =  (id: int) => links.SKIP_UiEnginePicture_delete(id);
-    toWasm.SKIP_UiEnginePicture_resize =  (id: int, width: int, height: int) => links.SKIP_UiEnginePicture_resize(id, width, height);
-    toWasm.SKIP_UiEnginePicture_asTexture =  (id: int, ctx: int) => links.SKIP_UiEnginePicture_asTexture(id, ctx);
+    toWasm.SKIP_UiEnginePicture_delete = (id: int) => links.SKIP_UiEnginePicture_delete(id);
+    toWasm.SKIP_UiEnginePicture_resize = (id: int, width: int, height: int) => links.SKIP_UiEnginePicture_resize(id, width, height);
+    toWasm.SKIP_UiEnginePicture_asTexture = (id: int, ctx: int) => links.SKIP_UiEnginePicture_asTexture(id, ctx);
     return links;
   }
 }

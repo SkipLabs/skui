@@ -12,7 +12,6 @@ class LinksImpl implements Links, ToWasm {
   }
 
   complete = (utils: Utils, exports: object) => {
-    return null;
   }
 }
 

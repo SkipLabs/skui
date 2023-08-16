@@ -14,29 +14,15 @@ class Renderer(name: String, optDescription: ?String) uses Show {
 }
 
 fun main(): void {
-  renderers = mutable Vector<Renderer>[];
-  args = mutable Vector<String>[];
-  isExample = true;
-  arguments().each(arg ->
-    if (isExample) {
-      vtry<void>(
-        () -> {
-          jsv = JSON.decode(arg);
-          jso = jsv.expectObject();
-          jso.maybeGetString("name").each(name ->
-            renderers.push(Renderer(name, jso.maybeGetString("description")))
-          )
-        },
-        _ -> {
-          !isExample = false;
-          args.push(arg)
-        },
-      );
-    } else {
-      args.push(arg)
-    }
-  );
-  perform(unsafe_chill_trust_me(renderers), unsafe_chill_trust_me(args));
+  renderers = jsExamples()
+    .map(jsa ->
+      jsa.value.map(jsv -> {
+        jso = jsv.expectObject();
+        Renderer(jso.getString("name"), jso.maybeGetString("description"));
+      })
+    )
+    .default(Vector[]);
+  perform(unsafe_chill_trust_me(renderers), Environ.args().drop(1).collect(Vector));
 }
 
 fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
@@ -73,8 +59,11 @@ fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
   }
 }
 
-@cpp_extern("SKUI_UiEngineJS_renderable")
-native fun getRenderable(optPath: ?String, name: String): ?JSON.Value;
+@cpp_extern("SKUI_UiEngineJS_examples")
+native fun jsExamples(): ?JSON.Array;
+
+@cpp_extern("SKUI_UiEngineJS_getExample")
+native fun getExample(name: String): ?JSON.Value;
 
 fun initEngineWidget(
   context: mutable SKFS.Context,
@@ -86,7 +75,7 @@ fun initEngineWidget(
   support = SKUIGL.DrawableSupport(UiEnginePicture.pictureToTexturable);
   optPath: ?String = None();
   H.init(context, optPath);
-  optRenderable = getRenderable(optPath, name);
+  optRenderable = getExample(name);
   builder = (ctx, root) ~> {
     UiSerializableProp.Property::initValues(
       ctx,

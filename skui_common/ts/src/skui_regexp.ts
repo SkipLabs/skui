@@ -106,7 +106,6 @@ class LinksImpl implements Links, ToWasm {
       });
       return exported.SKIP_RegExp_ranges(vector);
     };
-    return null;
   }
 }
 

@@ -150,7 +150,6 @@ export class LinksImpl implements Links {
     let env = this.env as Webgl;
     env.start = (wId: int) => this.factory.createContext(wId).then(ctx => ctx.id);
     env.imageAsTexture = this.factory.imageAsTexture;
-    return null;
   }
 }
 

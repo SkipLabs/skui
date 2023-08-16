@@ -315,7 +315,6 @@ class LinksImpl implements Links, ToWasm {
     if (this.env) {
       this.env.update = this.update;
     }
-    return null;
   }
 }
 class Manager implements ToWasmManager {
