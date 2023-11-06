@@ -1,30 +1,30 @@
 module Ui;
 
-type IUGetter<T> = (mutable SKFS.Context, Bool) ~> T;
+type IUGetter<T> = (mutable SKStore.Context, Bool) ~> T;
 
 fun iUDefault<T: frozen>(t: T): IUGetter<T> {
   (_ctx, _iu) ~> t
 }
 
-type Getter<T> = mutable SKFS.Context ~> T;
+type Getter<T> = mutable SKStore.Context ~> T;
 
 fun default<T: frozen>(t: T): Getter<T> {
   _ctx ~> t
 }
 
-type GetterOne<T, P> = (mutable SKFS.Context, P) ~> T;
+type GetterOne<T, P> = (mutable SKStore.Context, P) ~> T;
 
 fun defaultOne<T: frozen, P>(t: T): GetterOne<T, P> {
   (_ctx, _p) ~> t
 }
 
-type GetterTwo<T, P1, P2> = (mutable SKFS.Context, P1, P2) ~> T;
+type GetterTwo<T, P1, P2> = (mutable SKStore.Context, P1, P2) ~> T;
 
 fun defaultTwo<T: frozen, P1, P2>(t: T): GetterTwo<T, P1, P2> {
   (_, _, _) ~> t
 }
 
-type GetterThree<T, P1, P2, P3> = (mutable SKFS.Context, P1, P2, P3) ~> T;
+type GetterThree<T, P1, P2, P3> = (mutable SKStore.Context, P1, P2, P3) ~> T;
 
 fun defaultThree<T: frozen, P1, P2, P3>(t: T): GetterThree<T, P1, P2, P3> {
   (_, _, _, _) ~> t
@@ -32,7 +32,7 @@ fun defaultThree<T: frozen, P1, P2, P3>(t: T): GetterThree<T, P1, P2, P3> {
 
 const full: UInt8 = UInt8::truncate(255);
 
-class Resizer(fn: (Image, Int, Int) ~> ?Image) extends SKFS.File
+class Resizer(fn: (Image, Int, Int) ~> ?Image) extends SKStore.File
 
 class Shift(x: Int, y: Int) uses Hashable, Equality, Show {
   fun toOffset(): Geometry.Offset {
@@ -209,12 +209,12 @@ class Image(
   width: Int,
   height: Int,
   optShift: ?Shift = None(),
-) extends Ui.Picture, SKFS.File {
+) extends Ui.Picture, SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun fromFile(obj: SKStore.File): this {
     obj match {
     | x @ Image _ -> x
-    | _ -> SKFS.cast_violation("Ui.Image", obj)
+    | _ -> SKStore.cast_violation("Ui.Image", obj)
     }
   }
 
@@ -334,8 +334,8 @@ class Image(
   }
 
   fun resized(width: Int, height: Int): ?Picture {
-    SKFS.getWorkingContext().flatMap(ctx ->
-      ctx.getGlobal("Ui.Resizer").map(Resizer::fromFile).flatMap(r ->
+    SKStore.getWorkingContext().flatMap(ctx ->
+      ctx.getGlobal("Ui.Resizer").map(Resizer::type).flatMap(r ->
         r.fn(this, width, height)
       )
     )
@@ -348,11 +348,11 @@ class Border(color: .Color = Colors.transparent(), thickness: Float = 0.0) {
   }
 }
 
-base class DrawableSupport {
+base class DrawableSupport<K: SKStore.Key> {
   //
   fun init(
-    context: mutable SKFS.Context,
-    drawables: SKFS.EHandle<Ui.Drawables>,
+    context: mutable SKStore.Context,
+    drawables: SKStore.EHandle<K, Ui.Drawables>,
   ): void;
 
   fun msdf(
@@ -439,12 +439,15 @@ base class DrawableSupport {
   ): Ui.Drawable;
 }
 
-class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
+class Path(
+  id: String,
+  optParent: ?Path = None(),
+) extends SKStore.Key, SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Path _ -> x
-    | _ -> SKFS.cast_violation("Ui.Path", obj)
+    | _ -> SKStore.cast_violation("Ui.Path", obj)
     }
   }
 
@@ -461,14 +464,14 @@ class Path(id: String, optParent: ?Path = None()) extends SKFS.BaseName {
 
   fun toPath(): String {
     this.optParent match {
-    | Some(parent) -> parent.toPath() + "/" + SKFS.normalize(this.id, true)
-    | _ -> SKFS.normalize(this.id, true)
+    | Some(parent) -> parent.toPath() + "/" + SKStore.normalize(this.id, true)
+    | _ -> SKStore.normalize(this.id, true)
     }
   }
 
-  fun toDirName(root: String = "/"): SKFS.DirName {
+  fun toDirName(root: String = "/"): SKStore.DirName {
     path = this.toPath();
-    SKFS.DirName::create(root + path + "/");
+    SKStore.DirName::create(root + path + "/");
   }
 
   fun makeChild(id: String): this {
@@ -501,12 +504,12 @@ class NViewport(
   offset: Geometry.Point,
   window: Geometry.Rectangle,
   optViewport: ?Path = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun fromFile(obj: SKStore.File): this {
     obj match {
     | x @ NViewport _ -> x
-    | _ -> SKFS.cast_violation("Ui.NViewport", obj)
+    | _ -> SKStore.cast_violation("Ui.NViewport", obj)
     }
   }
 }
@@ -523,7 +526,7 @@ base class LayerId uses Orderable, Show, Hashable {
   | ForegroundLayer() -> "foregound"
 }
 
-class MainKey() extends SKFS.BaseName {
+class MainKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
@@ -532,32 +535,32 @@ class MainKey() extends SKFS.BaseName {
 base class ViewportDefinition(
   path: Path,
   optReference: ?Path,
-) extends SKFS.File {
+) extends SKStore.File {
   fun hasContent(): Bool;
   fun getChildren(): Array<ViewportDefinition>;
 
-  static fun forFile(obj: SKFS.File): ViewportDefinition {
+  static fun forFile(obj: SKStore.File): ViewportDefinition {
     obj match {
     | x @ ViewportDefinition _ -> x
-    | _ -> SKFS.cast_violation("Ui.ViewportDefinition", obj)
+    | _ -> SKStore.cast_violation("Ui.ViewportDefinition", obj)
     }
   }
 }
 
-class KLayer(path: Ui.Path, layer: Ui.LayerId) extends SKFS.BaseName {
+class KLayer(path: Ui.Path, layer: Ui.LayerId) extends SKStore.Key {
   fun toString(): String {
     `${this.path}:${this.layer}`
   }
 }
 
-const vpInfosPath: SKFS.DirName = SKFS.DirName::create(
+const vpInfosPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/common/viewportInfos/",
 );
-const viewportsPath: SKFS.DirName = SKFS.DirName::create(
+const viewportsPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/common/viewports/",
 );
 
-const constraintsPath: SKFS.DirName = SKFS.DirName::create(
+const constraintsPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/common/constraints/",
 );
 
@@ -597,11 +600,11 @@ class DummyVpDefinition() extends ViewportDefinition {
   }
 }
 
-class DummyDrawableSupport() extends DrawableSupport {
+class DummyDrawableSupport() extends DrawableSupport<SKStore.Key> {
   //
   fun init(
-    _context: mutable SKFS.Context,
-    _drawables: SKFS.EHandle<Ui.Drawables>,
+    _context: mutable SKStore.Context,
+    _drawables: SKStore.EHandle<SKStore.Key, Ui.Drawables>,
   ): void {
     dummy()
   }

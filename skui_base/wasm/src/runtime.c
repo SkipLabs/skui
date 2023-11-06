@@ -1,7 +1,8 @@
 
 #include <stdbool.h>
-#include <stdint.h>
 #define NULL ((void*)0)
+
+typedef unsigned char uint8_t;
 
 char * workingContext;
 char * mainContext;

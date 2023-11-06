@@ -1,6 +1,6 @@
 module UiSide;
 
-base class .UiSide() extends SKFS.File uses Hashable, Equality {
+base class .UiSide() extends SKStore.File uses Hashable, Equality {
   fun toAxisDirection(): Ui.AxisDirection
   | Bottom() -> Ui.Down()
   | Left() -> Ui.ToLeft()
@@ -24,10 +24,10 @@ base class .UiSide() extends SKFS.File uses Hashable, Equality {
     }
   }
 
-  static fun forFile(obj: SKFS.File): .UiSide {
+  static fun forFile(obj: SKStore.File): .UiSide {
     obj match {
     | x @ .UiSide _ -> x
-    | _ -> SKFS.cast_violation(".UiSide", obj)
+    | _ -> SKStore.cast_violation(".UiSide", obj)
     }
   }
 }

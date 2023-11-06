@@ -56,7 +56,7 @@ class UnicodeCompose(norm: Unicode.Norm, tests: Array<Case>) {
       got = String::fromUtf8(rb.out.toArray());
       expect = String::fromChars(case.dst);
       expectEq(got, expect, v ~> v)
-    | _ -> SKFS.cast_violation("SKUICommonTest.CompositionCase", testCase)
+    | _ -> SKStore.cast_violation("SKUICommonTest.CompositionCase", testCase)
     };
   }
 

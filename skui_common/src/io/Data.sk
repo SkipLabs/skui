@@ -1,6 +1,6 @@
 module IO;
 
-base class Data extends SKFS.File uses HasClassName {
+base class Data extends SKStore.File uses HasClassName {
   children =
   | Text(data: String)
   | Binary(data: Array<UInt8>)
@@ -57,10 +57,10 @@ base class Data extends SKFS.File uses HasClassName {
   }
 }
 
-class External(private eptr: SKFS.ExternalPointer) extends Data {
+class External(private eptr: SKStore.ExternalPointer) extends Data {
   //
   static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteExternalData))
+    static(SKStore.ExternalPointer::create(id, deleteExternalData))
   }
 
   fun getId(): Int {

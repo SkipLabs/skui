@@ -1,6 +1,6 @@
 module Ui;
 
-base class Handle extends SKFS.File {
+base class Handle extends SKStore.File {
   fun draw(
     shift: Ui.Shift,
     window: Geometry.Rectangle,
@@ -25,17 +25,17 @@ class LambdaHandle(
 class Handles(
   value: Array<Ui.Handle>,
   optViewport: ?Ui.Path = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun fromFile(obj: SKStore.File): this {
     obj match {
     | x @ Handles _ -> x
-    | _ -> SKFS.cast_violation("Ui.Handles", obj)
+    | _ -> SKStore.cast_violation("Ui.Handles", obj)
     }
   }
 }
 
-base class Drawable extends SKFS.File uses HasClassName {
+base class Drawable extends SKStore.File uses HasClassName {
   fun translate(offset: Geometry.Offset): this;
   fun size(): Geometry.Size;
 }
@@ -43,12 +43,12 @@ base class Drawable extends SKFS.File uses HasClassName {
 class Drawables(
   value: Array<Drawable>,
   optViewport: ?Ui.Path = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun fromFile(obj: SKStore.File): this {
     obj match {
     | x @ Drawables _ -> x
-    | _ -> SKFS.cast_violation("Ui.Drawables", obj)
+    | _ -> SKStore.cast_violation("Ui.Drawables", obj)
     }
   }
 }

@@ -9,11 +9,11 @@ base class AlphaSupplier {
   fun getAlpha(x: Int, y: Int): Float;
 }
 
-base class Draw extends AlphaSupplier, SKFS.File uses Hashable, Equality {
-  static fun forFile(obj: SKFS.File): Draw {
+base class Draw extends AlphaSupplier, SKStore.File uses Hashable, Equality {
+  static fun forFile(obj: SKStore.File): Draw {
     obj match {
     | x @ Draw _ -> x
-    | _ -> SKFS.cast_violation("Draw", obj)
+    | _ -> SKStore.cast_violation("Draw", obj)
     }
   }
 
@@ -98,11 +98,11 @@ value class Pixel(
   }
 }
 
-base class Painter extends SKFS.File uses Hashable, Equality {
-  static fun forFile(obj: SKFS.File): Painter {
+base class Painter extends SKStore.File uses Hashable, Equality {
+  static fun forFile(obj: SKStore.File): Painter {
     obj match {
     | x @ Painter _ -> x
-    | _ -> SKFS.cast_violation("Painter", obj)
+    | _ -> SKStore.cast_violation("Painter", obj)
     }
   }
 
@@ -115,7 +115,7 @@ class ArrayDraw(
   height: Int,
   alphas: Array<Float>,
   optShift: ?Shift = None(),
-) extends Draw, SKFS.File {
+) extends Draw, SKStore.File {
   fun getAlpha(x: Int, y: Int): Float {
     this.alphas[index(x, y, this.width)]
   }
