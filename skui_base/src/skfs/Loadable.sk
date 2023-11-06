@@ -1,11 +1,11 @@
-module SKFS;
+module SKStore;
 
-base class Loadable extends SKFS.File {
+base class Loadable extends File {
   children =
   | ToLoad()
   | Loading(optProgression: ?Int = None())
   | LoadFailed(optError: ?Text = None())
-  | Loaded(file: SKFS.File)
+  | Loaded(file: File)
 
   fun isLoading(): Bool {
     this match {
@@ -17,24 +17,24 @@ base class Loadable extends SKFS.File {
   }
 
   fun then(
-    context: mutable SKFS.Context,
-    conv: (mutable SKFS.Context, File) ~> Loadable = (_, file) ~> Loaded(file),
+    context: mutable Context,
+    conv: (mutable Context, File) ~> Loadable = (_, file) ~> Loaded(file),
   ): Loadable
-  | SKFS.Loaded(file) -> conv(context, file)
+  | Loaded(file) -> conv(context, file)
   | _ -> this
 
   fun otherwise(
-    context: mutable SKFS.Context,
-    conv: (mutable SKFS.Context, LoadFailed) ~> Loadable = (_, lf) ~> lf,
+    context: mutable Context,
+    conv: (mutable Context, LoadFailed) ~> Loadable = (_, lf) ~> lf,
   ): Loadable
   | LoadFailed _ -> conv(context, this)
   | _ -> this
 
-  fun maybeGet<T>(conv: SKFS.File ~> T): ?T
+  fun maybeGet<T>(conv: File ~> T): ?T
   | loaded @ Loaded _ -> Some(conv(loaded.file))
   | _ -> None()
 
-  static fun forFile(obj: SKFS.File): Loadable {
+  static fun forFile(obj: File): Loadable {
     obj match {
     | l @ Loadable _ -> l
     | _ -> invariant_violation("Invalid state")
@@ -44,10 +44,10 @@ base class Loadable extends SKFS.File {
 
 module end;
 
-fun toLoadFailed(e: Exception): SKFS.LoadFailed {
+fun toLoadFailed(e: Exception): SKStore.LoadFailed {
   e match {
   | i18NException @ I18NExceptionBase _ ->
-    SKFS.LoadFailed(Some(i18NException.getTextMessage()))
-  | _ -> SKFS.LoadFailed(Some(!e.getMessage()))
+    SKStore.LoadFailed(Some(i18NException.getTextMessage()))
+  | _ -> SKStore.LoadFailed(Some(!e.getMessage()))
   }
 }

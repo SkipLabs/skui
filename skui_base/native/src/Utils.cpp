@@ -139,20 +139,20 @@ extern "C"
     }
   }
 
-  void SKIP_SKFS_setMainContext(char * context) {
+  void SKIP_SKStore_setMainContext(char * context) {
     mainContext = context;
   }
 
-  char *SKIP_SKFS_getMainContext()
+  char *SKIP_SKStore_getMainContext()
   {
     return mainContext;
   }
 
-  void SKIP_SKFS_setWorkingContext(char * context) {
+  void SKIP_SKStore_setWorkingContext(char * context) {
     workingContext = context;
   }
 
-  char *SKIP_SKFS_getWorkingContext()
+  char *SKIP_SKStore_getWorkingContext()
   {
     return workingContext;
   }

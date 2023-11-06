@@ -1,21 +1,21 @@
 module SKUIMessage;
 
-type Supplier = mutable SKFS.Context ~> Message;
+type Supplier = mutable SKStore.Context ~> Message;
 
 base class Repeat {
-  fun isRepeating(context: mutable SKFS.Context): Bool;
+  fun isRepeating(context: mutable SKStore.Context): Bool;
 }
 
-class MessagesChecker(fn: () ~> void) extends SKFS.File
+class MessagesChecker(fn: () ~> void) extends SKStore.File
 
 class Sender(
   fn: (
-    readonly SKFS.Context,
+    readonly SKStore.Context,
     message: String,
     asyncMode: Bool,
     delay: UInt32,
   ) ~> Bool,
-) extends SKFS.File
+) extends SKStore.File
 
 base class Command extends JSONValue uses HasClassName {
   overridable fun isExternal(): Bool {
@@ -35,50 +35,50 @@ class DummyCommand() extends Command {
   }
 }
 
-base class Support extends SKFS.File uses HasClassName {
-  overridable fun init(_context: mutable SKFS.Context): void {
+base class Support extends SKStore.File uses HasClassName {
+  overridable fun init(_context: mutable SKStore.Context): void {
     void
   }
 
   fun run(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     command: Command,
   ): void;
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     message: JSON.Value,
   ): void;
 
   fun cancel(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     message: JSON.Value,
   ): void;
 
-  static fun forFile(obj: SKFS.File): Support {
+  static fun forFile(obj: SKStore.File): Support {
     obj match {
     | x @ Support _ -> x
-    | _ -> SKFS.cast_violation("SKUIMessage.Support", obj)
+    | _ -> SKStore.cast_violation("SKUIMessage.Support", obj)
     }
   }
 }
 
 trait WithUpdate<T: Command> extends HasClassName {
   protected fun execute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     command: T,
   ): void;
 
   overridable protected fun performCancel(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _name: String,
     _scope: String,
     _command: T,
@@ -94,13 +94,13 @@ trait WithUpdate<T: Command> extends HasClassName {
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     message: JSON.Value,
   ): void {
     if (this.profile()) {
-      SKFS.profileCall(context, `${this.getClassName()}.manage`, () -> {
+      SKStore.profileCall(context, `${this.getClassName()}.manage`, () -> {
         this.execute(context, name, scope, this.convert(message));
         context.updateIfRoot();
       });
@@ -111,13 +111,13 @@ trait WithUpdate<T: Command> extends HasClassName {
   }
 
   fun cancel(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     message: JSON.Value,
   ): void {
     if (this.profile()) {
-      SKFS.profileCall(context, `${this.getClassName()}.manage`, () -> {
+      SKStore.profileCall(context, `${this.getClassName()}.manage`, () -> {
         this.performCancel(context, name, scope, this.convert(message));
         context.updateIfRoot();
       });
@@ -128,7 +128,7 @@ trait WithUpdate<T: Command> extends HasClassName {
   }
 
   fun run(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     command: Command,
@@ -142,7 +142,7 @@ trait WithUpdate<T: Command> extends HasClassName {
       context.updateIfRoot();
     };
     if (this.profile()) {
-      SKFS.profileCall(context, `${this.getClassName()}.run`, function);
+      SKStore.profileCall(context, `${this.getClassName()}.run`, function);
     } else {
       function()
     }
@@ -150,7 +150,7 @@ trait WithUpdate<T: Command> extends HasClassName {
 }
 
 fun performMessage(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   strModule: String,
   strScope: String,
   jsCommand: JSON.Value,
@@ -171,7 +171,7 @@ fun performMessage(
   }
 }
 
-fun executeMessage(context: mutable SKFS.Context, jsv: JSON.Value): void {
+fun executeMessage(context: mutable SKStore.Context, jsv: JSON.Value): void {
   jsv match {
   | jso @ JSON.Object _ ->
     (strModule, strScope, jsCommand) = jso.maybeGetString("__class") match {
@@ -194,11 +194,11 @@ fun executeMessage(context: mutable SKFS.Context, jsv: JSON.Value): void {
         `Missed message[${context.tick}]: (Unknown internal message) ${v}`,
       )
     }
-  | _ -> SKFS.cast_violation("JSON.Object | JSON.IntNumber", jsv)
+  | _ -> SKStore.cast_violation("JSON.Object | JSON.IntNumber", jsv)
   }
 }
 
-fun cancelMessage(context: mutable SKFS.Context, message: String): void {
+fun cancelMessage(context: mutable SKStore.Context, message: String): void {
   jso = JSON.decode(message).expectObject();
   (strModule, strScope, jsCommand) = jso.maybeGetString("__class") match {
   | Some("SKUIMessage.Message") ->
@@ -224,7 +224,7 @@ fun cancelMessage(context: mutable SKFS.Context, message: String): void {
 @wasm_export("SKIP_SKUIMessage_manage")
 @cpp_export("SKIP_SKUIMessage_manage")
 fun manage(message: String): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     jsv = vtry<JSON.Value>(
       () -> JSON.decode(message),
       e -> {
@@ -263,7 +263,7 @@ fun manage(message: String): void {
 @wasm_export("SKIP_SKUIMessage_messageFailure")
 @cpp_export("SKIP_SKUIMessage_messageFailure")
 fun messageFailure(message: String): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     catchErrors = context.getBoolGlobal("SKUIMessage.catchErrors");
     if (catchErrors) {
       vtry<void>(
@@ -284,14 +284,14 @@ fun messageFailure(message: String): void {
 }
 
 fun send(
-  context: readonly SKFS.Context,
+  context: readonly SKStore.Context,
   message: String,
   asyncMode: Bool,
   delay: UInt32,
 ): Bool {
   context
     .getGlobal("SKUIMessage.Sender")
-    .map(Sender::fromFile)
+    .map(Sender::type)
     .map(sender -> sender.fn(context, message, asyncMode, delay))
     .default(false)
 }
@@ -301,12 +301,12 @@ class Message(
   scope: String,
   command: Command,
   optDelay: ?Int = None(),
-) extends SKFS.File uses HasClassName {
+) extends SKStore.File uses HasClassName {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Message _ -> x
-    | _ -> SKFS.cast_violation("SKUIMessage.Message", obj)
+    | _ -> SKStore.cast_violation("SKUIMessage.Message", obj)
     }
   }
 
@@ -341,12 +341,12 @@ class Message(
   }
 }
 
-class Messages(messages: Array<Message>) extends SKFS.File {
+class Messages(messages: Array<Message>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Messages _ -> x
-    | _ -> SKFS.cast_violation("SKUIMessage.Messages", obj)
+    | _ -> SKStore.cast_violation("SKUIMessage.Messages", obj)
     }
   }
 
@@ -355,7 +355,7 @@ class Messages(messages: Array<Message>) extends SKFS.File {
     this;
   }
 
-  fun send(context: mutable SKFS.Context): void {
+  fun send(context: mutable SKStore.Context): void {
     this.messages.each(message -> emitMessage(context, message, false))
   }
 }
@@ -365,12 +365,12 @@ class Target(
   scope: String,
   command: JSON.Object,
   asyncMode: Bool,
-) extends SKFS.File, JSONValue uses HasClassName {
+) extends SKStore.File, JSONValue uses HasClassName {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Target _ -> x
-    | _ -> SKFS.cast_violation("SKUIMessage.Target", obj)
+    | _ -> SKStore.cast_violation("SKUIMessage.Target", obj)
     }
   }
 
@@ -392,7 +392,7 @@ class Target(
     name: String,
     scope: String,
     className: String,
-    sequence: SKFS.RunSequence,
+    sequence: SKStore.RunSequence,
     asyncMode: Bool,
   ): Target {
     Target(
@@ -451,21 +451,21 @@ class Target(
 
 class Sequence private (
   count: Int,
-  toPerform: (mutable SKFS.Context, ?Command) ~> void,
-  onCancel: mutable SKFS.Context ~> void,
-) extends SKFS.File {
+  toPerform: (mutable SKStore.Context, ?Command) ~> void,
+  onCancel: mutable SKStore.Context ~> void,
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Sequence _ -> x
-    | _ -> SKFS.cast_violation("SKUIMessage.Sequence", obj)
+    | _ -> SKStore.cast_violation("SKUIMessage.Sequence", obj)
     }
   }
 
   static fun create(
     count: Int,
-    toPerform: (mutable SKFS.Context, ?Command) ~> void,
-    onCancel: mutable SKFS.Context ~> void,
+    toPerform: (mutable SKStore.Context, ?Command) ~> void,
+    onCancel: mutable SKStore.Context ~> void,
   ): this {
     invariant(count > 0, "Sequence count must be strictly greater than 0.");
     Sequence(count, toPerform, onCancel)
@@ -478,15 +478,15 @@ class Sequence private (
 }
 
 fun repeat(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   name: String,
   scope: String,
   command: Command,
-  toPerform: mutable SKFS.Context ~> void,
+  toPerform: mutable SKStore.Context ~> void,
   optRepeatOn: ?Repeat,
   asyncMode: Bool = false,
   delay: Int = 100,
-  finalize: mutable SKFS.Context ~> void = _ctx ~> void,
+  finalize: mutable SKStore.Context ~> void = _ctx ~> void,
 ): void {
   optRepeatOn match {
   | Some(repeatOn) ->
@@ -501,7 +501,7 @@ fun repeat(
 }
 
 fun target(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   target: Target,
   fields: Map<String, JSON.Value>,
 ): void {
@@ -515,7 +515,7 @@ fun target(
 }
 
 fun emitMessage(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   message: Message,
   asyncMode: Bool = false,
   allowPending: Bool = true,
@@ -531,7 +531,7 @@ fun emitMessage(
   )
 }
 
-fun debugJSON(context: mutable SKFS.Context, command: JSON.Value): void {
+fun debugJSON(context: mutable SKStore.Context, command: JSON.Value): void {
   chars = command.toString().chars();
   if (chars.size() > 128) {
     !chars = chars.slice(0, 128);
@@ -540,7 +540,7 @@ fun debugJSON(context: mutable SKFS.Context, command: JSON.Value): void {
 }
 
 fun emit(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   name: String,
   scope: String,
   command: Command,
@@ -590,7 +590,7 @@ fun emit(
 }
 
 fun emitJSON(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   name: String,
   scope: String,
   jsv: JSON.Value,
@@ -611,20 +611,20 @@ fun emitJSON(
   )
 }
 
-fun getChannelId(context: readonly SKFS.Context): ?UInt32 {
+fun getChannelId(context: readonly SKStore.Context): ?UInt32 {
   context
     .getGlobal("SKUIMessage.Channel")
-    .map(SKFS.UInt32File::fromFile)
+    .map(SKStore.UInt32File::type)
     .map(f -> f.value)
 }
 
 class DummySupport() extends Support {
-  fun init(_context: mutable SKFS.Context): void {
+  fun init(_context: mutable SKStore.Context): void {
     dummy()
   }
 
   fun run(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _name: String,
     _scope: String,
     _command: Command,
@@ -633,7 +633,7 @@ class DummySupport() extends Support {
   }
 
   fun manage(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _name: String,
     _scope: String,
     _message: JSON.Value,
@@ -642,7 +642,7 @@ class DummySupport() extends Support {
   }
 
   fun cancel(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _name: String,
     _scope: String,
     _message: JSON.Value,

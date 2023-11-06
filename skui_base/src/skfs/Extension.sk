@@ -1,61 +1,61 @@
-module SKFS;
+module SKStore;
 
 class FloatFile(value: Float) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ FloatFile _ -> x
-    | _ -> SKFS.cast_violation("SKFS.FloatFile", obj)
+    | _ -> cast_violation("FloatFile", obj)
     }
   }
 }
 
 class CharFile(value: Char) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ CharFile _ -> x
-    | _ -> SKFS.cast_violation("SKFS.CharFile", obj)
+    | _ -> cast_violation("CharFile", obj)
     }
   }
 }
 
-class Bytes(bytes: Array<UInt8>) extends SKFS.File {
+class Bytes(bytes: Array<UInt8>) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ Bytes _ -> x
-    | _ -> SKFS.cast_violation("SKFS.Bytes", obj)
+    | _ -> cast_violation("Bytes", obj)
     }
   }
 }
 
 class StringMapFile(value: Map<String, File>) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ StringMapFile _ -> x
-    | _ -> SKFS.cast_violation("SKFS.StringMapFile", obj)
+    | _ -> cast_violation("StringMapFile", obj)
     }
   }
 }
 
-class RangeFile(value: Range) extends SKFS.File {
+class RangeFile(value: Range) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ RangeFile _ -> x
-    | _ -> SKFS.cast_violation("SKFS.RangeFile", obj)
+    | _ -> cast_violation("RangeFile", obj)
     }
   }
 }
 
 class ArrayFile(value: Array<File>) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ ArrayFile _ -> x
-    | _ -> SKFS.cast_violation("SKFS.ArrayFile", obj)
+    | _ -> cast_violation("ArrayFile", obj)
     }
   }
 
@@ -68,7 +68,7 @@ class ArrayFile(value: Array<File>) extends File {
   }
 
   static fun map<T>(f: File, conv: File -> T): Array<T> {
-    ArrayFile::fromFile(f).value.map(conv)
+    ArrayFile::type(f).value.map(conv)
   }
 
   static fun conv<T>(f: File, conv: File -> File): ArrayFile {
@@ -90,13 +90,13 @@ class OptFile(value: ?File) extends File {
   }
 
   static fun converter<T>(conv: File ~> T): File ~> ?T {
-    f ~> OptFile::fromFile(f).map(conv)
+    f ~> OptFile::type(f).map(conv)
   }
 
-  static fun fromFile(obj: File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ OptFile _ -> x
-    | _ -> SKFS.cast_violation("SKFS.OptFile", obj)
+    | _ -> cast_violation("OptFile", obj)
     }
   }
 }
@@ -106,17 +106,14 @@ extension class DirName {
     static::create(parent.toString() + child);
   }
 
-  static fun check(
-    child: String,
-    optBasename: ?SKFS.DirName = None(),
-  ): DirName {
+  static fun check(child: String, optBasename: ?DirName = None()): DirName {
     optBasename match {
-    | Some(basename) -> SKFS.DirName::make(basename, child)
-    | _ -> SKFS.DirName::create(`/${child}`)
+    | Some(basename) -> DirName::make(basename, child)
+    | _ -> DirName::create(`/${child}`)
     };
   }
 }
 
-class UInt32File(value: UInt32) extends SKFS.File
+class UInt32File(value: UInt32) extends File
 
 module end;

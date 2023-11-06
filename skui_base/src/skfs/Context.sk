@@ -1,13 +1,13 @@
-module SKFS;
+module SKStore;
 
 class Updater(fn: mutable Context ~> void) extends File
 
 class Random(value: .Random) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ Random _ -> x
-    | _ -> SKFS.cast_violation("SKFS.Random", obj)
+    | _ -> cast_violation("SKStore.Random", obj)
     }
   }
 }
@@ -30,7 +30,7 @@ extension class Context {
     | _ ->
       fromContext = getMainContext();
       fromTick = fromContext.tick;
-      context = SKFS.Context::fromSaved(fromContext);
+      context = Context::fromSaved(fromContext);
       doDo = () -> context.perform(fn, fromContext, fromTick);
       optName match {
       | Some(name) -> profileCall(context, name, doDo)
@@ -42,7 +42,7 @@ extension class Context {
   mutable fun updateIfRoot(): void {
     if (this.currentArrow().isNone()) {
       if (this.updateWithStatus(0)) {
-        this.getGlobal("SKFS.Updater").map(Updater::fromFile).each(u ->
+        this.getGlobal("SKStore.Updater").map(Updater::type).each(u ->
           u.fn(this)
         )
       }
@@ -81,20 +81,22 @@ extension class Context {
     res;
   }
 
-  mutable fun makeDir<T: File>(
+  mutable fun makeDir<K: Key, T: File>(
+    convKey: Key ~> K,
     conv: File ~> T,
     dirName: DirName,
-    content: Array<(BaseName, T)> = Array[],
-  ): EHandle<T> {
-    this.mkdir(conv, dirName, content);
+    content: Array<(K, T)> = Array[],
+  ): EHandle<K, T> {
+    this.mkdir(convKey, conv, dirName, content);
   }
 
-  mutable fun makePreDir<T: File>(
+  mutable fun makePreDir<K: Key, T: File>(
+    convKey: Key ~> K,
     conv: File ~> T,
     dirName: DirName,
-    content: Array<(BaseName, T)> = Array[],
-  ): EHandle<T> {
-    value = this.makeDir(conv, dirName.pre(), content);
+    content: Array<(K, T)> = Array[],
+  ): EHandle<K, T> {
+    value = this.makeDir(convKey, conv, dirName.pre(), content);
     if (!this.hasPre.contains(dirName)) {
       this.!hasPre = this.hasPre.add(dirName);
     };
@@ -103,13 +105,14 @@ extension class Context {
 
   mutable fun setProfiling(optPerformProfile: ?Bool): void {
     optPerformProfile match {
-    | Some(profiling) -> this.setGlobal("SKFS.Profiling", BoolFile(profiling))
-    | _ -> this.removeGlobal("SKFS.Profiling")
+    | Some(profiling) ->
+      this.setGlobal("SKStore.Profiling", BoolFile(profiling))
+    | _ -> this.removeGlobal("SKStore.Profiling")
     }
   }
 
   readonly fun getProfiling(): ?Bool {
-    this.getGlobal("SKFS.Profiling").map(f -> BoolFile::fromFile(f).value)
+    this.getGlobal("SKStore.Profiling").map(f -> BoolFile::type(f).value)
   }
 
   mutable fun registerMessageSupport(
@@ -149,7 +152,7 @@ extension class Context {
     optCommand: ?SKUIMessage.Command,
   ): void {
     name = `SKUIMessage.Sequence[${seqId}]`;
-    this.getGlobal(name).map(SKUIMessage.Sequence::fromFile) match {
+    this.getGlobal(name).map(SKUIMessage.Sequence::type) match {
     | Some(sequence) ->
       nSequence = sequence.decr();
       if (nSequence.count == 0) {
@@ -164,14 +167,14 @@ extension class Context {
 
   mutable fun clearSequence(id: Int): void {
     name = `SKUIMessage.Sequence[${id}]`;
-    optSequence = this.getGlobal(name).map(SKUIMessage.Sequence::fromFile);
+    optSequence = this.getGlobal(name).map(SKUIMessage.Sequence::type);
     this.removeGlobal(name);
     optSequence.each(sequence -> sequence.onCancel(this))
   }
 
   mutable fun addPendingMessage(message: SKUIMessage.Message): void {
     this.getGlobal("SKUIMessage.Pedding").map(
-      SKUIMessage.Messages::fromFile,
+      SKUIMessage.Messages::type,
     ) match {
     | Some(messages) ->
       this.setGlobal("SKUIMessage.Pedding", messages.add(message))
@@ -185,7 +188,7 @@ extension class Context {
 
   mutable fun checkPendingMessages(): void {
     this.getGlobal("SKUIMessage.Pedding")
-      .map(SKUIMessage.Messages::fromFile)
+      .map(SKUIMessage.Messages::type)
       .each(messages -> messages.send(this));
     this.removeGlobal("SKUIMessage.Pedding");
   }
@@ -199,7 +202,7 @@ extension class Context {
 
   mutable fun getInternalMessage(messageId: Int): ?SKUIMessage.Message {
     gID = `SKUIMessage.Message.${messageId}`;
-    optMessage = this.getGlobal(gID).map(SKUIMessage.Message::fromFile);
+    optMessage = this.getGlobal(gID).map(SKUIMessage.Message::type);
     if (optMessage.isSome()) {
       this.removeGlobal(gID)
     };
@@ -214,7 +217,7 @@ extension class Context {
   @debug
   mutable fun doProfile(
     name: String,
-    fn: mutable SKFS.Context -> void,
+    fn: mutable Context -> void,
     forceCall: Bool = false,
   ): void {
     this.getProfiling() match {
@@ -242,15 +245,15 @@ extension class Context {
     forceDisplay: Bool = false,
   ): void {
     entity = ProfileEntity(time, forceDisplay);
-    this.getGlobal("SKFS.Profiles") match {
+    this.getGlobal("SKStore.Profiles") match {
     | Some(file) ->
       this.setGlobal(
-        "SKFS.Profiles",
-        Profiles::fromFile(file).update(name, this.tick, entity),
+        "SKStore.Profiles",
+        Profiles::type(file).update(name, this.tick, entity),
       )
     | _ ->
       this.setGlobal(
-        "SKFS.Profiles",
+        "SKStore.Profiles",
         Profiles().update(name, this.tick, entity),
       )
     }
@@ -258,12 +261,12 @@ extension class Context {
 
   @debug
   mutable fun clearProfile(): void {
-    this.removeGlobal("SKFS.Profiles");
+    this.removeGlobal("SKStore.Profiles");
   }
 
   @debug
   readonly fun printProfile(): void {
-    this.getGlobal("SKFS.Profiles").map(Profiles::fromFile).each(profiles ->
+    this.getGlobal("SKStore.Profiles").map(Profiles::type).each(profiles ->
       profiles.print(this.tick)
     )
   }
@@ -271,13 +274,13 @@ extension class Context {
   mutable fun random(start: Int, end: Int): Int {
     random = this.getRandom();
     res = random.random(start, end);
-    this.setGlobal("SKFS.Random", Random(random.chill()));
+    this.setGlobal("SKStore.Random", Random(random.chill()));
     res;
   }
 
   private mutable fun getRandom(): mutable .Random {
-    this.getGlobal("SKFS.Random") match {
-    | Some(file) -> Random::fromFile(file).value.clone()
+    this.getGlobal("SKStore.Random") match {
+    | Some(file) -> Random::type(file).value.clone()
     | _ -> .Random::mcreate(this.timeStamp().value)
     }
   }
@@ -285,21 +288,18 @@ extension class Context {
   mutable fun randomBytes(size: Int): Array<UInt8> {
     random = this.getRandom();
     bytes = Array::fillBy(size, _idx -> UInt8::truncate(random.random(0, 256)));
-    this.setGlobal("SKFS.Random", Random(random.chill()));
+    this.setGlobal("SKStore.Random", Random(random.chill()));
     bytes
   }
 
   readonly fun getBoolGlobal(name: String): Bool {
-    this.getGlobal(name)
-      .map(BoolFile::fromFile)
-      .map(f -> f.value)
-      .default(false)
+    this.getGlobal(name).map(BoolFile::type).map(f -> f.value).default(false)
   }
 }
 
 @debug
 fun profileCall<T>(
-  context: mutable SKFS.Context,
+  context: mutable Context,
   name: String,
   fn: () -> T,
   limit: Int = 500,
@@ -319,19 +319,19 @@ fun profileCall<T>(
 }
 
 @debug
-@cpp_extern("SKIP_SKFS_setMainContext")
+@cpp_extern("SKIP_SKStore_setMainContext")
 native fun setMainContext(context: Context): void;
 
 @debug
-@cpp_extern("SKIP_SKFS_getMainContext")
+@cpp_extern("SKIP_SKStore_getMainContext")
 native fun getMainContext(): Context;
 
 @debug
-@cpp_extern("SKIP_SKFS_setWorkingContext")
+@cpp_extern("SKIP_SKStore_setWorkingContext")
 native fun setWorkingContext(optContext: ?mutable Context): void;
 
 @debug
-@cpp_extern("SKIP_SKFS_getWorkingContext")
+@cpp_extern("SKIP_SKStore_getWorkingContext")
 native fun getWorkingContext(): ?mutable Context;
 
 fun initMainContext(context: Context): void {
@@ -341,21 +341,21 @@ fun initMainContext(context: Context): void {
 
 class RunSequence(id: Int) extends JSONValue, File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ RunSequence _ -> x
-    | _ -> SKFS.cast_violation("SKFS.RunSequence", obj)
+    | _ -> cast_violation("SKStore.RunSequence", obj)
     }
   }
 
   fun execute(
-    context: mutable SKFS.Context,
+    context: mutable Context,
     optCommand: ?SKUIMessage.Command,
   ): void {
     context.checkSequence(this.id, optCommand)
   }
 
-  fun cancel(context: mutable SKFS.Context): void {
+  fun cancel(context: mutable Context): void {
     context.clearSequence(this.id)
   }
 
@@ -372,8 +372,9 @@ class RunSequence(id: Int) extends JSONValue, File {
     jso = jsv.expectObject();
     cl = jso.getString("__class");
     cl match {
-    | "SKFS.RunSequence" -> RunSequence(jso.getInt("id"))
-    | _ -> invariant_violation(`Invalid json object ${cl} for SKFS.RunSequence`)
+    | "SKStore.RunSequence" -> RunSequence(jso.getInt("id"))
+    | _ ->
+      invariant_violation(`Invalid json object ${cl} for SKStore.RunSequence`)
     }
   }
 }

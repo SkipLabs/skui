@@ -1,4 +1,4 @@
-module SKFS;
+module SKStore;
 
 @always_inline
 fun cast_violation<T: frozen>(name: String, casted: T): _ {
@@ -7,16 +7,9 @@ fun cast_violation<T: frozen>(name: String, casted: T): _ {
   )
 }
 
-class StrID(value: String) extends BaseName {
+class StrID(value: String) extends Key {
   fun toString(): String {
     this.value
-  }
-
-  static fun fromFile(obj: SKFS.File): this {
-    obj match {
-    | x @ StrID _ -> x
-    | _ -> SKFS.cast_violation("SKFS.StrID", obj)
-    }
   }
 }
 
@@ -83,18 +76,18 @@ class Profile(
 
 class Profiles(
   profiles: Map<String, Profile> = Map[],
-  tick: SKFS.Tick = SKFS.Tick(0),
+  tick: Tick = Tick(0),
   current: Map<String, ProfileEntity> = Map[],
 ) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ Profiles _ -> x
-    | _ -> SKFS.cast_violation("SKFS.Profiles", obj)
+    | _ -> cast_violation("SKStore.Profiles", obj)
     }
   }
 
-  fun update(name: String, tick: SKFS.Tick, entity: ProfileEntity): Profiles {
+  fun update(name: String, tick: Tick, entity: ProfileEntity): Profiles {
     if (tick != this.tick) {
       !this = this.check(tick);
     };
@@ -106,7 +99,7 @@ class Profiles(
     this
   }
 
-  fun print(tick: SKFS.Tick): void {
+  fun print(tick: Tick): void {
     print_string("Profile start ___");
     namedProfiles = mutable Vector<(String, Profile)>[];
     this.check(tick).profiles.each((key, value) ->
@@ -118,7 +111,7 @@ class Profiles(
     print_string("_____ Profile end");
   }
 
-  private fun check(tick: SKFS.Tick): Profiles {
+  private fun check(tick: Tick): Profiles {
     this.current.each((uptName, cur) -> {
       profile = this.profiles.maybeGet(uptName) match {
       | Some(profile) -> profile.update(cur)
@@ -134,16 +127,9 @@ class Profiles(
   }
 }
 
-class DummyBaseName() extends BaseName {
+class DummyBaseName() extends Key {
   fun toString(): String {
     dummy()
-  }
-
-  static fun fromFile(obj: SKFS.File): this {
-    obj match {
-    | x @ DummyBaseName _ -> x
-    | _ -> SKFS.cast_violation("SKFS.DummyBaseName", obj)
-    }
   }
 }
 

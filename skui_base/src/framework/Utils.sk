@@ -1,77 +1,5 @@
 module FWK;
 
-base class BaseNameConverter<K: frozen> extends SKFS.Converter<K> {
-  fun toBaseName(key: K): SKFS.BaseName;
-  fun fromBaseName(key: SKFS.BaseName): K;
-}
-
-class StrIDConverter() extends BaseNameConverter<String> {
-  fun toBaseName(key: String): SKFS.BaseName {
-    SKFS.StrID(key)
-  }
-
-  fun fromBaseName(key: SKFS.BaseName): String {
-    key match {
-    | sid @ SKFS.StrID _ -> sid.value
-    | sid @ SKFS.SID _ -> sid.value
-    | _ -> SKFS.cast_violation("SKFS.SID", key)
-    }
-  }
-
-  fun toFile(key: String): SKFS.File {
-    SKFS.StringFile(key)
-  }
-
-  fun fromFile(file: SKFS.File): String {
-    SKFS.StringFile::fromFile(file).value
-  }
-}
-
-class IIDConverter() extends BaseNameConverter<Int> {
-  fun toBaseName(key: Int): SKFS.BaseName {
-    SKFS.IID(key)
-  }
-
-  fun fromBaseName(key: SKFS.BaseName): Int {
-    key match {
-    | iid @ SKFS.IID _ -> iid.value
-    | _ -> SKFS.cast_violation("SKFS.IID", key)
-    }
-  }
-
-  fun toFile(key: Int): SKFS.File {
-    SKFS.IntFile(key)
-  }
-
-  fun fromFile(file: SKFS.File): Int {
-    SKFS.IntFile::fromFile(file).value
-  }
-}
-
-class IdentityCreator<K: SKFS.BaseName>(
-  optConv: ?SKFS.BaseName ~> K = None(),
-  optFileConverter: ?SKFS.Converter<K> = None(),
-) extends BaseNameConverter<K> {
-  fun toBaseName(key: K): SKFS.BaseName {
-    key
-  }
-
-  fun fromBaseName(key: SKFS.BaseName): K {
-    conv = this.optConv.fromSome();
-    conv(key)
-  }
-
-  fun toFile(key: K): SKFS.File {
-    conv = this.optFileConverter.fromSome();
-    conv.toFile(key);
-  }
-
-  fun fromFile(file: SKFS.File): K {
-    conv = this.optFileConverter.fromSome();
-    conv.fromFile(file);
-  }
-}
-
 base class Equals<T: frozen> uses Hashable, Equality {
   fun equals(v1: T, v2: T): Bool;
 }
@@ -82,7 +10,7 @@ class DummyEquals<T: frozen>() extends Equals<T> {
   }
 }
 
-class EqualsFile(fn: (SKFS.File, SKFS.File) ~> Bool) extends SKFS.File
+class EqualsFile(fn: (SKStore.File, SKStore.File) ~> Bool) extends SKStore.File
 
 mutable class SMap<+K: Orderable, +V>(
   mutable smap: SortedMap<K, V>,
