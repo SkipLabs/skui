@@ -2,7 +2,7 @@ module SkuiFontBuild;
 
 @skbuild_source_dirs
 fun source_dirs(env: Skbuild.Env): Array<String> {
-  if (env.test) {
+  if (env.test && !env.isWasm32()) {
     Array["native/tests"]
   } else {
     Array[]
@@ -28,5 +28,5 @@ fun resources(env: Skbuild.Env): Array<String> {
 
 @debug
 fun main(): void {
-  _ = Skbuild.build(false);
+  _ = Skbuild.build();
 }

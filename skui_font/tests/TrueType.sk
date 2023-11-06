@@ -115,11 +115,11 @@ fun truetypeScaling5(r: String ~> TrueType.Font): void {
   Scaling(r("xab"), 11, Font.HintingNone(), SKUIFontTest.xab11sh()).run()
 }
 
-class Rectangle(rect: Fixed.Rectangle26_6) extends SKFS.File {}
+class Rectangle(rect: Fixed.Rectangle26_6) extends SKStore.File {}
 
 class FontCase(
-  got: (TrueType.Font) ~> SKFS.File,
-  expected: SKFS.File,
+  got: (TrueType.Font) ~> SKStore.File,
+  expected: SKStore.File,
   name: String = "luxisr",
 ) extends Case
 
@@ -130,18 +130,18 @@ base class TrueType(r: String ~> TrueType.Font, idx: Int = 0) {
   }
 
   protected fun runCase(idx: Int, case: FontCase): void {
-    pos = SKFS.newObstack();
+    pos = SKStore.newObstack();
     font = this.r(case.name);
     case.got(font) match {
-    | failure @ SKFS.LoadFailed _ ->
+    | failure @ SKStore.LoadFailed _ ->
       invariant_violation(`Error: ${failure.optError}`)
     | gotFile ->
       try {
         expectEqAt(gotFile, case.expected, idx);
-        SKFS.destroyObstack(pos);
+        SKStore.destroyObstack(pos);
       } catch {
       | e ->
-        throw SKFS.destroyObstackWithValue(
+        throw SKStore.destroyObstackWithValue(
           pos,
           List.Cons(e, List.Nil()),
         ).getHead()
@@ -156,8 +156,8 @@ class Parse() extends TrueType {
   protected fun cases(): Array<FontCase> {
     Array[
       FontCase(
-        font ~> SKFS.IntFile(font.fUnitsPerEm.toInt()),
-        SKFS.IntFile(2048),
+        font ~> SKStore.IntFile(font.fUnitsPerEm.toInt()),
+        SKStore.IntFile(2048),
       ),
       FontCase(
         font ~> Rectangle(font.scaledBounds(font.fupe())),
@@ -173,44 +173,44 @@ class Parse() extends TrueType {
       FontCase(
         font ~>
           onAV(font, (_, iA, iV) ~>
-            SKFS.ArrayFile(
-              Array[SKFS.IntFile(iA.toInt()), SKFS.IntFile(iV.toInt())],
+            SKStore.ArrayFile(
+              Array[SKStore.IntFile(iA.toInt()), SKStore.IntFile(iV.toInt())],
             )
           ),
-        SKFS.ArrayFile(Array[SKFS.IntFile(36), SKFS.IntFile(57)]),
+        SKStore.ArrayFile(Array[SKStore.IntFile(36), SKStore.IntFile(57)]),
       ),
       FontCase(
         font ~>
           onA(font, (font, iA) ~> {
             hMetrics = font.getHMetric(font.fupe(), iA);
-            SKFS.ArrayFile(
+            SKStore.ArrayFile(
               Array[
-                SKFS.IntFile(hMetrics.advanceWidth.asInt()),
-                SKFS.IntFile(hMetrics.leftSideBearing.asInt()),
+                SKStore.IntFile(hMetrics.advanceWidth.asInt()),
+                SKStore.IntFile(hMetrics.leftSideBearing.asInt()),
               ],
             )
           }),
-        SKFS.ArrayFile(Array[SKFS.IntFile(1366), SKFS.IntFile(19)]),
+        SKStore.ArrayFile(Array[SKStore.IntFile(1366), SKStore.IntFile(19)]),
       ),
       FontCase(
         font ~>
           onA(font, (font, iA) ~> {
             vMetrics = font.getVMetric(font.fupe(), iA);
-            SKFS.ArrayFile(
+            SKStore.ArrayFile(
               Array[
-                SKFS.IntFile(vMetrics.advanceHeight.asInt()),
-                SKFS.IntFile(vMetrics.topSideBearing.asInt()),
+                SKStore.IntFile(vMetrics.advanceHeight.asInt()),
+                SKStore.IntFile(vMetrics.topSideBearing.asInt()),
               ],
             )
           }),
-        SKFS.ArrayFile(Array[SKFS.IntFile(2465), SKFS.IntFile(553)]),
+        SKStore.ArrayFile(Array[SKStore.IntFile(2465), SKStore.IntFile(553)]),
       ),
       FontCase(
         font ~>
           onAV(font, (font, iA, iV) ~>
-            SKFS.IntFile(font.getKern(font.fupe(), iA, iV).asInt())
+            SKStore.IntFile(font.getKern(font.fupe(), iA, iV).asInt())
           ),
-        SKFS.IntFile(-144),
+        SKStore.IntFile(-144),
       ),
     ]
   }
@@ -241,29 +241,29 @@ class Glyph() extends TrueType {
           onA(font, (font, iA) ~> {
             g = mutable TrueType.GlyphBuf{};
             !g = g.load(font, font.fupe(), iA.toInt(), Font.HintingNone());
-            SKFS.ArrayFile(
+            SKStore.ArrayFile(
               g.points
                 .map(point ->
-                  SKFS.ArrayFile::fromInts(
+                  SKStore.ArrayFile::fromInts(
                     Array[point.x.asInt(), point.y.asInt(), point.flags],
                   )
                 )
                 .toArray(),
             );
           }),
-        SKFS.ArrayFile(
+        SKStore.ArrayFile(
           Array[
-            SKFS.ArrayFile::fromInts(Array[19, 0, 51]),
-            SKFS.ArrayFile::fromInts(Array[581, 1480, 1]),
-            SKFS.ArrayFile::fromInts(Array[789, 1480, 51]),
-            SKFS.ArrayFile::fromInts(Array[1342, 0, 1]),
-            SKFS.ArrayFile::fromInts(Array[1116, 0, 35]),
-            SKFS.ArrayFile::fromInts(Array[962, 410, 3]),
-            SKFS.ArrayFile::fromInts(Array[368, 410, 33]),
-            SKFS.ArrayFile::fromInts(Array[214, 0, 3]),
-            SKFS.ArrayFile::fromInts(Array[428, 566, 19]),
-            SKFS.ArrayFile::fromInts(Array[904, 566, 33]),
-            SKFS.ArrayFile::fromInts(Array[667, 1200, 3]),
+            SKStore.ArrayFile::fromInts(Array[19, 0, 51]),
+            SKStore.ArrayFile::fromInts(Array[581, 1480, 1]),
+            SKStore.ArrayFile::fromInts(Array[789, 1480, 51]),
+            SKStore.ArrayFile::fromInts(Array[1342, 0, 1]),
+            SKStore.ArrayFile::fromInts(Array[1116, 0, 35]),
+            SKStore.ArrayFile::fromInts(Array[962, 410, 3]),
+            SKStore.ArrayFile::fromInts(Array[368, 410, 33]),
+            SKStore.ArrayFile::fromInts(Array[214, 0, 3]),
+            SKStore.ArrayFile::fromInts(Array[428, 566, 19]),
+            SKStore.ArrayFile::fromInts(Array[904, 566, 33]),
+            SKStore.ArrayFile::fromInts(Array[667, 1200, 3]),
           ],
         ),
       ),
@@ -272,9 +272,9 @@ class Glyph() extends TrueType {
           onA(font, (font, iA) ~> {
             g = mutable TrueType.GlyphBuf{};
             !g = g.load(font, font.fupe(), iA.toInt(), Font.HintingNone());
-            SKFS.ArrayFile::fromInts(g.ends.toArray())
+            SKStore.ArrayFile::fromInts(g.ends.toArray())
           }),
-        SKFS.ArrayFile::fromInts(Array[8, 11]),
+        SKStore.ArrayFile::fromInts(Array[8, 11]),
       ),
     ]
   }
@@ -285,18 +285,18 @@ class Name() extends TrueType {
   protected fun cases(): Array<FontCase> {
     Array[
       FontCase(
-        font ~> SKFS.StringFile(font.getName(TrueType.NameID::fontFamily)),
-        SKFS.StringFile("Luxi Mono"),
+        font ~> SKStore.StringFile(font.getName(TrueType.NameID::fontFamily)),
+        SKStore.StringFile("Luxi Mono"),
         "luximr",
       ),
       FontCase(
-        font ~> SKFS.StringFile(font.getName(TrueType.NameID::fontFamily)),
-        SKFS.StringFile("Luxi Serif"),
+        font ~> SKStore.StringFile(font.getName(TrueType.NameID::fontFamily)),
+        SKStore.StringFile("Luxi Serif"),
         "luxirr",
       ),
       FontCase(
-        font ~> SKFS.StringFile(font.getName(TrueType.NameID::fontFamily)),
-        SKFS.StringFile("Luxi Sans"),
+        font ~> SKStore.StringFile(font.getName(TrueType.NameID::fontFamily)),
+        SKStore.StringFile("Luxi Sans"),
         "luxisr",
       ),
     ]
@@ -307,7 +307,7 @@ class ScalingResult(
   advanceWidth: Fixed.Int26_6,
   bounds: Fixed.Rectangle26_6,
   points: Array<TrueType.Point>,
-) extends SKFS.File uses Equality {}
+) extends SKStore.File uses Equality {}
 
 class Scaling(
   font: TrueType.Font,
@@ -439,29 +439,29 @@ fun runIndex(font: TrueType.Font, expected: Map<Int, Int>): void {
 
 private fun onA(
   font: TrueType.Font,
-  fn: (TrueType.Font, UInt16) ~> SKFS.File,
-): SKFS.File {
+  fn: (TrueType.Font, UInt16) ~> SKStore.File,
+): SKStore.File {
   aChar = 'A';
   optIndex = font.getIndex(aChar);
   optIndex match {
   | Some(iA) ->
     debug(("onA", aChar, iA));
     fn(font, iA)
-  | _ -> SKFS.LoadFailed(Some(!"Unable to found glyph 'A'"))
+  | _ -> SKStore.LoadFailed(Some(!"Unable to found glyph 'A'"))
   }
 }
 
 private fun onAV(
   font: TrueType.Font,
-  fn: (TrueType.Font, UInt16, UInt16) ~> SKFS.File,
-): SKFS.File {
+  fn: (TrueType.Font, UInt16, UInt16) ~> SKStore.File,
+): SKStore.File {
   vChar = 'V';
   optIndex = font.getIndex(vChar);
   optIndex match {
   | Some(iV) ->
     //debug(("onV", vChar, iV));
     onA(font, (ft, iA) ~> fn(ft, iA, iV))
-  | _ -> SKFS.LoadFailed(Some(!"Unable to found glyph 'V'"))
+  | _ -> SKStore.LoadFailed(Some(!"Unable to found glyph 'V'"))
   }
 }
 
