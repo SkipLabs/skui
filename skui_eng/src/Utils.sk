@@ -609,7 +609,7 @@ fun toWidgetsCollection(
     context,
     "splittedwidgets/",
     (_context, writer, _key, array) ~> {
-      keys = mutable Vector<SKStore.BaseName>[];
+      keys = mutable Vector<SKStore.Key>[];
       array.value.each(s -> {
         sk = SKStore.IID(hash(s));
         keys.push(sk);

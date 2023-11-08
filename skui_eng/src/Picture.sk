@@ -33,7 +33,7 @@ class Key(
   height: UInt32,
   oWidth: UInt32,
   oHeight: UInt32,
-) extends SKStore.BaseName {
+) extends SKStore.Key {
   //
   fun toString(): String {
     `${this.picture}:${this.width}x${this.height}:${this.oWidth}x${
@@ -41,7 +41,7 @@ class Key(
     }`;
   }
 
-  fun compare(other: SKStore.BaseName): Order {
+  fun compare(other: SKStore.Key): Order {
     other match {
     | ok @ Key _ ->
       (
@@ -60,7 +60,7 @@ class RKey(
   picture: UInt32,
   width: UInt32,
   height: UInt32,
-) extends SKStore.BaseName {
+) extends SKStore.Key {
   //
   fun toString(): String {
     `${this.picture}:${this.width}x${this.height}`;

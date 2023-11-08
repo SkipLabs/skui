@@ -31,10 +31,10 @@ const nodeHandlesPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/skuigl/nodeHandles/",
 );
 
-const ctxHandle: SKStore.IHandle<Int> = SKStore.IHandle(
-  SKStore.IntConverter(),
-  webglPath,
-);
+const ctxHandle: SKStore.IHandle<
+  SKStore.Key,
+  SKStore.IntFile,
+> = SKStore.IHandle(k ~> k, SKStore.IntFile::type, webglPath);
 
 class Useless()
 
@@ -60,7 +60,7 @@ fun setWindowContext(window: UInt32, cid: UInt32): void {
   win = window.toInt();
   key = if (win == 0) Ui.MainKey() else SKStore.IID(win);
   SKStore.Context::withoutGc(context ~>
-    ctxHandle.write(context, key, cid.toInt())
+    ctxHandle.write(context, key, SKStore.IntFile(cid.toInt()))
   );
   SKStore.destroyObstack(pos);
 }
@@ -70,14 +70,21 @@ class DrawableSupport(
 ) extends Ui.DrawableSupport {
   fun init(
     context: mutable SKStore.Context,
-    nodeDrawablesHdl: SKStore.EHandle<Ui.Drawables>,
+    nodeDrawablesHdl: SKStore.EHandle<Ui.KLayer, Ui.Drawables>,
   ): void {
-    webglHdl = context.makeDir(SKStore.IntFile::type, webglPath, Array[]);
+    webglHdl = context.makeDir(
+      k ~> k,
+      SKStore.IntFile::type,
+      webglPath,
+      Array[],
+    );
     webglProgramsHdl = nodeDrawablesHdl.map(
+      k ~> k,
       f ~> f,
       context,
       webglProgramsPath,
-      (context, writer, key, drawables) ~> {
+      (context, writer, key, it) ~> {
+        drawables = it.first;
         webglHdl.maybeGet(context, Ui.MainKey()).each(webgl -> {
           initializer = mutable GLProgram.Initializer();
           prepared = BDrawables(
@@ -87,36 +94,36 @@ class DrawableSupport(
             }),
             drawables.optViewport,
           );
-          writer.write(key, prepared);
+          writer.set(key, prepared);
           initializer.programs.each((k, v) ->
-            writer.write(PrgKey(webgl.value, k, v), key)
+            writer.set(PrgKey(webgl.value, k, v), SKStore.KeyFile(key))
           );
           initializer.buffers.each((k, v) ->
-            writer.write(BufKey(webgl.value, k, v), key)
+            writer.set(BufKey(webgl.value, k, v), SKStore.KeyFile(key))
           );
           initializer.arrays.each((k, v) ->
-            writer.write(ArrayKey(webgl.value, k, v), key)
+            writer.set(ArrayKey(webgl.value, k, v), SKStore.KeyFile(key))
           )
         })
       },
     );
     webglFilteredProgramsHdl = webglProgramsHdl.map(
+      k ~> k,
       f ~> f,
       context,
       webglFilteredProgramsPath,
-      (_, writer, key, files) ~> {
+      (_, writer, key, it) ~> {
         key match {
         | BufKey _
         | ArrayKey _
         | PrgKey _ ->
-          if (!files.isEmpty()) {
-            writer.write(key, SKStore.IntFile(0))
-          }
-        | _ -> files.maybeFirst().each(v -> writer.write(key, v))
+          writer.set(key, SKStore.IntFile(0))
+        | _ -> writer.set(key, it.first)
         }
       },
     );
     webglComputedBuffersHdl = webglFilteredProgramsHdl.map(
+      BufId::keyType,
       GLProgram.Buffer::type,
       context,
       webglComputedBuffersPath,
@@ -126,12 +133,13 @@ class DrawableSupport(
           ctx = GL.Ctx(UInt32::truncate(bk.webgl));
           buffer = bk.builder(ctx);
           bid = bk.toBufId();
-          writer.write(bid, buffer)
+          writer.set(bid, buffer)
         | _ -> void
         }
       },
     );
     webglComputedArraysHdl = webglFilteredProgramsHdl.map(
+      ArrayId::keyType,
       GLProgram.VertexArray::type,
       context,
       webglComputedArraysPath,
@@ -143,12 +151,13 @@ class DrawableSupport(
           array.init(bufId ->
             webglComputedBuffersHdl.get(context, BufId(ak.webgl, bufId))
           );
-          writer.write(ak.toArrayId(), array)
+          writer.set(ak.toArrayId(), array)
         | _ -> void
         }
       },
     );
     webglComputedProgramsHdl = webglFilteredProgramsHdl.map(
+      PrgId::keyType,
       GLProgram.TriangleProgram::type,
       context,
       webglComputedProgramsPath,
@@ -156,19 +165,20 @@ class DrawableSupport(
         key match {
         | pk @ PrgKey _ ->
           gl = GL.Ctx(UInt32::truncate(pk.webgl));
-          writer.write(pk.toPrgId(), pk.builder(gl))
+          writer.set(pk.toPrgId(), pk.builder(gl))
         | _ -> void
         }
       },
     );
     nodeHandlesHdl = webglFilteredProgramsHdl.map(
+      CtxLayer::keyType,
       Ui.Handles::type,
       context,
       nodeHandlesPath,
-      (context, writer, key, file) ~> {
+      (context, writer, key, it) ~> {
         key match {
         | kLayer @ Ui.KLayer _ ->
-          drawables = BDrawables::type(file);
+          drawables = BDrawables::type(it.first);
           webglHdl.maybeGet(context, Ui.MainKey()).each(webgl -> {
             gl = GL.Ctx(UInt32::truncate(webgl.value));
             supplier = GLProgram.Supplier(name ~>
@@ -194,7 +204,7 @@ class DrawableSupport(
               }
             );
             if (!tmp.isEmpty()) {
-              writer.write(
+              writer.set(
                 CtxLayer(webgl.value, kLayer),
                 Ui.Handles(tmp.toArray(), drawables.optViewport),
               );
@@ -205,13 +215,14 @@ class DrawableSupport(
       },
     );
     _ = nodeHandlesHdl.map(
+      CtxLayer::keyType,
       Ui.Handles::type,
       context,
       layerHandlesPath,
-      (_, writer, key, handles) ~> {
-        ctxLayer = key as CtxLayer _;
+      (_, writer, ctxLayer, it) ~> {
+        handles = it.first;
         !ctxLayer.layer.path = handles.optViewport.fromSome();
-        writer.write(ctxLayer, handles);
+        writer.set(ctxLayer, handles);
       },
     );
   }
@@ -386,7 +397,7 @@ trait Key {
   }
 }
 
-class CtxLayer(ctxId: Int, layer: Ui.KLayer) extends SKStore.BaseName {
+class CtxLayer(ctxId: Int, layer: Ui.KLayer) extends SKStore.Key {
   fun toString(): String {
     `${this.ctxId}:${this.layer}`
   }
@@ -396,7 +407,7 @@ class PrgKey(
   webgl: Int,
   name: String,
   builder: GLProgram.Builder,
-) extends SKStore.BaseName uses Key {
+) extends SKStore.Key uses Key {
   //
   fun toString from Key;
 
@@ -406,7 +417,7 @@ class PrgKey(
     Hashable.combine(h, this.name);
   }
 
-  fun compare(other: SKStore.BaseName): Order {
+  fun compare(other: SKStore.Key): Order {
     other match {
     | oKey @ PrgKey _ ->
       (this.webgl, this.name).compare((oKey.webgl, oKey.name))
@@ -419,7 +430,7 @@ class PrgKey(
   }
 }
 
-class PrgId(webgl: Int, name: String) extends SKStore.BaseName {
+class PrgId(webgl: Int, name: String) extends SKStore.Key {
   fun toString(): String {
     `${this.webgl}:${this.name}`
   }
@@ -435,7 +446,7 @@ class BufKey(
   webgl: Int,
   name: String,
   builder: GL.Ctx ~> GLProgram.Buffer,
-) extends SKStore.BaseName {
+) extends SKStore.Key {
   fun toString(): String {
     `${this.webgl}:${this.name}`
   }
@@ -446,7 +457,7 @@ class BufKey(
     Hashable.combine(h, this.name);
   }
 
-  fun compare(other: SKStore.BaseName): Order {
+  fun compare(other: SKStore.Key): Order {
     other match {
     | oKey @ BufKey _ ->
       (this.webgl, this.name).compare((oKey.webgl, oKey.name))
@@ -459,7 +470,7 @@ class BufKey(
   }
 }
 
-class BufId(webgl: Int, name: String) extends SKStore.BaseName {
+class BufId(webgl: Int, name: String) extends SKStore.Key {
   fun toString(): String {
     `${this.webgl}:${this.name}`
   }
@@ -475,7 +486,7 @@ class ArrayKey(
   webgl: Int,
   name: String,
   builder: GL.Ctx ~> GLProgram.VertexArray,
-) extends SKStore.BaseName {
+) extends SKStore.Key {
   fun toString(): String {
     `${this.webgl}:${this.name}`
   }
@@ -486,7 +497,7 @@ class ArrayKey(
     Hashable.combine(h, this.name);
   }
 
-  fun compare(other: SKStore.BaseName): Order {
+  fun compare(other: SKStore.Key): Order {
     other match {
     | oKey @ ArrayKey _ ->
       (this.webgl, this.name).compare((oKey.webgl, oKey.name))
@@ -499,7 +510,7 @@ class ArrayKey(
   }
 }
 
-class ArrayId(webgl: Int, name: String) extends SKStore.BaseName {
+class ArrayId(webgl: Int, name: String) extends SKStore.Key {
   fun toString(): String {
     `${this.webgl}:${this.name}`
   }
@@ -738,7 +749,7 @@ fun getDrawTick(context: mutable SKStore.Context): ?SKStore.Tick {
 
 fun getValue<T: frozen>(
   dir: SKStore.EagerDir,
-  key: SKStore.BaseName,
+  key: SKStore.Key,
   conv: SKStore.File ~> T,
 ): T {
   conv(dir.getArrayRaw(key).first())
@@ -746,7 +757,7 @@ fun getValue<T: frozen>(
 
 fun maybeGetValue<T: frozen>(
   dir: SKStore.EagerDir,
-  key: SKStore.BaseName,
+  key: SKStore.Key,
   conv: SKStore.File ~> T,
 ): ?T {
   vs = getValues(dir, key, conv);
@@ -759,7 +770,7 @@ fun maybeGetValue<T: frozen>(
 
 fun getValues<T: frozen>(
   dir: SKStore.EagerDir,
-  key: SKStore.BaseName,
+  key: SKStore.Key,
   conv: SKStore.File ~> T,
 ): Array<T> {
   dir.getArrayRaw(key).map(conv)

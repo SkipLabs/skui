@@ -56,8 +56,8 @@ base class ExecCommand extends Executable {
 const statePath: String = "ui/tpview/state";
 const colors: Array<String> = Array["yellow", "blue", "green", "red", "black"];
 
-const tabsKey: SKStore.BaseName = SKStore.StrID("tabs");
-const nextKey: SKStore.BaseName = SKStore.StrID("next");
+const tabsKey: SKStore.Key = SKStore.StrID("tabs");
+const nextKey: SKStore.Key = SKStore.StrID("next");
 
 class Tab(color: String, alpha: Int = 100) uses Orderable {
   fun toId(): String {
@@ -164,7 +164,7 @@ class State(
 fun update(
   context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKStore.BaseName, ?SKStore.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   todo: Ui.Todo,
   _optUserData: ?SKStore.UserData,
 ): void {
@@ -175,7 +175,7 @@ fun update(
 fun execute(
   context: mutable SKStore.Context,
   executable: Ui.Executable,
-  values: mutable FWK.SMap<SKStore.BaseName, ?SKStore.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
 ): void {
   executable match {
   | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
