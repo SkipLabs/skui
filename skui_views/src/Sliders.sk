@@ -136,7 +136,7 @@ private fun slider{
     v = if (values.isEmpty()) range.start else values[0];
     UiSlider.IntProp(UiIntProp.Property::create(context, None(), Some(v)))
   };
-  bPath = path.makeChild(`s_${UUID::randomUUID(context)}`);
+  bPath = path.makeChild(`s_${Ksuid::create()}`);
   controller = UiSlider.LamController{
     range => (_ctx, _) ~> range,
     disabled => _ctx ~> disabled,

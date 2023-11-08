@@ -71,7 +71,10 @@ fun pictureToTexturable(
 
 fun initSizeManager(
   context: mutable SKStore.Context,
-): (SKStore.EHandle<SKStore.IID, UiEvent.Size>, SKStore.EHandle<SKStore.IID, SKStore.FloatFile>) {
+): (
+  SKStore.EHandle<SKStore.IID, UiEvent.Size>,
+  SKStore.EHandle<SKStore.IID, SKStore.FloatFile>,
+) {
   windowHdl = context.makeDir(
     SKStore.IID::keyType,
     UiEvent.Size::type,
@@ -94,7 +97,10 @@ fun initSizeManager(
   context.setGlobal(
     "FWK.Ratio",
     FWK.Ratio((ctx, wId) ~>
-      iRatioHdl.maybeGet(ctx, SKStore.IID(wId)).map(v -> v.value).default(1.0)
+      iRatioHdl
+        .maybeGetValue(ctx, SKStore.IID(wId))
+        .map(v -> v.value)
+        .default(1.0)
     ),
   );
   (windowHdl, ratioHdl);

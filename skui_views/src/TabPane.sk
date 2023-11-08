@@ -56,8 +56,8 @@ base class ExecCommand extends Executable {
 const statePath: String = "ui/tpview/state";
 const colors: Array<String> = Array["yellow", "blue", "green", "red", "black"];
 
-const tabsKey: SKStore.Key = SKStore.StrID("tabs");
-const nextKey: SKStore.Key = SKStore.StrID("next");
+const tabsKey: SKStore.StrID = SKStore.StrID("tabs");
+const nextKey: SKStore.StrID = SKStore.StrID("next");
 
 class Tab(color: String, alpha: Int = 100) uses Orderable {
   fun toId(): String {
@@ -75,10 +75,7 @@ class Tab(color: String, alpha: Int = 100) uses Orderable {
 class Tabs(v: Array<Tab>) extends SKStore.File
 class TabIds(v: Array<String>) extends SKStore.File
 
-class State(
-  storage: SKStore.IHandle<SKStore.File>,
-  computed: SKStore.EHandle<SKStore.File>,
-) {
+class State(storage: SKStore.INotTyped, computed: SKStore.ENotTyped) {
   //
   fun getTabs(context: mutable SKStore.Context): Array<String> {
     default: Tabs = Tabs(Array[]);
@@ -111,7 +108,10 @@ class State(
     Array["add"]
   }
 
-  fun getAction(context: mutable SKStore.Context, action: String): UiTabs.Action {
+  fun getAction(
+    context: mutable SKStore.Context,
+    action: String,
+  ): UiTabs.Action {
     action match {
     | "add" ->
       UiTabs.Action(
@@ -156,7 +156,10 @@ class State(
     this.setTodo(context, Close(toClose))
   }
 
-  private fun setTodo(context: mutable SKStore.Context, value: Executable): void {
+  private fun setTodo(
+    context: mutable SKStore.Context,
+    value: Executable,
+  ): void {
     Ui.setTodo(context, this.storage, value);
   }
 }
@@ -228,6 +231,7 @@ fun execute(
 fun init(context: mutable SKStore.Context, path: Ui.Path): State {
   dirName = Ui.controllerDirName(path);
   stateHdl = context.makeDir(
+    SKStore.StrID::keyType,
     Ui.Todo::type,
     dirName,
     Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
@@ -243,5 +247,5 @@ fun init(context: mutable SKStore.Context, path: Ui.Path): State {
     update,
     None(),
   );
-  State(SKStore.IHandle(SKStore.FileConverter(f ~> f), dirName), computedHdl)
+  State(SKStore.IHandle::notTyped(dirName), computedHdl)
 }

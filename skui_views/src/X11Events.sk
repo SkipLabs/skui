@@ -173,7 +173,9 @@ fun manageKeyReleased(_wId: Int, keyCode: Int): void {
 @cpp_export("SKIP_SKUIX11_manageRequestClose")
 fun manageRequestClose(wId: Int): Bool {
   pos = SKStore.newObstack();
-  res = SKStore.Context::withoutGc(context ~> SystemProperties.quit(context, wId));
+  res = SKStore.Context::withoutGc(context ~>
+    SystemProperties.quit(context, wId)
+  );
   SKStore.destroyObstack(pos);
   res;
 }
