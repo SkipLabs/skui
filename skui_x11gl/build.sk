@@ -6,20 +6,28 @@ fun source_dirs(_env: Skbuild.Env): Array<String> {
 }
 
 @skbuild_include_dirs
-fun include_dirs(_env: Skbuild.Env): Array<String> {
-  Array[
-    "native/src/includes",
-    "../skui_opengl/native/src/includes",
-    "../skui_base/native/src/includes",
-  ]
+fun include_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array[
+      "native/src/includes",
+      "../skui_opengl/native/src/includes",
+      "../skui_base/native/src/includes",
+    ]
+  } else {
+    Array[]
+  }
 }
 
 @skbuild_links
-fun links(_env: Skbuild.Env): Array<String> {
-  Array["-lX11", "-lXcursor", "-lXext", "-lXrandr"]
+fun links(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array["-lX11", "-lXcursor", "-lXext", "-lXrandr"]
+  } else {
+    Array[]
+  }
 }
 
 @debug
 fun main(): void {
-  _ = Skbuild.build(false);
+  _ = Skbuild.build();
 }
