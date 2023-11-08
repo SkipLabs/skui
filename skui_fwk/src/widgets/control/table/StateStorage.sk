@@ -6,16 +6,16 @@ const computedPath: String = "ui/table/computed";
 class Info(
   controller: Controller,
   items: Ui.Getter<Array<String>>,
-) extends SKFS.UserData
+) extends SKStore.UserData
 
-class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+class HStorage(name: String, handle: SKStore.INotTyped) extends Storage {
   //
   static fun forNameAndScope(
-    context: readonly SKFS.Context,
+    context: readonly SKStore.Context,
     name: String,
     scope: String,
   ): ?this {
-    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    hdl = SKStore.IHandle::notTyped(SKStore.DirName::create(scope));
     if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
   }
 
@@ -27,38 +27,47 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
     this.handle.getDirName().toString()
   }
 
-  protected fun getHandle(): SKFS.IHandle<SKFS.File> {
+  protected fun getHandle(): SKStore.INotTyped {
     this.handle
   }
 
-  fun setHScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void {
+  fun setHScroll(
+    context: mutable SKStore.Context,
+    optScroll: ?Ui.Scroll,
+  ): void {
     this.handle.writeOrRemove(context, Ui.hScrollProp, optScroll)
   }
 
-  fun setVScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void {
+  fun setVScroll(
+    context: mutable SKStore.Context,
+    optScroll: ?Ui.Scroll,
+  ): void {
     this.handle.writeOrRemove(context, Ui.vScrollProp, optScroll)
   }
 
-  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void {
+  fun setScrolling(
+    context: mutable SKStore.Context,
+    optTick: ?SKStore.Tick,
+  ): void {
     this.handle.writeOrRemove(
       context,
       Ui.scrollingProp,
-      optTick.map(t -> SKFS.IntFile(t.value)),
+      optTick.map(t -> SKStore.IntFile(t.value)),
     )
   }
 
-  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+  fun setTodo(context: mutable SKStore.Context, value: Executable): void {
     this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
   }
 
   // GETTERS
 
-  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick {
-    this.handle.maybeGetInt(context, Ui.scrollingProp).map(v -> SKFS.Tick(v))
+  fun getScrolling(context: mutable SKStore.Context): ?SKStore.Tick {
+    this.handle.maybeGetInt(context, Ui.scrollingProp).map(v -> SKStore.Tick(v))
   }
 
-  fun getTodo(context: mutable SKFS.Context): Ui.Todo {
-    Ui.Todo::fromFile(this.handle.get(context, Ui.todoProp))
+  fun getTodo(context: mutable SKStore.Context): Ui.Todo {
+    Ui.Todo::type(this.handle.get(context, Ui.todoProp))
   }
 }
 
@@ -67,18 +76,18 @@ class LamState(
   hover: Ui.GetterOne<Bool, String>,
 ) extends State {
   //
-  fun isSelected(context: mutable SKFS.Context, row: String): Bool {
+  fun isSelected(context: mutable SKStore.Context, row: String): Bool {
     this.selected(context, row)
   }
 
-  fun isHover(context: mutable SKFS.Context, row: String): Bool {
+  fun isHover(context: mutable SKStore.Context, row: String): Bool {
     this.hover(context, row)
   }
 }
 
 @debug
 fun init(
-  _context: mutable SKFS.Context,
+  _context: mutable SKStore.Context,
   path: Ui.Path,
   _controller: Controller,
 ): Parameters {
@@ -88,9 +97,9 @@ fun init(
 
 @debug
 fun update(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   todo: Ui.Todo,
   optInfo: ?Info,
 ): void {
@@ -99,9 +108,9 @@ fun update(
 
 @debug
 fun execute(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   executable: Executable,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   info: Info,
 ): void {
   executable match {
@@ -115,13 +124,11 @@ fun execute(
     optCurrent = if (optRow.isSome()) {
       optRow
     } else {
-      values.get(Ui.currentProp).map(SKFS.StringFile::fromFile).map(f ->
-        f.value
-      )
+      values.get(Ui.currentProp).map(SKStore.StringFile::type).map(f -> f.value)
     };
     selection = values
       .get(Ui.selectionProp)
-      .map(SKFS.Strings::fromFile)
+      .map(SKStore.Strings::type)
       .map(is -> is.value)
       .default(Array[]);
     info.controller

@@ -1,15 +1,15 @@
 module IO; //
 /*
-base class Query(tick: SKFS.Tick) extends SKFS.File {
+base class Query(tick: SKStore.Tick) extends SKStore.File {
   children =
   | Load()
   | Remove()
   | Update(value: JSONValue)
 
-  static fun forFile(obj: SKFS.File): Query {
+  static fun btype(obj: SKStore.File): Query {
     obj match {
     | x @ Query _ -> x
-    | _ -> SKFS.cast_violation("UiGL.Query", obj)
+    | _ -> SKStore.cast_violation("UiGL.Query", obj)
     }
   }
 }

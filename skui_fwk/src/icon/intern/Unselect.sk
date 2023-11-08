@@ -1,7 +1,7 @@
 module Icon;
 
 class Unselect(width: Int = 16, optPaint: ?Ui.Paint = None()) extends Ui.Icon {
-  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+  protected fun computedSize(_context: mutable SKStore.Context): Geometry.Size {
     Geometry.Size::square(this.width.toFloat());
   }
 
@@ -10,7 +10,7 @@ class Unselect(width: Int = 16, optPaint: ?Ui.Paint = None()) extends Ui.Icon {
   }
 
   fun fillDrawables(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,

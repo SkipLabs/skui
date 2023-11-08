@@ -85,7 +85,7 @@ base class Status extends SKStore.File uses Orderable, Hashable {
   | Running(_) -> true
   | _ -> false
 
-  static fun forFile(obj: SKStore.File): Status {
+  static fun btype(obj: SKStore.File): Status {
     obj match {
     | x @ Status _ -> x
     | _ -> SKStore.cast_violation("Status", obj)

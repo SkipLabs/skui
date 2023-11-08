@@ -6,13 +6,13 @@ class IVHoverHandler(
   itemPath: Ui.Path,
   item: ItemBase,
   idx: Int,
-  optOnClose: ?(mutable SKFS.Context) ~> void = None(),
+  optOnClose: ?(mutable SKStore.Context) ~> void = None(),
 ) extends FWK.HoverHandler {
   fun getIdentifier(): Ui.Path {
     this.path;
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     if (!this.item.disabled(context)) {
       this.state.setHover(context, Some(this.itemPath));
       FWKPointer.setCursor(context, Ui.HandCursor());
@@ -20,7 +20,7 @@ class IVHoverHandler(
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
@@ -44,12 +44,12 @@ class IVHoverHandler(
     )
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     FWKPointer.resetCursor(context);
     this.state.setHover(context, None());
   }
 
-  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getTooltip(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
     None()
   }
 }
@@ -64,7 +64,7 @@ class HoverHandler(path: Ui.Path, state: State) extends Ui.HoverHandlerWrapper {
   }
 
   protected fun onMouse(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
     wheel = mouse.getWheelValue(context.tick);

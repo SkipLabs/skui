@@ -3,8 +3,8 @@ module Ui;
 class Monospace protected {
   controller: UiMonospace.Controller,
   state: UiMonospace.State,
-  widget: mutable SKFS.Context ~> Widget,
-  numbers: mutable SKFS.Context ~> ?Widget,
+  widget: mutable SKStore.Context ~> Widget,
+  numbers: mutable SKStore.Context ~> ?Widget,
   private bars: UiMonospace.Bars,
   private indicator: Widget,
 } extends StrictWidget uses WithNodeCache {
@@ -13,23 +13,25 @@ class Monospace protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     params: UiMonospace.Parameters,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiMonospace.widgetDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
-    visibleLinesHdl = mainHdl.contextWriterKeyMap(
+    visibleLinesHdl = mainHdl.map(
+      k ~> k,
       f ~> f,
       context,
       UiMonospace.widgetDirName(path.makeChild("visible")),
       (context, writer, _key, _) ~> {
-        keys = mutable Vector<SKFS.BaseName>[];
+        keys = mutable Vector<SKStore.Key>[];
         if (
           FWKPipeline.hasNodeInfos(context) &&
           !params.state.isFontLoading(context)
@@ -41,52 +43,53 @@ class Monospace protected {
                 lines = params.state.getLines(context);
                 for (idx in metrics.vertical.range) {
                   lines.maybeGet(idx).each(line -> {
-                    key = SKFS.IID(line.id);
+                    key = SKStore.IID(line.id);
                     keys.push(key);
-                    writer.write(key, line);
-                    writer.write(UiMonospace.KIdx(line.id), SKFS.IntFile(idx))
+                    writer.set(key, line);
+                    writer.set(UiMonospace.KIdx(line.id), SKStore.IntFile(idx))
                   })
                 };
-                writer.write(
+                writer.set(
                   UiMonospace.RangeKey(),
-                  SKFS.RangeFile(metrics.vertical.range),
+                  SKStore.RangeFile(metrics.vertical.range),
                 );
-                writer.write(
+                writer.set(
                   UiMonospace.OffsetKey(),
                   UiTextLine.Offset(
                     metrics.horizontal.range.start,
                     metrics.horizontal.offset,
                   ),
                 );
-                writer.write(
+                writer.set(
                   UiMonospace.CountKey(),
-                  SKFS.IntFile(metrics.horizontal.visibleCount),
+                  SKStore.IntFile(metrics.horizontal.visibleCount),
                 );
               })
           })
         };
-        writer.write(SKFS.KSize(), SKFS.IntFile(keys.size()));
-        writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
+        writer.set(SKStore.KSize(), SKStore.IntFile(keys.size()));
+        writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
       },
     );
     visibleTokensPath = UiMonospace.widgetDirName(
       path.makeChild("tokens").makeChild("indexed"),
     );
-    visibleTokensHdl = visibleLinesHdl.contextWriterKeyMap(
-      Text.Tokens::fromFile,
+    visibleTokensHdl = visibleLinesHdl.map(
+      SKStore.IID::keyType,
+      Text.Tokens::type,
       context,
       visibleTokensPath,
-      (ctx, writer, key, file) ~> {
+      (ctx, writer, key, it) ~> {
         key match {
-        | idd @ SKFS.IID _ ->
-          line = UiMonospace.Line::fromFile(file);
+        | idd @ SKStore.IID _ ->
+          line = UiMonospace.Line::type(it.first);
           indentation = params.controller.getIndentation(ctx).get(ctx);
           words = Text.Words::fromString(String::fromChars(line.text));
           spaced = words.toShownSpaceWords(indentation.size);
           map = SortedMap<Int, Array<Char>>[];
           line.brackets.each(b -> !map = map.add(b.index, b.value));
           lexed = spaced.lex(map);
-          writer.write(idd, lexed)
+          writer.set(idd, lexed)
         | _ -> void
         }
       },
@@ -94,16 +97,17 @@ class Monospace protected {
     blocksColorsPath = UiMonospace.widgetDirName(
       path.makeChild("blocks").makeChild("colors"),
     );
-    blockPortionsHdl = mainHdl.contextWriterKeyMap(
-      UiMonospace.LinePortions::fromFile,
+    blockPortionsHdl = mainHdl.map(
+      k ~> k,
+      UiMonospace.LinePortions::type,
       context,
       blocksColorsPath,
       (ctx, writer, _, _) ~> {
         visibleLinesHdl
           .maybeGetRange(ctx, UiMonospace.RangeKey())
           .each(range -> {
-            keys = SKFS.Keys::fromFile(
-              visibleLinesHdl.get(ctx, SKFS.KKeys()),
+            keys = SKStore.Keys::type(
+              visibleLinesHdl.get(ctx, SKStore.KKeys()),
             ).value;
             ranges = params.state.getColorRanges(ctx);
             index = 0;
@@ -114,7 +118,7 @@ class Monospace protected {
               !index = index + 1;
             };
             portions: mutable FWK.SMap<
-              SKFS.BaseName,
+              SKStore.Key,
               mutable Vector<UiMonospace.LinePortion>,
             > = mutable FWK.SMap[];
             add = (key, portion) -> {
@@ -146,10 +150,7 @@ class Monospace protected {
               !index = index + 1;
             };
             portions.each((k, v) ->
-              writer.write(
-                k,
-                UiMonospace.LinePortions(unsafe_chill_trust_me(v)),
-              )
+              writer.set(k, UiMonospace.LinePortions(unsafe_chill_trust_me(v)))
             )
           });
       },
@@ -157,11 +158,13 @@ class Monospace protected {
     coloredTokensPath = UiMonospace.widgetDirName(
       path.makeChild("tokens").makeChild("colored"),
     );
-    coloredTokensHdl = visibleTokensHdl.contextWriterKeyMap(
-      Tokens::fromFile,
+    coloredTokensHdl = visibleTokensHdl.map(
+      SKStore.IID::keyType,
+      Tokens::type,
       context,
       coloredTokensPath,
-      (ctx, writer, key, tokens) ~> {
+      (ctx, writer, key, it) ~> {
+        tokens = it.first;
         optSupplier = params.controller.getColorSupplier(ctx);
         optNumberColor = params.controller.getNumberColor(ctx);
         blockColors = blockPortionsHdl
@@ -189,7 +192,7 @@ class Monospace protected {
           }
         };
         tIndex = 0;
-        writer.write(
+        writer.set(
           key,
           Tokens(
             tokens.value.map(info -> {
@@ -213,49 +216,54 @@ class Monospace protected {
         )
       },
     );
-    lineSelectionHdl = mainHdl.contextWriterKeyMap(
-      LinePortion::fromFile,
+    lineSelectionHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      LinePortion::type,
       context,
       UiMonospace.widgetDirName(path.makeChild("lines").makeChild("selection")),
       (ctx, writer, _, _) ~> {
         params.state.getSelection(ctx).each(selection ->
           for (idx in Range(selection.start.line, selection.end.line + 1)) {
             selection.toLinePortion(idx).each(lp ->
-              writer.write(SKFS.IID(idx), lp)
+              writer.set(SKStore.IID(idx), lp)
             )
           }
         )
       },
     );
-    linePositionHdl = mainHdl.contextWriterKeyMap(
-      SKFS.IntFile::fromFile,
+    linePositionHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       context,
       UiMonospace.widgetDirName(path.makeChild("lines").makeChild("position")),
       (ctx, writer, _, _) ~> {
         position = params.state.getPosition(ctx);
-        writer.write(SKFS.IID(position.line), SKFS.IntFile(position.column))
+        writer.set(SKStore.IID(position.line), SKStore.IntFile(position.column))
       },
     );
-    lineTargetHdl = mainHdl.contextWriterKeyMap(
-      SKFS.IntFile::fromFile,
+    lineTargetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       context,
       UiMonospace.widgetDirName(path.makeChild("lines").makeChild("target")),
       (ctx, writer, _, _) ~> {
         params.state.getTarget(ctx).each(target ->
-          writer.write(SKFS.IID(target.line), SKFS.IntFile(target.column))
+          writer.set(SKStore.IID(target.line), SKStore.IntFile(target.column))
         )
       },
     );
-    textlinesHdl = visibleLinesHdl.contextWriterKeyMap(
+    textlinesHdl = visibleLinesHdl.map(
+      k ~> k,
       f ~> f,
       context,
       UiMonospace.widgetDirName(path.makeChild("widgets")),
-      (ctx, writer, key, file) ~> {
+      (ctx, writer, key, it) ~> {
+        file = it.first;
         key match {
-        | idd @ SKFS.IID _ ->
+        | idd @ SKStore.IID _ ->
           lineId = idd.value;
           liPath = path.makeChild("lines").makeChild(`line_${lineId}`);
-          writer.write(
+          writer.set(
             key,
             WidgetFile(
               TextLine::create(
@@ -272,32 +280,32 @@ class Monospace protected {
                     offset => ctx ~>
                       visibleLinesHdl
                         .maybeGet(ctx, UiMonospace.OffsetKey())
-                        .map(UiTextLine.Offset::fromFile)
+                        .map(UiTextLine.Offset::type)
                         .default(UiTextLine.Offset(0, 0.0)),
                     count => ctx ~>
                       visibleLinesHdl
                         .maybeGet(ctx, UiMonospace.CountKey())
-                        .map(SKFS.IntFile::fromFile)
+                        .map(SKStore.IntFile::type)
                         .map(f ~> f.value)
                         .default(80),
                     editable => ctx ~> params.controller.isEditable(ctx),
                     position => ctx ~> {
                       visibleLinesHdl
                         .maybeGetValue(ctx, UiMonospace.KIdx(lineId))
-                        .map(SKFS.IntFile::fromFile)
+                        .map(SKStore.IntFile::type)
                         .map(f -> f.value)
                         .flatMap(idx ->
-                          linePositionHdl.maybeGet(ctx, SKFS.IID(idx))
+                          linePositionHdl.maybeGet(ctx, SKStore.IID(idx))
                         )
                         .map(f ~> f.value)
                     },
                     target => (ctx, iu) ~> {
                       visibleLinesHdl
                         .maybeGetValue(ctx, UiMonospace.KIdx(lineId), iu)
-                        .map(SKFS.IntFile::fromFile)
+                        .map(SKStore.IntFile::type)
                         .map(f -> f.value)
                         .flatMap(idx ->
-                          lineTargetHdl.maybeGetValue(ctx, SKFS.IID(idx), iu)
+                          lineTargetHdl.maybeGetValue(ctx, SKStore.IID(idx), iu)
                         )
                         .map(f ~> f.value)
                     },
@@ -307,17 +315,21 @@ class Monospace protected {
                     selection => (ctx, iu) ~> {
                       visibleLinesHdl
                         .maybeGetValue(ctx, UiMonospace.KIdx(lineId), iu)
-                        .map(SKFS.IntFile::fromFile)
+                        .map(SKStore.IntFile::type)
                         .map(f -> f.value)
                         .flatMap(idx ->
-                          lineSelectionHdl.maybeGetValue(ctx, SKFS.IID(idx), iu)
+                          lineSelectionHdl.maybeGetValue(
+                            ctx,
+                            SKStore.IID(idx),
+                            iu,
+                          )
                         )
                     },
                     textCommandsManager => params.state.getLineCommandsManager,
                     armed => params.state.isArmed,
                     moveSelection => params.state.isMoveSelection,
                     line => (ctx, iu) ~>
-                      SKFS.IntFile::fromFile(
+                      SKStore.IntFile::type(
                         visibleLinesHdl.getValue(
                           ctx,
                           UiMonospace.KIdx(lineId),
@@ -335,8 +347,8 @@ class Monospace protected {
               ),
             ),
           )
-        | kkey @ SKFS.KKeys _ -> writer.write(kkey, file)
-        | ksize @ SKFS.KSize _ -> writer.write(ksize, file)
+        | kkey @ SKStore.KKeys _ -> writer.set(kkey, file)
+        | ksize @ SKStore.KSize _ -> writer.set(ksize, file)
         | _ -> void
         }
       },
@@ -348,8 +360,9 @@ class Monospace protected {
       UiProgress.parameters(context, indicatorPath, UiProgress.LamController{}),
     );
     widgets = HandledCollection(textlinesHdl);
-    widgetHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    widgetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       UiMonospace.widgetDirName(path),
       (context, writer, key, _) ~> {
@@ -363,11 +376,12 @@ class Monospace protected {
             UiMonospace.LayoutParameters(widgets),
           )
         };
-        writer.write(key, WidgetFile(widget))
+        writer.set(key, WidgetFile(widget))
       },
     );
-    numbersHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    numbersHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       UiMonospace.widgetDirName(path.makeChild("numbers")),
       (context, writer, key, _) ~> {
@@ -392,7 +406,7 @@ class Monospace protected {
                 params.state.emitSelectLine(ctx, line),
             },
           );
-          writer.write(key, WidgetFile(widget))
+          writer.set(key, WidgetFile(widget))
         }
       },
     );
@@ -402,9 +416,9 @@ class Monospace protected {
       state => params.state,
       optConfiguration,
       cache,
-      widget => ctx ~> widgetHdl.get(ctx, SKFS.IID(0)).widget,
+      widget => ctx ~> widgetHdl.get(ctx, SKStore.IID(0)).widget,
       numbers => ctx ~>
-        numbersHdl.maybeGet(ctx, SKFS.IID(0)).map(f ~> f.widget),
+        numbersHdl.maybeGet(ctx, SKStore.IID(0)).map(f ~> f.widget),
       tick => context.tick,
       bars => UiMonospace.Bars{
         path => path.makeChild("bars"),
@@ -416,7 +430,10 @@ class Monospace protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     if (this.state.isFontLoading(context)) {
       node = this.indicator.getNode(context, constraints);
       Node(
@@ -502,7 +519,7 @@ class Monospace protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: NodeSum,
@@ -519,7 +536,7 @@ class Monospace protected {
     }
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     if (this.state.isFontLoading(context)) {
       None()
     } else {
@@ -556,7 +573,7 @@ class Monospace protected {
   }
 
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _nodeInfo: Getter<NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -570,7 +587,7 @@ class Monospace protected {
   }
 
   fun getHoverHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     if (this.state.isFontLoading(context, true)) {
@@ -594,7 +611,7 @@ class Monospace protected {
   }
 
   fun getLockHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.LockHandler>,
   ): ?LockHandlerGetter {
     Some((ctx, mouse, ni) ~> {
@@ -623,7 +640,7 @@ class Monospace protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: DrawableSupport,
     absolute: Geometry.Offset,
     layer: LayerId,
@@ -661,7 +678,7 @@ class Monospace protected {
   }
 
   fun getDropHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DropHandler>,
   ): ?DropHandlerGetter {
     /*Some((ctx, _o, ni) ~>

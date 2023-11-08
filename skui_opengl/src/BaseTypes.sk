@@ -21,7 +21,7 @@ const limit: Int = 1000;
 base class WithExtern<T: Extern> final (
   ctx: Ctx,
   ref: T,
-  eptr: SKFS.ExternalPointer,
+  eptr: SKStore.ExternalPointer,
 ) uses HasClassName {
   protected deferred static fun make(
     ctx: Ctx,
@@ -29,7 +29,7 @@ base class WithExtern<T: Extern> final (
     delete: UInt32 ~> void,
   ): this {
     eId = UInt32::truncate(ref.getId() * limit + ctx.id);
-    static(ctx, ref, SKFS.ExternalPointer::create(eId, delete))
+    static(ctx, ref, SKStore.ExternalPointer::create(eId, delete))
   }
 
   protected fun delete(): void;
@@ -48,12 +48,12 @@ fun ctxDeleteTexture(id: UInt32): void {
   deleteTexture(tex, ctx)
 }
 
-class Texture extends WithExtern<TextureRef>, SKFS.File {
+class Texture extends WithExtern<TextureRef>, SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Texture _ -> x
-    | _ -> SKFS.cast_violation("GL.Texture", obj)
+    | _ -> SKStore.cast_violation("GL.Texture", obj)
     }
   }
 

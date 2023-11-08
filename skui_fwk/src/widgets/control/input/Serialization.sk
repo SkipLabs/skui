@@ -146,10 +146,10 @@ extension base class Command {
     | "UiInput.Copy" -> Copy()
     | "UiInput.Reset" -> Reset()
     | "UiInput.ManageScrolling" ->
-      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+      ManageScrolling(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | "UiInput.CancelScrolling" ->
-      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
-    | "UiInput.ToggleHidden" -> ToggleHidden(SKFS.Tick(jso.getInt("tick")))
+      CancelScrolling(SKStore.Tick(jso.getInt("tick")))
+    | "UiInput.ToggleHidden" -> ToggleHidden(SKStore.Tick(jso.getInt("tick")))
     | "UiInput.Paste" ->
       Paste(FWKClipboard.Content::fromJSON(jso.get("content")))
     | "UiInput.SetMoveSelection" -> SetMoveSelection(jso.getBool("value"))
@@ -319,8 +319,8 @@ extension base class Kind extends JSONValue {
     | "UiInput.Pattern" -> Pattern(jso.getString("pattern"))
     | "UiInput.Custom" ->
       Custom(
-        SKFS.DirName::create(jso.getString("dirName")),
-        SKFS.StrID(jso.getString("key")),
+        SKStore.DirName::create(jso.getString("dirName")),
+        SKStore.StrID(jso.getString("key")),
       )
     | _ -> invariant_violation(`Invalid json object ${cl} for UiInput.Scroll`)
     }

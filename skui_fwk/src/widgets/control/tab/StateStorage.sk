@@ -2,14 +2,14 @@ module UiTab;
 
 const statePath: String = "ui/tab/state";
 
-class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+class HStorage(name: String, handle: SKStore.INotTyped) extends Storage {
   //
   static fun forNameAndScope(
-    context: readonly SKFS.Context,
+    context: readonly SKStore.Context,
     name: String,
     scope: String,
   ): ?this {
-    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    hdl = SKStore.IHandle::notTyped(SKStore.DirName::create(scope));
     if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
   }
 
@@ -21,59 +21,67 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
     this.handle.getDirName().toString()
   }
 
-  fun setIndeterminate(context: mutable SKFS.Context, optValue: ?Int): void {
+  fun setIndeterminate(context: mutable SKStore.Context, optValue: ?Int): void {
     this.handle.writeOrRemove(
       context,
       Ui.indeterminateProp,
-      optValue.map(v -> SKFS.IntFile(v)),
+      optValue.map(v -> SKStore.IntFile(v)),
     )
   }
 }
 
-class HState(handle: SKFS.IHandle<SKFS.File>) extends State {
+class HState(handle: SKStore.INotTyped) extends State {
   //
-  fun getArmed(context: mutable SKFS.Context): ?Bool {
+  fun getArmed(context: mutable SKStore.Context): ?Bool {
     this.handle.maybeGetBool(context, Ui.armedProp)
   }
 
-  fun getHover(context: mutable SKFS.Context): ?Bool {
+  fun getHover(context: mutable SKStore.Context): ?Bool {
     this.handle.maybeGetBool(context, Ui.hoverProp)
   }
 
-  fun getIndeterminate(context: mutable SKFS.Context): ?Int {
+  fun getIndeterminate(context: mutable SKStore.Context): ?Int {
     this.handle.maybeGetInt(context, Ui.indeterminateProp)
   }
 
-  fun getTargeted(context: mutable SKFS.Context): ?Ui.Drop {
+  fun getTargeted(context: mutable SKStore.Context): ?Ui.Drop {
     this.handle.maybeGetProp(context, Ui.targetedProp, f ~> f as Ui.Drop _)
   }
 
-  fun setArmed(context: mutable SKFS.Context, close: Bool, value: Bool): void {
+  fun setArmed(
+    context: mutable SKStore.Context,
+    close: Bool,
+    value: Bool,
+  ): void {
     this.handle.writeOrRemove(
       context,
       Ui.armedProp,
-      if (value) Some(SKFS.BoolFile(close)) else None(),
+      if (value) Some(SKStore.BoolFile(close)) else None(),
     )
   }
 
-  fun setHover(context: mutable SKFS.Context, close: Bool, value: Bool): void {
+  fun setHover(
+    context: mutable SKStore.Context,
+    close: Bool,
+    value: Bool,
+  ): void {
     this.handle.writeOrRemove(
       context,
       Ui.hoverProp,
-      if (value) Some(SKFS.BoolFile(close)) else None(),
+      if (value) Some(SKStore.BoolFile(close)) else None(),
     )
   }
 
-  fun setTargeted(context: mutable SKFS.Context, optDrop: ?Ui.Drop): void {
+  fun setTargeted(context: mutable SKStore.Context, optDrop: ?Ui.Drop): void {
     this.handle.writeOrRemove(context, Ui.targetedProp, optDrop)
   }
 
-  fun emitIndeterminate(context: mutable SKFS.Context, value: Int): void {
+  fun emitIndeterminate(context: mutable SKStore.Context, value: Int): void {
     this.emit(context, SetIndeterminate(value))
   }
 
   private fun emit(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     command: SKUIMessage.Command,
   ): void {
     SKUIMessage.emit(
@@ -85,10 +93,10 @@ class HState(handle: SKFS.IHandle<SKFS.File>) extends State {
   }
 }
 
-fun init(context: mutable SKFS.Context, path: Ui.Path): State {
+fun init(context: mutable SKStore.Context, path: Ui.Path): State {
   dirName = Ui.controllerDirName(path);
-  stateHdl = context.makeDir(f ~> f, dirName, Array[]);
-  HState(SKFS.toIHandle(stateHdl))
+  stateHdl = context.makeNotTyped(dirName, Array[]);
+  HState(SKStore.toIHandle(stateHdl))
 }
 
 module end;

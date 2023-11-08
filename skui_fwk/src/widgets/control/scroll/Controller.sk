@@ -10,37 +10,40 @@ class LamController{
   unit: Ui.GetterOne<Int, Bool> = Ui.defaultOne(100),
 } extends Controller {
   //
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget {
     this.widget(context)
   }
 
   fun getHScroll(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.IntProperty {
     this.hScroll(context, isUntracked)
   }
 
   fun getVScroll(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.IntProperty {
     this.vScroll(context, isUntracked)
   }
 
-  fun getHPolicy(context: mutable SKFS.Context): Policy {
+  fun getHPolicy(context: mutable SKStore.Context): Policy {
     this.hPolicy(context)
   }
 
-  fun getVPolicy(context: mutable SKFS.Context): Policy {
+  fun getVPolicy(context: mutable SKStore.Context): Policy {
     this.vPolicy(context)
   }
 
-  fun isNegative(context: mutable SKFS.Context): Bool {
+  fun isNegative(context: mutable SKStore.Context): Bool {
     this.negative(context)
   }
 
-  fun getUnit(context: mutable SKFS.Context, isUntracked: Bool = false): Int {
+  fun getUnit(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Int {
     this.unit(context, isUntracked)
   }
 }

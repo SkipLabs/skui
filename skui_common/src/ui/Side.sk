@@ -24,7 +24,7 @@ base class .UiSide() extends SKStore.File uses Hashable, Equality {
     }
   }
 
-  static fun forFile(obj: SKStore.File): .UiSide {
+  static fun btype(obj: SKStore.File): .UiSide {
     obj match {
     | x @ .UiSide _ -> x
     | _ -> SKStore.cast_violation(".UiSide", obj)

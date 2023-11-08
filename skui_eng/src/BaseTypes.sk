@@ -2,11 +2,11 @@ module alias H = UiEngineHandle;
 
 module UiEngine;
 
-const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/engine/");
+const rootPath: SKStore.DirName = SKStore.DirName::create("/ui/engine/");
 
-class WidgetableFile(value: Widgetable) extends SKFS.File
+class WidgetableFile(value: Widgetable) extends SKStore.File
 
-class DescriptionFile(value: Description) extends SKFS.File
+class DescriptionFile(value: Description) extends SKStore.File
 
 base class Description{
   optConfiguration: ?Ui.Configuration = None(),
@@ -14,35 +14,35 @@ base class Description{
   fun collect(Renderable -> void): void;
   //
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget;
 
   static fun fromWidgetable(obj: Widgetable): Description {
     obj match {
     | x @ Description _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Description", obj)
+    | _ -> SKStore.cast_violation("UiEngine.Description", obj)
     }
   }
 }
 
 base class Renderable extends Widgetable {
   fun getId(): String;
-  fun render(context: mutable SKFS.Context): ?Description;
+  fun render(context: mutable SKStore.Context): ?Description;
 
   static fun fromWidgetable(obj: Widgetable): Renderable {
     obj match {
     | x @ Renderable _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Renderable", obj)
+    | _ -> SKStore.cast_violation("UiEngine.Renderable", obj)
     }
   }
 }
 
 class Function(hdl: Int, optScope: ?String)
 
-class RenderableFile(value: Renderable) extends SKFS.File
+class RenderableFile(value: Renderable) extends SKStore.File
 
 class RenderableFn(fn: Function) extends Renderable {
   //
@@ -50,7 +50,7 @@ class RenderableFn(fn: Function) extends Renderable {
     `UiEngine.Renderable.${this.fn.hdl}.${this.fn.optScope}`
   }
 
-  fun render(context: mutable SKFS.Context): ?Description {
+  fun render(context: mutable SKStore.Context): ?Description {
     // initScope
     scope = `sc${context.timeStamp().value}`;
     optScope = Some(scope);
@@ -67,31 +67,31 @@ class RenderableFn(fn: Function) extends Renderable {
   }
 }
 
-base class Writer extends SKFS.File {
-  fun write(context: mutable SKFS.Context, optValue: ?Serializable): void;
+base class Writer extends SKStore.File {
+  fun write(context: mutable SKStore.Context, optValue: ?Serializable): void;
 
-  static fun forFile(file: SKFS.File): Writer {
+  static fun btype(file: SKStore.File): Writer {
     file match {
     | x @ Writer _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Writer", file)
+    | _ -> SKStore.cast_violation("UiEngine.Writer", file)
     }
   }
 }
 
 base class Combine extends Writer {
-  fun combine(context: mutable SKFS.Context, path: String): Serializable;
+  fun combine(context: mutable SKStore.Context, path: String): Serializable;
 
   static fun forWriter(file: Writer): Combine {
     file match {
     | x @ Combine _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Combine", file)
+    | _ -> SKStore.cast_violation("UiEngine.Combine", file)
     }
   }
 
-  static fun sinceFile(file: SKFS.File): Combine {
+  static fun sinceFile(file: SKStore.File): Combine {
     file match {
     | x @ Combine _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Combine", file)
+    | _ -> SKStore.cast_violation("UiEngine.Combine", file)
     }
   }
 }

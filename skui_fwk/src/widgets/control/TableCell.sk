@@ -9,7 +9,7 @@ class TableCell protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiTableCell.Parameters,
     cache: NodeCache,
@@ -25,7 +25,10 @@ class TableCell protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     ts = context.getTextSupport();
     face = this.controller.getFont(context);
     optLabel = this.controller.getText(context).map(text ->
@@ -54,7 +57,7 @@ class TableCell protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
@@ -72,7 +75,7 @@ class TableCell protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((_, offset, ni) ~>
@@ -95,7 +98,7 @@ class TableCell protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -137,7 +140,7 @@ class TableCell protected {
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     di: UiTableCell.DrawInfo,

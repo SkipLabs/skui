@@ -5,7 +5,7 @@ class Viewport{
 } extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
   //
   fun getNode(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
@@ -16,7 +16,7 @@ class Viewport{
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -34,7 +34,7 @@ class Viewport{
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,

@@ -3,40 +3,40 @@ module UiLabel;
 const side: Float = 4.0;
 
 base class Controller extends Ui.Parameters {
-  fun isDisabled(context: mutable SKFS.Context): Bool;
-  fun getText(context: mutable SKFS.Context): ?Text;
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
-  fun getTooltip(context: mutable SKFS.Context): ?Text;
-  fun getTextFont(context: mutable SKFS.Context): UiTheme.Font;
+  fun isDisabled(context: mutable SKStore.Context): Bool;
+  fun getText(context: mutable SKStore.Context): ?Text;
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKStore.Context): ?Text;
+  fun getTextFont(context: mutable SKStore.Context): UiTheme.Font;
 }
 
 class Layout(size: Geometry.Size) extends Ui.UserData
 
 class LamController{
-  disabled: mutable SKFS.Context ~> Bool = _ctx ~> false,
-  text: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
-  icon: (mutable SKFS.Context, Float) ~> ?Ui.Icon = (_ctx, _fs) ~> None(),
-  tooltip: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
-  textFont: mutable SKFS.Context ~> UiTheme.Font = _ctx ~> UiTheme.Basic(),
+  disabled: mutable SKStore.Context ~> Bool = _ctx ~> false,
+  text: mutable SKStore.Context ~> ?Text = _ctx ~> None(),
+  icon: (mutable SKStore.Context, Float) ~> ?Ui.Icon = (_ctx, _fs) ~> None(),
+  tooltip: mutable SKStore.Context ~> ?Text = _ctx ~> None(),
+  textFont: mutable SKStore.Context ~> UiTheme.Font = _ctx ~> UiTheme.Basic(),
 } extends Controller {
   //
-  fun isDisabled(context: mutable SKFS.Context): Bool {
+  fun isDisabled(context: mutable SKStore.Context): Bool {
     this.disabled(context)
   }
 
-  fun getText(context: mutable SKFS.Context): ?Text {
+  fun getText(context: mutable SKStore.Context): ?Text {
     this.text(context)
   }
 
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon {
     this.icon(context, fontSize)
   }
 
-  fun getTooltip(context: mutable SKFS.Context): ?Text {
+  fun getTooltip(context: mutable SKStore.Context): ?Text {
     this.tooltip(context)
   }
 
-  fun getTextFont(context: mutable SKFS.Context): UiTheme.Font {
+  fun getTextFont(context: mutable SKStore.Context): UiTheme.Font {
     this.textFont(context)
   }
 }
@@ -53,7 +53,7 @@ class Label protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiLabel.Controller,
     cache: NodeCache,
@@ -62,7 +62,10 @@ class Label protected {
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     faceId = context.getThemeFont(this.controller.getTextFont(context));
     txt = "";
     iconTextGap = context.getThemeThickness(UiTheme.IconTextGap()).toFloat();
@@ -94,7 +97,7 @@ class Label protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -122,7 +125,7 @@ class Label protected {
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -180,7 +183,7 @@ class Label protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     None()

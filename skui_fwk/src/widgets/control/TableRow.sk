@@ -8,7 +8,7 @@ class TableRow protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiTableRow.Controller,
     cache: NodeCache,
@@ -18,7 +18,7 @@ class TableRow protected {
   }
 
   fun layout(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _constraints: BoxConstraints,
   ): Node {
     widths = this.controller.getWidths(context);
@@ -37,7 +37,7 @@ class TableRow protected {
   }
 
   fun computeDrawInfo(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     _nodeSum: Ui.NodeSum,
@@ -47,7 +47,7 @@ class TableRow protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((context, _offset, _node) ~>
@@ -56,7 +56,7 @@ class TableRow protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,

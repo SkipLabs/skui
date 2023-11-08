@@ -8,14 +8,14 @@ base class Value {
 
 class Locks(optCapsLock: ?Value, optNumLock: ?Value, optScrollLock: ?Value) {}
 
-base class KeyState(tick: SKFS.Tick) uses Equality, HasClassName {
+base class KeyState(tick: SKStore.Tick) uses Equality, HasClassName {
   fun derive(
     pressed: Bool,
     timeStamp: System.TimeStamp,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): KeyState;
   fun next(): KeyState;
-  fun isDown(tick: SKFS.Tick): Bool {
+  fun isDown(tick: SKStore.Tick): Bool {
     this match {
     | _d @ KeyDown _ -> true
     | p @ KeyPressed _ -> p.tick != tick
@@ -23,20 +23,20 @@ base class KeyState(tick: SKFS.Tick) uses Equality, HasClassName {
     }
   }
 
-  fun isPressed(tick: SKFS.Tick): Bool {
+  fun isPressed(tick: SKStore.Tick): Bool {
     this match {
     | p @ KeyPressed _ -> p.tick == tick
     | _ -> false
     }
   }
 
-  fun isReleased(tick: SKFS.Tick): Bool {
+  fun isReleased(tick: SKStore.Tick): Bool {
     this match {
     | r @ KeyReleased _ -> r.tick == tick
     | _ -> false
     }
   }
-  fun isUp(tick: SKFS.Tick): Bool {
+  fun isUp(tick: SKStore.Tick): Bool {
     this match {
     | r @ KeyReleased _ -> r.tick != tick
     | _u @ KeyUp _ -> true
@@ -59,7 +59,7 @@ base class KeyUpBase() extends KeyState {
   fun derive(
     pressed: Bool,
     timeStamp: System.TimeStamp,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): KeyState {
     if (pressed) {
       KeyPressed(timeStamp, tick)
@@ -81,7 +81,7 @@ base class KeyDownBase(timeStamp: System.TimeStamp) extends KeyState {
   fun derive(
     pressed: Bool,
     timeStamp: System.TimeStamp,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): KeyState {
     if (pressed) {
       KeyDown(this.timeStamp, this.tick)
@@ -271,23 +271,23 @@ class Key(code: String, info: KeyInfo, state: KeyState) {
     this.info.symbol == KeyInfo::deadCircumflex;
   }
 
-  fun isShiftDown(tick: SKFS.Tick): Bool {
+  fun isShiftDown(tick: SKStore.Tick): Bool {
     this.info.isShift() && this.state.isDown(tick);
   }
 
-  fun isControlDown(tick: SKFS.Tick): Bool {
+  fun isControlDown(tick: SKStore.Tick): Bool {
     this.info.isControl() && this.state.isDown(tick);
   }
 
-  fun isAltDown(tick: SKFS.Tick): Bool {
+  fun isAltDown(tick: SKStore.Tick): Bool {
     this.info.isAlt() && this.state.isDown(tick);
   }
 
-  fun isMetaDown(tick: SKFS.Tick): Bool {
+  fun isMetaDown(tick: SKStore.Tick): Bool {
     this.info.isMeta() && this.state.isDown(tick);
   }
 
-  fun isModified(tick: SKFS.Tick): Bool {
+  fun isModified(tick: SKStore.Tick): Bool {
     this.isShiftDown(tick) ||
       this.isControlDown(tick) ||
       this.isAltDown(tick) ||
@@ -323,8 +323,8 @@ class Key(code: String, info: KeyInfo, state: KeyState) {
 
   fun isKey(
     code: String,
-    tick: SKFS.Tick,
-    state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+    tick: SKStore.Tick,
+    state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
   ): Bool {
     this.info.symbol == code && state(this.state, tick)
   }
@@ -335,7 +335,7 @@ class Key(code: String, info: KeyInfo, state: KeyState) {
 
   static fun isKeyState(
     state: KeyState,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     optDown: ?Bool,
   ): Bool {
     optDown match {
@@ -349,19 +349,19 @@ class Key(code: String, info: KeyInfo, state: KeyState) {
     }
   }
 
-  static fun isKeyDown(state: KeyState, tick: SKFS.Tick): Bool {
+  static fun isKeyDown(state: KeyState, tick: SKStore.Tick): Bool {
     state.isDown(tick)
   }
 
-  static fun isKeyPressed(state: KeyState, tick: SKFS.Tick): Bool {
+  static fun isKeyPressed(state: KeyState, tick: SKStore.Tick): Bool {
     state.isPressed(tick)
   }
 
-  static fun isKeyPressedOrDown(state: KeyState, _tick: SKFS.Tick): Bool {
+  static fun isKeyPressedOrDown(state: KeyState, _tick: SKStore.Tick): Bool {
     state.isPressedOrDown()
   }
 
-  static fun isKeyReleased(state: KeyState, tick: SKFS.Tick): Bool {
+  static fun isKeyReleased(state: KeyState, tick: SKStore.Tick): Bool {
     state.isReleased(tick)
   }
 
@@ -376,8 +376,8 @@ class Key(code: String, info: KeyInfo, state: KeyState) {
 
   fun isChar(
     char: Char,
-    tick: SKFS.Tick,
-    state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+    tick: SKStore.Tick,
+    state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
   ): Bool {
     if (SkargoVersion.kTarget.startsWith("wasm32")) {
       key = this.info.key.chars();
@@ -404,9 +404,9 @@ class KeysFile(
   numLock: Bool,
   insert: Bool,
   scrollLock: Bool,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ KeysFile _ -> x
     | _ -> invariant_violation("Must be UiEvent.KeysFile")
@@ -427,15 +427,15 @@ class KeysFile(
     )
   }
 
-  fun isControlDown(tick: SKFS.Tick): Bool {
+  fun isControlDown(tick: SKStore.Tick): Bool {
     this.keys.any(key -> key.isControlDown(tick));
   }
 
-  fun isAltDown(tick: SKFS.Tick): Bool {
+  fun isAltDown(tick: SKStore.Tick): Bool {
     this.keys.any(key -> key.isAltDown(tick));
   }
 
-  fun isShiftDown(tick: SKFS.Tick): Bool {
+  fun isShiftDown(tick: SKStore.Tick): Bool {
     this.keys.any(key -> key.isShiftDown(tick));
   }
 
@@ -459,7 +459,7 @@ class KeysFile(
     }
   }
 
-  fun getChar(allowTabs: Bool, allowNewLine: Bool, tick: SKFS.Tick): ?Info {
+  fun getChar(allowTabs: Bool, allowNewLine: Bool, tick: SKStore.Tick): ?Info {
     if (
       this.keys.isEmpty() ||
       (this.isControlDown(tick) && !this.isAltDown(tick))
@@ -502,33 +502,33 @@ class KeysFile(
     }
   }
 
-  fun isTab(tick: SKFS.Tick, alternative: Bool = false): Bool {
+  fun isTab(tick: SKStore.Tick, alternative: Bool = false): Bool {
     tabKeyStroke(false, alternative).test(this, tick)
   }
 
-  fun isF2(tick: SKFS.Tick): Bool {
+  fun isF2(tick: SKStore.Tick): Bool {
     ModifiedKeyStroke(KeyInfo::f2, Modifier(false, false, false)).test(
       this,
       tick,
     )
   }
 
-  fun isShiftTab(tick: SKFS.Tick, alternative: Bool = false): Bool {
+  fun isShiftTab(tick: SKStore.Tick, alternative: Bool = false): Bool {
     tabKeyStroke(true, alternative).test(this, tick)
   }
 
-  fun isShiftF2(tick: SKFS.Tick): Bool {
+  fun isShiftF2(tick: SKStore.Tick): Bool {
     ModifiedKeyStroke(KeyInfo::f2, Modifier(false, true, false)).test(
       this,
       tick,
     )
   }
 
-  fun isMenuPressed(tick: SKFS.Tick): Bool {
+  fun isMenuPressed(tick: SKStore.Tick): Bool {
     pureKeyPressed(KeyInfo::menu).test(this, tick)
   }
 
-  fun isMenuReleased(tick: SKFS.Tick): Bool {
+  fun isMenuReleased(tick: SKStore.Tick): Bool {
     pureKeyReleased(KeyInfo::menu).test(this, tick)
   }
 
@@ -540,7 +540,7 @@ class KeysFile(
 }
 
 base class KeyStroke {
-  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool;
+  fun test(keyFile: KeysFile, tick: SKStore.Tick): Bool;
   fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat;
 }
 
@@ -557,7 +557,7 @@ fun asRepeats(
 class StrictKeyStroke(
   code: String,
   pure: Bool = true,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ) extends KeyStroke {
   fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat {
     keys.getForSymbol(this.code).map(key ->
@@ -570,7 +570,7 @@ class StrictKeyStroke(
     )
   }
 
-  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+  fun test(keyFile: KeysFile, tick: SKStore.Tick): Bool {
     if (this.pure) {
       keyFile.keys.size() == 1 &&
         keyFile.keys.first().isKey(this.code, tick, this.state);
@@ -581,7 +581,7 @@ class StrictKeyStroke(
 }
 
 class Modifier(control: Bool, shift: Bool, alt: Bool) {
-  fun test(keyFile: KeysFile, tick: SKFS.Tick): (Bool, Int) {
+  fun test(keyFile: KeysFile, tick: SKStore.Tick): (Bool, Int) {
     count = 0;
     valid = true;
     if (this.control) {
@@ -599,15 +599,15 @@ class Modifier(control: Bool, shift: Bool, alt: Bool) {
     (valid, count)
   }
 
-  private fun isControlDown(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+  private fun isControlDown(keyFile: KeysFile, tick: SKStore.Tick): Bool {
     keyFile.keys.any(key -> key.isControlDown(tick));
   }
 
-  private fun isShiftDown(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+  private fun isShiftDown(keyFile: KeysFile, tick: SKStore.Tick): Bool {
     keyFile.keys.any(key -> key.isShiftDown(tick));
   }
 
-  private fun isAltDown(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+  private fun isAltDown(keyFile: KeysFile, tick: SKStore.Tick): Bool {
     keyFile.keys.any(key -> key.isAltDown(tick));
   }
 
@@ -620,7 +620,7 @@ class ModifiedKeyStroke(
   code: String,
   modifier: Modifier,
   pure: Bool = true,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ) extends KeyStroke {
   fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat {
     keys.getForSymbol(this.code).map(key ->
@@ -633,7 +633,7 @@ class ModifiedKeyStroke(
     )
   }
 
-  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+  fun test(keyFile: KeysFile, tick: SKStore.Tick): Bool {
     (valid, count) = this.modifier.test(keyFile, tick);
     !valid = valid && (!this.pure || keyFile.keys.size() == count + 1);
     valid && keyFile.keys.any(key -> key.isKey(this.code, tick, this.state));
@@ -644,7 +644,7 @@ class CharKeyStroke(
   char: Char,
   optModifier: ?Modifier = None(),
   pure: Bool = true,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ) extends KeyStroke {
   fun asRepeat(keys: UiEvent.KeysFile): ?FWK.Repeat {
     keys.getForChar(this.char).map(key ->
@@ -657,7 +657,7 @@ class CharKeyStroke(
     )
   }
 
-  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+  fun test(keyFile: KeysFile, tick: SKStore.Tick): Bool {
     (valid, count) = this.optModifier.map(modifier ->
       modifier.test(keyFile, tick)
     ).default((true, 0));
@@ -667,9 +667,9 @@ class CharKeyStroke(
 }
 
 class AltKeyStroke(
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ) extends KeyStroke {
-  fun test(keyFile: KeysFile, tick: SKFS.Tick): Bool {
+  fun test(keyFile: KeysFile, tick: SKStore.Tick): Bool {
     keyFile.keys.size() == 1 &&
       keyFile.keys.any(key -> key.info.isAlt() && this.state(key.state, tick));
   }
@@ -751,7 +751,7 @@ fun expose(): KeyStroke {
 
 fun control(
   keyInfo: String,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   ModifiedKeyStroke(keyInfo, Modifier(true, false, false), true, state)
 }
@@ -759,14 +759,14 @@ fun control(
 fun charKey(
   char: Char,
   pure: Bool,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   CharKeyStroke(Unicode.toLower(char), None(), pure, state)
 }
 
 fun controlChar(
   char: Char,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   CharKeyStroke(
     Unicode.toLower(char),
@@ -778,7 +778,7 @@ fun controlChar(
 
 fun controlShiftChar(
   char: Char,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   CharKeyStroke(
     Unicode.toLower(char),
@@ -790,35 +790,35 @@ fun controlShiftChar(
 
 fun key(
   keyInfo: String,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   StrictKeyStroke(keyInfo, true, state)
 }
 
 fun shift(
   keyInfo: String,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   ModifiedKeyStroke(keyInfo, Modifier(false, true, false), true, state)
 }
 
 fun controlShift(
   keyInfo: String,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   ModifiedKeyStroke(keyInfo, Modifier(true, true, false), true, state)
 }
 
 fun controlAlt(
   keyInfo: String,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   ModifiedKeyStroke(keyInfo, Modifier(true, false, true), true, state)
 }
 
 fun alt(
   keyInfo: String,
-  state: (KeyState, SKFS.Tick) ~> Bool = Key::isKeyPressed,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
 ): KeyStroke {
   ModifiedKeyStroke(keyInfo, Modifier(false, false, true), true, state)
 }

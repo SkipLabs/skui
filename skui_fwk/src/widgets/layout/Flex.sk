@@ -68,21 +68,23 @@ class Configuration{
 
 base class Controller extends Ui.WidgetsCollection {
   /** The direction to use as the main axis. */
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis;
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis;
 
   /** Determines the order to lay children out vertically and how to interpret `start` and `end` in the vertical direction. */
-  fun getVerticalDirection(context: mutable SKFS.Context): Ui.VerticalDirection;
+  fun getVerticalDirection(
+    context: mutable SKStore.Context,
+  ): Ui.VerticalDirection;
 
   /** Determines the order to lay children out horizontally and how to interpret `start` and `end` in the horizontal direction. */
   fun getHorizontalDirection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Ui.HorizontalDirection;
 
-  fun getMainAxisAlignment(context: mutable SKFS.Context): Alignment;
+  fun getMainAxisAlignment(context: mutable SKStore.Context): Alignment;
 
-  fun getCrossAxisAlignment(context: mutable SKFS.Context): CrossAlignment;
+  fun getCrossAxisAlignment(context: mutable SKStore.Context): CrossAlignment;
 
-  fun getMainAxisSize(context: mutable SKFS.Context): Size;
+  fun getMainAxisSize(context: mutable SKStore.Context): Size;
 }
 
 class Parameters{
@@ -97,55 +99,55 @@ class Parameters{
 } extends Ui.Parameters {}
 
 class LamController{
-  direction: mutable SKFS.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
-  horizontalDirection: mutable SKFS.Context ~> Ui.HorizontalDirection = _ctx ~>
+  direction: mutable SKStore.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  horizontalDirection: mutable SKStore.Context ~> Ui.HorizontalDirection = _ctx ~>
     Ui.ToRight(),
-  verticalDirection: mutable SKFS.Context ~> Ui.VerticalDirection = _ctx ~>
+  verticalDirection: mutable SKStore.Context ~> Ui.VerticalDirection = _ctx ~>
     Ui.Down(),
-  mainAxisAlignment: mutable SKFS.Context ~> Alignment = _ctx ~> Start(),
-  crossAxisAlignment: mutable SKFS.Context ~> CrossAlignment = _ctx ~>
+  mainAxisAlignment: mutable SKStore.Context ~> Alignment = _ctx ~> Start(),
+  crossAxisAlignment: mutable SKStore.Context ~> CrossAlignment = _ctx ~>
     CrossCenter(),
-  mainAxisSize: mutable SKFS.Context ~> Size = _ctx ~> Min(),
+  mainAxisSize: mutable SKStore.Context ~> Size = _ctx ~> Min(),
   widgets: Ui.WidgetsCollection,
 } extends Controller {
   //
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis {
     this.direction(context)
   }
 
   fun getHorizontalDirection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Ui.HorizontalDirection {
     this.horizontalDirection(context)
   }
 
   fun getVerticalDirection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Ui.VerticalDirection {
     this.verticalDirection(context)
   }
 
-  fun getMainAxisAlignment(context: mutable SKFS.Context): Alignment {
+  fun getMainAxisAlignment(context: mutable SKStore.Context): Alignment {
     this.mainAxisAlignment(context)
   }
 
-  fun getCrossAxisAlignment(context: mutable SKFS.Context): CrossAlignment {
+  fun getCrossAxisAlignment(context: mutable SKStore.Context): CrossAlignment {
     this.crossAxisAlignment(context)
   }
 
-  fun getMainAxisSize(context: mutable SKFS.Context): Size {
+  fun getMainAxisSize(context: mutable SKStore.Context): Size {
     this.mainAxisSize(context)
   }
 
-  fun getSize(context: mutable SKFS.Context): Int {
+  fun getSize(context: mutable SKStore.Context): Int {
     this.widgets.getSize(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context, index: Int): Ui.Widget {
     this.widgets.getWidget(context, index)
   }
 
-  fun all(context: mutable SKFS.Context): Array<Ui.Widget> {
+  fun all(context: mutable SKStore.Context): Array<Ui.Widget> {
     this.widgets.all(context)
   }
 }
@@ -175,7 +177,7 @@ class Flex protected {
   fun getDropHandler from WithDropHandler;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiFlex.Parameters,
     cache: NodeCache,
@@ -195,7 +197,7 @@ class Flex protected {
   }
 
   static fun createForController(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiFlex.Controller,
     optConfiguration: ?Ui.Configuration = None(),
@@ -208,11 +210,14 @@ class Flex protected {
     )
   }
 
-  protected fun getWidgets(context: mutable SKFS.Context): Array<Widget> {
+  protected fun getWidgets(context: mutable SKStore.Context): Array<Widget> {
     this.controller.all(context)
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     direction = this.controller.getDirection(context);
     horizontalDirection = this.controller.getHorizontalDirection(context);
     verticalDirection = this.controller.getVerticalDirection(context);

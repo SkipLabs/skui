@@ -1,10 +1,12 @@
 module UiDropdown;
 
-class LamController{onClose_: mutable SKFS.Context ~> void} extends Controller {
+class LamController{
+  onClose_: mutable SKStore.Context ~> void,
+} extends Controller {
   //
   static fun fromArray(
     items: Ui.GetterOne<Array<ItemBase>, Bool>,
-    onClose_: mutable SKFS.Context ~> void,
+    onClose_: mutable SKStore.Context ~> void,
   ): this {
     LamController{
       items => (ctx, ui) ~> ArrayCollection(items(ctx, ui)),
@@ -12,7 +14,7 @@ class LamController{onClose_: mutable SKFS.Context ~> void} extends Controller {
     }
   }
 
-  fun onClose(context: mutable SKFS.Context): void {
+  fun onClose(context: mutable SKStore.Context): void {
     this.onClose_(context)
   }
 }

@@ -6,7 +6,7 @@ class HoverHandler(split: Ui.Split) extends FWK.HoverHandler {
     this.split.path
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     FWKPointer.setCursor(
       context,
       this.split.controller.getAxis(context, true) match {
@@ -17,18 +17,18 @@ class HoverHandler(split: Ui.Split) extends FWK.HoverHandler {
   }
 
   fun manage(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
     FWK.Result(false)
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     FWKPointer.resetCursor(context)
   }
 
-  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getTooltip(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
     None()
   }
 }
@@ -36,7 +36,7 @@ class HoverHandler(split: Ui.Split) extends FWK.HoverHandler {
 class LockHandler(split: Ui.Split) extends FWK.LockHandler {
   //
   fun update(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): ?FWK.LockHandler {
     if (!mouse.isPrimaryDown(context.tick)) {

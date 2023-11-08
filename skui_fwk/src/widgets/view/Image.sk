@@ -1,14 +1,14 @@
 module UiImage;
 
 base class Controller extends Ui.Parameters {
-  fun getImage(context: mutable SKFS.Context): ?Ui.Picture;
+  fun getImage(context: mutable SKStore.Context): ?Ui.Picture;
 }
 
 class LamController{
-  image: (mutable SKFS.Context) ~> ?Ui.Picture = (_ctx) ~> None(),
+  image: (mutable SKStore.Context) ~> ?Ui.Picture = (_ctx) ~> None(),
 } extends Controller {
   //
-  fun getImage(context: mutable SKFS.Context): ?Ui.Picture {
+  fun getImage(context: mutable SKStore.Context): ?Ui.Picture {
     this.image(context)
   }
 }
@@ -25,7 +25,7 @@ class ImageView{
   type Buffer = Ui.NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiImage.Controller,
     cache: Ui.NodeCache,
@@ -35,7 +35,7 @@ class ImageView{
   }
 
   fun layout(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     optSize = this.controller.getImage(context).map(i -> i.getSize());
@@ -46,7 +46,7 @@ class ImageView{
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -65,7 +65,9 @@ class ImageView{
     };
   }
 
-  fun getViewportDefinition(_context: mutable SKFS.Context): ?Ui.ViewportDef {
+  fun getViewportDefinition(
+    _context: mutable SKStore.Context,
+  ): ?Ui.ViewportDef {
     None()
   }
 }

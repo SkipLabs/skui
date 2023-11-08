@@ -2,7 +2,7 @@ module UiButton;
 
 class Layout(size: Geometry.Size) extends Ui.UserData
 
-base class Mode extends SKFS.File uses Show {
+base class Mode extends SKStore.File uses Show {
   children =
   | Basic()
   | Raised()
@@ -44,7 +44,7 @@ base class Mode extends SKFS.File uses Show {
     false
 }
 
-base class Kind extends SKFS.File uses Show {
+base class Kind extends SKStore.File uses Show {
   children =
   | Regular()
   | Primary()
@@ -63,19 +63,19 @@ base class Kind extends SKFS.File uses Show {
 }
 
 base class Controller {
-  fun isDisabled(context: mutable SKFS.Context): Bool;
-  fun getText(context: mutable SKFS.Context): ?Text;
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
-  fun getTooltip(context: mutable SKFS.Context): ?Text;
-  fun getKind(context: mutable SKFS.Context): Kind;
-  fun getMode(context: mutable SKFS.Context): Mode;
-  fun fire(context: mutable SKFS.Context, optCount: ?Int = None()): void;
+  fun isDisabled(context: mutable SKStore.Context): Bool;
+  fun getText(context: mutable SKStore.Context): ?Text;
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKStore.Context): ?Text;
+  fun getKind(context: mutable SKStore.Context): Kind;
+  fun getMode(context: mutable SKStore.Context): Mode;
+  fun fire(context: mutable SKStore.Context, optCount: ?Int = None()): void;
 }
 
 base class State {
-  fun isArmed(context: mutable SKFS.Context): Bool;
+  fun isArmed(context: mutable SKStore.Context): Bool;
 
-  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
+  fun emitArmed(context: mutable SKStore.Context, value: Bool): void;
 }
 
 class Parameters(controller: Controller, state: State) extends Ui.Parameters {}

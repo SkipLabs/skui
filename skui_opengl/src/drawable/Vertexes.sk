@@ -2,9 +2,9 @@ module GLDrawable;
 
 class SolidVertexesDrawer(
   fn: (Geometry.Rect, .Color, Geometry.Size, GL.Buffer, Int) ~> void,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ SolidVertexesDrawer _ -> x
     | _ -> invariant_violation("Must be Ui.SolidVertexesDrawer")

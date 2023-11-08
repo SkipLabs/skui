@@ -8,7 +8,7 @@ class Viewport{
   type Buffer = Ui.NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiScroll.Controller,
     cache: Ui.NodeCache,
@@ -18,7 +18,7 @@ class Viewport{
   }
 
   fun layout(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     widget = this.controller.getWidget(context);
@@ -70,7 +70,9 @@ class Viewport{
     }
   }
 
-  fun getViewportDefinition(_context: mutable SKFS.Context): ?Ui.ViewportDef {
+  fun getViewportDefinition(
+    _context: mutable SKStore.Context,
+  ): ?Ui.ViewportDef {
     None()
   }
 }

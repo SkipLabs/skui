@@ -34,10 +34,10 @@ base class Loadable extends File {
   | loaded @ Loaded _ -> Some(conv(loaded.file))
   | _ -> None()
 
-  static fun forFile(obj: File): Loadable {
+  static fun btype(obj: File): Loadable {
     obj match {
     | l @ Loadable _ -> l
-    | _ -> invariant_violation("Invalid state")
+    | _ -> cast_violation("SKStore.Loadable", obj)
     }
   }
 }

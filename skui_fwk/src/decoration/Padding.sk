@@ -10,7 +10,7 @@ class Padding(padding: Geometry.InsetsGeometry) extends Decoration {
   }
 
   fun fillDrawables(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _offset: Geometry.Offset,
     _size: Geometry.Size,

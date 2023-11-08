@@ -60,9 +60,9 @@ extension base class Command {
     cl match {
     | "UiTable.Fire" -> Fire(jso.maybeGetString("value"))
     | "UiTable.ManageScrolling" ->
-      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+      ManageScrolling(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | "UiTable.CancelScrolling" ->
-      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+      CancelScrolling(SKStore.Tick(jso.getInt("tick")))
     | "UiTable.SetHScroll" ->
       SetHScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
     | "UiTable.SetVScroll" ->

@@ -39,7 +39,7 @@ extension class Tab extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Tab {
     s match {
     | x @ Tab _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Tab", s)
+    | _ -> SKStore.cast_violation("UiEngine.Tab", s)
     }
   }
 }
@@ -73,7 +73,7 @@ extension class Action extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Action {
     s match {
     | x @ Action _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Action", s)
+    | _ -> SKStore.cast_violation("UiEngine.Action", s)
     }
   }
 }

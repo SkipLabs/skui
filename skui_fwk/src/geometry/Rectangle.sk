@@ -1,11 +1,11 @@
 module Geometry;
 
-extension class Rectangle extends SKFS.File {
+extension class Rectangle extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Rectangle _ -> x
-    | _ -> SKFS.cast_violation("Geometry.Rectangle", obj)
+    | _ -> SKStore.cast_violation("Geometry.Rectangle", obj)
     }
   }
 }

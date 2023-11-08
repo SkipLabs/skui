@@ -1,6 +1,6 @@
 module UiRoot;
 
-base class Layer extends SKFS.BaseName {
+base class Layer extends SKStore.Key {
   children =
   | Main()
   | Menu()
@@ -10,7 +10,14 @@ base class Layer extends SKFS.BaseName {
     this.getClassName();
   }
 
-  fun compare(other: SKFS.BaseName): Order {
+  static fun bKeyType(obj: SKStore.Key): Layer {
+    obj match {
+    | x @ Layer _ -> x
+    | _ -> SKStore.cast_violation("UiRoot.Layer", obj)
+    }
+  }
+
+  fun compare(other: SKStore.Key): Order {
     other match {
     | oLayer @ Layer _ ->
       (this, oLayer) match {
@@ -53,16 +60,22 @@ base class Command extends SKUIMessage.Command {
 }
 
 class HStorage private (
-  state: SKFS.IHandle<SKFS.File>,
-  handle: SKFS.EHandle<SKFS.File>,
-  content: SKFS.EHandle<SKFS.File>,
-) extends Storage, SKFS.File {
+  state: SKStore.IHandle<SKStore.Key, SKStore.File>,
+  handle: SKStore.EHandle<Layer, SKStore.IntFile>,
+  content: SKStore.EHandle<SKStore.Key, SKStore.File>,
+) extends Storage, SKStore.File {
   //
-  static fun forScope(context: mutable SKFS.Context, scope: String): ?this {
-    dirName = SKFS.DirName::create(scope);
-    stateHdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), dirName);
-    contentHdl = SKFS.EHandle(f ~> f, SKFS.DirName::make(dirName, "content/"));
-    rootHdl = SKFS.EHandle(f ~> f, SKFS.DirName::make(dirName, "main/"));
+  static fun forScope(context: mutable SKStore.Context, scope: String): ?this {
+    dirName = SKStore.DirName::create(scope);
+    stateHdl = SKStore.IHandle::notTyped(dirName);
+    contentHdl = SKStore.EHandle::notTyped(
+      SKStore.DirName::make(dirName, "content/"),
+    );
+    rootHdl = SKStore.EHandle(
+      Layer::bKeyType,
+      SKStore.IntFile::type,
+      SKStore.DirName::make(dirName, "main/"),
+    );
     stateExists = stateHdl.exists(context);
     contentExists = contentHdl.exists(context);
     rootExists = rootHdl.exists(context);
@@ -74,67 +87,69 @@ class HStorage private (
   }
 
   static fun create(
-    context: mutable SKFS.Context,
-    dirName: SKFS.DirName,
+    context: mutable SKStore.Context,
+    dirName: SKStore.DirName,
   ): this {
-    stateHdl = context.makeDir(
-      f ~> f,
+    stateHdl = context.makeNotTyped(
       dirName,
-      Array<(SKFS.BaseName, SKFS.File)>[(Main(), SKFS.IntFile(0))],
+      Array[(Main(), SKStore.IntFile(0))],
     );
-    contentHdl = context.makeDir(
-      f ~> f,
-      SKFS.DirName::make(dirName, "content/"),
-      Array<(SKFS.BaseName, SKFS.File)>[(Main(), SKFS.IntFile(0))],
+    contentHdl = context.makeNotTyped(
+      SKStore.DirName::make(dirName, "content/"),
+      Array[(Main(), SKStore.IntFile(0))],
     );
     rootHdl = context.makeDir(
-      f ~> f,
-      SKFS.DirName::make(dirName, "main/"),
-      Array<(SKFS.BaseName, SKFS.File)>[
-        (Menu(), SKFS.IntFile(0)),
-        (Tooltip(), SKFS.IntFile(0)),
-        (Main(), SKFS.IntFile(0)),
+      Layer::bKeyType,
+      SKStore.IntFile::type,
+      SKStore.DirName::make(dirName, "main/"),
+      Array[
+        (Menu(), SKStore.IntFile(0)),
+        (Tooltip(), SKStore.IntFile(0)),
+        (Main(), SKStore.IntFile(0)),
       ],
     );
-    static(SKFS.toIHandle(stateHdl), rootHdl, contentHdl)
+    static(SKStore.toIHandle(stateHdl), rootHdl, contentHdl)
   }
 
   fun manageWidgets(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     widgetGetter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
     mouseMenu: Ui.Getter<FWK.MouseState>,
     focusMenu: Ui.Getter<FWK.FocusState>,
-  ): SKFS.EHValue<Ui.WidgetFile> {
+  ): SKStore.EHValue<Ui.MainKey, Ui.WidgetFile> {
     dirName = this.state.getDirName();
-    contentHdl = this.content.contextMap(
-      Ui.WidgetFile::fromFile,
+    contentHdl = this.content.map(
+      k ~> k,
+      Ui.WidgetFile::type,
       context,
-      SKFS.DirName::make(dirName, "widgetcontent/"),
-      (context, _) ~> {
-        Ui.WidgetFile(widgetGetter(context, this))
-      },
+      SKStore.DirName::make(dirName, "widgetcontent/"),
+      (context, writer, key, _) ~>
+        writer.set(key, Ui.WidgetFile(widgetGetter(context, this)))
+      ,
     );
-    widgetSourcesPath = SKFS.DirName::make(dirName, "widgetsources/");
+    widgetSourcesPath = SKStore.DirName::make(dirName, "widgetsources/");
     preWidgetSourcesHdl = context.makePreDir(
-      SKFS.OptFile::fromFile,
+      Layer::bKeyType,
+      SKStore.OptFile::type,
       widgetSourcesPath,
       .Array[
-        (Main(), SKFS.OptFile(None())),
-        (Menu(), SKFS.OptFile(None())),
-        (Tooltip(), SKFS.OptFile(None())),
+        (Main(), SKStore.OptFile(None())),
+        (Menu(), SKStore.OptFile(None())),
+        (Tooltip(), SKStore.OptFile(None())),
       ],
     );
-    widgetSourcesHdl = this.handle.contextWriterKeyMap(
-      SKFS.OptFile::fromFile,
+    widgetSourcesHdl = this.handle.map(
+      Layer::bKeyType,
+      SKStore.OptFile::type,
       context,
       widgetSourcesPath,
       (context, writer, key, _) ~> {
         key match {
         | Main() ->
-          writer.write(
+          writer.set(
             key,
-            SKFS.OptFile(
+            SKStore.OptFile(
               Some(
                 FWK.SourcedWidget(None(), (ctx, _root) ~> {
                   dialogsPath = path.makeChild("@dialogs");
@@ -159,7 +174,7 @@ class HStorage private (
         | Menu() ->
           optPreMenu = preWidgetSourcesHdl
             .getValue(context, Menu(), true)
-            .map(FWK.SourcedWidget::fromFile);
+            .map(FWK.SourcedWidget::type);
           optHMS = mouseMenu(context).optMenuSupplier;
           optHover = optHMS.flatMap(ddh ->
             ddh.i1.getDropdown(context).map(dd -> (ddh.i0, dd, ddh.i2))
@@ -201,7 +216,7 @@ class HStorage private (
               )
             )
           };
-          writer.write(key, SKFS.OptFile(optMenu))
+          writer.set(key, SKStore.OptFile(optMenu))
         | Tooltip() ->
           ms = mouseMenu(context);
           optSW = if (ms.optDragHandler.isNone()) {
@@ -228,18 +243,19 @@ class HStorage private (
           } else {
             None()
           };
-          writer.write(key, SKFS.OptFile(optSW))
-        | _ -> SKFS.cast_violation("UiRoot.Layer", key)
+          writer.set(key, SKStore.OptFile(optSW))
         }
       },
     );
     widgetsHdl = widgetSourcesHdl
-      .contextWriterKeyMap(
+      .map(
+        SKStore.KIndexed::bKeyType,
         f ~> f,
         context,
-        SKFS.DirName::make(dirName, "widgetsbuild/"),
-        (context, writer, key, opt) ~> {
-          opt.map(FWK.SourcedWidget::fromFile).each(sw -> {
+        SKStore.DirName::make(dirName, "widgetsbuild/"),
+        (context, writer, key, it) ~> {
+          opt = it.first;
+          opt.map(FWK.SourcedWidget::type).each(sw -> {
             sw.widget(context, this).each(widget -> {
               if (key == Menu()) {
                 widget match {
@@ -251,64 +267,69 @@ class HStorage private (
                 | _ -> void
                 }
               };
-              writer.write(key, Ui.WidgetFile(widget));
-              writer.write(SKFS.KKeys(), key);
+              writer.set(SKStore.KIdx(key), Ui.WidgetFile(widget));
+              writer.set(SKStore.KKeys(), SKStore.KeyFile(key));
             })
           })
         },
       )
-      .contextWriterKeyValues(
+      .map(
+        SKStore.KIndexed::bKeyType,
         f ~> f,
         context,
-        SKFS.DirName::make(dirName, "widgets/"),
-        (_, writer, key, values) ~>
+        SKStore.DirName::make(dirName, "widgets/"),
+        (_, writer, key, it) ~>
           key match {
-          | SKFS.KKeys() ->
-            layers = values.map(f -> f as Layer _).sorted();
-            keys = SKFS.Keys(layers);
-            writer.write(key, keys);
-            writer.write(SKFS.KSize(), SKFS.IntFile(values.size()))
-          | _ -> values.maybeGet(0).each(v -> writer.write(key, v))
+          | SKStore.KKeys() ->
+            values = it.collect(Array).map(SKStore.KeyFile::type).map(v ~>
+              Layer::bKeyType(v.value)
+            );
+            layers = values.sorted();
+            keys = SKStore.Keys(layers);
+            writer.set(key, keys);
+            writer.set(SKStore.KSize(), SKStore.IntFile(values.size()))
+          | _ -> writer.set(key, it.first)
           }
         ,
       );
-    widgetCollection = Ui.HandledCollection(widgetsHdl);
+    widgetCollection = Ui.KIndexedCollection(widgetsHdl);
     sourceHdl = context.makeDir(
-      f ~> f,
-      SKFS.DirName::make(dirName, "widgetsource/"),
-      Array<(SKFS.BaseName, SKFS.File)>[(Ui.MainKey(), SKFS.IntFile(0))],
+      Ui.MainKey::keyType,
+      SKStore.IntFile::type,
+      SKStore.DirName::make(dirName, "widgetsource/"),
+      Array[(Ui.MainKey(), SKStore.IntFile(0))],
     );
-    SKFS.EHValue(
-      sourceHdl.contextWriterKeyMap(
-        Ui.WidgetFile::fromFile,
+    SKStore.EHValue(
+      sourceHdl.map(
+        Ui.MainKey::keyType,
+        Ui.WidgetFile::type,
         context,
-        SKFS.DirName::make(dirName, "widget/"),
+        SKStore.DirName::make(dirName, "widget/"),
         (context, writer, key, _) ~> {
           stack = Ui.Stack::createForController(
             context,
             path.makeChild("@stack"),
             UiStack.LamController{widgets => widgetCollection},
           );
-          writer.write(key, Ui.WidgetFile(stack))
+          writer.set(key, Ui.WidgetFile(stack))
         },
       ),
       Ui.MainKey(),
     );
   }
 
-  fun isMenuClosed(context: mutable SKFS.Context): Bool {
+  fun isMenuClosed(context: mutable SKStore.Context): Bool {
     this.state.maybeGetInt(context, Ui.closedProp)
       .map(v -> v == context.tick.value)
       .default(false);
   }
 
-  fun closeMenu(context: mutable SKFS.Context): void {
-    builtHdl = SKFS.EHandle(
-      f ~> f,
-      SKFS.DirName::make(this.state.getDirName(), "widgetsbuild/"),
+  fun closeMenu(context: mutable SKStore.Context): void {
+    builtHdl = SKStore.EHandle::notTyped(
+      SKStore.DirName::make(this.state.getDirName(), "widgetsbuild/"),
     );
     if (builtHdl.exists(context)) {
-      conv: SKFS.File ~> Ui.Widget = f ~> Ui.WidgetFile::fromFile(f).widget;
+      conv: SKStore.File ~> Ui.Widget = f ~> Ui.WidgetFile::type(f).widget;
       builtHdl.maybeGetProp(context, Menu(), conv).each(w ->
         w match {
         | ml @ Ui.MenuLayout _ ->
@@ -323,12 +344,12 @@ class HStorage private (
     this.state.write(
       context,
       Ui.closedProp,
-      SKFS.IntFile(context.tick.value + 1),
+      SKStore.IntFile(context.tick.value + 1),
     )
   }
 
   fun buildDropdown(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     items: Array<UiDropdown.ItemBase>,
   ): Ui.Dropdown {
@@ -344,18 +365,18 @@ class HStorage private (
     )
   }
 
-  fun setShownTooltip(context: mutable SKFS.Context, id: String): void {
-    this.state.write(context, Ui.activeProp, SKFS.StringFile(id))
+  fun setShownTooltip(context: mutable SKStore.Context, id: String): void {
+    this.state.write(context, Ui.activeProp, SKStore.StringFile(id))
   }
 
-  fun isTooltipShown(context: mutable SKFS.Context, path: Ui.Path): Bool {
+  fun isTooltipShown(context: mutable SKStore.Context, path: Ui.Path): Bool {
     this.state.maybeGetString(context, Ui.activeProp)
       .map(v -> v == path.toString())
       .default(false);
   }
 
   private fun emit(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     command: SKUIMessage.Command,
     optDelay: ?Int = None(),
   ): void {

@@ -1,34 +1,34 @@
 module UiTabs;
 
-fun actionsDirName(path: Ui.Path): SKFS.DirName {
+fun actionsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/actions/")
 }
 
-fun actionsWidgetsDirName(path: Ui.Path): SKFS.DirName {
+fun actionsWidgetsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/actions/widgets/")
 }
 
-fun tabsDirName(path: Ui.Path): SKFS.DirName {
+fun tabsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/tabs/")
 }
 
-fun tabsWidgetsDirName(path: Ui.Path): SKFS.DirName {
+fun tabsWidgetsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/tabs/widgets/")
 }
 
-fun pinnedTabsDirName(path: Ui.Path): SKFS.DirName {
+fun pinnedTabsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/pinned/")
 }
 
-fun pinnedTabsWidgetsDirName(path: Ui.Path): SKFS.DirName {
+fun pinnedTabsWidgetsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/pinned/widgets/")
 }
 
-fun widgetsDirName(path: Ui.Path): SKFS.DirName {
+fun widgetsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/widgets/")
 }
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/widget/")
 }
 
@@ -36,18 +36,18 @@ class Action(
   id: String,
   icon: Ui.IconBuilder,
   tooltip: ?Text = None(),
-  perform: mutable SKFS.Context ~> void = _ctx ~> void,
+  perform: mutable SKStore.Context ~> void = _ctx ~> void,
   disabled: Ui.Getter<Bool> = Ui.default(false),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Action _ -> x
     | _ -> invariant_violation("Must be UiTabs.Action")
     }
   }
 
-  fun build(context: mutable SKFS.Context, path: Ui.Path): Ui.Widget {
+  fun build(context: mutable SKStore.Context, path: Ui.Path): Ui.Widget {
     actionPath = path.makeChild("action").makeChild(this.id);
     button = Ui.Button::create(
       context,
@@ -86,9 +86,9 @@ class Tab{
   badge: Ui.Getter<?Ui.Badge> = Ui.default(None()),
   progress: Ui.Getter<?Ui.Progress> = Ui.default(None()),
   fire: Ui.Getter<void> = Ui.default(void),
-} extends SKFS.File {
+} extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Tab _ -> x
     | _ -> invariant_violation("Must be UiTabs.Tab")
@@ -121,9 +121,12 @@ base class Placeholder {
   | Custom(Ui.Widget)
 }
 
-class Identified(id: String, controller: UiTab.Controller) extends SKFS.File {
+class Identified(
+  id: String,
+  controller: UiTab.Controller,
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Identified _ -> x
     | _ -> invariant_violation("Must be UiTabs.Identified")
@@ -135,9 +138,9 @@ class ClosableInfo(
   closables: Array<String>,
   left: Array<String>,
   right: Array<String>,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ ClosableInfo _ -> x
     | _ -> invariant_violation("Must be UiTabs.ClosableInfo")
@@ -145,32 +148,32 @@ class ClosableInfo(
   }
 }
 
-base class Controller extends SKFS.UserData {
-  fun getTabs(context: mutable SKFS.Context): Array<String>;
-  fun getTab(context: mutable SKFS.Context, id: String): Tab;
-  fun getActive(context: mutable SKFS.Context): ?Ui.StringProperty;
+base class Controller extends SKStore.UserData {
+  fun getTabs(context: mutable SKStore.Context): Array<String>;
+  fun getTab(context: mutable SKStore.Context, id: String): Tab;
+  fun getActive(context: mutable SKStore.Context): ?Ui.StringProperty;
 
-  fun getKind(context: mutable SKFS.Context): Kind;
-  fun getMode(context: mutable SKFS.Context): UiTab.Mode;
-  fun getSide(context: mutable SKFS.Context): .UiSide;
-  fun getNumberOfActions(context: mutable SKFS.Context): Int;
-  fun getAction(context: mutable SKFS.Context, index: Int): Action;
-  fun getMinWidth(context: mutable SKFS.Context): ?Int;
-  fun getMaxWidth(context: mutable SKFS.Context): ?Int;
+  fun getKind(context: mutable SKStore.Context): Kind;
+  fun getMode(context: mutable SKStore.Context): UiTab.Mode;
+  fun getSide(context: mutable SKStore.Context): .UiSide;
+  fun getNumberOfActions(context: mutable SKStore.Context): Int;
+  fun getAction(context: mutable SKStore.Context, index: Int): Action;
+  fun getMinWidth(context: mutable SKStore.Context): ?Int;
+  fun getMaxWidth(context: mutable SKStore.Context): ?Int;
 
   fun onChange(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     tab: String,
     selected: Bool,
   ): void;
 
-  fun onClose(context: mutable SKFS.Context, tabs: Array<String>): void;
+  fun onClose(context: mutable SKStore.Context, tabs: Array<String>): void;
 
-  fun getNumberOfTabs(context: mutable SKFS.Context): Int {
+  fun getNumberOfTabs(context: mutable SKStore.Context): Int {
     this.getTabs(context).size()
   }
 
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis {
     this.getSide(context) match {
     | UiSide.Top()
     | UiSide.Bottom() ->
@@ -183,21 +186,21 @@ base class Controller extends SKFS.UserData {
 }
 
 base class State {
-  fun getNumberOfPinned(context: mutable SKFS.Context): Int;
-  fun getPinned(context: mutable SKFS.Context, index: Int): Identified;
+  fun getNumberOfPinned(context: mutable SKStore.Context): Int;
+  fun getPinned(context: mutable SKStore.Context, index: Int): Identified;
 
-  fun getNumberOfTabs(context: mutable SKFS.Context): Int;
-  fun getTab(context: mutable SKFS.Context, index: Int): Identified;
-  fun getActive(context: mutable SKFS.Context): ?String;
+  fun getNumberOfTabs(context: mutable SKStore.Context): Int;
+  fun getTab(context: mutable SKStore.Context, index: Int): Identified;
+  fun getActive(context: mutable SKStore.Context): ?String;
   fun getClosableInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optTab: ?String,
   ): ClosableInfo;
 
-  fun pin(context: mutable SKFS.Context, tab: String, value: Bool): void;
-  fun select(context: mutable SKFS.Context, optTab: ?String): void;
+  fun pin(context: mutable SKStore.Context, tab: String, value: Bool): void;
+  fun select(context: mutable SKStore.Context, optTab: ?String): void;
   fun move(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     toMove: String,
     dstTab: String,
     before: Bool,
@@ -207,9 +210,9 @@ base class State {
 class Parameters(
   controller: Controller,
   state: State,
-) extends Ui.Parameters, SKFS.File {
+) extends Ui.Parameters, SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Parameters _ -> x
     | _ -> invariant_violation("Must be UiTabs.Parameters")
@@ -223,11 +226,11 @@ class MainCollection(
   direction: Ui.Getter<Ui.Axis>,
 ) extends Ui.WidgetsCollection {
   //
-  fun getSize(_context: mutable SKFS.Context): Int {
+  fun getSize(_context: mutable SKStore.Context): Int {
     2
   }
 
-  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context, index: Int): Ui.Widget {
     this.direction(context) match {
     | Ui.HorizontalAxis() ->
       if (index == 0) {

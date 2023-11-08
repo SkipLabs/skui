@@ -31,7 +31,7 @@ fun view(): (
 }
 
 fun widget(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   v: Bool,
   optNumber: ?Int,
@@ -113,7 +113,7 @@ fun widget(
 }
 
 private fun slider{
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   range: Range,
   values: Array<Int>,

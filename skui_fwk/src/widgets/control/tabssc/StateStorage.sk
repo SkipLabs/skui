@@ -5,15 +5,15 @@ const computedPath: String = "ui/tabssc/computed";
 
 class HStorage(
   name: String,
-  handle: SKFS.IHandle<SKFS.File>,
+  handle: SKStore.INotTyped,
 ) extends Storage uses Ui.ScrollingStorage {
   //
   static fun forNameAndScope(
-    context: readonly SKFS.Context,
+    context: readonly SKStore.Context,
     name: String,
     scope: String,
   ): ?this {
-    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    hdl = SKStore.IHandle::notTyped(SKStore.DirName::create(scope));
     if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
   }
 
@@ -25,41 +25,41 @@ class HStorage(
     this.handle.getDirName().toString()
   }
 
-  protected fun getHandle(): SKFS.IHandle<SKFS.File> {
+  protected fun getHandle(): SKStore.INotTyped {
     this.handle
   }
 
-  fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+  fun setTodo(context: mutable SKStore.Context, value: Executable): void {
     this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
   }
 
-  fun setHover(context: mutable SKFS.Context, optHover: ?Hover): void {
+  fun setHover(context: mutable SKStore.Context, optHover: ?Hover): void {
     this.handle.writeOrRemove(context, Ui.hoverProp, optHover)
   }
 
-  fun setTargeted(context: mutable SKFS.Context, value: Bool): void {
-    this.handle.write(context, Ui.targetedProp, SKFS.BoolFile(value))
+  fun setTargeted(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.targetedProp, SKStore.BoolFile(value))
   }
 
-  fun getTodo(context: mutable SKFS.Context): Ui.Todo {
-    Ui.Todo::fromFile(this.handle.get(context, Ui.todoProp))
+  fun getTodo(context: mutable SKStore.Context): Ui.Todo {
+    Ui.Todo::type(this.handle.get(context, Ui.todoProp))
   }
 }
 
 class HState(
-  storage: SKFS.EHandle<SKFS.File>,
-  after: SKFS.EHandle<SKFS.File>,
+  storage: SKStore.ENotTyped,
+  after: SKStore.ENotTyped,
 ) extends State uses Ui.ScrollingState {
   //
-  fun isTargeted(context: mutable SKFS.Context): Bool {
+  fun isTargeted(context: mutable SKStore.Context): Bool {
     this.storage.getBool(context, Ui.targetedProp)
   }
 
-  protected fun getHandle(): SKFS.EHandle<SKFS.File> {
+  protected fun getHandle(): SKStore.ENotTyped {
     this.storage
   }
 
-  protected fun getComputed(): SKFS.EHandle<SKFS.File> {
+  protected fun getComputed(): SKStore.ENotTyped {
     this.after
   }
 
@@ -73,25 +73,25 @@ class HState(
 
   protected fun manageScrollingCmd(
     value: Int,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): SKUIMessage.Command {
     ManageScrolling(value, tick)
   }
 
-  fun getHover(context: mutable SKFS.Context): ?Hover {
+  fun getHover(context: mutable SKStore.Context): ?Hover {
     this.storage.maybeGetProp(context, Ui.hoverProp, f ~> f as Hover _);
   }
 
-  fun isScrolling(context: mutable SKFS.Context): Bool {
+  fun isScrolling(context: mutable SKStore.Context): Bool {
     this.storage.maybeGetInt(context, Ui.scrollingProp).isSome()
   }
 
-  fun emitHover(context: mutable SKFS.Context, value: ?Hover): void {
+  fun emitHover(context: mutable SKStore.Context, value: ?Hover): void {
     this.emit(context, SetHover(value));
   }
 
   fun emitGoTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
@@ -101,36 +101,36 @@ class HState(
 
 @debug
 fun init(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   controller: Controller,
   reference: Ui.Path,
 ): Parameters {
   dirName = Ui.controllerDirName(path);
-  filteredDirName = SKFS.DirName::make(dirName, "filtered/");
-  stateHdl = context.makeDir(
-    f ~> f,
+  filteredDirName = SKStore.DirName::make(dirName, "filtered/");
+  stateHdl = context.makeNotTyped(
     dirName,
-    Array<(SKFS.BaseName, SKFS.File)>[
+    Array<(SKStore.Key, SKStore.File)>[
       (Ui.todoProp, Ui.Todo(Init(), context.tick)),
     ],
   );
-  preFilteredHdl = context.makePreDir(f ~> f, filteredDirName, Array[]);
-  filteredHdl = stateHdl.contextWriterKeyMap(
-    Ui.Todo::fromFile,
+  preFilteredHdl = context.makeNotTypedPre(filteredDirName, Array[]);
+  filteredHdl = stateHdl.map(
+    k ~> k,
+    Ui.Todo::type,
     context,
     filteredDirName,
-    (context, writer, key, file) ~> {
+    (context, writer, key, it) ~> {
       if (key == Ui.todoProp) {
-        todo = Ui.Todo::fromFile(file);
+        todo = Ui.Todo::type(it.first);
         executables = mutable Vector<Executable>[];
         optCurrent = preFilteredHdl.maybeGetProp(
           context,
           key,
-          Ui.Todo::fromFile,
+          Ui.Todo::type,
           true,
         );
-        tick = optCurrent.map(c -> c.tick).default(SKFS.Tick(-1));
+        tick = optCurrent.map(c -> c.tick).default(SKStore.Tick(-1));
         max = tick;
         if (todo.tick > tick) {
           executables.push(todo.command as Executable _);
@@ -150,21 +150,18 @@ fun init(
         );
         size = executables.size();
         if (size == 0) {
-          optCurrent.each(c -> writer.write(key, c))
+          optCurrent.each(c -> writer.set(key, c))
         } else if (size == 1) {
-          writer.write(key, Ui.Todo(executables.first(), max))
+          writer.set(key, Ui.Todo(executables.first(), max))
         } else {
-          writer.write(
-            key,
-            Ui.Todo(All(unsafe_chill_trust_me(executables)), max),
-          )
+          writer.set(key, Ui.Todo(All(unsafe_chill_trust_me(executables)), max))
         }
       }
     },
   );
-  computedDirName = SKFS.DirName::make(dirName, "computed/");
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
   initKeys = Array[Ui.ensureVisibleProp];
-  computedHdl = SKFS.derive(
+  computedHdl = SKStore.derive(
     context,
     dirName.toString(),
     computedDirName,
@@ -179,20 +176,20 @@ fun init(
 
 @debug
 fun update(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   todo: Ui.Todo,
-  _optUserData: ?SKFS.UserData,
+  _optUserData: ?SKStore.UserData,
 ): void {
   execute(context, todo.command as Executable _, values);
 }
 
 @debug
 fun execute(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   executable: Executable,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
 ): void {
   executable match {
   | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values))

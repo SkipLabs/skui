@@ -1,8 +1,8 @@
 module Ui;
 
-class Word(width: Float, widths: Vector<Float>) extends SKFS.File {
+class Word(width: Float, widths: Vector<Float>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Word _ -> x
     | _ -> invariant_violation("Must be Ui.Word")
@@ -17,10 +17,13 @@ class Glyph(
   color: .Color,
 )
 
-class Line(offset: Geometry.Offset, glyphs: Vector<Glyph>) extends SKFS.File {
+class Line(
+  offset: Geometry.Offset,
+  glyphs: Vector<Glyph>,
+) extends SKStore.File {
   //
   fun fillDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     paint: Ui.Paint,
@@ -54,7 +57,7 @@ class Line(offset: Geometry.Offset, glyphs: Vector<Glyph>) extends SKFS.File {
   }
 }
 
-class FacedText(value: String, faceId: Font.FaceID) extends SKFS.BaseName {
+class FacedText(value: String, faceId: Font.FaceID) extends SKStore.Key {
   fun toString(): String {
     `${this.value}:${this.faceId}`
   }
@@ -64,115 +67,100 @@ class TextKey(
   value: String,
   style: Text.Display,
   pxRange: Int = 8,
-) extends SKFS.BaseName {
+) extends SKStore.Key {
   fun toString(): String {
     `${this.value}:${Utils.toString(this.style)}:${this.pxRange}`
   }
 }
 
 class TextSupport(
-  private sizesHdl: SKFS.LHandle<Geometry.Size>,
-  private wordsHdl: SKFS.LHandle<Word>,
-  private drawablesHdl: SKFS.LHandle<Ui.Drawables>,
-  private glyphsHdl: SKFS.LHandle<Line>,
-) extends SKFS.File {
+  private sizesHdl: SKStore.LHandle<FacedText, Geometry.Size>,
+  private wordsHdl: SKStore.LHandle<FacedText, Word>,
+  private drawablesHdl: SKStore.LHandle<TextKey, Ui.Drawables>,
+  private glyphsHdl: SKStore.LHandle<TextKey, Line>,
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TextSupport _ -> x
-    | _ -> invariant_violation("Must be Ui.TextSupport")
+    | _ -> SKStore.cast_violation("Ui.TextSupport", obj)
     }
   }
 
   static fun create(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
   ): this {
-    sizesHdl = SKFS.LHandle::lazy(
-      Geometry.Size::fromFile,
+    sizesHdl = SKStore.LHandle::lazy(
+      FacedText::keyType,
+      Geometry.Size::type,
       context,
-      SKFS.DirName::create("/ui/utils/text/sizes/"),
+      SKStore.DirName::create("/ui/utils/text/sizes/"),
       (context, _self, key) ~> {
-        key match {
-        | textKey @ FacedText _ ->
-          chars = textKey.value.chars();
-          context
-            .getFontSupport()
-            .getTextSize(
-              context,
-              chars,
-              Text.Token::make(0, chars.size()),
-              textKey.faceId,
-            )
-        | _ -> invariant_violation(`Invalid sies key ${key}`)
-        }
-      },
-    );
-    drawablesHdl = SKFS.LHandle::optLazy(
-      Ui.Drawables::fromFile,
-      context,
-      SKFS.DirName::create("/ui/utils/text/drawables/"),
-      (context, _self, key) ~> {
-        key match {
-        | textKey @ TextKey _ ->
-          toDrawables(
+        chars = key.value.chars();
+        context
+          .getFontSupport()
+          .getTextSize(
             context,
-            support,
-            textKey.value.chars(),
-            textKey.style,
-            thickness(
-              textKey.style.faceId.size,
-              textKey.style.faceId.isNotBold(),
-            ),
-            textKey.pxRange,
+            chars,
+            Text.Token::make(0, chars.size()),
+            key.faceId,
           )
-        | _ -> invariant_violation(`Invalid drawables key ${key}`)
-        }
       },
     );
-    wordsHdl = SKFS.LHandle::lazy(
-      Word::fromFile,
+    drawablesHdl = SKStore.LHandle::optLazy(
+      TextKey::keyType,
+      Ui.Drawables::type,
       context,
-      SKFS.DirName::create("/ui/utils/text/words/"),
+      SKStore.DirName::create("/ui/utils/text/drawables/"),
       (context, _self, key) ~> {
-        key match {
-        | tKey @ FacedText _ ->
-          fontSupport = context.getFontSupport();
-          width = 0.0;
-          optPrevious: ?Char = None();
-          widths = tKey.value.chars().map(char -> {
-            gid = Font.GlyphID::create(tKey.faceId, char);
-            glyph = fontSupport.getGlyphForId(context, gid);
-            gw = glyph.getKern(optPrevious) + glyph.width();
-            !width = width + gw;
-            !optPrevious = Some(char);
-            gw
-          });
-          Word(width, widths)
-        | _ -> invariant_violation(`Invalid word key ${key}`)
-        }
+        toDrawables(
+          context,
+          support,
+          key.value.chars(),
+          key.style,
+          thickness(key.style.faceId.size, key.style.faceId.isNotBold()),
+          key.pxRange,
+        )
       },
     );
-    glyphssHdl = SKFS.LHandle::lazy(
-      Line::fromFile,
+    wordsHdl = SKStore.LHandle::lazy(
+      FacedText::keyType,
+      Word::type,
       context,
-      SKFS.DirName::create("/ui/utils/text/glyphs/"),
+      SKStore.DirName::create("/ui/utils/text/words/"),
       (context, _self, key) ~> {
-        key match {
-        | tKey @ TextKey _ ->
-          Line(
-            Geometry.Offset::zero,
-            buildGlyphs(context, tKey.value.chars(), tKey.style),
-          )
-        | _ -> invariant_violation(`Invalid text key ${key}`)
-        }
+        fontSupport = context.getFontSupport();
+        width = 0.0;
+        optPrevious: ?Char = None();
+        widths = key.value.chars().map(char -> {
+          gid = Font.GlyphID::create(key.faceId, char);
+          glyph = fontSupport.getGlyphForId(context, gid);
+          gw = glyph.getKern(optPrevious) + glyph.width();
+          !width = width + gw;
+          !optPrevious = Some(char);
+          gw
+        });
+        Word(width, widths)
       },
     );
-    static(sizesHdl, wordsHdl, drawablesHdl, glyphssHdl)
+    glyphsHdl = SKStore.LHandle::lazy(
+      TextKey::keyType,
+      Line::type,
+      context,
+      SKStore.DirName::create("/ui/utils/text/glyphs/"),
+      (context, _self, key) ~> {
+        Line(
+          Geometry.Offset::zero,
+          buildGlyphs(context, key.value.chars(), key.style),
+        )
+      },
+    );
+    static(sizesHdl, wordsHdl, drawablesHdl, glyphsHdl)
   }
 
   fun getSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     faceId: Font.FaceID,
   ): Geometry.Size {
@@ -180,7 +168,7 @@ class TextSupport(
   }
 
   fun getWord(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     faceId: Font.FaceID,
   ): Word {
@@ -188,18 +176,19 @@ class TextSupport(
   }
 
   fun getDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     display: Text.Display,
     pxRange: Int = 8,
   ): ?Array<Ui.Drawable> {
-    this.drawablesHdl.maybeGet(context, TextKey(text, display, pxRange)).map(
-      v -> v.value,
-    )
+    this.drawablesHdl.maybeGetValue(
+      context,
+      TextKey(text, display, pxRange),
+    ).map(v -> v.value)
   }
 
   fun getSpaceSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     faceId: Font.FaceID,
   ): Ui.FontSize {
     glyph = context
@@ -209,7 +198,7 @@ class TextSupport(
   }
 
   fun getGlyphs(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     style: Text.Display,
   ): Vector<Glyph> {
@@ -217,7 +206,7 @@ class TextSupport(
   }
 
   fun getLines(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     size: Geometry.Size,
     style: Text.Style,
@@ -297,7 +286,7 @@ class TextSupport(
   }
 
   fun getLinesSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     optMaxWidth: ?Float,
     faceId: Font.FaceID,
@@ -322,7 +311,7 @@ class TextSupport(
   }
 
   fun fillLinesDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     str: String,
     absolute: Geometry.Offset,
@@ -343,7 +332,7 @@ class TextSupport(
 }
 
 fun fsplit(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   chars: Vector<Char>,
   textSupport: Ui.TextSupport,
   optMaxWidth: ?Float,
@@ -420,7 +409,7 @@ fun fsplit(
 }
 
 fun toDrawables(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   support: Ui.DrawableSupport,
   text: Vector<Char>,
   style: Text.Display,
@@ -468,7 +457,7 @@ fun toDrawables(
 }
 
 fun buildGlyphs(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   text: Vector<Char>,
   style: Text.Display,
 ): Vector<Glyph> {

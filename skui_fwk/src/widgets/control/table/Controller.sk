@@ -40,69 +40,72 @@ class LamController{
   > = Ui.defaultThree(Array[]),
 } extends Controller {
   //
-  fun getColumns(context: mutable SKFS.Context): Array<Column> {
+  fun getColumns(context: mutable SKStore.Context): Array<Column> {
     this.columns(context)
   }
 
-  fun getRows(context: mutable SKFS.Context): Array<Row> {
+  fun getRows(context: mutable SKStore.Context): Array<Row> {
     this.rows(context)
   }
 
-  fun getColumnWidth(context: mutable SKFS.Context, column: String): Width {
+  fun getColumnWidth(context: mutable SKStore.Context, column: String): Width {
     this.columnWidth(context, column)
   }
 
-  fun isShowCheckboxes(context: mutable SKFS.Context): Bool {
+  fun isShowCheckboxes(context: mutable SKStore.Context): Bool {
     this.showCheckboxes(context)
   }
 
-  fun isShowOddEven(context: mutable SKFS.Context): Bool {
+  fun isShowOddEven(context: mutable SKStore.Context): Bool {
     this.showOddEven(context)
   }
 
   fun getSelectionModel(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): SelectionModel {
     this.selectionModel(context, isUntracked)
   }
 
-  fun getProgress(context: mutable SKFS.Context): ?Ui.Progress {
+  fun getProgress(context: mutable SKStore.Context): ?Ui.Progress {
     this.progress(context)
   }
 
-  fun getRowProgress(context: mutable SKFS.Context, row: String): ?Ui.Progress {
+  fun getRowProgress(
+    context: mutable SKStore.Context,
+    row: String,
+  ): ?Ui.Progress {
     this.rowProgress(context, row)
   }
 
-  fun getPlaceHolder(context: mutable SKFS.Context): Text {
+  fun getPlaceHolder(context: mutable SKStore.Context): Text {
     this.placeHolder(context)
   }
 
-  fun getGridPolicy(context: mutable SKFS.Context): GridPolicy {
+  fun getGridPolicy(context: mutable SKStore.Context): GridPolicy {
     this.gridPolicy(context)
   }
 
-  fun getColumnOrder(context: mutable SKFS.Context, column: String): ?Order {
+  fun getColumnOrder(context: mutable SKStore.Context, column: String): ?Order {
     this.columnOrder(context, column)
   }
 
   fun getRowHeight(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Float {
     this.rowHeight(context, isUntracked)
   }
 
   fun getHeaderHeight(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Float {
     this.headerHeight(context, isUntracked)
   }
 
   fun getContextMenuItems(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?String,
     selections: Array<String>,
   ): Array<UiDropdown.Item> {
@@ -110,7 +113,7 @@ class LamController{
   }
 
   fun getSelectionChangeMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     selections: Array<String>,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message> {
@@ -118,7 +121,7 @@ class LamController{
   }
 
   fun getFireMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?String,
     selections: Array<String>,
     isUntracked: Bool = false,
@@ -127,7 +130,7 @@ class LamController{
   }
 
   fun getSortMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     column: String,
     sort: Sort,
     isUntracked: Bool = false,

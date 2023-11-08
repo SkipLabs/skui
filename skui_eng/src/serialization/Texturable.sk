@@ -24,7 +24,7 @@ UInt32::truncate(UiEngine.getInt(value, "height")),
 static fun fromSerializable(s: UiEngine.Serializable): Impl {
 s match {
 | x @ Impl _ -> x
-| _ -> SKFS.cast_violation("UiTexturable.Impl", obj)
+| _ -> SKStore.cast_violation("UiTexturable.Impl", obj)
 }
 }
 }*/

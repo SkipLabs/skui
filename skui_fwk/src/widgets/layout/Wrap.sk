@@ -24,89 +24,92 @@ base class CrossAlignment extends Alignment {
 
 base class Controller extends Ui.WidgetsCollection {
   /** The direction to use as the main axis. */
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis;
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis;
 
   /** Determines the order to lay children out vertically and how to interpret `start` and `end` in the vertical direction. */
-  fun getVerticalDirection(context: mutable SKFS.Context): Ui.VerticalDirection;
+  fun getVerticalDirection(
+    context: mutable SKStore.Context,
+  ): Ui.VerticalDirection;
 
   /** Determines the order to lay children out horizontally and how to interpret `start` and `end` in the horizontal direction. */
   fun getHorizontalDirection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Ui.HorizontalDirection;
 
-  fun getMainAxisAlignment(context: mutable SKFS.Context): Alignment;
+  fun getMainAxisAlignment(context: mutable SKStore.Context): Alignment;
 
-  fun getCrossAxisAlignment(context: mutable SKFS.Context): CrossAlignment;
+  fun getCrossAxisAlignment(context: mutable SKStore.Context): CrossAlignment;
 
   /** How the runs themselves should be placed in the cross axis. */
-  fun getRunAlignment(context: mutable SKFS.Context): Alignment;
+  fun getRunAlignment(context: mutable SKStore.Context): Alignment;
 
   /** How much space to place between children in a run in the main axis. */
-  fun getSpacing(context: mutable SKFS.Context): Float;
+  fun getSpacing(context: mutable SKStore.Context): Float;
 
   /** How much space to place between children in a run in the main axis. */
-  fun getRunSpacing(context: mutable SKFS.Context): Float;
+  fun getRunSpacing(context: mutable SKStore.Context): Float;
 }
 
 class LamController{
-  direction: mutable SKFS.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
-  horizontalDirection: mutable SKFS.Context ~> Ui.HorizontalDirection = _ctx ~>
+  direction: mutable SKStore.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  horizontalDirection: mutable SKStore.Context ~> Ui.HorizontalDirection = _ctx ~>
     Ui.ToRight(),
-  verticalDirection: mutable SKFS.Context ~> Ui.VerticalDirection = _ctx ~>
+  verticalDirection: mutable SKStore.Context ~> Ui.VerticalDirection = _ctx ~>
     Ui.Down(),
-  mainAxisAlignment: mutable SKFS.Context ~> Alignment = _ctx ~> Start(),
-  crossAxisAlignment: mutable SKFS.Context ~> CrossAlignment = _ctx ~> Start(),
-  runAlignment: mutable SKFS.Context ~> Alignment = _ctx ~> Start(),
-  spacing: mutable SKFS.Context ~> Float = _ctx ~> 0.0,
-  runSpacing: mutable SKFS.Context ~> Float = _ctx ~> 0.0,
+  mainAxisAlignment: mutable SKStore.Context ~> Alignment = _ctx ~> Start(),
+  crossAxisAlignment: mutable SKStore.Context ~> CrossAlignment = _ctx ~>
+    Start(),
+  runAlignment: mutable SKStore.Context ~> Alignment = _ctx ~> Start(),
+  spacing: mutable SKStore.Context ~> Float = _ctx ~> 0.0,
+  runSpacing: mutable SKStore.Context ~> Float = _ctx ~> 0.0,
   widgets: Ui.WidgetsCollection,
 } extends Controller {
   //
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis {
     this.direction(context)
   }
 
   fun getHorizontalDirection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Ui.HorizontalDirection {
     this.horizontalDirection(context)
   }
 
   fun getVerticalDirection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Ui.VerticalDirection {
     this.verticalDirection(context)
   }
 
-  fun getMainAxisAlignment(context: mutable SKFS.Context): Alignment {
+  fun getMainAxisAlignment(context: mutable SKStore.Context): Alignment {
     this.mainAxisAlignment(context)
   }
 
-  fun getCrossAxisAlignment(context: mutable SKFS.Context): CrossAlignment {
+  fun getCrossAxisAlignment(context: mutable SKStore.Context): CrossAlignment {
     this.crossAxisAlignment(context)
   }
 
-  fun getRunAlignment(context: mutable SKFS.Context): Alignment {
+  fun getRunAlignment(context: mutable SKStore.Context): Alignment {
     this.runAlignment(context)
   }
 
-  fun getSpacing(context: mutable SKFS.Context): Float {
+  fun getSpacing(context: mutable SKStore.Context): Float {
     this.spacing(context)
   }
 
-  fun getRunSpacing(context: mutable SKFS.Context): Float {
+  fun getRunSpacing(context: mutable SKStore.Context): Float {
     this.runSpacing(context)
   }
 
-  fun getSize(context: mutable SKFS.Context): Int {
+  fun getSize(context: mutable SKStore.Context): Int {
     this.widgets.getSize(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context, index: Int): Ui.Widget {
     this.widgets.getWidget(context, index)
   }
 
-  fun all(context: mutable SKFS.Context): Array<Ui.Widget> {
+  fun all(context: mutable SKStore.Context): Array<Ui.Widget> {
     this.widgets.all(context)
   }
 }
@@ -153,7 +156,7 @@ class Wrap protected {
   fun getDropHandler from WithDropHandler;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiWrap.Parameters,
     cache: NodeCache,
@@ -173,7 +176,7 @@ class Wrap protected {
   }
 
   static fun createForController(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiWrap.Controller,
     optConfiguration: ?Ui.Configuration = None(),
@@ -186,11 +189,14 @@ class Wrap protected {
     )
   }
 
-  protected fun getWidgets(context: mutable SKFS.Context): Array<Widget> {
+  protected fun getWidgets(context: mutable SKStore.Context): Array<Widget> {
     this.controller.all(context)
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     direction = this.controller.getDirection(context);
     horizontalDirection = this.controller.getHorizontalDirection(context);
     verticalDirection = this.controller.getVerticalDirection(context);

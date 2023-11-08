@@ -1,7 +1,7 @@
 module UiTabsSc;
 
 fun computeMetrics(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   state: State,
   sizes: Array<Float>,
   size: Float,

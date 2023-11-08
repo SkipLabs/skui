@@ -47,7 +47,7 @@ fun view(): (
 }
 
 fun image(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   small: Bool = false,
 ): Ui.ImageView {

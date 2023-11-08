@@ -2,7 +2,7 @@ module alias H = UiEngineHandle;
 
 module SkuiEng;
 
-const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/js_engine/");
+const rootPath: SKStore.DirName = SKStore.DirName::create("/ui/js_engine/");
 
 class Renderer(name: String, optDescription: ?String) uses Show {
   fun toString(): String {
@@ -51,8 +51,8 @@ fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
         .each(example -> {
           wId = 0;
           title = example.optDescription.default("SKUI's JS Engine");
-          _ = SKFS.initMainContext(SKFS.Context{});
-          SKFS.Context::withGc(context ~> {
+          _ = SKStore.initMainContext(SKStore.Context{});
+          SKStore.Context::withGc(context ~> {
             initEngineWidget(context, wId, example.name);
             context.initPre()
           });
@@ -69,7 +69,7 @@ native fun jsExamples(): ?JSON.Array;
 native fun getExample(name: String): ?JSON.Value;
 
 fun initEngineWidget(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   wId: Int,
   name: String,
 ): void {
@@ -83,7 +83,7 @@ fun initEngineWidget(
     UiSerializableProp.Property::initValues(
       ctx,
       optPath,
-      Array[(SKFS.StrID("root"), optRenderable.map(UiEngine.fromJSON))],
+      Array[(SKStore.StrID("root"), optRenderable.map(UiEngine.fromJSON))],
     );
     property = UiSerializableProp.Property::forName(ctx, optPath, "root");
     hdl = UiEngine.widgetPipeline(ctx, property, root);

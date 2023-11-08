@@ -1,90 +1,82 @@
-module SKFS;
+module SKStore;
 
 base class UserData
 
-class KKeys() extends BaseName {
-  //
-  static fun fromFile(obj: File): this {
+base class KIndexed extends Key {
+  children =
+  | KKeys()
+  | KSize()
+  | KIdx(Key)
+
+  static fun bKeyType(obj: Key): KIndexed {
     obj match {
-    | x @ KKeys _ -> x
-    | _ -> invariant_violation("Must be SKFS.KKeys")
+    | x @ KIndexed _ -> x
+    | _ -> cast_violation("SKStore.KIndexed", obj)
     }
   }
 
-  fun toString(): String {
+  fun toString(): String
+  | KKeys()
+  | KSize() ->
     this.getClassName()
-  }
+  | KIdx(v) -> v.toString()
 }
 
-class KSize() extends BaseName {
+class Keys(value: Array<Key>) extends File {
   //
-  static fun fromFile(obj: File): this {
-    obj match {
-    | x @ KSize _ -> x
-    | _ -> invariant_violation("Must be SKFS.KSize")
-    }
-  }
-
-  fun toString(): String {
-    this.getClassName()
-  }
-}
-
-class Keys(value: Array<BaseName>) extends File {
-  //
-  static fun fromFile(obj: File): this {
+  static fun type(obj: File): this {
     obj match {
     | x @ Keys _ -> x
-    | _ -> invariant_violation("Must be SKFS.Keys")
+    | _ -> cast_violation("SKStore.Keys", obj)
     }
   }
 }
 
 @debug
-fun derive<T: File, U: UserData>(
+fun derive<K: Key, T: File, U: UserData>(
   context: mutable Context,
   scope: String,
   dirName: DirName,
-  src: EHandle<T>,
-  srcKey: BaseName,
-  initKeys: Array<BaseName>,
+  src: EHandle<K, T>,
+  srcKey: K,
+  initKeys: Array<K>,
   updater: (
     mutable Context,
     String,
-    mutable FWK.SMap<BaseName, ?File>,
+    mutable FWK.SMap<Key, ?File>,
     file: T,
     optUserData: ?U,
   ) ~> void,
   optUserData: ?U,
-  optPreDir: ?EHandle<File> = None(),
-): EHandle<File> {
+  optPreDir: ?ENotTyped = None(),
+): ENotTyped {
   preComputedHdl = optPreDir match {
   | Some(preDirHdl) -> preDirHdl
   | _ ->
-    context.makePreDir(
-      f ~> f,
+    context.makeNotTypedPre(
       dirName,
-      Array<(BaseName, File)>[(KKeys(), Keys(initKeys))],
+      Array<(Key, File)>[(KKeys(), Keys(initKeys))],
     )
   };
-  computedHdl = src.contextWriterKeyMap(
+  computedHdl = src.map(
+    k ~> k,
     f ~> f,
     context,
     dirName,
-    (context, writer, key, file) ~> {
+    (context, writer, key, it) ~> {
       if (srcKey == key) {
         f = preComputedHdl.getValue(context, KKeys(), true);
-        keys = Keys::fromFile(f);
-        //map = mutable FWK.SMap<BaseName, ?File>[];
+        keys = Keys::type(f);
+        //map = mutable FWK.SMap<Key, ?File>[];
         //=>  Invariant violation: We shouldn't be printing those elements!
-        map: mutable FWK.SMap<BaseName, ?File> = mutable FWK.SMap[];
+        map: mutable FWK.SMap<Key, ?File> = mutable FWK.SMap[];
         for (k in keys.value) {
           map.set(k, preComputedHdl.maybeGetValue(context, k, true))
         };
-        updater(context, scope, map, file, optUserData);
+        updater(context, scope, map, it.first, optUserData);
         nKeys = Array::createFromIterator(map.smap.keys());
-        map.each((k, opt) -> opt.each(v -> writer.write(k, v)));
-        writer.write(KKeys(), Keys(nKeys));
+        map.each((k, opt) -> opt.each(v -> writer.set(k, v)));
+        writer.set(KKeys(), Keys(nKeys));
       }
     },
   );

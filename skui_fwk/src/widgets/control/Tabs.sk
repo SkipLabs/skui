@@ -3,83 +3,89 @@ module Ui;
 class Tabs protected {
   controller: UiTabs.Controller,
   state: UiTabs.State,
-  widgetHdl: SKFS.EHValue<WidgetFile>,
+  widgetHdl: SKStore.EHValue<SKStore.IID, WidgetFile>,
 } extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
   //
   type Params = UiTabs.Parameters;
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     params: UiTabs.Parameters,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiTabs.actionsDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
-    actionsKey = SKFS.StrID("actions");
-    fixedKey = SKFS.StrID("fixed");
-    pinnedKey = SKFS.StrID("pinned");
-    tabsKey = SKFS.StrID("tabs");
+    actionsKey = SKStore.StrID("actions");
+    fixedKey = SKStore.StrID("fixed");
+    pinnedKey = SKStore.StrID("pinned");
+    tabsKey = SKStore.StrID("tabs");
     childrenHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.StrID::keyType,
+      SKStore.IntFile::type,
       UiTabs.widgetsDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[
-        (pinnedKey, SKFS.IntFile(0)),
-        (tabsKey, SKFS.IntFile(0)),
-        (actionsKey, SKFS.IntFile(0)),
-        (fixedKey, SKFS.IntFile(0)),
+      Array[
+        (pinnedKey, SKStore.IntFile(0)),
+        (tabsKey, SKStore.IntFile(0)),
+        (actionsKey, SKStore.IntFile(0)),
+        (fixedKey, SKStore.IntFile(0)),
       ],
     );
-    actionsHdl = mainHdl.contextWriterKeyMap(
+    actionsHdl = mainHdl.map(
+      SKStore.KIndexed::bKeyType,
       f ~> f,
       context,
       UiTabs.actionsDirName(path),
       (context, writer, _key, _file) ~> {
         count = params.controller.getNumberOfActions(context);
-        keys = mutable Vector<SKFS.StrID>[];
+        keys = mutable Vector<SKStore.StrID>[];
         for (idx in Range(0, count)) {
           action = params.controller.getAction(context, idx);
-          writer.write(SKFS.StrID(action.id), action);
-          keys.push(SKFS.StrID(action.id))
+          writer.set(SKStore.KIdx(SKStore.StrID(action.id)), action);
+          keys.push(SKStore.StrID(action.id))
         };
-        writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
-        writer.write(SKFS.KSize(), SKFS.IntFile(count));
+        writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
+        writer.set(SKStore.KSize(), SKStore.IntFile(count));
       },
     );
-    actionsWidgetsHdl = actionsHdl.contextWriterKeyMap(
+    actionsWidgetsHdl = actionsHdl.map(
+      SKStore.KIndexed::bKeyType,
       f ~> f,
       context,
       UiTabs.actionsWidgetsDirName(path),
-      (context, writer, key, file) ~> {
+      (context, writer, key, it) ~> {
         key match {
-        | SKFS.KKeys()
-        | SKFS.KSize() ->
-          writer.write(key, file)
+        | SKStore.KKeys()
+        | SKStore.KSize() ->
+          writer.set(key, it.first)
         | _ ->
-          writer.write(
+          writer.set(
             key,
-            WidgetFile((file as UiTabs.Action _).build(context, path)),
+            WidgetFile((it.first as UiTabs.Action _).build(context, path)),
           )
         };
       },
     );
     collect = (context, writer, getNumber, getAt) ~> {
       count = getNumber(context);
-      keys = mutable Vector<SKFS.StrID>[];
+      keys = mutable Vector<SKStore.StrID>[];
       for (idx in Range(0, count)) {
         identified = getAt(context, idx);
-        writer.write(SKFS.StrID(identified.id), identified.controller);
-        keys.push(SKFS.StrID(identified.id))
+        sId = SKStore.StrID(identified.id);
+        writer.set(SKStore.KIdx(sId), identified.controller);
+        keys.push(sId)
       };
-      writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
-      writer.write(SKFS.KSize(), SKFS.IntFile(keys.size()));
+      writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
+      writer.set(SKStore.KSize(), SKStore.IntFile(keys.size()));
     };
-    tabsHdl = mainHdl.contextWriterKeyMap(
+    tabsHdl = mainHdl.map(
+      SKStore.KIndexed::bKeyType,
       f ~> f,
       context,
       UiTabs.tabsDirName(path),
@@ -94,9 +100,9 @@ class Tabs protected {
     );
     buildTab = (context, writer, key, file, pinned) ~> {
       key match {
-      | SKFS.KKeys()
-      | SKFS.KSize() ->
-        writer.write(key, file)
+      | SKStore.KKeys()
+      | SKStore.KSize() ->
+        writer.set(key, file)
       | _ ->
         controller = (file as UiTab.Controller _);
         tabPath = path
@@ -116,21 +122,23 @@ class Tabs protected {
             }
           },
         );
-        writer.write(key, WidgetFile(widget))
+        writer.set(key, WidgetFile(widget))
       };
     };
-    buildPinned = (context, writer, key, file) ~>
-      buildTab(context, writer, key, file, true);
-    buildNotPinned = (context, writer, key, file) ~>
-      buildTab(context, writer, key, file, false);
+    buildPinned = (context, writer, key, it) ~>
+      buildTab(context, writer, key, it.first, true);
+    buildNotPinned = (context, writer, key, it) ~>
+      buildTab(context, writer, key, it.first, false);
 
-    tabsWidgetsHdl = tabsHdl.contextWriterKeyMap(
+    tabsWidgetsHdl = tabsHdl.map(
+      SKStore.KIndexed::bKeyType,
       f ~> f,
       context,
       UiTabs.tabsWidgetsDirName(path),
       buildNotPinned,
     );
-    pinnedTabsHdl = mainHdl.contextWriterKeyMap(
+    pinnedTabsHdl = mainHdl.map(
+      SKStore.KIndexed::bKeyType,
       f ~> f,
       context,
       UiTabs.pinnedTabsDirName(path),
@@ -143,19 +151,21 @@ class Tabs protected {
         )
       ,
     );
-    pinnedTabsWidgetsHdl = pinnedTabsHdl.contextWriterKeyMap(
+    pinnedTabsWidgetsHdl = pinnedTabsHdl.map(
+      SKStore.KIndexed::bKeyType,
       f ~> f,
       context,
       UiTabs.pinnedTabsWidgetsDirName(path),
       buildPinned,
     );
-    actionsCollection = HandledCollection(actionsWidgetsHdl);
-    tabsCollection = HandledCollection(tabsWidgetsHdl);
-    pinnedCollection = HandledCollection(pinnedTabsWidgetsHdl);
+    actionsCollection = KIndexedCollection(actionsWidgetsHdl);
+    tabsCollection = KIndexedCollection(tabsWidgetsHdl);
+    pinnedCollection = KIndexedCollection(pinnedTabsWidgetsHdl);
     allCollection = MergeCollection(pinnedCollection, tabsCollection);
     widgetsPath = UiTabs.widgetsDirName(path);
-    widgetsHdl = childrenHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    widgetsHdl = childrenHdl.map(
+      SKStore.StrID::keyType,
+      WidgetFile::type,
       context,
       widgetsPath,
       (context, writer, key, _) ~> {
@@ -163,7 +173,7 @@ class Tabs protected {
         if (key == pinnedKey) {
           params.controller.getKind(context) match {
           | UiTabs.Scrollable() ->
-            writer.write(
+            writer.set(
               key,
               WidgetFile(
                 Flex::createForController(
@@ -182,7 +192,7 @@ class Tabs protected {
         } else if (key == tabsKey) {
           kind = params.controller.getKind(context);
           if (kind == UiTabs.Scrollable()) {
-            writer.write(
+            writer.set(
               key,
               WidgetFile(
                 TabsSc::create(
@@ -231,7 +241,7 @@ class Tabs protected {
                 Some(UiFlex.Configuration{ignoreCross => true}),
               )
             };
-            writer.write(
+            writer.set(
               key,
               WidgetFile(
                 Decorated::create(
@@ -249,7 +259,7 @@ class Tabs protected {
         } else if (key == fixedKey) {
           params.controller.getKind(context) match {
           | UiTabs.Fixed() ->
-            writer.write(
+            writer.set(
               key,
               WidgetFile(
                 Flex::createForController(
@@ -273,8 +283,9 @@ class Tabs protected {
     getTabs = ctx ~> widgetsHdl.get(ctx, tabsKey).widget;
     getActions = ctx ~> widgetsHdl.get(ctx, actionsKey).widget;
     widgetPath = UiTabs.widgetDirName(path);
-    widgetHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    widgetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       widgetPath,
       (context, writer, key, _) ~> {
@@ -339,7 +350,7 @@ class Tabs protected {
         } else {
           main
         };
-        writer.write(key, WidgetFile(root))
+        writer.set(key, WidgetFile(root))
       },
     );
     static{
@@ -348,12 +359,15 @@ class Tabs protected {
       state => params.state,
       optConfiguration,
       cache,
-      widgetHdl => SKFS.EHValue(widgetHdl, SKFS.IID(0)),
+      widgetHdl => SKStore.EHValue(widgetHdl, SKStore.IID(0)),
       tick => context.tick,
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     widget = this.widgetHdl.get(context).widget;
     node = widget.getNode(context, constraints);
     Node(
@@ -363,12 +377,12 @@ class Tabs protected {
     );
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.widgetHdl.get(context).widget.getViewportDefinition(context);
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((context, _, _) ~>

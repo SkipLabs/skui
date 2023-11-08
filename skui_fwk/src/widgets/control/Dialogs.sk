@@ -3,30 +3,32 @@ module Ui;
 class Dialogs protected {
   controller: UiDialogs.Controller,
   state: UiDialogs.State,
-  private supplier: mutable SKFS.Context ~> Widget,
+  private supplier: mutable SKStore.Context ~> Widget,
 } extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
   //
   type Params = UiDialogs.Parameters;
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiDialogs.Parameters,
     cache: NodeCache,
     optConfiguration: ?Ui.Configuration = None(),
   ): this {
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiDialog.widgetDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
-    builderHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    builderHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       UiDialog.widgetDirName(path),
       (context, writer, key, _file) ~> {
-        writer.write(
+        writer.set(
           key,
           WidgetFile(
             Stack::createForController(
@@ -49,12 +51,15 @@ class Dialogs protected {
       state => params.state,
       cache,
       optConfiguration,
-      supplier => ctx ~> builderHdl.get(ctx, SKFS.IID(0)).widget,
+      supplier => ctx ~> builderHdl.get(ctx, SKStore.IID(0)).widget,
       tick => context.tick,
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     builtNode = this.supplier(context).getNode(context, constraints);
     Node(
       this,
@@ -63,12 +68,12 @@ class Dialogs protected {
     )
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.supplier(context).getViewportDefinition(context);
   }
 
   fun alert(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: Text,
     optTitle: ?Text = None(),
   ): void {
@@ -76,9 +81,9 @@ class Dialogs protected {
   }
 
   fun confirm(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: Text,
-    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
+    onConfirm: (mutable SKStore.Context, Bool, Int) ~> void,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
     autoClose: Bool = true,
@@ -90,9 +95,9 @@ class Dialogs protected {
   }
 
   fun input(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     message: Text,
-    onInput: (mutable SKFS.Context, String, Int) ~> void,
+    onInput: (mutable SKStore.Context, String, Int) ~> void,
     optTitle: ?Text = None(),
     autoClose: Bool = true,
     settings: UiDialogs.Settings = UiDialogs.Settings{},

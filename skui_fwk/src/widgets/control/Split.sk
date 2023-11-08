@@ -8,7 +8,7 @@ class Split protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiSplit.Controller,
     cache: NodeCache,
@@ -17,7 +17,10 @@ class Split protected {
     static{path, controller, cache, optConfiguration, tick => context.tick}
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     first = this.controller.getFirstWidget(context);
     second = this.controller.getSecondWidget(context);
     thickness =
@@ -154,7 +157,7 @@ class Split protected {
     };
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     first = this.controller.getFirstWidget(context);
     second = this.controller.getSecondWidget(context);
     optFirstVp = first.getViewportDefinition(context);
@@ -183,7 +186,7 @@ class Split protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -211,7 +214,7 @@ class Split protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((ctx, offset, ni) ~> {
@@ -227,7 +230,7 @@ class Split protected {
   }
 
   fun getLockHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.LockHandler>,
   ): ?Ui.LockHandlerGetter {
     Some((ctx, mouse, ni) ~> {

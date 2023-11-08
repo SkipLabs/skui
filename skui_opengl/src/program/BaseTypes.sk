@@ -2,12 +2,12 @@ module GLProgram;
 
 base class Data
 
-class Buffer(value: GL.Buffer) extends SKFS.File, Data {
+class Buffer(value: GL.Buffer) extends SKStore.File, Data {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Buffer _ -> x
-    | _ -> SKFS.cast_violation("GLProgram.Buffer", obj)
+    | _ -> SKStore.cast_violation("GLProgram.Buffer", obj)
     }
   }
 
@@ -19,12 +19,12 @@ class Buffer(value: GL.Buffer) extends SKFS.File, Data {
 class VertexArray(
   value: GL.VertexArray,
   positions: String,
-) extends SKFS.File, Data {
+) extends SKStore.File, Data {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ VertexArray _ -> x
-    | _ -> SKFS.cast_violation("GLProgram.VertexArray", obj)
+    | _ -> SKStore.cast_violation("GLProgram.VertexArray", obj)
     }
   }
 
@@ -88,7 +88,7 @@ base class AttributeVertexShader(
         UInt32::truncate(0),
       );
       this.toApply(attrParams, window)
-    | _ -> SKFS.cast_violation("GLProgram.AttributeVertexParams", params)
+    | _ -> SKStore.cast_violation("GLProgram.AttributeVertexParams", params)
     };
   }
 
@@ -96,7 +96,7 @@ base class AttributeVertexShader(
     params match {
     | attrParams @ AttributeVertexParams _ ->
       attrParams.positions.value.unbind()
-    | _ -> SKFS.cast_violation("GLProgram.AttributeVertexParams", params)
+    | _ -> SKStore.cast_violation("GLProgram.AttributeVertexParams", params)
     };
     this.onClean();
   }
@@ -115,14 +115,14 @@ base class LayoutVertexShader() extends VertexShader {
     | lParams @ LayoutVertexParams _ ->
       lParams.vArray.value.bind();
       this.toApply(lParams, window)
-    | _ -> SKFS.cast_violation("GLProgram.LayoutVertexParams", params)
+    | _ -> SKStore.cast_violation("GLProgram.LayoutVertexParams", params)
     };
   }
 
   fun clean(params: VertexShaderParams): void {
     params match {
     | lParams @ LayoutVertexParams _ -> lParams.vArray.value.unbind()
-    | _ -> SKFS.cast_violation("GLProgram.LayoutVertexParams", params)
+    | _ -> SKStore.cast_violation("GLProgram.LayoutVertexParams", params)
     };
     this.onClean();
   }
@@ -167,12 +167,12 @@ class TriangleProgram(
   program: GL.Prepared,
   fragmentShader: FragmentShader,
   vertexShader: VertexShader,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TriangleProgram _ -> x
-    | _ -> SKFS.cast_violation("GLProgram.TriangleProgram", obj)
+    | _ -> SKStore.cast_violation("GLProgram.TriangleProgram", obj)
     }
   }
 

@@ -1,22 +1,23 @@
 module UiIcon;
 
 fun createIconSupport(
-  context: mutable SKFS.Context,
-  optBasename: ?SKFS.DirName = None(),
+  context: mutable SKStore.Context,
+  optBasename: ?SKStore.DirName = None(),
 ): Support {
-  statePath = SKFS.DirName::check(`icons/states/`, optBasename);
+  statePath = SKStore.DirName::check(`icons/states/`, optBasename);
   predef = predefined();
   faceProps = faceSupplier(context, predef, optBasename);
   glyphProps = glyphSupplier(context, faceProps, optBasename);
-  codesHdl = SKFS.LHandle::lazy(
-    SKFS.Loadable::forFile,
+  codesHdl = SKStore.LHandle::lazy(
+    SKStore.StrID::keyType,
+    SKStore.Loadable::btype,
     context,
-    SKFS.DirName::make(statePath, "__cache/codes/"),
+    SKStore.DirName::make(statePath, "__cache/codes/"),
     (_ctx, _self, key) ~> {
-      sid = FWK.sidConverter.fromBaseName(key);
-      predef.maybeGet(sid) match {
-      | Some(p) -> SKFS.Loaded(p.codes)
-      | None() -> SKFS.LoadFailed(Some(!"Only prefefined icons are managed."))
+      predef.maybeGet(key.value) match {
+      | Some(p) -> SKStore.Loaded(p.codes)
+      | None() ->
+        SKStore.LoadFailed(Some(!"Only prefefined icons are managed."))
       }
     },
     false,
@@ -26,114 +27,105 @@ fun createIconSupport(
     faceProps,
     glyphProps,
     (ctx, codesId) ~>
-      SKFS.LoadableFuture(Codes::forFile, codesHdl.get(ctx, codesId)),
+      SKStore.LoadableFuture(Codes::btype, codesHdl.get(ctx, codesId)),
     msdfProps,
   );
 }
 
 fun faceSupplier(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   predef: SortedMap<String, Predefined>,
-  optBasename: ?SKFS.DirName = None(),
-): Ui.GetterOne<SKFS.Future<Font.TypeFace>, Face> {
-  typefacePath = SKFS.DirName::check("icons/ttfs/typefaces/", optBasename);
-  typefaceHdl = SKFS.LHandle::lazy(
-    SKFS.Loadable::forFile,
+  optBasename: ?SKStore.DirName = None(),
+): Ui.GetterOne<SKStore.Future<Font.TypeFace>, Face> {
+  typefacePath = SKStore.DirName::check("icons/ttfs/typefaces/", optBasename);
+  typefaceHdl = SKStore.LHandle::lazy(
+    Face::keyType,
+    SKStore.Loadable::btype,
     context,
     typefacePath,
-    (_ctx, _self, key) ~> {
-      key match {
-      | typeface @ Face _ ->
-        typeFace = font ~>
-          Font.TypeFace(
-            Font.TypefaceInfo::create(typeface.collection),
-            TrueType.Face::make(
-              font,
-              Font.Options{
-                size => typeface.size,
-                dpi => typeface.dpi,
-                hinting => typeface.hinting,
-              },
-            ),
-          );
-        predef.maybeGet(typeface.collection) match {
-        | Some(p) ->
-          buffer = Base64.decodeString(p.base64);
-          font = TrueType.parse(buffer);
-          SKFS.Loaded(typeFace(font))
-        | None() -> SKFS.LoadFailed(Some(!"Only prefefined icons are managed."))
-        }
-      | _ -> invariant_violation(`Must be a UiIcon.Face key`)
+    (_ctx, _self, typeface) ~> {
+      typeFace = font ~>
+        Font.TypeFace(
+          Font.TypefaceInfo::create(typeface.collection),
+          TrueType.Face::make(
+            font,
+            Font.Options{
+              size => typeface.size,
+              dpi => typeface.dpi,
+              hinting => typeface.hinting,
+            },
+          ),
+        );
+      predef.maybeGet(typeface.collection) match {
+      | Some(p) ->
+        buffer = Base64.decodeString(p.base64);
+        font = TrueType.parse(buffer);
+        SKStore.Loaded(typeFace(font))
+      | None() ->
+        SKStore.LoadFailed(Some(!"Only prefefined icons are managed."))
       }
     },
     false,
   );
   (ctx, typeface) ~>
-    SKFS.LoadableFuture(Font.TypeFace::fromFile, typefaceHdl.get(ctx, typeface))
+    SKStore.LoadableFuture(Font.TypeFace::type, typefaceHdl.get(ctx, typeface))
 }
 
 fun glyphSupplier(
-  context: mutable SKFS.Context,
-  faceSources: Ui.GetterOne<SKFS.Future<Font.TypeFace>, Face>,
-  optBasename: ?SKFS.DirName = None(),
+  context: mutable SKStore.Context,
+  faceSources: Ui.GetterOne<SKStore.Future<Font.TypeFace>, Face>,
+  optBasename: ?SKStore.DirName = None(),
 ): Ui.GetterOne<?Font.GlyphFile, Glyph> {
-  glyphPath = SKFS.DirName::check("icons/ttfs/glyphs/", optBasename);
-  glyphHdl = SKFS.LHandle::optLazy(
-    Font.GlyphFile::fromFile,
+  glyphPath = SKStore.DirName::check("icons/ttfs/glyphs/", optBasename);
+  glyphHdl = SKStore.LHandle::optLazy(
+    Glyph::keyType,
+    Font.GlyphFile::type,
     context,
     glyphPath,
-    (context, _self, key) ~> {
-      key match {
-      | gid @ Glyph _ ->
-        futur = faceSources(context, gid.face);
-        futur.maybeGet().flatMap(typeface ~> {
-          face = typeface.face;
-          optGlyph = face.getGlyph(gid.char);
-          if (optGlyph.isNone()) {
-            !optGlyph = face.getGlyph('\ufffd');
-          };
-          if (optGlyph.isNone()) {
-            !optGlyph = face.getGlyph('?');
-          };
-          optGlyph.map(glyph -> Font.GlyphFile(Some(face), glyph))
-        })
-      | _ -> invariant_violation(`Must be a  UiIcon.Glyph key`)
-      }
+    (context, _self, gid) ~> {
+      futur = faceSources(context, gid.face);
+      futur.maybeGet().flatMap(typeface ~> {
+        face = typeface.face;
+        optGlyph = face.getGlyph(gid.char);
+        if (optGlyph.isNone()) {
+          !optGlyph = face.getGlyph('\ufffd');
+        };
+        if (optGlyph.isNone()) {
+          !optGlyph = face.getGlyph('?');
+        };
+        optGlyph.map(glyph -> Font.GlyphFile(Some(face), glyph))
+      })
     },
     false,
   );
-  (ctx, glyphId) ~> glyphHdl.maybeGet(ctx, glyphId);
+  (ctx, glyphId) ~> glyphHdl.maybeGetValue(ctx, glyphId);
 }
 
 fun msdfSupplier(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   glyphProps: Ui.GetterOne<?Font.GlyphFile, Glyph>,
-  optBasename: ?SKFS.DirName = None(),
+  optBasename: ?SKStore.DirName = None(),
 ): Ui.GetterOne<?Font.Msdf, Glyph> {
-  msdfPath = SKFS.DirName::check("icons/ttfs/msdf/", optBasename);
-  msdfHdl = SKFS.LHandle::optLazy(
-    Font.Msdf::fromFile,
+  msdfPath = SKStore.DirName::check("icons/ttfs/msdf/", optBasename);
+  msdfHdl = SKStore.LHandle::optLazy(
+    Glyph::keyType,
+    Font.Msdf::type,
     context,
     msdfPath,
-    (context, _self, key) ~> {
-      key match {
-      | gid @ Glyph _ ->
-        glyphProps(context, gid).flatMap(glyph ->
-          glyph.glyph.optPath.map(path -> {
-            info = MTSDF.toMSDF{
-              shape => MTSDF.Shape::fromPath(path),
-              pxRange => gid.pxRange,
-            };
-            Font.Msdf::make(gid.char, info)
-          })
-        )
-
-      | _ -> SKFS.cast_violation("UiIcon.Glyph", key)
-      }
+    (context, _self, gid) ~> {
+      glyphProps(context, gid).flatMap(glyph ->
+        glyph.glyph.optPath.map(path -> {
+          info = MTSDF.toMSDF{
+            shape => MTSDF.Shape::fromPath(path),
+            pxRange => gid.pxRange,
+          };
+          Font.Msdf::make(gid.char, info)
+        })
+      )
     },
     false,
   );
-  (ctx, glyphId) ~> msdfHdl.maybeGet(ctx, glyphId);
+  (ctx, glyphId) ~> msdfHdl.maybeGetValue(ctx, glyphId);
 }
 
 module end;

@@ -1,20 +1,20 @@
 module IO;/*
 base class Property {
-fun write(context: mutable SKFS.Context, key: JSONValue, value: Change): void;
+fun write(context: mutable SKStore.Context, key: JSONValue, value: Change): void;
 }
 
 class Messages(
 property: Property,
 ) extends SKUIMessage.Support uses SKUIMessage.WithUpdate<Command> {
 //
-static fun fromFile(obj: SKFS.File): this {
+static fun type(obj: SKStore.File): this {
 obj match {
 | x @ Messages _ -> x
 | _ -> invariant_violation("Must be IO.Messages")
 }
 }
 
-fun init(_context: mutable SKFS.Context): void {
+fun init(_context: mutable SKStore.Context): void {
 void
 }
 
@@ -27,7 +27,7 @@ command as Command _;
 }
 
 protected fun execute(
-context: mutable SKFS.Context,
+context: mutable SKStore.Context,
 _name: String,
 _scope: String,
 command: Command,

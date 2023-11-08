@@ -34,9 +34,11 @@ base class Type uses Hashable, Equality {
   }
 }
 
-class Content(values: Map<Type, IO.Data>) extends SKFS.File uses HasClassName {
+class Content(
+  values: Map<Type, IO.Data>,
+) extends SKStore.File uses HasClassName {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Content _ -> x
     | _ -> invariant_violation("Must be FWKClipboard.Content")
@@ -177,14 +179,14 @@ class Content(values: Map<Type, IO.Data>) extends SKFS.File uses HasClassName {
 }
 
 fun paste(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   type: Type,
   target: SKUIMessage.Target,
 ): void {
   SKUIMessage.emit(context, "system", "clipboard", Paste(type, target))
 }
 
-fun copy(context: mutable SKFS.Context, content: Content): void {
+fun copy(context: mutable SKStore.Context, content: Content): void {
   SKUIMessage.emit(context, "system", "clipboard", Copy(content))
 }
 

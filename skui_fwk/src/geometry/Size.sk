@@ -1,21 +1,21 @@
 module Geometry;
 
-extension class Size extends SKFS.File {
+extension class Size extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Size _ -> x
-    | _ -> SKFS.cast_violation("Geometry.Size", obj)
+    | _ -> SKStore.cast_violation("Geometry.Size", obj)
     }
   }
 }
 
-extension class ISize extends SKFS.File {
+extension class ISize extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ ISize _ -> x
-    | _ -> SKFS.cast_violation("Geometry.ISize", obj)
+    | _ -> SKStore.cast_violation("Geometry.ISize", obj)
     }
   }
 }

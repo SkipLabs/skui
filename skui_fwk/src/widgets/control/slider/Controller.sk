@@ -1,54 +1,60 @@
 module UiSlider;
 
 class LamController{
-  value: (mutable SKFS.Context, Bool) ~> Value,
-  range: (mutable SKFS.Context, Bool) ~> Range,
-  rangeKind: (mutable SKFS.Context, Bool) ~> Bool = (_ctx, _iu) ~> false,
-  step: (mutable SKFS.Context, Bool) ~> Step = (_ctx, _iu) ~> Step(1),
-  ticks: mutable SKFS.Context ~> ?Step = _ctx ~> None(),
-  disabled: mutable SKFS.Context ~> Bool = _ctx ~> false,
-  direction: mutable SKFS.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
-  withLabel: mutable SKFS.Context ~> Bool = _ctx ~> false,
-  small: mutable SKFS.Context ~> Bool = _ctx ~> false,
+  value: (mutable SKStore.Context, Bool) ~> Value,
+  range: (mutable SKStore.Context, Bool) ~> Range,
+  rangeKind: (mutable SKStore.Context, Bool) ~> Bool = (_ctx, _iu) ~> false,
+  step: (mutable SKStore.Context, Bool) ~> Step = (_ctx, _iu) ~> Step(1),
+  ticks: mutable SKStore.Context ~> ?Step = _ctx ~> None(),
+  disabled: mutable SKStore.Context ~> Bool = _ctx ~> false,
+  direction: mutable SKStore.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  withLabel: mutable SKStore.Context ~> Bool = _ctx ~> false,
+  small: mutable SKStore.Context ~> Bool = _ctx ~> false,
 } extends Controller {
   //
-  fun isRange(context: mutable SKFS.Context, isUnkracked: Bool = false): Bool {
+  fun isRange(
+    context: mutable SKStore.Context,
+    isUnkracked: Bool = false,
+  ): Bool {
     this.rangeKind(context, isUnkracked)
   }
 
   fun getRange(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUnkracked: Bool = false,
   ): Range {
     this.range(context, isUnkracked)
   }
 
-  fun getStep(context: mutable SKFS.Context, isUnkracked: Bool = false): Step {
+  fun getStep(
+    context: mutable SKStore.Context,
+    isUnkracked: Bool = false,
+  ): Step {
     this.step(context, isUnkracked)
   }
 
-  fun isDisabled(context: mutable SKFS.Context): Bool {
+  fun isDisabled(context: mutable SKStore.Context): Bool {
     this.disabled(context)
   }
 
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis {
     this.direction(context)
   }
 
-  fun isWithLabel(context: mutable SKFS.Context): Bool {
+  fun isWithLabel(context: mutable SKStore.Context): Bool {
     this.withLabel(context)
   }
 
-  fun isSmall(context: mutable SKFS.Context): Bool {
+  fun isSmall(context: mutable SKStore.Context): Bool {
     this.small(context)
   }
 
-  fun getTicks(context: mutable SKFS.Context): ?Step {
+  fun getTicks(context: mutable SKStore.Context): ?Step {
     this.ticks(context)
   }
 
   fun getValue(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUnkracked: Bool = false,
   ): Value {
     this.value(context, isUnkracked)

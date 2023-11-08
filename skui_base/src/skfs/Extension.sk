@@ -10,6 +10,26 @@ class FloatFile(value: Float) extends File {
   }
 }
 
+class DirNameFile(value: DirName) extends File {
+  //
+  static fun type(obj: File): this {
+    obj match {
+    | x @ DirNameFile _ -> x
+    | _ -> cast_violation("SKStore.DirNameFile", obj)
+    }
+  }
+}
+
+class KeyFile(value: Key) extends File {
+  //
+  static fun type(obj: File): this {
+    obj match {
+    | x @ KeyFile _ -> x
+    | _ -> cast_violation("SKStore.KeyFile", obj)
+    }
+  }
+}
+
 class CharFile(value: Char) extends File {
   //
   static fun type(obj: File): this {

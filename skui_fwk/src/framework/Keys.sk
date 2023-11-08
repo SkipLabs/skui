@@ -1,22 +1,28 @@
 module FWKKeys;
 
-const statePath: SKFS.DirName = SKFS.DirName::create("/ui/system/keys/state/");
-const modifiersPath: SKFS.DirName = SKFS.DirName::create(
+const statePath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/system/keys/state/",
+);
+const modifiersPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/system/keys/modifiers/",
 );
 
-const propKey: SKFS.IID = SKFS.IID(0);
-const ctrlKey: SKFS.IID = SKFS.IID(0);
-const shiftKey: SKFS.IID = SKFS.IID(1);
-const altKey: SKFS.IID = SKFS.IID(2);
+const propKey: SKStore.IID = SKStore.IID(0);
+const ctrlKey: SKStore.IID = SKStore.IID(0);
+const shiftKey: SKStore.IID = SKStore.IID(1);
+const altKey: SKStore.IID = SKStore.IID(2);
 
-const kfHandle: SKFS.IHandle<UiEvent.KeysFile> = SKFS.IHandle(
-  SKFS.FileConverter(UiEvent.KeysFile::fromFile),
-  statePath,
-);
+const kfHandle: SKStore.IHandle<
+  SKStore.IID,
+  UiEvent.KeysFile,
+> = SKStore.IHandle(SKStore.IID::keyType, UiEvent.KeysFile::type, statePath);
 
-const mdHandle: SKFS.EHandle<SKFS.BoolFile> = SKFS.EHandle(
-  SKFS.BoolFile::fromFile,
+const mdHandle: SKStore.EHandle<
+  SKStore.IID,
+  SKStore.BoolFile,
+> = SKStore.EHandle(
+  SKStore.IID::keyType,
+  SKStore.BoolFile::type,
   modifiersPath,
 );
 
@@ -25,8 +31,11 @@ base class Command {
   | Next()
 }
 
-base class Event(timeStamp: System.TimeStamp, tick: SKFS.Tick) extends Command {
-  fun compute(keysFile: UiEvent.KeysFile, tick: SKFS.Tick): UiEvent.KeysFile;
+base class Event(
+  timeStamp: System.TimeStamp,
+  tick: SKStore.Tick,
+) extends Command {
+  fun compute(keysFile: UiEvent.KeysFile, tick: SKStore.Tick): UiEvent.KeysFile;
 }
 
 base class Shortcut {
@@ -37,7 +46,7 @@ base class Shortcut {
 }
 
 fun getShortcut(
-  _context: mutable SKFS.Context,
+  _context: mutable SKStore.Context,
   _action: String,
   _category: String,
   _identifier: String,
@@ -46,7 +55,7 @@ fun getShortcut(
 }
 
 fun getMenuShortcut(
-  _context: mutable SKFS.Context,
+  _context: mutable SKStore.Context,
   _action: String,
   _category: String,
   _identifier: String,
@@ -60,7 +69,10 @@ class KeyPressed(
   optKeyValue: ?String,
   locks: UiEvent.Locks,
 ) extends Event {
-  fun compute(keysFile: UiEvent.KeysFile, tick: SKFS.Tick): UiEvent.KeysFile {
+  fun compute(
+    keysFile: UiEvent.KeysFile,
+    tick: SKStore.Tick,
+  ): UiEvent.KeysFile {
     nKeysFile = keysFile;
     optKeyValue = this.optKeyValue;
     if (
@@ -130,7 +142,10 @@ class KeyPressed(
 }
 
 class KeyReleased(code: String) extends Event {
-  fun compute(keysFile: UiEvent.KeysFile, tick: SKFS.Tick): UiEvent.KeysFile {
+  fun compute(
+    keysFile: UiEvent.KeysFile,
+    tick: SKStore.Tick,
+  ): UiEvent.KeysFile {
     nKeysFile = keysFile;
     !nKeysFile.keys = nKeysFile.keys
       .map(key -> {
@@ -150,7 +165,10 @@ class KeyReleased(code: String) extends Event {
 }
 
 class Clear() extends Event {
-  fun compute(keysFile: UiEvent.KeysFile, _tick: SKFS.Tick): UiEvent.KeysFile {
+  fun compute(
+    keysFile: UiEvent.KeysFile,
+    _tick: SKStore.Tick,
+  ): UiEvent.KeysFile {
     nKeysFile = keysFile;
     !nKeysFile.keys = Array[];
     nKeysFile
@@ -158,54 +176,60 @@ class Clear() extends Event {
 }
 
 @skuiinitializer
-fun init(context: mutable SKFS.Context): void {
+fun init(context: mutable SKStore.Context): void {
   _ = context
     .makeDir(
-      UiEvent.KeysFile::fromFile,
+      SKStore.IID::keyType,
+      UiEvent.KeysFile::type,
       statePath,
       Array[(propKey, UiEvent.KeysFile(Array[], false, false, false, false))],
     )
-    .contextWriterKeyMap(
-      SKFS.BoolFile::fromFile,
+    .map(
+      SKStore.IID::keyType,
+      SKStore.BoolFile::type,
       context,
       modifiersPath,
-      (ctx, writer, _, file) ~> {
+      (ctx, writer, _, it) ~> {
+        file = it.first;
         ctrlDown = file.isControlDown(ctx.tick);
         shiftDown = file.isShiftDown(ctx.tick);
         altDown = file.isAltDown(ctx.tick);
-        writer.write(ctrlKey, SKFS.BoolFile(ctrlDown));
-        writer.write(shiftKey, SKFS.BoolFile(shiftDown));
-        writer.write(altKey, SKFS.BoolFile(altDown));
+        writer.set(ctrlKey, SKStore.BoolFile(ctrlDown));
+        writer.set(shiftKey, SKStore.BoolFile(shiftDown));
+        writer.set(altKey, SKStore.BoolFile(altDown));
       },
     )
 }
 
 fun getKeys(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): UiEvent.KeysFile {
   kfHandle.getValue(context, propKey, isUntracked);
 }
 
 fun isControlDown(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): Bool {
   mdHandle.getBool(context, ctrlKey, isUntracked);
 }
 
 fun isShiftDown(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): Bool {
   mdHandle.getBool(context, shiftKey, isUntracked);
 }
 
-fun isAltDown(context: mutable SKFS.Context, isUntracked: Bool = false): Bool {
+fun isAltDown(
+  context: mutable SKStore.Context,
+  isUntracked: Bool = false,
+): Bool {
   mdHandle.getBool(context, altKey, isUntracked);
 }
 
-fun execute(context: mutable SKFS.Context, command: Command): void {
+fun execute(context: mutable SKStore.Context, command: Command): void {
   keysFile = kfHandle.get(context, propKey);
   command match {
   | Next() -> kfHandle.write(context, propKey, keysFile.next())
@@ -214,7 +238,7 @@ fun execute(context: mutable SKFS.Context, command: Command): void {
   }
 }
 
-fun setKeys(context: mutable SKFS.Context, keys: UiEvent.KeysFile): void {
+fun setKeys(context: mutable SKStore.Context, keys: UiEvent.KeysFile): void {
   kfHandle.write(context, propKey, keys)
 }
 

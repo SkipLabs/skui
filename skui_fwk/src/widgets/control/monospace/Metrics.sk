@@ -6,7 +6,7 @@ class Metrics(
 ) extends Ui.UserData uses Show {
   //
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     size: Geometry.Size,
     lines: Int,
     columns: Int,

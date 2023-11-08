@@ -7,11 +7,11 @@ extension base class Value extends JSONValue {
 
 module end;
 
-extension base class Text extends SKFS.File {
-  static fun forFile(obj: SKFS.File): Text {
+extension base class Text extends SKStore.File {
+  static fun btype(obj: SKStore.File): Text {
     obj match {
     | x @ Text _ -> x
-    | _ -> SKFS.cast_violation("Text", obj)
+    | _ -> SKStore.cast_violation("Text", obj)
     }
   }
 }

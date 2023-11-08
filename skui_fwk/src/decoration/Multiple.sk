@@ -9,7 +9,7 @@ class Nested(decorations: Array<Decoration>) extends Decoration {
   }
 
   fun fillDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,

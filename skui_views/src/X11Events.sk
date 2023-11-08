@@ -6,7 +6,7 @@ private const SecondaryButton: Int = 3;
 private const WheelUpButton: Int = 4;
 private const WheelDownButton: Int = 5;
 
-class OnWindowClose(mutable SKFS.Context ~> void) extends SKFS.File
+class OnWindowClose(mutable SKStore.Context ~> void) extends SKStore.File
 
 @cpp_extern("SKIP_SKUIX11_launch")
 native fun launch(
@@ -27,8 +27,8 @@ native fun sendMessage(
 
 @cpp_export("SKIP_SKUIX11_windowInitialized")
 fun windowInitialized(wId: Int): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
     context.setGlobal(
       "SKUIMessage.Sender",
       SKUIMessage.Sender((_ctx, message, asyncMode, delay) ~> {
@@ -39,7 +39,7 @@ fun windowInitialized(wId: Int): void {
     context.checkPendingMessages();
     context.updateIfRoot();
   });
-  SKFS.destroyObstack(pos);
+  SKStore.destroyObstack(pos);
 }
 
 @cpp_export("SKIP_SKUIX11_manageMouseLocation")
@@ -50,8 +50,8 @@ private fun manageMouseLocation(
   _screenX: Int,
   _screenY: Int,
 ): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
     FWKMouse.execute(
       context,
       FWKMouse.Location(
@@ -62,13 +62,13 @@ private fun manageMouseLocation(
     );
     context.updateIfRoot();
   });
-  SKFS.destroyObstack(pos);
+  SKStore.destroyObstack(pos);
 }
 
 @cpp_export("SKIP_SKUIX11_manageMouseButton")
 private fun manageMouseButton(_wId: Int, button: Int, pressed: Bool): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
     FWKMouse.execute(
       context,
       FWKMouse.Button(
@@ -87,19 +87,19 @@ private fun manageMouseButton(_wId: Int, button: Int, pressed: Bool): void {
     );
     context.updateIfRoot();
   });
-  SKFS.destroyObstack(pos);
+  SKStore.destroyObstack(pos);
 }
 
 @cpp_export("SKIP_SKUIX11_manageResize")
 fun manageResize(wId: Int, w: Int, h: Int, r: Int): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> {
-    context.getGlobal("FWK.Window.Size").map(FWK.Sizer::fromFile).each(sizer ->
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    context.getGlobal("FWK.Window.Size").map(FWK.Sizer::type).each(sizer ->
       sizer.value(context, wId, w, h, r.toFloat() / 100.0)
     );
     context.updateIfRoot();
   });
-  SKFS.destroyObstack(pos);
+  SKStore.destroyObstack(pos);
 }
 
 @cpp_export("SKIP_SKUIX11_manageKeyPressed")
@@ -149,12 +149,12 @@ private fun manageKeyPressed(
     | _ -> debug(`Unknown symbol ${keyCode}`)
     };
   };
-  SKFS.Context::withoutGc(fn);
+  SKStore.Context::withoutGc(fn);
 }
 
 @cpp_export("SKIP_SKUIX11_manageKeyReleased")
 fun manageKeyReleased(_wId: Int, keyCode: Int): void {
-  pos = SKFS.newObstack();
+  pos = SKStore.newObstack();
   fn = context ~> {
     webCodeForX11Code(keyCode) match {
     | Some(code) ->
@@ -166,15 +166,15 @@ fun manageKeyReleased(_wId: Int, keyCode: Int): void {
     };
     context.updateIfRoot();
   };
-  SKFS.Context::withoutGc(fn);
-  SKFS.destroyObstack(pos);
+  SKStore.Context::withoutGc(fn);
+  SKStore.destroyObstack(pos);
 }
 
 @cpp_export("SKIP_SKUIX11_manageRequestClose")
 fun manageRequestClose(wId: Int): Bool {
-  pos = SKFS.newObstack();
-  res = SKFS.Context::withoutGc(context ~> SystemProperties.quit(context, wId));
-  SKFS.destroyObstack(pos);
+  pos = SKStore.newObstack();
+  res = SKStore.Context::withoutGc(context ~> SystemProperties.quit(context, wId));
+  SKStore.destroyObstack(pos);
   res;
 }
 
@@ -186,7 +186,7 @@ native fun updateClipboard(wid: Int, mimeType: String, data: String): void;
 
 @cpp_export("SKIP_SKUIX11_performPaste")
 fun performPaste(wid: Int, mimeType: String, data: String): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     type = FWKClipboard.Type::fromMime(mimeType);
     content = FWKClipboard.Content(Map[type => IO.Text(data)]);
     debug(("TODO: Manage on paste event", wid, type, content));

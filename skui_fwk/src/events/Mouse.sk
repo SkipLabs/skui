@@ -10,7 +10,7 @@ base class ButtonState(
     pressed: Bool,
     timeStamp: System.TimeStamp,
     absolute: Geometry.Offset,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): ButtonState;
   fun next(): ButtonState;
   fun clearCount(): ButtonState;
@@ -32,7 +32,7 @@ base class ButtonUpBase() extends ButtonState {
     pressed: Bool,
     timeStamp: System.TimeStamp,
     absolute: Geometry.Offset,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): ButtonState {
     if (pressed) {
       ButtonPressed(
@@ -64,14 +64,14 @@ base class ButtonUpBase() extends ButtonState {
 }
 
 base class ButtonDownBase(
-  tick: SKFS.Tick,
+  tick: SKStore.Tick,
   absolute: Geometry.Offset,
 ) extends ButtonState {
   fun derive(
     pressed: Bool,
     timeStamp: System.TimeStamp,
     _absolute: Geometry.Offset,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): ButtonState {
     if (pressed) {
       ButtonDown(this.tick, this.absolute, this.timeStamp, this.click)
@@ -113,13 +113,13 @@ class ButtonPressed() extends ButtonDownBase {}
 class ButtonUp() extends ButtonUpBase {}
 
 class ButtonReleased(
-  tick: SKFS.Tick,
+  tick: SKStore.Tick,
   pressed: Geometry.Offset,
   ellapsed: Float,
 ) extends ButtonUpBase {}
 
-class Wheel(value: Int, tick: SKFS.Tick) {
-  fun getValue(tick: SKFS.Tick): ?Int {
+class Wheel(value: Int, tick: SKStore.Tick) {
+  fun getValue(tick: SKStore.Tick): ?Int {
     if (tick == this.tick) {
       Some(this.value)
     } else {
@@ -190,55 +190,55 @@ class Mouse(
     )
   }
 
-  fun isPrimaryButtonDown(tick: SKFS.Tick): Bool {
+  fun isPrimaryButtonDown(tick: SKStore.Tick): Bool {
     static::isButtonDown(this.primaryButton, tick);
   }
 
-  fun isMiddleButtonDown(tick: SKFS.Tick): Bool {
+  fun isMiddleButtonDown(tick: SKStore.Tick): Bool {
     static::isButtonDown(this.middleButton, tick);
   }
 
-  fun isSecondaryButtonDown(tick: SKFS.Tick): Bool {
+  fun isSecondaryButtonDown(tick: SKStore.Tick): Bool {
     static::isButtonDown(this.secondaryButton, tick);
   }
 
-  fun isPrimaryButtonPressed(tick: SKFS.Tick): Bool {
+  fun isPrimaryButtonPressed(tick: SKStore.Tick): Bool {
     static::isButtonPressed(this.primaryButton, tick);
   }
 
-  fun isMiddleButtonPressed(tick: SKFS.Tick): Bool {
+  fun isMiddleButtonPressed(tick: SKStore.Tick): Bool {
     static::isButtonPressed(this.middleButton, tick);
   }
 
-  fun isSecondaryButtonPressed(tick: SKFS.Tick): Bool {
+  fun isSecondaryButtonPressed(tick: SKStore.Tick): Bool {
     static::isButtonPressed(this.secondaryButton, tick);
   }
 
-  fun isPrimaryButtonReleased(tick: SKFS.Tick): Bool {
+  fun isPrimaryButtonReleased(tick: SKStore.Tick): Bool {
     static::isButtonReleased(this.primaryButton, tick);
   }
 
-  fun isMiddleButtonReleased(tick: SKFS.Tick): Bool {
+  fun isMiddleButtonReleased(tick: SKStore.Tick): Bool {
     static::isButtonReleased(this.middleButton, tick);
   }
 
-  fun isSecondaryButtonReleased(tick: SKFS.Tick): Bool {
+  fun isSecondaryButtonReleased(tick: SKStore.Tick): Bool {
     static::isButtonReleased(this.secondaryButton, tick);
   }
 
-  fun isPrimaryButtonUp(tick: SKFS.Tick): Bool {
+  fun isPrimaryButtonUp(tick: SKStore.Tick): Bool {
     static::isButtonUp(this.primaryButton, tick);
   }
 
-  fun isMiddleButtonUp(tick: SKFS.Tick): Bool {
+  fun isMiddleButtonUp(tick: SKStore.Tick): Bool {
     static::isButtonUp(this.middleButton, tick);
   }
 
-  fun isSecondaryButtonUp(tick: SKFS.Tick): Bool {
+  fun isSecondaryButtonUp(tick: SKStore.Tick): Bool {
     static::isButtonUp(this.secondaryButton, tick);
   }
 
-  fun toMouseRepeat(context: mutable SKFS.Context): ?FWK.MouseRepeat {
+  fun toMouseRepeat(context: mutable SKStore.Context): ?FWK.MouseRepeat {
     downs = mutable Vector<FWK.MouseDown>[];
     this.primaryButton.toMouseDown(FWK.Primary()).each(downs.push);
     this.middleButton.toMouseDown(FWK.Middle()).each(downs.push);
@@ -257,7 +257,7 @@ class Mouse(
     }
   }
 
-  static fun isButtonDown(state: ButtonState, tick: SKFS.Tick): Bool {
+  static fun isButtonDown(state: ButtonState, tick: SKStore.Tick): Bool {
     state match {
     | _s @ ButtonDown _ -> true
     | p @ ButtonPressed _ -> p.tick != tick
@@ -265,20 +265,20 @@ class Mouse(
     }
   }
 
-  static fun isButtonPressed(state: ButtonState, tick: SKFS.Tick): Bool {
+  static fun isButtonPressed(state: ButtonState, tick: SKStore.Tick): Bool {
     state match {
     | p @ ButtonPressed _ -> p.tick == tick
     | _ -> false
     }
   }
 
-  static fun isButtonReleased(state: ButtonState, tick: SKFS.Tick): Bool {
+  static fun isButtonReleased(state: ButtonState, tick: SKStore.Tick): Bool {
     state match {
     | r @ ButtonReleased _ -> r.tick == tick
     | _ -> false
     }
   }
-  static fun isButtonUp(state: ButtonState, _tick: SKFS.Tick): Bool {
+  static fun isButtonUp(state: ButtonState, _tick: SKStore.Tick): Bool {
     state match {
     | _s @ ButtonUp _ -> true
     | _ -> false
@@ -288,11 +288,11 @@ class Mouse(
 
 class MouseFile(
   mouse: Mouse,
-  position: SKFS.Tick,
+  position: SKStore.Tick,
   absolute: Geometry.Offset = Geometry.Offset::zero,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ MouseFile _ -> x
     | _ -> invariant_violation("Must be UiEvent.MouseFile")
@@ -309,7 +309,7 @@ class MouseFile(
     this;
   }
 
-  fun getWheelValue(tick: SKFS.Tick): Int {
+  fun getWheelValue(tick: SKStore.Tick): Int {
     this.mouse.wheel.flatMap(wheel -> wheel.getValue(tick)).default(0);
   }
 
@@ -321,7 +321,7 @@ class MouseFile(
     this.mouse.primaryButton.timeStamp;
   }
 
-  fun isPressed(tick: SKFS.Tick): Bool {
+  fun isPressed(tick: SKStore.Tick): Bool {
     this.mouse.isPrimaryButtonPressed(tick) ||
       this.mouse.isMiddleButtonPressed(tick) ||
       this.mouse.isSecondaryButtonPressed(tick);
@@ -343,31 +343,31 @@ class MouseFile(
     }
   }
 
-  fun isPrimaryDown(tick: SKFS.Tick): Bool {
+  fun isPrimaryDown(tick: SKStore.Tick): Bool {
     this.mouse.isPrimaryButtonDown(tick)
   }
 
-  fun isPrimaryPressed(tick: SKFS.Tick): Bool {
+  fun isPrimaryPressed(tick: SKStore.Tick): Bool {
     this.mouse.isPrimaryButtonPressed(tick)
   }
 
-  fun isPrimaryUp(tick: SKFS.Tick): Bool {
+  fun isPrimaryUp(tick: SKStore.Tick): Bool {
     this.mouse.isPrimaryButtonUp(tick)
   }
 
-  fun isPrimaryReleased(tick: SKFS.Tick): Bool {
+  fun isPrimaryReleased(tick: SKStore.Tick): Bool {
     this.mouse.isPrimaryButtonReleased(tick)
   }
 
-  fun isSecondaryPressed(tick: SKFS.Tick): Bool {
+  fun isSecondaryPressed(tick: SKStore.Tick): Bool {
     this.mouse.isSecondaryButtonPressed(tick)
   }
 
-  fun isSecondaryDown(tick: SKFS.Tick): Bool {
+  fun isSecondaryDown(tick: SKStore.Tick): Bool {
     this.mouse.isSecondaryButtonDown(tick)
   }
 
-  fun isDown(tick: SKFS.Tick): Bool {
+  fun isDown(tick: SKStore.Tick): Bool {
     this.mouse.isPrimaryButtonDown(tick) &&
       this.mouse.isMiddleButtonDown(tick) &&
       this.mouse.isSecondaryButtonDown(tick);

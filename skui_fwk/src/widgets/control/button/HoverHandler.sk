@@ -5,14 +5,14 @@ class HoverHandler(button: Ui.Button) extends FWK.HoverHandler {
     this.button.path
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     if (!this.button.controller.isDisabled(context)) {
       FWKPointer.setCursor(context, Ui.HandCursor());
     };
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
@@ -40,12 +40,12 @@ class HoverHandler(button: Ui.Button) extends FWK.HoverHandler {
     )
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     FWKPointer.resetCursor(context);
     this.button.state.emitArmed(context, false);
   }
 
-  fun getTooltip(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getTooltip(context: mutable SKStore.Context): ?FWK.SourcedWidget {
     Ui.buildTooltip(
       context,
       this.button.path,

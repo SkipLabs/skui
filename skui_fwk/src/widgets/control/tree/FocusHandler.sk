@@ -9,7 +9,7 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     Array[
       FWK.ShortcutAction(
@@ -155,7 +155,7 @@ class FocusHandler{
     ]
   }
 
-  fun getDropdown(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getDropdown(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
     Some(
       FWK.SourcedWidget(Some(this.tree.path), (ctx, root) ~> {
         selection = this.tree.state.getSelection(ctx);

@@ -4,21 +4,21 @@ class ScrollPane{
   controller: UiScroll.Controller,
   bars: UiScroll.Bars,
   viewport: UiScroll.Viewport,
-  sizesHdl: SKFS.Handle<UiScroll.Sizes>,
+  sizesHdl: SKStore.Handle<SKStore.IID, UiScroll.Sizes>,
 } extends StrictWidget uses WithNodeCache {
   //
   type Params = UiScroll.Controller;
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     controller: UiScroll.Controller,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
-    hKey = SKFS.IID(0);
-    vKey = SKFS.IID(1);
+    hKey = SKStore.IID(0);
+    vKey = SKStore.IID(1);
     inner = path.makeChild("inner");
     vpPath = inner.makeChild("viewport");
     nodeInfoGetter: Ui.Getter<?NodeInfo> = ctx ~>
@@ -32,15 +32,14 @@ class ScrollPane{
     cSizeGetter: Ui.Getter<?Geometry.Size> = ctx ~>
       childInfoGetter(ctx).map(ns -> ns.size());
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiScroll.widgetDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[
-        (hKey, SKFS.IntFile(0)),
-        (vKey, SKFS.IntFile(0)),
-      ],
+      Array[(hKey, SKStore.IntFile(0)), (vKey, SKStore.IntFile(0))],
     );
-    sizesHdl = mainHdl.contextWriterKeyMap(
-      UiScroll.Sizes::fromFile,
+    sizesHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      UiScroll.Sizes::type,
       context,
       UiScroll.widgetDirName(path.makeChild("sizes")),
       (context, writer, key, _) ~> {
@@ -57,15 +56,16 @@ class ScrollPane{
           }
         | _ -> None()
         };
-        optSizes.each(ss -> writer.write(key, ss))
+        optSizes.each(ss -> writer.set(key, ss))
       },
     );
-    visibleHdl = sizesHdl.contextWriterKeyMap(
-      SKFS.BoolFile::fromFile,
+    visibleHdl = sizesHdl.map(
+      SKStore.IID::keyType,
+      SKStore.BoolFile::type,
       context,
       UiScroll.widgetDirName(path.makeChild("visible")),
-      (_, writer, key, sizes) ~> {
-        writer.write(key, SKFS.BoolFile(sizes.isVisible()))
+      (_, writer, key, it) ~> {
+        writer.set(key, SKStore.BoolFile(it.first.isVisible()))
       },
     );
     //
@@ -132,7 +132,10 @@ class ScrollPane{
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     node = this.viewport.getNode(context, constraints);
     size = constraints.constrain(node.size);
     Node::reversed(
@@ -155,7 +158,7 @@ class ScrollPane{
     )
   }
 
-  fun getViewportDefinition(_context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(_context: mutable SKStore.Context): ?ViewportDef {
     Some(
       ViewportDef(
         None(),
@@ -180,14 +183,14 @@ class ScrollPane{
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     _nodeSum: NodeSum,
     _optUserData: ?UserData,
   ): ?DrawInfo {
-    optHSizes = this.sizesHdl.maybeGet(context, SKFS.IID(0));
-    optVSizes = this.sizesHdl.maybeGet(context, SKFS.IID(1));
+    optHSizes = this.sizesHdl.maybeGetValue(context, SKStore.IID(0));
+    optVSizes = this.sizesHdl.maybeGetValue(context, SKStore.IID(1));
     (optHSizes, optVSizes) match {
     | (Some(hSizes), Some(vSizes)) ->
       hScroll = this.controller.getHScroll(context).get(context);
@@ -200,7 +203,7 @@ class ScrollPane{
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((ctx, _offset, _ni) ~> {
@@ -216,7 +219,7 @@ class ScrollPane{
   }
 
   fun checkFocusHandlers(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {

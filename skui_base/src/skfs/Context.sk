@@ -90,6 +90,21 @@ extension class Context {
     this.mkdir(convKey, conv, dirName, content);
   }
 
+  mutable fun makeFileDir<K: Key>(
+    convKey: Key ~> K,
+    dirName: DirName,
+    content: Array<(K, File)> = Array[],
+  ): EHandle<K, File> {
+    this.mkdir(convKey, f ~> f, dirName, content);
+  }
+
+  mutable fun makeNotTyped(
+    dirName: DirName,
+    content: Array<(Key, File)> = Array[],
+  ): EHandle<Key, File> {
+    this.mkdir(k ~> k, f ~> f, dirName, content);
+  }
+
   mutable fun makePreDir<K: Key, T: File>(
     convKey: Key ~> K,
     conv: File ~> T,
@@ -101,6 +116,13 @@ extension class Context {
       this.!hasPre = this.hasPre.add(dirName);
     };
     value;
+  }
+
+  mutable fun makeNotTypedPre(
+    dirName: DirName,
+    content: Array<(Key, File)> = Array[],
+  ): EHandle<Key, File> {
+    this.makePreDir(k ~> k, f ~> f, dirName, content);
   }
 
   mutable fun setProfiling(optPerformProfile: ?Bool): void {
@@ -133,7 +155,7 @@ extension class Context {
     scope: String,
   ): ?SKUIMessage.Support {
     supportId = `SKUIMessage.Support.${name}.${scope}`;
-    this.getGlobal(supportId).map(SKUIMessage.Support::forFile)
+    this.getGlobal(supportId).map(SKUIMessage.Support::btype)
   }
 
   mutable fun removeMessageSupport(name: String, scope: String): void {

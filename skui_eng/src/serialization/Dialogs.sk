@@ -31,7 +31,7 @@ extension class Confirm {
   static fun fromSerializable(s: UiEngine.Serializable): Confirm {
     s match {
     | t @ Confirm _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.Confirm", s)
+    | _ -> SKStore.cast_violation("UiEngine.Confirm", s)
     }
   }
 }
@@ -111,7 +111,7 @@ extension class InputDialog {
   static fun fromSerializable(s: UiEngine.Serializable): InputDialog {
     s match {
     | t @ InputDialog _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.InputDialog", s)
+    | _ -> SKStore.cast_violation("UiEngine.InputDialog", s)
     }
   }
 }

@@ -6,12 +6,12 @@ const lineSpacing: Int = 2;
 const radius: Int = 6;
 
 base class Controller extends Ui.Parameters {
-  fun getText(context: mutable SKFS.Context): Text;
+  fun getText(context: mutable SKStore.Context): Text;
 }
 
-class LamController{text: mutable SKFS.Context ~> Text} extends Controller {
+class LamController{text: mutable SKStore.Context ~> Text} extends Controller {
   //
-  fun getText(context: mutable SKFS.Context): Text {
+  fun getText(context: mutable SKStore.Context): Text {
     this.text(context)
   }
 }
@@ -28,7 +28,7 @@ class Tooltip protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiTooltip.Controller,
     cache: NodeCache,
@@ -37,7 +37,10 @@ class Tooltip protected {
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     maxWidth = context.getThemeThickness(UiTheme.Tooltip());
     faceId = context.getThemeFont(UiTheme.Tooltip());
     cContraints = constraints.enforce(
@@ -69,7 +72,7 @@ class Tooltip protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -86,7 +89,7 @@ class Tooltip protected {
   }
 
   private fun computeBackground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -103,7 +106,7 @@ class Tooltip protected {
   }
 
   private fun computeMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,

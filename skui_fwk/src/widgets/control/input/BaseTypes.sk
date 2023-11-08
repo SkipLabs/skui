@@ -32,7 +32,7 @@ base class PredefinedTarget() extends Target {
   | TLine(optNext: ?Bool)
 }
 
-base class Scroll(index: Int) extends SKFS.File uses Orderable {
+base class Scroll(index: Int) extends SKStore.File uses Orderable {
   children =
   | Left()
   | Right()
@@ -42,7 +42,7 @@ base class Scroll(index: Int) extends SKFS.File uses Orderable {
   | Left _ -> false
 }
 
-base class Visible(index: Int, tick: SKFS.Tick) extends SKFS.File {
+base class Visible(index: Int, tick: SKStore.Tick) extends SKStore.File {
   children =
   | Pos()
   | Incr()
@@ -50,9 +50,9 @@ base class Visible(index: Int, tick: SKFS.Tick) extends SKFS.File {
 
 class Part(spaces: Int, word: String)
 
-class Parts(value: Vector<Part>) extends SKFS.File {
+class Parts(value: Vector<Part>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Parts _ -> x
     | _ -> invariant_violation("Must be UiInput.Parts")
@@ -62,137 +62,143 @@ class Parts(value: Vector<Part>) extends SKFS.File {
 
 base class Supplier {
   fun getTextProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.StringProperty;
   fun getPositionProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.IntProperty;
   fun getSelectionProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.RangeProperty;
   fun getStatusProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.StatusProperty;
 }
 
 base class Controller {
-  fun getKind(context: mutable SKFS.Context, isUntracked: Bool = false): Kind;
-  fun isDisabled(context: mutable SKFS.Context): Bool;
+  fun getKind(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Kind;
+  fun isDisabled(context: mutable SKStore.Context): Bool;
   fun isEditable(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool;
-  fun isWithCounter(context: mutable SKFS.Context): Bool;
-  fun isWithStatus(context: mutable SKFS.Context): Bool;
-  fun isWithLabel(context: mutable SKFS.Context): Bool;
-  fun isWithClear(context: mutable SKFS.Context): Bool;
-  fun isAlignRight(context: mutable SKFS.Context): Bool;
-  fun isPlaceholderAsLabel(context: mutable SKFS.Context): Bool;
+  fun isWithCounter(context: mutable SKStore.Context): Bool;
+  fun isWithStatus(context: mutable SKStore.Context): Bool;
+  fun isWithLabel(context: mutable SKStore.Context): Bool;
+  fun isWithClear(context: mutable SKStore.Context): Bool;
+  fun isAlignRight(context: mutable SKStore.Context): Bool;
+  fun isPlaceholderAsLabel(context: mutable SKStore.Context): Bool;
 
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
-  fun getFireIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
-  fun getTooltip(context: mutable SKFS.Context): ?.Text;
-  fun getLabel(context: mutable SKFS.Context): ?.Text;
-  fun getPrefix(context: mutable SKFS.Context): ?.Text;
-  fun getSuffix(context: mutable SKFS.Context): ?.Text;
-  fun getPlaceHolder(context: mutable SKFS.Context): ?.Text;
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon;
+  fun getFireIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKStore.Context): ?.Text;
+  fun getLabel(context: mutable SKStore.Context): ?.Text;
+  fun getPrefix(context: mutable SKStore.Context): ?.Text;
+  fun getSuffix(context: mutable SKStore.Context): ?.Text;
+  fun getPlaceHolder(context: mutable SKStore.Context): ?.Text;
 
-  fun getMaxChars(context: mutable SKFS.Context): Int;
-  fun getVisibleChars(context: mutable SKFS.Context): Int;
+  fun getMaxChars(context: mutable SKStore.Context): Int;
+  fun getVisibleChars(context: mutable SKStore.Context): Int;
   fun getActionMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: String,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message>;
   fun getFocusLostMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: String,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message>;
 }
 
 base class State {
-  fun getSize(context: mutable SKFS.Context): Int;
-  fun isHover(context: mutable SKFS.Context): Bool;
-  fun isArmed(context: mutable SKFS.Context): Bool;
-  fun getPosition(context: mutable SKFS.Context): Int;
+  fun getSize(context: mutable SKStore.Context): Int;
+  fun isHover(context: mutable SKStore.Context): Bool;
+  fun isArmed(context: mutable SKStore.Context): Bool;
+  fun getPosition(context: mutable SKStore.Context): Int;
   fun getSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracker: Bool = false,
   ): ?.Range;
-  fun getText(context: mutable SKFS.Context, isUntracker: Bool = false): String;
-  fun isShowing(mutable SKFS.Context): Bool;
+  fun getText(
+    context: mutable SKStore.Context,
+    isUntracker: Bool = false,
+  ): String;
+  fun isShowing(mutable SKStore.Context): Bool;
   fun getStatus(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Status;
   fun isMoveSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracker: Bool = false,
   ): Bool;
-  fun isScrolling(context: mutable SKFS.Context): Bool;
-  fun isCaretVisible(context: mutable SKFS.Context): Bool;
-  fun getTarget(context: mutable SKFS.Context): ?Int;
-  fun getScroll(context: mutable SKFS.Context): ?Scroll;
-  fun getParts(context: mutable SKFS.Context): Parts;
-  fun getEnsureVisible(context: mutable SKFS.Context): ?Visible;
+  fun isScrolling(context: mutable SKStore.Context): Bool;
+  fun isCaretVisible(context: mutable SKStore.Context): Bool;
+  fun getTarget(context: mutable SKStore.Context): ?Int;
+  fun getScroll(context: mutable SKStore.Context): ?Scroll;
+  fun getParts(context: mutable SKStore.Context): Parts;
+  fun getEnsureVisible(context: mutable SKStore.Context): ?Visible;
 
-  fun emitHover(context: mutable SKFS.Context, value: Bool): void;
-  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
-  fun emitMoveSelection(context: mutable SKFS.Context, value: Bool): void;
-  fun emitReset(context: mutable SKFS.Context): void;
-  fun emitShowing(context: mutable SKFS.Context, value: Bool): void;
-  fun emitDiacritic(context: mutable SKFS.Context, value: Char): void;
-  fun emitUnicode(context: mutable SKFS.Context, optValue: ?Int): void;
+  fun emitHover(context: mutable SKStore.Context, value: Bool): void;
+  fun emitArmed(context: mutable SKStore.Context, value: Bool): void;
+  fun emitMoveSelection(context: mutable SKStore.Context, value: Bool): void;
+  fun emitReset(context: mutable SKStore.Context): void;
+  fun emitShowing(context: mutable SKStore.Context, value: Bool): void;
+  fun emitDiacritic(context: mutable SKStore.Context, value: Char): void;
+  fun emitUnicode(context: mutable SKStore.Context, optValue: ?Int): void;
   fun emitUndo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
   fun emitRedo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
-  fun emitCut(context: mutable SKFS.Context): void;
-  fun emitCopy(context: mutable SKFS.Context): void;
-  fun emitUpper(context: mutable SKFS.Context): void;
-  fun emitLower(context: mutable SKFS.Context): void;
-  fun emitPaste(context: mutable SKFS.Context): void;
+  fun emitCut(context: mutable SKStore.Context): void;
+  fun emitCopy(context: mutable SKStore.Context): void;
+  fun emitUpper(context: mutable SKStore.Context): void;
+  fun emitLower(context: mutable SKStore.Context): void;
+  fun emitPaste(context: mutable SKStore.Context): void;
   fun emitInsert(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     ignoreSelection: Bool,
     optPosition: ?Int,
   ): void;
   fun emitTarget(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optTarget: ?Int,
     scrolling: Bool,
   ): void;
   fun emitDeleteTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     target: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
   fun emitGoTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     target: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
   fun emitSelectTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     target: Target,
     ensureVisible: Bool = true,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
-  fun emitBlinking(context: mutable SKFS.Context, value: Bool): void;
-  fun emitScroll(context: mutable SKFS.Context, value: ?Scroll): void;
-  fun emitScrolling(context: mutable SKFS.Context, value: Int): void;
+  fun emitBlinking(context: mutable SKStore.Context, value: Bool): void;
+  fun emitScroll(context: mutable SKStore.Context, value: ?Scroll): void;
+  fun emitScrolling(context: mutable SKStore.Context, value: Int): void;
   fun emitAll(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     commands: readonly Vector<Command>,
   ): void;
 }
@@ -203,36 +209,39 @@ base class Storage {
   fun getName(): String;
   fun getScope(): String;
 
-  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick;
-  fun getTodo(context: mutable SKFS.Context): Ui.Todo;
+  fun getScrolling(context: mutable SKStore.Context): ?SKStore.Tick;
+  fun getTodo(context: mutable SKStore.Context): Ui.Todo;
 
-  fun setHover(context: mutable SKFS.Context, value: Bool): void;
-  fun setArmed(context: mutable SKFS.Context, value: Bool): void;
-  fun setBlinking(context: mutable SKFS.Context, value: Bool): void;
-  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void;
+  fun setHover(context: mutable SKStore.Context, value: Bool): void;
+  fun setArmed(context: mutable SKStore.Context, value: Bool): void;
+  fun setBlinking(context: mutable SKStore.Context, value: Bool): void;
+  fun setScrolling(
+    context: mutable SKStore.Context,
+    optTick: ?SKStore.Tick,
+  ): void;
   fun setVisibility(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optVisibility: ?Ui.Visibility,
   ): void;
-  fun getVisibility(context: mutable SKFS.Context): ?Ui.Visibility;
+  fun getVisibility(context: mutable SKStore.Context): ?Ui.Visibility;
 
-  fun setShowing(context: mutable SKFS.Context, value: Bool): void;
+  fun setShowing(context: mutable SKStore.Context, value: Bool): void;
 
   fun setMoveSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     moveSelection: Bool,
   ): void;
 
-  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
-  fun setScroll(context: mutable SKFS.Context, optScroll: ?Scroll): void;
+  fun setTodo(context: mutable SKStore.Context, cmd: Executable): void;
+  fun setScroll(context: mutable SKStore.Context, optScroll: ?Scroll): void;
 }
 
 class Behavior(
   optCharFilter: ?Char ~> Bool = None(),
   optValidator: ?Vector<Char> ~> Validity = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Behavior _ -> x
     | _ -> invariant_violation("Must be UiInput.Behavior")
@@ -240,7 +249,7 @@ class Behavior(
   }
 }
 
-base class Kind extends SKFS.File uses Equality {
+base class Kind extends SKStore.File uses Equality {
   children =
   | Text()
   | Password()
@@ -251,10 +260,10 @@ base class Kind extends SKFS.File uses Equality {
   | Octal()
   | Binary()
   | Pattern(pattern: String)
-  | Custom(dirName: SKFS.DirName, key: SKFS.StrID)
+  | Custom(dirName: SKStore.DirName, key: SKStore.StrID)
 
   fun toBehavior(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Behavior
   | Text _
@@ -283,14 +292,14 @@ base class Kind extends SKFS.File uses Equality {
       ),
     )
   | Custom(dirName, key) ->
-    SKFS.HValue(SKFS.EHandle(Behavior::fromFile, dirName), key).get(
-      context,
-      isUntracked,
-    )
+    SKStore.HValue(
+      SKStore.EHandle(SKStore.StrID::keyType, Behavior::type, dirName),
+      key,
+    ).get(context, isUntracked)
 }
 
 mutable class Verifier(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   source: Int,
 ) {
   mutable fun writePosition(pos: Int): void {
@@ -315,18 +324,18 @@ mutable class Verifier(
 }
 
 base class Undoable() {
-  fun undo(verifier: mutable Verifier, tick: SKFS.Tick): void;
-  fun redo(verifier: mutable Verifier, tick: SKFS.Tick): void;
+  fun undo(verifier: mutable Verifier, tick: SKStore.Tick): void;
+  fun redo(verifier: mutable Verifier, tick: SKStore.Tick): void;
 }
 
 class LamUndoable(
-  lamUndo: (mutable Verifier, SKFS.Tick) ~> void,
-  lamRedo: (mutable Verifier, SKFS.Tick) ~> void,
+  lamUndo: (mutable Verifier, SKStore.Tick) ~> void,
+  lamRedo: (mutable Verifier, SKStore.Tick) ~> void,
 ) extends Undoable {
-  fun undo(verifier: mutable Verifier, tick: SKFS.Tick): void {
+  fun undo(verifier: mutable Verifier, tick: SKStore.Tick): void {
     this.lamUndo(verifier, tick)
   }
-  fun redo(verifier: mutable Verifier, tick: SKFS.Tick): void {
+  fun redo(verifier: mutable Verifier, tick: SKStore.Tick): void {
     this.lamRedo(verifier, tick)
   }
 }
@@ -334,16 +343,16 @@ class LamUndoable(
 class History(
   index: Int = -1,
   undoables: Array<Undoable> = Array[],
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ History _ -> x
     | _ -> invariant_violation("Must be UiInput.History")
     }
   }
 
-  fun undo(verifier: mutable Verifier, tick: SKFS.Tick): (History, Bool) {
+  fun undo(verifier: mutable Verifier, tick: SKStore.Tick): (History, Bool) {
     this.undoables.maybeGet(this.index) match {
     | Some(undoable) ->
       undoable.undo(verifier, tick);
@@ -353,7 +362,7 @@ class History(
     }
   }
 
-  fun redo(verifier: mutable Verifier, tick: SKFS.Tick): (History, Bool) {
+  fun redo(verifier: mutable Verifier, tick: SKStore.Tick): (History, Bool) {
     this.undoables.maybeGet(this.index + 1) match {
     | Some(undoable) ->
       undoable.redo(verifier, tick);

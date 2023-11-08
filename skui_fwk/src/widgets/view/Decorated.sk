@@ -1,27 +1,27 @@
 module UiDecorated;
 
 base class Controller extends Ui.Parameters {
-  fun getWidget(context: mutable SKFS.Context): ?Ui.Widget;
-  fun getDecoration(context: mutable SKFS.Context): Ui.Decoration;
-  fun getDirection(context: mutable SKFS.Context): Ui.HorizontalDirection;
+  fun getWidget(context: mutable SKStore.Context): ?Ui.Widget;
+  fun getDecoration(context: mutable SKStore.Context): Ui.Decoration;
+  fun getDirection(context: mutable SKStore.Context): Ui.HorizontalDirection;
 }
 
 class LamController{
-  decoration: mutable SKFS.Context ~> Ui.Decoration,
-  widget: mutable SKFS.Context ~> ?Ui.Widget = _ctx ~> None(),
-  direction: mutable SKFS.Context ~> Ui.HorizontalDirection = _ctx ~>
+  decoration: mutable SKStore.Context ~> Ui.Decoration,
+  widget: mutable SKStore.Context ~> ?Ui.Widget = _ctx ~> None(),
+  direction: mutable SKStore.Context ~> Ui.HorizontalDirection = _ctx ~>
     Ui.ToRight(),
 } extends Controller {
   //
-  fun getDecoration(context: mutable SKFS.Context): Ui.Decoration {
+  fun getDecoration(context: mutable SKStore.Context): Ui.Decoration {
     this.decoration(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context): ?Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context): ?Ui.Widget {
     this.widget(context)
   }
 
-  fun getDirection(context: mutable SKFS.Context): Ui.HorizontalDirection {
+  fun getDirection(context: mutable SKStore.Context): Ui.HorizontalDirection {
     this.direction(context)
   }
 }
@@ -38,7 +38,7 @@ class Decorated{
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     controller: UiDecorated.Controller,
     cache: NodeCache,
@@ -47,7 +47,10 @@ class Decorated{
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     decoration = this.controller.getDecoration(context);
     direction = this.controller.getDirection(context);
     padding = decoration.getPadding(direction);
@@ -75,14 +78,14 @@ class Decorated{
     };
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.controller.getWidget(context).flatMap(w ->
       w.getViewportDefinition(context)
     )
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,

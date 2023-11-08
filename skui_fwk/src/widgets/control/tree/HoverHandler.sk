@@ -6,7 +6,7 @@ class HoverHandler(tree: Ui.Tree, bar: Bool) extends Ui.HoverHandlerWrapper {
     if (this.bar) this.tree.path.makeChild("bar") else this.tree.path
   }
 
-  protected fun onEnter(context: mutable SKFS.Context): void {
+  protected fun onEnter(context: mutable SKStore.Context): void {
     if (this.bar) {
       this.tree.state.emitHover(context, true);
       FWKPointer.setCursor(context, Ui.HandCursor());
@@ -14,7 +14,7 @@ class HoverHandler(tree: Ui.Tree, bar: Bool) extends Ui.HoverHandlerWrapper {
   }
 
   protected fun onMouse(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
     wheel = mouse.getWheelValue(context.tick);
@@ -29,14 +29,14 @@ class HoverHandler(tree: Ui.Tree, bar: Bool) extends Ui.HoverHandlerWrapper {
     );
   }
 
-  protected fun onExit(context: mutable SKFS.Context): void {
+  protected fun onExit(context: mutable SKStore.Context): void {
     if (this.bar) {
       FWKPointer.resetCursor(context);
       this.tree.state.emitHover(context, false);
     }
   }
 
-  fun getDropdown(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getDropdown(context: mutable SKStore.Context): ?FWK.SourcedWidget {
     if (!this.bar) {
       this.optHoverHandler match {
       | Some(hh) -> hh.getDropdown(context)

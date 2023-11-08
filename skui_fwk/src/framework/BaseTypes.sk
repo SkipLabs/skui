@@ -1,8 +1,8 @@
 module FWK;
 
-class Focusables(value: Array<FocusHandler> = Array[]) extends SKFS.File {
+class Focusables(value: Array<FocusHandler> = Array[]) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Focusables _ -> x
     | _ -> invariant_violation("Must be FWK.Focusables")
@@ -209,18 +209,18 @@ base class TransferMode extends Transfer {
 
 base class VisibilityEnsurer {
   fun ensureVisible(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     bounds: Geometry.Rect,
   ): ?Geometry.Rect;
 
-  fun getPageWidth(context: mutable SKFS.Context): Float;
-  fun getPageHeight(context: mutable SKFS.Context): Float;
-  fun getPageBounds(context: mutable SKFS.Context): Geometry.Rect;
+  fun getPageWidth(context: mutable SKStore.Context): Float;
+  fun getPageHeight(context: mutable SKStore.Context): Float;
+  fun getPageBounds(context: mutable SKStore.Context): Geometry.Rect;
 }
 
 class Scrolling(left: Bool, up: Bool, right: Bool, down: Bool) {}
 
-base class Target extends SKFS.File {
+base class Target extends SKStore.File {
   children =
   | In()
   | OnTop()
@@ -228,7 +228,7 @@ base class Target extends SKFS.File {
   | OnLeft()
   | OnRight()
 
-  static fun forFile(obj: SKFS.File): Target {
+  static fun btype(obj: SKStore.File): Target {
     obj match {
     | x @ Target _ -> x
     | _ -> invariant_violation(`Invalid UiTree.Target`)
@@ -238,13 +238,13 @@ base class Target extends SKFS.File {
 
 base class DropVerifier {
   fun check(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     content: FWKClipboard.Content,
     transfer: TransferMode,
   ): ?TransferMode;
 
   fun dropped(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     content: FWKClipboard.Content,
     target: Target,
     transfer: TransferMode,
@@ -253,21 +253,21 @@ base class DropVerifier {
 
 base class DropHandler {
   fun over(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     dragHandler: DragHandler,
     transfer: TransferMode,
   ): ?TransferMode;
 
   fun getIdentifier(): String;
-  fun exit(context: mutable SKFS.Context): void;
+  fun exit(context: mutable SKStore.Context): void;
 
   fun isSame(dropHandler: DropHandler): Bool {
     this.getIdentifier() == dropHandler.getIdentifier()
   }
 
   fun dropped(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     dragHandler: DragHandler,
     transfer: TransferMode,
   ): void;
@@ -276,43 +276,47 @@ base class DropHandler {
 base class DragInfo
 
 base class DragSupplier {
-  fun getTransfer(context: mutable SKFS.Context): Transfer;
-  fun getClipboardContent(context: mutable SKFS.Context): ?FWKClipboard.Content;
-  fun getDragInfo(context: mutable SKFS.Context): ?DragInfo;
+  fun getTransfer(context: mutable SKStore.Context): Transfer;
+  fun getClipboardContent(
+    context: mutable SKStore.Context,
+  ): ?FWKClipboard.Content;
+  fun getDragInfo(context: mutable SKStore.Context): ?DragInfo;
 }
 
-base class DragHandler extends SKFS.File {
-  fun getTransfer(context: mutable SKFS.Context): Transfer;
-  fun getClipboardContent(context: mutable SKFS.Context): ?FWKClipboard.Content;
+base class DragHandler extends SKStore.File {
+  fun getTransfer(context: mutable SKStore.Context): Transfer;
+  fun getClipboardContent(
+    context: mutable SKStore.Context,
+  ): ?FWKClipboard.Content;
   fun dropped(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optTarget: ?(DropHandler, TransferMode),
   ): void;
 
-  fun getDragInfo(context: mutable SKFS.Context): ?DragInfo;
+  fun getDragInfo(context: mutable SKStore.Context): ?DragInfo;
 
-  fun getPlainText(context: mutable SKFS.Context): ?String {
+  fun getPlainText(context: mutable SKStore.Context): ?String {
     this.getClipboardContent(context).flatMap(cc -> cc.getPlain());
   }
 
-  static fun forFile(obj: SKFS.File): DragHandler {
+  static fun btype(obj: SKStore.File): DragHandler {
     obj match {
     | x @ DragHandler _ -> x
-    | _ -> SKFS.cast_violation("FWK.DragHandler", obj)
+    | _ -> SKStore.cast_violation("FWK.DragHandler", obj)
     }
   }
 }
 
-base class LockHandler extends SKFS.File {
+base class LockHandler extends SKStore.File {
   fun update(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): ?LockHandler;
 
-  static fun forFile(obj: SKFS.File): LockHandler {
+  static fun btype(obj: SKStore.File): LockHandler {
     obj match {
     | x @ LockHandler _ -> x
-    | _ -> SKFS.cast_violation("FWK.LockHandler", obj)
+    | _ -> SKStore.cast_violation("FWK.LockHandler", obj)
     }
   }
 }
@@ -321,9 +325,9 @@ class SourcedWidget(
   optPath: ?Ui.Path,
   widget: Ui.GetterOne<?Ui.Widget, UiRoot.Storage>,
   optFocused: ?Ui.Path = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ SourcedWidget _ -> x
     | _ -> invariant_violation("Must be FWK.SourcedWidget")
@@ -332,7 +336,7 @@ class SourcedWidget(
 
   fun toMenu(
     optOffset: ?Geometry.Offset,
-    onClose: mutable SKFS.Context ~> void,
+    onClose: mutable SKStore.Context ~> void,
   ): this {
     path = this.optPath.map(p -> p.makeChild("@contextmenu")).default(
       Ui.Path("@contextmenu"),
@@ -385,7 +389,9 @@ class SourcedWidget(
 }
 
 base class DropdownHandler {
-  overridable fun getDropdown(_context: mutable SKFS.Context): ?SourcedWidget {
+  overridable fun getDropdown(
+    _context: mutable SKStore.Context,
+  ): ?SourcedWidget {
     None()
   }
 }
@@ -397,21 +403,21 @@ base class HoverHandler
   uses Equality, HasClassName, Show {
   fun getIdentifier(): Ui.Path;
 
-  fun enter(context: mutable SKFS.Context): void;
+  fun enter(context: mutable SKStore.Context): void;
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     optOld: ?HoverHandler,
   ): Result;
 
-  fun exit(context: mutable SKFS.Context): void;
+  fun exit(context: mutable SKStore.Context): void;
 
   fun ==(other: FWK.HoverHandler): Bool {
     this.getIdentifier() == other.getIdentifier();
   }
 
-  fun getTooltip(_context: mutable SKFS.Context): ?SourcedWidget;
+  fun getTooltip(_context: mutable SKStore.Context): ?SourcedWidget;
 
   overridable fun isHover(path: Ui.Path): Bool {
     this.getIdentifier() == path;
@@ -432,13 +438,13 @@ class MouseState{
   optHoverHandler: ?HoverHandler = None(),
   optDropHandler: ?DropHandler = None(),
   optArmedMenu: ?HoverHandler = None(),
-  optMenuSupplier: ?(Geometry.Offset, HoverHandler, SKFS.Tick) = None(),
+  optMenuSupplier: ?(Geometry.Offset, HoverHandler, SKStore.Tick) = None(),
   optMouseLock: ?(Ui.Path, Geometry.Offset) = None(),
-} extends SKFS.File {
-  static fun fromFile(obj: SKFS.File): this {
+} extends SKStore.File {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ MouseState _ -> x
-    | _ -> invariant_violation("Must be SKFS.MouseState")
+    | _ -> invariant_violation("Must be SKStore.MouseState")
     }
   }
 }
@@ -501,44 +507,46 @@ class Shortcut(keyStrokes: Array<UiEvent.KeyStroke>) {
   }
 }
 
-base class FocusHandler{category: String} extends DropdownHandler, SKFS.File {
+base class FocusHandler{
+  category: String,
+} extends DropdownHandler, SKStore.File {
   fun getIdentifier(): Ui.Path;
   fun fillSources(path: mutable FWK.SSet<Ui.Path>): void;
   fun getSource(sources: SortedSet<Ui.Path>): ?Ui.Path;
   fun hasSource(source: Ui.Path): Bool;
 
   fun isGotoNext(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool;
 
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool;
 
-  overridable fun enter(_context: mutable SKFS.Context): void {
+  overridable fun enter(_context: mutable SKStore.Context): void {
     void
   }
 
-  overridable fun exit(_context: mutable SKFS.Context): void {
+  overridable fun exit(_context: mutable SKStore.Context): void {
     void
   }
 
-  overridable fun noMore(_context: mutable SKFS.Context): void {
+  overridable fun noMore(_context: mutable SKStore.Context): void {
     void
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): Bool;
 
   protected fun getKeyStrokes(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _action: String,
     defaultKeys: Array<UiEvent.KeyStroke>,
   ): Array<UiEvent.KeyStroke> {
@@ -552,31 +560,18 @@ base class FocusHandler{category: String} extends DropdownHandler, SKFS.File {
 
 base class Action {
   children =
-  | Standard(mutable SKFS.Context ~> void)
-  | Repeatable((mutable SKFS.Context, ?FWK.Repeat) ~> void)
-  | Skipable(mutable SKFS.Context ~> Bool)
+  | Standard(mutable SKStore.Context ~> void)
+  | Repeatable((mutable SKStore.Context, ?FWK.Repeat) ~> void)
+  | Skipable(mutable SKStore.Context ~> Bool)
 }
 
 class ShortcutAction(name: String, shortcut: Shortcut, action: Action)
 
-class FocusHandlerConverter() extends SKFS.Converter<FocusHandler> {
-  fun fromFile(file: SKFS.File): FocusHandler {
-    file match {
-    | fh @ FocusHandler _ -> fh
-    | _ -> SKFS.cast_violation("FWK.FocusHandler", file)
-    }
-  }
-
-  fun toFile(value: FocusHandler): SKFS.File {
-    value
-  }
-}
-
 class FocusState(
   optFocused: ?FocusHandler = None(),
   optArmedMenu: ?FocusHandler = None(),
-  optMenuSupplier: ?(FocusHandler, SKFS.Tick) = None(),
-) extends SKFS.File {
+  optMenuSupplier: ?(FocusHandler, SKStore.Tick) = None(),
+) extends SKStore.File {
   fun focus(focusable: FocusHandler): FocusState {
     if (
       native_eq(
@@ -591,25 +586,25 @@ class FocusState(
     }
   }
 
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ FocusState _ -> x
-    | _ -> invariant_violation("Must be SKFS.FocusState")
+    | _ -> invariant_violation("Must be SKStore.FocusState")
     }
   }
 }
 
-base class FocusQuery extends SKFS.File {
+base class FocusQuery extends SKStore.File {
   children =
   | Focus(reversed: Bool)
   | Unfocus()
   | FocusFirst()
   | FocusLast()
 
-  static fun forFile(obj: SKFS.File): FocusQuery {
+  static fun btype(obj: SKStore.File): FocusQuery {
     obj match {
     | x @ FocusQuery _ -> x
-    | _ -> SKFS.cast_violation("FocusQuery", obj)
+    | _ -> SKStore.cast_violation("FocusQuery", obj)
     }
   }
 }
@@ -625,18 +620,18 @@ fun todo<T: Show>(message: T): _ {
 }
 
 fun getStateHandle(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   uiPath: Ui.Path,
-  values: Array<(SKFS.BaseName, SKFS.File)>,
-): SKFS.IHandle<SKFS.File> {
+  values: Array<(SKStore.Key, SKStore.File)>,
+): SKStore.INotTyped {
   path = uiPath.toDirName("/ui/states/");
   if (context.currentArrow().isNone()) {
     context.maybeGetEagerDir(path) match {
     | None() ->
-      _ = context.makeDir(f ~> f, path, values);
-      SKFS.IHandle(SKFS.Identity(), path)
+      _ = context.makeNotTyped(path, values);
+      SKStore.IHandle::notTyped(path)
     | _ ->
-      handle = SKFS.IHandle(SKFS.Identity(), path);
+      handle = SKStore.IHandle::notTyped(path);
       values.each(value -> {
         (k, v) = value;
         handle.write(context, k, v)
@@ -644,8 +639,8 @@ fun getStateHandle(
       handle
     }
   } else {
-    _ = context.makeDir(f ~> f, path, values);
-    SKFS.IHandle(SKFS.Identity(), path)
+    _ = context.makeNotTyped(path, values);
+    SKStore.IHandle::notTyped(path)
   }
 }
 

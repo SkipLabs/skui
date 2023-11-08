@@ -1,12 +1,15 @@
 module UiInput;
 
 fun undoRedo(
-  context: mutable SKFS.Context,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
-  selector: History ~> (mutable Verifier, tick: SKFS.Tick) ~> (History, Bool),
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  selector: History ~> (mutable Verifier, tick: SKStore.Tick) ~> (
+    History,
+    Bool,
+  ),
   source: Int,
 ): void {
-  values.get(Ui.historyProp).map(History::fromFile).each(history -> {
+  values.get(Ui.historyProp).map(History::type).each(history -> {
     action = selector(history);
     verifier = mutable Verifier(values, source);
     (!history, _) = action(verifier, context.tick);
@@ -15,8 +18,8 @@ fun undoRedo(
 }
 
 fun copy(
-  context: mutable SKFS.Context,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
 ): ?Range {
   text = getText(values);
   (toCopy, optSelection) = getSelection(values) match {
@@ -31,8 +34,8 @@ fun copy(
 }
 
 fun cut(
-  context: mutable SKFS.Context,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   source: Int,
 ): void {
   copy(context, values) match {
@@ -45,7 +48,7 @@ fun cut(
 }
 
 fun paste(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   content: FWKClipboard.Content,
   charFilter: Char ~> Bool,
   source: Int,
@@ -58,7 +61,7 @@ fun paste(
 }
 
 fun delete(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   range: Range,
   source: Int,
 ): void {
@@ -76,14 +79,14 @@ fun delete(
 }
 
 fun ensureVisible(
-  context: mutable SKFS.Context,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
 ): void {
   values.set(Ui.ensureVisibleProp, Some(Pos(getPosition(values), context.tick)))
 }
 
 fun insert(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   charFilter: Char ~> Bool,
   text: String,
   source: Int,
@@ -121,7 +124,7 @@ fun insert(
 }
 
 fun doInsert(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   txt: String,
   position: Int,
   source: Int,
@@ -134,7 +137,7 @@ fun doInsert(
 }
 
 fun modify(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   m: Char ~> Char,
   source: Int,
 ): void {
@@ -159,7 +162,7 @@ fun modify(
 }
 
 fun manageGoTo(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   target: Target,
   source: Int,
 ): void {
@@ -182,7 +185,7 @@ fun manageGoTo(
 }
 
 fun manageSelectTo(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   target: Target,
   source: Int,
 ): void {
@@ -249,7 +252,7 @@ fun manageSelectTo(
 }
 
 fun manageDeleteTo(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   target: Target,
   source: Int,
 ): void {
@@ -283,7 +286,7 @@ fun manageDeleteTo(
 }
 
 fun manageDiacritic(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   charFilter: Char ~> Bool,
   char: Char,
   source: Int,
@@ -311,7 +314,7 @@ fun manageDiacritic(
 }
 
 fun manageUnicode(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   charFilter: Char ~> Bool,
   optValue: ?Int,
   source: Int,
@@ -348,7 +351,7 @@ fun manageUnicode(
 }
 
 fun computeTarget(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   target: Target,
 ): ?(Int, ?Bool) {
   text = getText(values);

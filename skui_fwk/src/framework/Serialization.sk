@@ -39,7 +39,7 @@ extension class KeyDown uses HasClassName {
     cl = jso.getString("__class");
     cl match {
     | "FWK.KeyDown" ->
-      KeyDown(jso.getString("symbol"), SKFS.Tick(jso.getInt("tick")))
+      KeyDown(jso.getString("symbol"), SKStore.Tick(jso.getInt("tick")))
     | _ -> invariant_violation(`Invalid json object ${cl} for FWK.KeyDown`)
     }
   }
@@ -66,7 +66,7 @@ extension class MouseDown uses HasClassName {
     | "FWK.MouseDown" ->
       MouseDown(
         Button::fromJSON(jso.get("button")),
-        SKFS.Tick(jso.getInt("tick")),
+        SKStore.Tick(jso.getInt("tick")),
         jso.maybeGet("offset").map(Geometry.Offset::fromJSON),
       )
     | _ -> invariant_violation(`Invalid json object ${cl} for FWK.MouseDown`)

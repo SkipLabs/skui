@@ -11,7 +11,7 @@ class HoverHandler(
     }
   }
 
-  protected fun onEnter(context: mutable SKFS.Context): void {
+  protected fun onEnter(context: mutable SKStore.Context): void {
     if (this.optHover.isSome()) {
       this.scroll.state.emitHover(context, this.optHover);
       FWKPointer.setCursor(context, Ui.HandCursor());
@@ -19,7 +19,7 @@ class HoverHandler(
   }
 
   protected fun onMouse(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
     wheel = mouse.getWheelValue(context.tick);
@@ -45,7 +45,7 @@ class HoverHandler(
     );
   }
 
-  protected fun onExit(context: mutable SKFS.Context): void {
+  protected fun onExit(context: mutable SKStore.Context): void {
     if (this.optHover.isSome()) {
       FWKPointer.resetCursor(context);
       this.scroll.state.emitHover(context, None());

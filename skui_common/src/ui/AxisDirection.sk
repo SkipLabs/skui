@@ -98,7 +98,7 @@ base class HorizontalDirection()
    */
   | ToLeft()
 
-  static fun forFile(obj: SKStore.File): HorizontalDirection {
+  static fun btype(obj: SKStore.File): HorizontalDirection {
     obj match {
     | x @ HorizontalDirection _ -> x
     | _ -> SKStore.cast_violation("Ui.HorizontalDirection", obj)

@@ -3,21 +3,21 @@ module UiText;
 const metricsPath: String = "/ui/verified/texts/metrics/";
 
 base class Controller {
-  fun getText(context: mutable SKFS.Context): Text;
-  fun getStyle(context: mutable SKFS.Context): Text.Style;
+  fun getText(context: mutable SKStore.Context): Text;
+  fun getStyle(context: mutable SKStore.Context): Text.Style;
 }
 
 class Parameters(controller: Controller, pxRange: Int) extends Ui.Parameters
 
 class LamController{
-  text: mutable SKFS.Context ~> Text,
-  style: mutable SKFS.Context ~> Text.Style,
+  text: mutable SKStore.Context ~> Text,
+  style: mutable SKStore.Context ~> Text.Style,
 } extends Controller {
-  fun getText(context: mutable SKFS.Context): Text {
+  fun getText(context: mutable SKStore.Context): Text {
     this.text(context)
   }
 
-  fun getStyle(context: mutable SKFS.Context): Text.Style {
+  fun getStyle(context: mutable SKStore.Context): Text.Style {
     this.style(context)
   }
 }
@@ -30,7 +30,7 @@ class LineInfo(
 
 class DrawInfo(value: Array<?LineInfo>) extends Ui.DrawInfo {
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     absolute: Geometry.Offset,
     size: Geometry.Size,
     layout: Layout,
@@ -83,9 +83,9 @@ class Metrics(
   height: Float,
   space: Float,
   style: Text.Style,
-) extends SKFS.File {
+) extends SKStore.File {
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     controller: Controller,
   ): this {
     fontSupport = context.getFontSupport();
@@ -221,7 +221,7 @@ class Metrics(
   }
 
   fun reduce(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     max: Float,
   ): Array<(String, Float)> {
     this.lines.map(line ->
@@ -265,34 +265,35 @@ class Metrics(
 }
 
 class Cache(
-  metricsHdl: SKFS.LHandle<Metrics>,
-  nodesHdl: SKFS.LHandle<Ui.Node>,
+  metricsHdl: SKStore.LHandle<SKStore.IID, Metrics>,
+  nodesHdl: SKStore.LHandle<Ui.KConstraints, Ui.Node>,
 ) extends Ui.NodeBuffer {
   //
   static fun create(path: Ui.Path): this {
     metricsPath = path.toDirName(metricsPath);
     nodesPath = Ui.nodesBufferPath(path);
     static(
-      SKFS.LHandle(Metrics::fromFile, metricsPath),
-      SKFS.LHandle(Ui.Node::fromFile, nodesPath),
+      SKStore.LHandle(SKStore.IID::keyType, Metrics::type, metricsPath),
+      SKStore.LHandle(Ui.KConstraints::keyType, Ui.Node::type, nodesPath),
     );
   }
 
-  fun getMetrics(context: mutable SKFS.Context): Metrics {
-    this.metricsHdl.get(context, SKFS.IID(0))
+  fun getMetrics(context: mutable SKStore.Context): Metrics {
+    this.metricsHdl.get(context, SKStore.IID(0))
   }
 
   fun getNode(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     this.nodesHdl.get(context, Ui.KConstraints(constraints))
   }
 
-  fun init(context: mutable SKFS.Context, widget: Ui.Widget): void {
+  fun init(context: mutable SKStore.Context, widget: Ui.Widget): void {
     vtext = widget as Ui.VText _;
-    _ = SKFS.LHandle::lazy(
-      Metrics::fromFile,
+    _ = SKStore.LHandle::lazy(
+      SKStore.IID::keyType,
+      Metrics::type,
       context,
       vtext.path.toDirName(metricsPath),
       (context, _, _) ~> Metrics::compute(context, vtext.controller),
@@ -325,7 +326,7 @@ class VText protected {
   type Buffer = UiText.Cache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiText.Parameters,
     cache: UiText.Cache,
@@ -342,7 +343,7 @@ class VText protected {
   }
 
   static fun createForController(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiText.Controller,
     optConfiguration: ?Ui.Configuration = None(),
@@ -359,7 +360,10 @@ class VText protected {
     UiText.Cache::create(path)
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     metrics = this.cache.getMetrics(context);
     if (constraints.hasBoundedWidth()) {
       !metrics = metrics.split(constraints.maxWidth().floor())
@@ -384,7 +388,7 @@ class VText protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -411,7 +415,7 @@ class VText protected {
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     absolute: Geometry.Offset,
     _size: Geometry.Size,
     layout: UiText.Layout,
@@ -432,7 +436,7 @@ class VText protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: NodeSum,

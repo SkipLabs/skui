@@ -36,7 +36,7 @@ extension class Description extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Description {
     s match {
     | t @ Description _ -> t
-    | _ -> SKFS.cast_violation("UiIcon.Description", s)
+    | _ -> SKStore.cast_violation("UiIcon.Description", s)
     }
   }
 }
@@ -218,7 +218,7 @@ base class Widgetable extends SObject {
   static fun fromSerializable(obj: Serializable): Widgetable {
     obj match {
     | x @ Widgetable _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Widgetable", obj)
+    | _ -> SKStore.cast_violation("UiEngine.Widgetable", obj)
     }
   }
 }

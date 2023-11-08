@@ -1,40 +1,40 @@
 module UiButton;
 
 class LamController{
-  disabled: mutable SKFS.Context ~> Bool = _ctx ~> false,
-  text: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
-  icon: (mutable SKFS.Context, Float) ~> ?Ui.Icon = (_ctx, _fs) ~> None(),
-  tooltip: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
-  kind: mutable SKFS.Context ~> Kind = _ctx ~> Regular(),
-  mode: mutable SKFS.Context ~> Mode = _ctx ~> Stroked(),
-  onFire: (mutable SKFS.Context, ?Int) ~> void = (_ctx, _optCount) ~> void,
+  disabled: mutable SKStore.Context ~> Bool = _ctx ~> false,
+  text: mutable SKStore.Context ~> ?Text = _ctx ~> None(),
+  icon: (mutable SKStore.Context, Float) ~> ?Ui.Icon = (_ctx, _fs) ~> None(),
+  tooltip: mutable SKStore.Context ~> ?Text = _ctx ~> None(),
+  kind: mutable SKStore.Context ~> Kind = _ctx ~> Regular(),
+  mode: mutable SKStore.Context ~> Mode = _ctx ~> Stroked(),
+  onFire: (mutable SKStore.Context, ?Int) ~> void = (_ctx, _optCount) ~> void,
 } extends Controller {
   //
-  fun isDisabled(context: mutable SKFS.Context): Bool {
+  fun isDisabled(context: mutable SKStore.Context): Bool {
     this.disabled(context)
   }
 
-  fun getText(context: mutable SKFS.Context): ?Text {
+  fun getText(context: mutable SKStore.Context): ?Text {
     this.text(context)
   }
 
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon {
     this.icon(context, fontSize)
   }
 
-  fun getTooltip(context: mutable SKFS.Context): ?Text {
+  fun getTooltip(context: mutable SKStore.Context): ?Text {
     this.tooltip(context)
   }
 
-  fun getKind(context: mutable SKFS.Context): Kind {
+  fun getKind(context: mutable SKStore.Context): Kind {
     this.kind(context)
   }
 
-  fun getMode(context: mutable SKFS.Context): Mode {
+  fun getMode(context: mutable SKStore.Context): Mode {
     this.mode(context)
   }
 
-  fun fire(context: mutable SKFS.Context, optCount: ?Int = None()): void {
+  fun fire(context: mutable SKStore.Context, optCount: ?Int = None()): void {
     this.onFire(context, optCount)
   }
 }

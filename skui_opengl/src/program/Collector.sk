@@ -90,7 +90,7 @@ class Supplier(programs: GetProgram) {
   }
 }
 
-base class Used(value: String) extends SKFS.File {
+base class Used(value: String) extends SKStore.File {
   children =
   | UBuffer
   | UArray

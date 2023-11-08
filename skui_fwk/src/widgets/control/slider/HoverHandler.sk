@@ -8,14 +8,14 @@ class HoverHandler(
     this.slider.path
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     if (!this.slider.controller.isDisabled(context)) {
       FWKPointer.setCursor(context, Ui.HandCursor());
     };
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
@@ -26,7 +26,7 @@ class HoverHandler(
   }
 
   private fun onMouse(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
     wheel = mouse.getWheelValue(context.tick);
@@ -70,12 +70,12 @@ class HoverHandler(
     res;
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     this.slider.state.emitReset(context);
     FWKPointer.resetCursor(context);
   }
 
-  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getTooltip(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
     None()
   }
 }

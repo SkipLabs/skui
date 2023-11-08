@@ -12,12 +12,12 @@ base class Command extends SKUIMessage.Command {
   | SetAsking(optPath: ?Ui.Path)
   | CheckAsking(path: Ui.Path)
   | SetScroll(optScroll: ?Ui.Scroll)
-  | CancelScrolling(tick: SKFS.Tick)
+  | CancelScrolling(tick: SKStore.Tick)
 }
 
 base class ExecCommand extends Command, Executable {
   children =
-  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | ManageScrolling(value: Int, tick: SKStore.Tick)
   | ManageVisible(visible: Int)
   | ManageExpansion(path: Ui.Path, expansion: Bool)
   | ToggleExpansion(path: Ui.Path)

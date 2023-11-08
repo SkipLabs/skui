@@ -1,26 +1,29 @@
 module UiMonospace;
 
 const statePath: String = "ui/monospace/state";
-const numberOfLinesProp: SKFS.StrID = SKFS.StrID("numberOfLines");
-const numberOfColumnsProp: SKFS.StrID = SKFS.StrID("numberOfColumns");
-const fontLoadingProp: SKFS.StrID = SKFS.StrID("fontLoading");
-const linesProp: SKFS.StrID = SKFS.StrID("lines");
-const fontSizeProp: SKFS.StrID = SKFS.StrID("fontSize");
-const caretVisibleTimeProp: SKFS.StrID = SKFS.StrID("caretVisibleTime");
-const verifiedPositionProp: SKFS.StrID = SKFS.StrID("verifiedPosition");
-const displayPositionProp: SKFS.StrID = SKFS.StrID("displayPosition");
-const verifiedSelectionProp: SKFS.StrID = SKFS.StrID("verifiedSelection");
-const verifiedTargetProp: SKFS.StrID = SKFS.StrID("verifiedTarget");
-const colorsProp: SKFS.StrID = SKFS.StrID("colors");
+const numberOfLinesProp: SKStore.StrID = SKStore.StrID("numberOfLines");
+const numberOfColumnsProp: SKStore.StrID = SKStore.StrID("numberOfColumns");
+const fontLoadingProp: SKStore.StrID = SKStore.StrID("fontLoading");
+const linesProp: SKStore.StrID = SKStore.StrID("lines");
+const fontSizeProp: SKStore.StrID = SKStore.StrID("fontSize");
+const caretVisibleTimeProp: SKStore.StrID = SKStore.StrID("caretVisibleTime");
+const verifiedPositionProp: SKStore.StrID = SKStore.StrID("verifiedPosition");
+const displayPositionProp: SKStore.StrID = SKStore.StrID("displayPosition");
+const verifiedSelectionProp: SKStore.StrID = SKStore.StrID("verifiedSelection");
+const verifiedTargetProp: SKStore.StrID = SKStore.StrID("verifiedTarget");
+const colorsProp: SKStore.StrID = SKStore.StrID("colors");
 
-class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
+class HStorage(
+  name: String,
+  handle: SKStore.IHandle<SKStore.Key, SKStore.File>,
+) extends Storage {
   //
   static fun forNameAndScope(
-    context: readonly SKFS.Context,
+    context: readonly SKStore.Context,
     name: String,
     scope: String,
   ): ?this {
-    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    hdl = SKStore.IHandle(k ~> k, f ~> f, SKStore.DirName::create(scope));
     if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
   }
 
@@ -32,44 +35,53 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
     this.handle.getDirName().toString()
   }
 
-  fun setTodo(context: mutable SKFS.Context, value: Ui.Executable): void {
+  fun setTodo(context: mutable SKStore.Context, value: Ui.Executable): void {
     this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
   }
 
-  fun setHScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void {
+  fun setHScroll(
+    context: mutable SKStore.Context,
+    optScroll: ?Ui.Scroll,
+  ): void {
     this.handle.writeOrRemove(context, Ui.hScrollProp, optScroll)
   }
 
-  fun setVScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void {
+  fun setVScroll(
+    context: mutable SKStore.Context,
+    optScroll: ?Ui.Scroll,
+  ): void {
     this.handle.writeOrRemove(context, Ui.vScrollProp, optScroll)
   }
 
-  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void {
+  fun setScrolling(
+    context: mutable SKStore.Context,
+    optTick: ?SKStore.Tick,
+  ): void {
     this.handle.writeOrRemove(
       context,
       Ui.scrollingProp,
-      optTick.map(t -> SKFS.IntFile(t.value)),
+      optTick.map(t -> SKStore.IntFile(t.value)),
     )
   }
 
-  fun setHover(context: mutable SKFS.Context, optValue: ?Hover): void {
+  fun setHover(context: mutable SKStore.Context, optValue: ?Hover): void {
     this.handle.writeOrRemove(context, Ui.hoverProp, optValue)
   }
 
-  fun setArmed(context: mutable SKFS.Context, value: Bool): void {
-    this.handle.write(context, Ui.armedProp, SKFS.BoolFile(value))
+  fun setArmed(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.armedProp, SKStore.BoolFile(value))
   }
 
-  fun setBlinking(context: mutable SKFS.Context, value: Bool): void {
-    this.handle.write(context, Ui.blinkingProp, SKFS.BoolFile(value))
+  fun setBlinking(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.blinkingProp, SKStore.BoolFile(value))
   }
 
-  fun setMoveSelection(context: mutable SKFS.Context, value: Bool): void {
-    this.handle.write(context, Ui.moveSelectionProp, SKFS.BoolFile(value))
+  fun setMoveSelection(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.moveSelectionProp, SKStore.BoolFile(value))
   }
 
   fun setVisibility(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optVisibility: ?Ui.Visibility,
   ): void {
     this.handle.writeOrRemove(context, Ui.visibilityProp, optVisibility)
@@ -77,157 +89,156 @@ class HStorage(name: String, handle: SKFS.IHandle<SKFS.File>) extends Storage {
 
   // GETTERS
 
-  fun getVisibility(context: mutable SKFS.Context): ?Ui.Visibility {
-    this.handle.maybeGetProp(
-      context,
-      Ui.visibilityProp,
-      Ui.Visibility::fromFile,
-    )
+  fun getVisibility(context: mutable SKStore.Context): ?Ui.Visibility {
+    this.handle.maybeGetProp(context, Ui.visibilityProp, Ui.Visibility::type)
   }
 
-  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick {
-    this.handle.maybeGetInt(context, Ui.scrollingProp).map(v -> SKFS.Tick(v))
+  fun getScrolling(context: mutable SKStore.Context): ?SKStore.Tick {
+    this.handle.maybeGetInt(context, Ui.scrollingProp).map(v -> SKStore.Tick(v))
   }
 
-  fun getTodo(context: mutable SKFS.Context): Ui.Todo {
-    Ui.Todo::fromFile(this.handle.get(context, Ui.todoProp))
+  fun getTodo(context: mutable SKStore.Context): Ui.Todo {
+    Ui.Todo::type(this.handle.get(context, Ui.todoProp))
   }
 }
 
 class HState(
   path: Ui.Path,
-  storage: SKFS.EHandle<SKFS.File>,
-  computed: SKFS.EHandle<SKFS.File>,
+  storage: SKStore.EHandle<SKStore.Key, SKStore.File>,
+  computed: SKStore.EHandle<SKStore.Key, SKStore.File>,
 ) extends State {
   //
-  fun getHover(context: mutable SKFS.Context): ?Hover {
+  fun getHover(context: mutable SKStore.Context): ?Hover {
     this.storage.maybeGetProp(context, Ui.hoverProp, f ~> f as Hover _)
   }
 
-  fun isArmed(context: mutable SKFS.Context, isUntracked: Bool = false): Bool {
+  fun isArmed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Bool {
     this.storage.getBool(context, Ui.armedProp, isUntracked)
   }
 
   fun isMoveSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool {
     this.storage.getBool(context, Ui.moveSelectionProp, isUntracked)
   }
 
-  fun getHScroll(context: mutable SKFS.Context): ?Ui.Scroll {
+  fun getHScroll(context: mutable SKStore.Context): ?Ui.Scroll {
     this.storage.maybeGetProp(context, Ui.hScrollProp, f ~> f as Ui.Scroll _);
   }
 
-  fun getVScroll(context: mutable SKFS.Context): ?Ui.Scroll {
+  fun getVScroll(context: mutable SKStore.Context): ?Ui.Scroll {
     this.storage.maybeGetProp(context, Ui.vScrollProp, f ~> f as Ui.Scroll _);
   }
 
-  fun isScrolling(context: mutable SKFS.Context): Bool {
+  fun isScrolling(context: mutable SKStore.Context): Bool {
     this.storage.maybeGetInt(context, Ui.scrollingProp).isSome()
   }
 
   // COMPUTED
 
   fun getLineCommandsManager(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _isUntracked: Bool = false,
   ): Ui.TextCommandsManager {
     TextCommandsManager(this)
   }
 
   fun getNumberOfLines(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Int {
     this.computed.getInt(context, numberOfLinesProp, isUntracked)
   }
 
   fun getNumberOfColumns(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Int {
     this.computed.getInt(context, numberOfColumnsProp, isUntracked)
   }
 
   fun isFontLoading(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool {
     this.computed.getBool(context, fontLoadingProp, isUntracked)
   }
 
-  fun isCaretVisible(context: mutable SKFS.Context): Bool {
+  fun isCaretVisible(context: mutable SKStore.Context): Bool {
     this.computed.getBool(context, Ui.caretVisibleProp)
   }
 
-  fun getHEnsureVisible(context: mutable SKFS.Context): ?Ui.Visible {
+  fun getHEnsureVisible(context: mutable SKStore.Context): ?Ui.Visible {
     this.computed.maybeGetProp(context, Ui.hEnsureVisibleProp, f ~>
       f as Ui.Visible _
     ).flatMap(v -> if (v.tick == context.tick) Some(v) else None());
   }
 
-  fun getVEnsureVisible(context: mutable SKFS.Context): ?Ui.Visible {
+  fun getVEnsureVisible(context: mutable SKStore.Context): ?Ui.Visible {
     this.computed.maybeGetProp(context, Ui.vEnsureVisibleProp, f ~>
       f as Ui.Visible _
     ).flatMap(v -> if (v.tick == context.tick) Some(v) else None());
   }
 
-  fun getLines(context: mutable SKFS.Context): Vector<Line> {
+  fun getLines(context: mutable SKStore.Context): Vector<Line> {
     this.computed.getProp(
       context,
       linesProp,
-      Lines::fromFile,
+      Lines::type,
       Lines(Vector[Line(context.timeStamp().value, Array[], Array[])]),
     ).value
   }
 
   fun getFontSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.FontSize {
     this.computed.getProp(
       context,
       fontSizeProp,
-      Ui.FontSize::fromFile,
+      Ui.FontSize::type,
       Ui.FontSize(8.0, 8.0, 4.0),
       isUntracked,
     )
   }
 
   fun getPosition(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.Position {
     this.computed.getProp(
       context,
       verifiedPositionProp,
-      Ui.Position::fromFile,
+      Ui.Position::type,
       Ui.Position::zero,
       isUntracked,
     )
   }
 
   fun getTarget(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.Position {
     this.computed.maybeGetProp(
       context,
       verifiedTargetProp,
-      Ui.Position::fromFile,
+      Ui.Position::type,
       isUntracked,
     )
   }
 
   fun getSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.Portion {
     selection = this.computed.getProp(
       context,
       verifiedSelectionProp,
-      Ui.Portion::fromFile,
+      Ui.Portion::type,
       Ui.Portion::empty,
       isUntracked,
     );
@@ -238,24 +249,24 @@ class HState(
     }
   }
 
-  fun getColorRanges(context: mutable SKFS.Context): Vector<ColorRange> {
+  fun getColorRanges(context: mutable SKStore.Context): Vector<ColorRange> {
     this.computed.getProp(
       context,
       colorsProp,
-      ColorRanges::fromFile,
+      ColorRanges::type,
       ColorRanges(Vector[]),
     ).value;
   }
 
   fun computeClipboardContent(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     endLine: Ui.EndLine,
     isUntracked: Bool = false,
   ): ?FWKClipboard.Content {
     lines = this.computed.getProp(
       context,
       linesProp,
-      Lines::fromFile,
+      Lines::type,
       Lines::empty(() -> context.timeStamp().value),
       isUntracked,
     ).value;
@@ -307,96 +318,96 @@ class HState(
     }
   }
 
-  fun emitHover(context: mutable SKFS.Context, optHover: ?Hover): void {
+  fun emitHover(context: mutable SKStore.Context, optHover: ?Hover): void {
     this.emit(context, SetHover(optHover));
   }
 
-  fun emitArmed(context: mutable SKFS.Context, value: Bool): void {
+  fun emitArmed(context: mutable SKStore.Context, value: Bool): void {
     this.emit(context, SetArmed(value));
   }
 
-  fun emitDiacritic(context: mutable SKFS.Context, value: Char): void {
+  fun emitDiacritic(context: mutable SKStore.Context, value: Char): void {
     this.emit(context, ManageDiacritic(value));
   }
 
-  fun emitUnicode(context: mutable SKFS.Context, optValue: ?Int): void {
+  fun emitUnicode(context: mutable SKStore.Context, optValue: ?Int): void {
     this.emit(context, ManageUnicode(optValue));
   }
 
-  fun emitMoveSelection(context: mutable SKFS.Context, value: Bool): void {
+  fun emitMoveSelection(context: mutable SKStore.Context, value: Bool): void {
     this.emit(context, SetMoveSelection(value));
   }
 
   fun emitNewLine(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, NewLine(optRepeatOn));
   }
 
   fun emitUndo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, Undo(optRepeatOn));
   }
 
   fun emitRedo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, Redo(optRepeatOn));
   }
 
-  fun emitCut(context: mutable SKFS.Context): void {
+  fun emitCut(context: mutable SKStore.Context): void {
     this.emit(context, Cut());
   }
 
-  fun emitCopy(context: mutable SKFS.Context): void {
+  fun emitCopy(context: mutable SKStore.Context): void {
     this.emit(context, Copy());
   }
 
-  fun emitSave(context: mutable SKFS.Context): void {
+  fun emitSave(context: mutable SKStore.Context): void {
     this.emit(context, Save());
   }
 
-  fun emitDuplicate(context: mutable SKFS.Context): void {
+  fun emitDuplicate(context: mutable SKStore.Context): void {
     this.emit(context, Duplicate());
   }
 
-  fun emitSwitchLine(context: mutable SKFS.Context): void {
+  fun emitSwitchLine(context: mutable SKStore.Context): void {
     this.emit(context, SwitchLine());
   }
 
   fun emitDecrLine(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, DecrLine(optRepeatOn));
   }
 
   fun emitIncrLine(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, IncrLine(optRepeatOn));
   }
 
   fun emitIndent(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, Indent(optRepeatOn));
   }
 
   fun emitOutdent(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, Outdent(optRepeatOn));
   }
 
-  fun emitPaste(context: mutable SKFS.Context): void {
+  fun emitPaste(context: mutable SKStore.Context): void {
     FWKClipboard.paste(
       context,
       FWKClipboard.Plain(),
@@ -408,16 +419,16 @@ class HState(
     )
   }
 
-  fun emitUpper(context: mutable SKFS.Context): void {
+  fun emitUpper(context: mutable SKStore.Context): void {
     this.emit(context, Upper());
   }
 
-  fun emitLower(context: mutable SKFS.Context): void {
+  fun emitLower(context: mutable SKStore.Context): void {
     this.emit(context, Lower());
   }
 
   fun emitInsert(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: String,
     ignoreSelection: Bool,
     optPosition: ?Ui.Position,
@@ -425,35 +436,35 @@ class HState(
     this.emit(context, Insert(text, ignoreSelection, optPosition));
   }
 
-  fun emitBlinking(context: mutable SKFS.Context, value: Bool): void {
+  fun emitBlinking(context: mutable SKStore.Context, value: Bool): void {
     this.emit(context, SetBlinking(value));
   }
 
-  fun emitHScroll(context: mutable SKFS.Context, value: ?Ui.Scroll): void {
+  fun emitHScroll(context: mutable SKStore.Context, value: ?Ui.Scroll): void {
     this.emit(context, SetHScroll(value));
   }
 
-  fun emitVScroll(context: mutable SKFS.Context, value: ?Ui.Scroll): void {
+  fun emitVScroll(context: mutable SKStore.Context, value: ?Ui.Scroll): void {
     this.emit(context, SetVScroll(value));
   }
 
-  fun emitHScrolling(context: mutable SKFS.Context, value: Int): void {
+  fun emitHScrolling(context: mutable SKStore.Context, value: Int): void {
     this.emit(context, ManageHScrolling(value, context.tick));
   }
 
-  fun emitVScrolling(context: mutable SKFS.Context, value: Int): void {
+  fun emitVScrolling(context: mutable SKStore.Context, value: Int): void {
     this.emit(context, ManageVScrolling(value, context.tick));
   }
 
   fun emitCancelScrolling(
-    context: mutable SKFS.Context,
-    tick: SKFS.Tick,
+    context: mutable SKStore.Context,
+    tick: SKStore.Tick,
   ): void {
     this.emit(context, CancelScrolling(tick));
   }
 
   fun emitDeleteTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     target: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
@@ -461,7 +472,7 @@ class HState(
   }
 
   fun emitGoTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     target: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
@@ -469,38 +480,41 @@ class HState(
   }
 
   fun emitSelectTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     target: Selection,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, SelectTo(target, optRepeatOn));
   }
 
-  fun emitHVisible(context: mutable SKFS.Context, index: Int): void {
+  fun emitHVisible(context: mutable SKStore.Context, index: Int): void {
     this.emit(context, ManageHVisible(index))
   }
 
-  fun emitVVisible(context: mutable SKFS.Context, index: Int): void {
+  fun emitVVisible(context: mutable SKStore.Context, index: Int): void {
     this.emit(context, ManageVVisible(index))
   }
 
-  fun emitTarget(context: mutable SKFS.Context, optTarget: ?Ui.Position): void {
+  fun emitTarget(
+    context: mutable SKStore.Context,
+    optTarget: ?Ui.Position,
+  ): void {
     this.emit(context, DnDTarget(optTarget));
   }
 
-  fun emitSelectLine(context: mutable SKFS.Context, line: Int): void {
+  fun emitSelectLine(context: mutable SKStore.Context, line: Int): void {
     this.emit(context, SelectLine(line))
   }
 
   fun emitAll(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     commands: readonly Vector<Command>,
   ): void {
     this.emit(context, All(commands.toArray()))
   }
 
   private fun emit(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     command: SKUIMessage.Command,
   ): void {
     SKUIMessage.emit(
@@ -511,7 +525,7 @@ class HState(
     )
   }
 
-  fun emitOpenGoToLine(context: mutable SKFS.Context): void {
+  fun emitOpenGoToLine(context: mutable SKStore.Context): void {
     context.openInputDialog(
       !"What is the line number?",
       todo()/*SKUIMessage.Target::forClass(
@@ -532,7 +546,7 @@ class HState(
 
 class TextCommandsManager(state: HState) extends Ui.TextCommandsManager {
   //
-  fun manageAcquire(context: mutable SKFS.Context): void {
+  fun manageAcquire(context: mutable SKStore.Context): void {
     SystemProperties.setRequireFocus(context, this.state.path);
   }
 
@@ -581,7 +595,7 @@ class TextCommandsManager(state: HState) extends Ui.TextCommandsManager {
   }
 
   fun emitAll(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     commands: readonly Vector<SKUIMessage.Command>,
   ): void {
     this.state.emitAll(context, commands.map(cmd -> cmd as Command _));
@@ -592,18 +606,18 @@ class UserData(
   controller: Controller,
   path: Ui.Path,
   source: Int,
-) extends SKFS.UserData {}
+) extends SKStore.UserData {}
 
 @debug
 fun init(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   controller: Controller,
 ): Parameters {
   source = context.timeStamp().value;
   dirName = Ui.controllerDirName(path);
-  computedDirName = SKFS.DirName::make(dirName, "computed/");
-  managedDirName = SKFS.DirName::make(dirName, "managed/");
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  managedDirName = SKStore.DirName::make(dirName, "managed/");
   initKeys = Array[
     linesProp,
     Ui.diacriticProp,
@@ -615,26 +629,23 @@ fun init(
     Ui.historyProp,
     Ui.ensureVisibleProp,
   ];
-  preComputedHdl = context.makePreDir(
-    f ~> f,
+  preComputedHdl = context.makeNotTypedPre(
     computedDirName,
-    Array<(SKFS.BaseName, SKFS.File)>[(SKFS.KKeys(), SKFS.Keys(initKeys))],
+    Array[(SKStore.KKeys(), SKStore.Keys(initKeys))],
   );
-  stateHdl = context.makeDir(
-    f ~> f,
+  stateHdl = context.makeNotTyped(
     dirName,
-    Array<(SKFS.BaseName, SKFS.File)>[
-      (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
-    ],
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
   );
-  dv = SKFS.IntFile(0);
-  toReallyDoHdl = stateHdl.contextWriterKeyMap(
-    Ui.Todo::fromFile,
+  dv = SKStore.IntFile(0);
+  toReallyDoHdl = stateHdl.map(
+    k ~> k,
+    Ui.Todo::type,
     context,
-    SKFS.DirName::make(dirName, "todo/"),
-    (context, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "todo/"),
+    (context, writer, key, it) ~> {
       if (key == Ui.todoProp) {
-        todo = Ui.Todo::fromFile(file);
+        todo = Ui.Todo::type(it.first);
         timedText = controller.getText(context).getTimed(context);
         if (timedText.i1 > todo.tick && timedText.i2 != source) {
           !todo = Ui.Todo(ManageText(timedText.i0.toString()), timedText.i1)
@@ -653,11 +664,11 @@ fun init(
             timedPortion.i1,
           )
         };
-        writer.write(key, todo);
+        writer.set(key, todo);
       }
     },
   );
-  managedHdl = SKFS.derive(
+  managedHdl = SKStore.derive(
     context,
     dirName.toString(),
     managedDirName,
@@ -669,10 +680,11 @@ fun init(
     Some(preComputedHdl),
   );
   afterSourceHdl = context.makeDir(
-    SKFS.IntFile::fromFile,
-    SKFS.DirName::make(dirName, "afterSource/"),
+    k ~> k,
+    SKStore.IntFile::type,
+    SKStore.DirName::make(dirName, "afterSource/"),
     Array[
-      (SKFS.KKeys(), dv),
+      (SKStore.KKeys(), dv),
       (linesProp, dv),
       (Ui.diacriticProp, dv),
       (Ui.unicodeProp, dv),
@@ -689,35 +701,33 @@ fun init(
     ],
   );
   computedHdl = afterSourceHdl
-    .contextWriterKeyMap(
+    .map(
+      k ~> k,
       f ~> f,
       context,
-      SKFS.DirName::make(dirName, "after/"),
+      SKStore.DirName::make(dirName, "after/"),
       (context, writer, key, _) ~> {
         if (key == fontSizeProp) {
           font = context.getThemeFont(UiTheme.Monospace());
-          writer.write(
-            key,
-            context.getTextSupport().getSpaceSize(context, font),
-          );
+          writer.set(key, context.getTextSupport().getSpaceSize(context, font));
         } else if (key == fontLoadingProp) {
           font = context.getThemeFont(UiTheme.Monospace());
-          writer.write(
+          writer.set(
             key,
-            SKFS.BoolFile(context.getFontSupport().isLoading(context, font)),
+            SKStore.BoolFile(context.getFontSupport().isLoading(context, font)),
           );
         } else if (key == Ui.caretVisibleProp) {
           optVisibility = stateHdl.maybeGetProp(
             context,
             Ui.visibilityProp,
-            Ui.Visibility::fromFile,
+            Ui.Visibility::type,
           );
           optCaretVisible = preComputedHdl
             .maybeGetInt(context, caretVisibleTimeProp)
-            .map(v -> SKFS.Tick(v));
-          writer.write(
+            .map(v -> SKStore.Tick(v));
+          writer.set(
             key,
-            SKFS.BoolFile(
+            SKStore.BoolFile(
               optVisibility match {
               | Some(visiblity) ->
                 optCaretVisible match {
@@ -731,32 +741,33 @@ fun init(
         } else {
           managedHdl.maybeGet(context, key).each(value -> {
             if (key == linesProp) {
-              lines = Lines::fromFile(value).value;
+              lines = Lines::type(value).value;
               columnsNumber = lines.reduce(
                 (acc, l) -> Math.max(acc, l.text.size()),
                 0,
               );
-              writer.write(numberOfLinesProp, SKFS.IntFile(lines.size()));
-              writer.write(numberOfColumnsProp, SKFS.IntFile(columnsNumber));
+              writer.set(numberOfLinesProp, SKStore.IntFile(lines.size()));
+              writer.set(numberOfColumnsProp, SKStore.IntFile(columnsNumber));
             };
-            writer.write(key, value)
+            writer.set(key, value)
           })
         }
       },
     )
-    .contextWriterKeyMap(
+    .map(
+      k ~> k,
       f ~> f,
       context,
-      SKFS.DirName::make(dirName, "verified/"),
-      (context, writer, key, file) ~> {
+      SKStore.DirName::make(dirName, "verified/"),
+      (context, writer, key, it) ~> {
         if (key == Ui.selectionProp) {
-          portion = Ui.Portion::fromFile(file);
+          portion = Ui.Portion::type(it.first);
           controller
             .getSelection(context, true)
             .set(context, Some(portion.incr()), source);
           lines = managedHdl
             .maybeGet(context, linesProp)
-            .map(Lines::fromFile)
+            .map(Lines::type)
             .default(Lines::empty(() -> context.timeStamp().value)).value;
           sLineIdx = Math.clamp(portion.start.line, 0, lines.size() - 1);
           eLineIdx = Math.clamp(portion.end.line, 0, lines.size() - 1);
@@ -765,7 +776,7 @@ fun init(
           sColumnIdx = Math.clamp(portion.start.column, 0, sLine.text.size());
           eColumnIdx = Math.clamp(portion.end.column, 0, eLine.text.size());
           // verify
-          writer.write(
+          writer.set(
             verifiedSelectionProp,
             Ui.Portion(
               Ui.Position(sLineIdx, sColumnIdx),
@@ -773,35 +784,35 @@ fun init(
             ),
           )
         } else if (key == Ui.positionProp) {
-          position = Ui.Position::fromFile(file);
+          position = Ui.Position::type(it.first);
           controller
             .getPosition(context, true)
             .set(context, Some(position.incr()), source);
           // verify
           lines = managedHdl
             .maybeGet(context, linesProp)
-            .map(Lines::fromFile)
+            .map(Lines::type)
             .default(Lines::empty(() -> context.timeStamp().value)).value;
           lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
           line = lines[lineIdx];
           columnIdx = Math.clamp(position.column, 0, line.text.size());
-          writer.write(verifiedPositionProp, Ui.Position(lineIdx, columnIdx))
+          writer.set(verifiedPositionProp, Ui.Position(lineIdx, columnIdx))
         } else if (key == Ui.targetProp) {
-          position = Ui.Position::fromFile(file);
+          position = Ui.Position::type(it.first);
           // verify
           lines = managedHdl
             .maybeGet(context, linesProp)
-            .map(Lines::fromFile)
+            .map(Lines::type)
             .default(Lines::empty(() -> context.timeStamp().value)).value;
           lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
           line = lines[lineIdx];
           columnIdx = Math.clamp(position.column, 0, line.text.size());
-          writer.write(verifiedTargetProp, Ui.Position(lineIdx, columnIdx))
+          writer.set(verifiedTargetProp, Ui.Position(lineIdx, columnIdx))
         } else if (key == linesProp) {
           controller.getColorSupplier(context).each(supplier ->
             controller.getBracketsChecker(context).each(checker -> {
               colors = mutable Vector<ColorRange>[];
-              lines = Lines::fromFile(file).value;
+              lines = Lines::type(it.first).value;
               stack = mutable Vector<Bracket>[];
               optCurrent: ?Bracket = None();
               optPosition: ?Ui.Position = None();
@@ -852,26 +863,24 @@ fun init(
                 line.brackets.each(bracket -> check(idx, Some(bracket)));
                 check(idx, None())
               });
-              writer.write(
-                colorsProp,
-                ColorRanges(unsafe_chill_trust_me(colors)),
-              )
+              writer.set(colorsProp, ColorRanges(unsafe_chill_trust_me(colors)))
             })
           )
         };
-        writer.write(key, file);
+        writer.set(key, it.first);
       },
     )
-    .contextWriterKeyMap(
+    .map(
+      k ~> k,
       f ~> f,
       context,
       computedDirName,
-      (context, writer, key, file) ~>
+      (context, writer, key, it) ~>
         if (key == verifiedPositionProp) {
           if (stateHdl.getBool(context, Ui.blinkingProp)) {
-            writer.write(
+            writer.set(
               caretVisibleTimeProp,
-              SKFS.IntFile(context.tick.value),
+              SKStore.IntFile(context.tick.value),
             );
             SKUIMessage.emit(
               context,
@@ -882,9 +891,9 @@ fun init(
               Some(500),
             );
           };
-          writer.write(key, file)
+          writer.set(key, it.first)
         } else {
-          writer.write(key, file)
+          writer.set(key, it.first)
         }
       ,
     );
@@ -893,9 +902,9 @@ fun init(
 
 @debug
 fun update(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   todo: Ui.Todo,
   optUserData: ?UserData,
 ): void {
@@ -941,7 +950,7 @@ fun update(
 
 @debug
 fun execute(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   executable: Ui.Executable,
   updater: mutable Updater,
 ): void {
@@ -1034,10 +1043,10 @@ fun execute(
   | NewLine _ ->
     updater.insert(updater.endLine.toChars());
     updater.ensureVisible(context)
-  | _ -> SKFS.cast_violation("UiMonospace.Executable", executable)
+  | _ -> SKStore.cast_violation("UiMonospace.Executable", executable)
   };
   if (check && updater.isEditable && !updater.redo.isEmpty()) {
-    optOldHistory = updater.values.get(Ui.historyProp).map(History::fromFile);
+    optOldHistory = updater.values.get(Ui.historyProp).map(History::type);
     history = optOldHistory match {
     | Some(history) ->
       newPosition = updater.getPosition();

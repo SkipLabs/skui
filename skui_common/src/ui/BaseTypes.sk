@@ -211,7 +211,7 @@ class Image(
   optShift: ?Shift = None(),
 ) extends Ui.Picture, SKStore.File {
   //
-  static fun fromFile(obj: SKStore.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Image _ -> x
     | _ -> SKStore.cast_violation("Ui.Image", obj)
@@ -348,11 +348,11 @@ class Border(color: .Color = Colors.transparent(), thickness: Float = 0.0) {
   }
 }
 
-base class DrawableSupport<K: SKStore.Key> {
+base class DrawableSupport {
   //
   fun init(
     context: mutable SKStore.Context,
-    drawables: SKStore.EHandle<K, Ui.Drawables>,
+    drawables: SKStore.EHandle<KLayer, Drawables>,
   ): void;
 
   fun msdf(
@@ -506,7 +506,7 @@ class NViewport(
   optViewport: ?Path = None(),
 ) extends SKStore.File {
   //
-  static fun fromFile(obj: SKStore.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ NViewport _ -> x
     | _ -> SKStore.cast_violation("Ui.NViewport", obj)
@@ -539,7 +539,7 @@ base class ViewportDefinition(
   fun hasContent(): Bool;
   fun getChildren(): Array<ViewportDefinition>;
 
-  static fun forFile(obj: SKStore.File): ViewportDefinition {
+  static fun btype(obj: SKStore.File): ViewportDefinition {
     obj match {
     | x @ ViewportDefinition _ -> x
     | _ -> SKStore.cast_violation("Ui.ViewportDefinition", obj)
@@ -600,11 +600,11 @@ class DummyVpDefinition() extends ViewportDefinition {
   }
 }
 
-class DummyDrawableSupport() extends DrawableSupport<SKStore.Key> {
+class DummyDrawableSupport() extends DrawableSupport {
   //
   fun init(
     _context: mutable SKStore.Context,
-    _drawables: SKStore.EHandle<SKStore.Key, Ui.Drawables>,
+    _drawables: SKStore.EHandle<KLayer, Drawables>,
   ): void {
     dummy()
   }

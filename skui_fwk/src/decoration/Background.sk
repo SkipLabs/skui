@@ -10,7 +10,7 @@ class Background(
   }
 
   fun fillDrawables(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,

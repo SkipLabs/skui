@@ -1,53 +1,51 @@
 module FWK;
 
-const sidConverter: StrIDConverter = StrIDConverter();
-const msConverter: SKFS.Converter<MouseState> = SKFS.FileConverter(
-  MouseState::fromFile,
-);
-const fsConverter: SKFS.Converter<FocusState> = SKFS.FileConverter(
-  FocusState::fromFile,
+const nodesPath: SKStore.DirName = SKStore.DirName::create("/ui/fwk/nodes/");
+const widgetsPath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/fwk/widgets/",
 );
 
-const nodesPath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/nodes/");
-const widgetsPath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/widgets/");
-
-const focusablesPath: SKFS.DirName = SKFS.DirName::create(
+const focusablesPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/fwk/focusables/",
 );
-const previousFocusablesPath: SKFS.DirName = focusablesPath.pre();
-const mouseStatePath: SKFS.DirName = SKFS.DirName::create(
+const previousFocusablesPath: SKStore.DirName = focusablesPath.pre();
+const mouseStatePath: SKStore.DirName = SKStore.DirName::create(
   "/ui/fwk/state/mouse/",
 );
-const previousMouseStatePath: SKFS.DirName = mouseStatePath.pre();
-const keysStatePath: SKFS.DirName = SKFS.DirName::create("/ui/fwk/state/keys/");
-const previousKeysStatePath: SKFS.DirName = keysStatePath.pre();
+const previousMouseStatePath: SKStore.DirName = mouseStatePath.pre();
+const keysStatePath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/fwk/state/keys/",
+);
+const previousKeysStatePath: SKStore.DirName = keysStatePath.pre();
 
-const fsHandle: SKFS.IHandle<FocusState> = SKFS.IHandle(
-  fsConverter,
+const fsHandle: SKStore.IHandle<Ui.MainKey, FocusState> = SKStore.IHandle(
+  Ui.MainKey::keyType,
+  FocusState::type,
   previousKeysStatePath,
 );
 
-const msHandle: SKFS.IHandle<MouseState> = SKFS.IHandle(
-  msConverter,
+const msHandle: SKStore.IHandle<Ui.MainKey, MouseState> = SKStore.IHandle(
+  Ui.MainKey::keyType,
+  MouseState::type,
   previousMouseStatePath,
 );
 
 fun getFocusState(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): FocusState {
   fsHandle.getValue(context, Ui.MainKey(), isUntracked);
 }
 
 fun getMouseState(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): MouseState {
   msHandle.getValue(context, Ui.MainKey(), isUntracked);
 }
 
 fun getBounds(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   isUntracked: Bool = false,
 ): ?Geometry.Rect {

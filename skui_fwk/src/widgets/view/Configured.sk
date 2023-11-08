@@ -1,14 +1,14 @@
 module UiConfigured;
 
 base class Controller extends Ui.Parameters {
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget;
 }
 
 class LamController{
-  widget: mutable SKFS.Context ~> Ui.Widget,
+  widget: mutable SKStore.Context ~> Ui.Widget,
 } extends Controller {
   //
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget {
     this.widget(context)
   }
 }
@@ -25,7 +25,7 @@ class Configured{
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiConfigured.Controller,
     cache: NodeCache,
@@ -34,7 +34,10 @@ class Configured{
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     widget = this.controller.getWidget(context);
     node = widget.getNode(context, constraints);
     Ui.Node(
@@ -44,7 +47,7 @@ class Configured{
     )
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.controller.getWidget(context).getViewportDefinition(context)
   }
 }

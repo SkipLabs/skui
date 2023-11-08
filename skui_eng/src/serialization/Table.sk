@@ -5,7 +5,7 @@ extension base class ColumnPerformer extends SObject {
   static fun fromSerializable(s: Serializable): ColumnPerformer {
     s match {
     | t @ ColumnPerformer _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.ColumnPerformer", s)
+    | _ -> SKStore.cast_violation("UiEngine.ColumnPerformer", s)
     }
   }
 }
@@ -15,7 +15,7 @@ extension base class RowsRequirer extends SObject {
   static fun fromSerializable(s: Serializable): RowsRequirer {
     s match {
     | t @ RowsRequirer _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.RowsRequirer", s)
+    | _ -> SKStore.cast_violation("UiEngine.RowsRequirer", s)
     }
   }
 }
@@ -43,7 +43,7 @@ extension class Sort extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Sort {
     s match {
     | x @ Sort _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Sort", s)
+    | _ -> SKStore.cast_violation("UiEngine.Sort", s)
     }
   }
 }
@@ -87,7 +87,7 @@ extension class Column extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Column {
     s match {
     | x @ Column _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Column", s)
+    | _ -> SKStore.cast_violation("UiEngine.Column", s)
     }
   }
 }
@@ -117,7 +117,7 @@ extension class Cell extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Cell {
     s match {
     | x @ Cell _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Cell", s)
+    | _ -> SKStore.cast_violation("UiEngine.Cell", s)
     }
   }
 }
@@ -142,7 +142,7 @@ extension class Row extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Row {
     s match {
     | x @ Row _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Row", s)
+    | _ -> SKStore.cast_violation("UiEngine.Row", s)
     }
   }
 }
@@ -164,7 +164,7 @@ extension class Rows extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Rows {
     s match {
     | x @ Rows _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Rows", s)
+    | _ -> SKStore.cast_violation("UiEngine.Rows", s)
     }
   }
 }
@@ -196,7 +196,7 @@ extension class Pager extends SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Pager {
     s match {
     | x @ Pager _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Pager", s)
+    | _ -> SKStore.cast_violation("UiEngine.Pager", s)
     }
   }
 }

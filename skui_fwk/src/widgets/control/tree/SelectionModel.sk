@@ -1,6 +1,6 @@
 module UiTree;
 
-base class SelectionModel extends SKFS.File {
+base class SelectionModel extends SKStore.File {
   fun isAllowMultiple(): Bool;
 
   fun selectAll(selection: Selection, items: Array<Ui.Path>): Selection;
@@ -89,10 +89,10 @@ base class SelectionModel extends SKFS.File {
     items.get(next);
   }
 
-  static fun forFile(obj: SKFS.File): SelectionModel {
+  static fun btype(obj: SKStore.File): SelectionModel {
     obj match {
     | x @ SelectionModel _ -> x
-    | _ -> SKFS.cast_violation("UiTree.SelectionModel", obj)
+    | _ -> SKStore.cast_violation("UiTree.SelectionModel", obj)
     }
   }
 }

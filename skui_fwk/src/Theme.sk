@@ -164,7 +164,10 @@ class Title() extends Color, Font {}
 class Message() extends Color, Font {}
 
 class Default() extends Ui.Theme {
-  fun getColor(_context: mutable SKFS.Context, color: UiTheme.Color): .Color {
+  fun getColor(
+    _context: mutable SKStore.Context,
+    color: UiTheme.Color,
+  ): .Color {
     color match {
     | Base() -> Colors.white()
     | Regular() -> Colors.black().withAlpha(0.9)
@@ -213,7 +216,7 @@ class Default() extends Ui.Theme {
   }
 
   fun getThickness(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     category: UiTheme.Thickness,
   ): Int {
     category match {
@@ -245,7 +248,7 @@ class Default() extends Ui.Theme {
   }
 
   fun getIconBuilder(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     category: UiTheme.Icon,
   ): Ui.IconBuilder {
     category match {
@@ -302,7 +305,10 @@ class Default() extends Ui.Theme {
     }
   }
 
-  fun getFont(_context: mutable SKFS.Context, font: UiTheme.Font): Font.FaceID {
+  fun getFont(
+    _context: mutable SKStore.Context,
+    font: UiTheme.Font,
+  ): Font.FaceID {
     font match {
     | Basic() -> defaultFace
     | Action() -> boldFace
@@ -367,7 +373,7 @@ fun iconFromString(name: String): ?Icon {
 }
 
 class IconBuilder(icon: Icon, optSize: ?Ui.Size) extends Ui.IconBuilder {
-  fun buildIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+  fun buildIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon {
     pixels = Ui.Pt(fontSize).pixels();
     context.getThemeIcon(this.icon).buildIcon(context, fontSize).map(i ->
       i.update(
@@ -382,28 +388,31 @@ module end;
 
 module Ui;
 
-base class Theme extends SKFS.File {
+base class Theme extends SKStore.File {
   //
-  static fun forFile(obj: SKFS.File): Theme {
+  static fun btype(obj: SKStore.File): Theme {
     obj match {
     | x @ Theme _ -> x
-    | _ -> SKFS.cast_violation("Ui.Theme", obj)
+    | _ -> SKStore.cast_violation("Ui.Theme", obj)
     }
   }
 
-  fun getColor(context: mutable SKFS.Context, color: UiTheme.Color): Color;
+  fun getColor(context: mutable SKStore.Context, color: UiTheme.Color): Color;
 
   fun getThickness(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     category: UiTheme.Thickness,
   ): Int;
 
   fun getIconBuilder(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     category: UiTheme.Icon,
   ): Ui.IconBuilder;
 
-  fun getFont(context: mutable SKFS.Context, style: UiTheme.Font): Font.FaceID;
+  fun getFont(
+    context: mutable SKStore.Context,
+    style: UiTheme.Font,
+  ): Font.FaceID;
 }
 
 module end;

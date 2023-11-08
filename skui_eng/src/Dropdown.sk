@@ -3,7 +3,7 @@ module alias H = UiEngineHandle;
 module UiEngine;
 
 base class DropdownSupplier {
-  fun supply(context: mutable SKFS.Context): ?Array<DItemBase>;
+  fun supply(context: mutable SKStore.Context): ?Array<DItemBase>;
 }
 
 base class DItemBase{

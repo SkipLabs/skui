@@ -10,12 +10,12 @@ class HoverHandler(
     this.path
   }
 
-  fun enter(_context: mutable SKFS.Context): void {
+  fun enter(_context: mutable SKStore.Context): void {
     void
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
@@ -114,11 +114,11 @@ class HoverHandler(
     res
   }
 
-  fun exit(_context: mutable SKFS.Context): void {
+  fun exit(_context: mutable SKStore.Context): void {
     void
   }
 
-  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getTooltip(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
     None()
   }
 }

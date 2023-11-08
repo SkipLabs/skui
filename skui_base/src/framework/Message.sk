@@ -61,7 +61,7 @@ base class Support extends SKStore.File uses HasClassName {
     message: JSON.Value,
   ): void;
 
-  static fun forFile(obj: SKStore.File): Support {
+  static fun btype(obj: SKStore.File): Support {
     obj match {
     | x @ Support _ -> x
     | _ -> SKStore.cast_violation("SKUIMessage.Support", obj)

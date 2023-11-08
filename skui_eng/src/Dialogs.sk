@@ -3,15 +3,15 @@ module alias H = UiEngineHandle;
 module UiEngine;
 
 base class Confirmation {
-  fun confirm(context: mutable SKFS.Context, confirm: Bool, dId: Int): void;
+  fun confirm(context: mutable SKStore.Context, confirm: Bool, dId: Int): void;
 }
 
 base class OnInput {
-  fun perform(context: mutable SKFS.Context, value: String, dId: Int): void;
+  fun perform(context: mutable SKStore.Context, value: String, dId: Int): void;
 }
 
 base class Dialog extends SObject {
-  fun open(context: mutable SKFS.Context): void;
+  fun open(context: mutable SKStore.Context): void;
 }
 
 class Settings{
@@ -36,7 +36,7 @@ class Settings{
   optWithClear: ?Serializable = None(),
   optAlignRight: ?Serializable = None(),
 } {
-  fun toSettings(_context: mutable SKFS.Context): UiDialogs.Settings {
+  fun toSettings(_context: mutable SKStore.Context): UiDialogs.Settings {
     todo("UiEngine.Settings.toSettings");
   }
 }
@@ -47,7 +47,7 @@ class Confirm{
   type: UiDialogs.QType = UiDialogs.YesNo(),
   optTitle: ?Text = None(),
 } extends Dialog {
-  fun open(context: mutable SKFS.Context): void {
+  fun open(context: mutable SKStore.Context): void {
     optConfirmation = this.optAction.map(action -> H.Confirmation(action));
     context.openConfirmDialog(
       this.text,
@@ -67,7 +67,7 @@ class InputDialog{
   autoClose: Bool = true,
   settings: Settings = Settings{},
 } extends Dialog {
-  fun open(context: mutable SKFS.Context): void {
+  fun open(context: mutable SKStore.Context): void {
     optOnInput = this.optAction.map(action -> H.OnInput(action));
     context.openInputDialog(
       this.label,

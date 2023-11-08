@@ -5,7 +5,7 @@ class Indeterminate(
   optPaint: ?Ui.Paint = None(),
   thickness: Int = 2,
 ) extends Ui.Icon {
-  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+  protected fun computedSize(_context: mutable SKStore.Context): Geometry.Size {
     Geometry.Size::square(this.width.toFloat());
   }
 
@@ -14,7 +14,7 @@ class Indeterminate(
   }
 
   fun fillDrawables(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,

@@ -1,36 +1,36 @@
 module UiMonospace;
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/monospace/widget/")
 }
 
-class OffsetKey() extends SKFS.BaseName {
+class OffsetKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class KIdx(value: Int) extends SKFS.BaseName {
+class KIdx(value: Int) extends SKStore.Key {
   fun toString(): String {
     this.value.toString()
   }
 }
 
-class CountKey() extends SKFS.BaseName {
+class CountKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class RangeKey() extends SKFS.BaseName {
+class RangeKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class Indexed(idx: Int, widget: Ui.Widget) extends SKFS.File
+class Indexed(idx: Int, widget: Ui.Widget) extends SKStore.File
 
-class TextKey(value: Array<Char>) extends SKFS.BaseName {
+class TextKey(value: Array<Char>) extends SKStore.Key {
   fun toString(): String {
     String::fromChars(this.value)
   }

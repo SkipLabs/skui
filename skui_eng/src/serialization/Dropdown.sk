@@ -4,7 +4,7 @@ extension base class DItemBase extends SObject {
   static fun fromSerializable(s: Serializable): DItemBase {
     s match {
     | t @ DItemBase _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.DItemBase", s)
+    | _ -> SKStore.cast_violation("UiEngine.DItemBase", s)
     }
   }
 }

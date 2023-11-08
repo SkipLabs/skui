@@ -28,15 +28,15 @@ class Configuration{
 base class Controller extends Ui.WidgetsCollection {}
 
 class LamController{widgets: Ui.WidgetsCollection} extends Controller {
-  fun getSize(context: mutable SKFS.Context): Int {
+  fun getSize(context: mutable SKStore.Context): Int {
     this.widgets.getSize(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context, index: Int): Ui.Widget {
     this.widgets.getWidget(context, index)
   }
 
-  fun all(context: mutable SKFS.Context): Array<Ui.Widget> {
+  fun all(context: mutable SKStore.Context): Array<Ui.Widget> {
     this.widgets.all(context)
   }
 }
@@ -77,7 +77,7 @@ class Stack protected {
   fun getDropHandler from WithDropHandler;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiStack.Parameters,
     cache: NodeCache,
@@ -97,7 +97,7 @@ class Stack protected {
   }
 
   static fun createForController(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiStack.Controller,
     optConfiguration: ?Ui.Configuration = None(),
@@ -110,7 +110,10 @@ class Stack protected {
     )
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     count = this.controller.getSize(context);
     size = constraints.biggest();
     childVector = mutable Vector<Ui.NChild>[];
@@ -139,7 +142,7 @@ class Stack protected {
     Node(this, size, childVector.toArray(), constUserData(None()), false, true);
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     Some(
       ViewportDef(
         None(),

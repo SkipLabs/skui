@@ -20,7 +20,7 @@ extension class TreeItem extends SObject {
   static fun fromSerializable(s: Serializable): TreeItem {
     s match {
     | t @ TreeItem _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.TreeItem", s)
+    | _ -> SKStore.cast_violation("UiEngine.TreeItem", s)
     }
   }
 }

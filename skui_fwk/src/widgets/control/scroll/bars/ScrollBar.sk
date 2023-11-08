@@ -1,45 +1,45 @@
 module UiScrollBar;
 
 base class Controller {
-  fun getScroll(context: mutable SKFS.Context): Float;
-  fun setScroll(context: mutable SKFS.Context, scroll: Float): void;
+  fun getScroll(context: mutable SKStore.Context): Float;
+  fun setScroll(context: mutable SKStore.Context, scroll: Float): void;
 
-  fun getViewSize(context: mutable SKFS.Context): Float;
-  fun isNegative(context: mutable SKFS.Context): Bool;
-  fun hasOpposite(context: mutable SKFS.Context): Bool;
-  fun isFocused(context: mutable SKFS.Context): Bool;
+  fun getViewSize(context: mutable SKStore.Context): Float;
+  fun isNegative(context: mutable SKStore.Context): Bool;
+  fun hasOpposite(context: mutable SKStore.Context): Bool;
+  fun isFocused(context: mutable SKStore.Context): Bool;
 }
 
 class LamController{
   scrollGetter: Ui.Getter<Float>,
-  scrollSetter: (mutable SKFS.Context, Float) ~> void,
+  scrollSetter: (mutable SKStore.Context, Float) ~> void,
   viewSize: Ui.Getter<Float>,
   negative: Ui.Getter<Bool> = Ui.default(false),
   opposite: Ui.Getter<Bool> = Ui.default(false),
   focused: Ui.Getter<Bool> = Ui.default(false),
 } extends Controller {
   //
-  fun getScroll(context: mutable SKFS.Context): Float {
+  fun getScroll(context: mutable SKStore.Context): Float {
     this.scrollGetter(context)
   }
 
-  fun setScroll(context: mutable SKFS.Context, scroll: Float): void {
+  fun setScroll(context: mutable SKStore.Context, scroll: Float): void {
     this.scrollSetter(context, scroll)
   }
 
-  fun getViewSize(context: mutable SKFS.Context): Float {
+  fun getViewSize(context: mutable SKStore.Context): Float {
     this.viewSize(context)
   }
 
-  fun isNegative(context: mutable SKFS.Context): Bool {
+  fun isNegative(context: mutable SKStore.Context): Bool {
     this.negative(context)
   }
 
-  fun hasOpposite(context: mutable SKFS.Context): Bool {
+  fun hasOpposite(context: mutable SKStore.Context): Bool {
     this.opposite(context)
   }
 
-  fun isFocused(context: mutable SKFS.Context): Bool {
+  fun isFocused(context: mutable SKStore.Context): Bool {
     this.focused(context)
   }
 }
@@ -102,23 +102,23 @@ class HoverHandler(path: Ui.Path) extends FWK.HoverHandler {
     this.path
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     FWKPointer.setCursor(context, Ui.HandCursor());
   }
 
   fun manage(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
     FWK.Result(false);
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     FWKPointer.resetCursor(context);
   }
 
-  fun getTooltip(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getTooltip(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
     None()
   }
 }
@@ -129,7 +129,7 @@ class LockHandler(
 ) extends FWK.LockHandler {
   //
   fun update(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): ?FWK.LockHandler {
     if (!mouse.isPrimaryDown(context.tick)) {
@@ -182,7 +182,7 @@ class Bar{
 } extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
   //
   fun getNode(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
@@ -193,7 +193,7 @@ class Bar{
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -246,7 +246,7 @@ class Bar{
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
@@ -258,7 +258,7 @@ class Bar{
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Ui.Getter<?FWK.HoverHandler>,
   ): ?Ui.HoverHandlerGetter {
     Some((_ctx, offset, ni) ~> {
@@ -275,7 +275,7 @@ class Bar{
   }
 
   fun getLockHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Ui.Getter<?FWK.LockHandler>,
   ): ?Ui.LockHandlerGetter {
     Some((ctx, mouse, _ni) ~> {

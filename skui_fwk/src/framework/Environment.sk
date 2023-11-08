@@ -1,33 +1,44 @@
 module FWKEnv;
 
-const propKey: SKFS.IID = SKFS.IID(0);
+const propKey: SKStore.IID = SKStore.IID(0);
 
-const statePath: SKFS.DirName = SKFS.DirName::create("/ui/system/env/state/");
+const statePath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/system/env/state/",
+);
 
-const envHandle: SKFS.IHandle<SKFS.BoolFile> = SKFS.IHandle(
-  SKFS.FileConverter(SKFS.BoolFile::fromFile),
+const envHandle: SKStore.IHandle<
+  SKStore.DirName,
+  SKStore.BoolFile,
+> = SKStore.IHandle(
+  SKStore.DirName::keyType,
+  SKStore.BoolFile::type,
   statePath,
 );
 
-fun init(context: mutable SKFS.Context, rootId: Int): void {
-  context.setGlobal("FWKEnv.RootWindow", SKFS.IntFile(rootId));
-  _ = context.makeDir(SKFS.BoolFile::fromFile, statePath, Array[]);
+fun init(context: mutable SKStore.Context, rootId: Int): void {
+  context.setGlobal("FWKEnv.RootWindow", SKStore.IntFile(rootId));
+  _ = context.makeDir(
+    SKStore.DirName::keyType,
+    SKStore.BoolFile::type,
+    statePath,
+    Array[],
+  );
 }
 
-fun declare(context: mutable SKFS.Context, dirName: SKFS.DirName): void {
-  envHandle.write(context, dirName, SKFS.BoolFile(true));
+fun declare(context: mutable SKStore.Context, dirName: SKStore.DirName): void {
+  envHandle.write(context, dirName, SKStore.BoolFile(true));
 }
 
 fun exists(
-  context: mutable SKFS.Context,
-  dirName: SKFS.DirName,
+  context: mutable SKStore.Context,
+  dirName: SKStore.DirName,
   isUntracked: Bool = false,
 ): Bool {
   envHandle.getBool(context, dirName, isUntracked)
 }
 
-fun getRootId(context: mutable SKFS.Context): ?UInt32 {
-  context.getGlobal("FWKEnv.RootWindow").map(SKFS.IntFile::fromFile).map(f ~>
+fun getRootId(context: mutable SKStore.Context): ?UInt32 {
+  context.getGlobal("FWKEnv.RootWindow").map(SKStore.IntFile::type).map(f ~>
     uint32(f.value)
   )
 }

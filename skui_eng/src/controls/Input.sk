@@ -3,7 +3,7 @@ module alias H = UiEngineHandle;
 module UiEngine;
 
 base class InputPerformer {
-  fun perform(context: mutable SKFS.Context, text: String): void;
+  fun perform(context: mutable SKStore.Context, text: String): void;
 }
 
 class Input{
@@ -41,10 +41,10 @@ class Input{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#control#${static::identifier}#${name}`);
     // Supplier

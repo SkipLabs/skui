@@ -177,14 +177,15 @@ extension base class Command {
     | "UiMonospace.Duplicate" -> Duplicate()
     | "UiMonospace.SwitchLine" -> SwitchLine()
     | "UiMonospace.ManageHScrolling" ->
-      ManageHScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+      ManageHScrolling(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | "UiMonospace.ManageVScrolling" ->
-      ManageVScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+      ManageVScrolling(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | "UiMonospace.ManageHVisible" -> ManageHVisible(jso.getInt("value"))
     | "UiMonospace.ManageVVisible" -> ManageVVisible(jso.getInt("value"))
-    | "UiMonospace.ToggleHidden" -> ToggleHidden(SKFS.Tick(jso.getInt("tick")))
+    | "UiMonospace.ToggleHidden" ->
+      ToggleHidden(SKStore.Tick(jso.getInt("tick")))
     | "UiMonospace.CancelScrolling" ->
-      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+      CancelScrolling(SKStore.Tick(jso.getInt("tick")))
     | "UiMonospace.Paste" ->
       Paste(FWKClipboard.Content::fromJSON(jso.get("content")))
     | "UiMonospace.SetMoveSelection" -> SetMoveSelection(jso.getBool("value"))

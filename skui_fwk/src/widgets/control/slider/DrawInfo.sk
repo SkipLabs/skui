@@ -12,7 +12,7 @@ class DrawInfo private (
 ) extends Ui.DrawInfo {
   //
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     slider: Ui.Slider,
     absolute: Geometry.Offset,
     size: Geometry.Size,

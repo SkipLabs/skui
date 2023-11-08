@@ -2,9 +2,9 @@ module alias H = UiEngineHandle;
 
 module UiEngine;
 
-class TreeItems(value: Array<TreeItem>) extends SKFS.File {
+class TreeItems(value: Array<TreeItem>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TreeItems _ -> x
     | _ -> invariant_violation("Must be UiEngine.TreeItems")
@@ -16,9 +16,9 @@ class TreeItem(
   id: String,
   item: UiTree.Item,
   optItems: ?Serializable,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TreeItem _ -> x
     | _ -> invariant_violation("Must be UiEngine.TreeItem")
@@ -39,7 +39,7 @@ private fun toUiPath(treePath: Array<String>): ?Ui.Path {
 
 base class TreeMenuGetter {
   fun getContextMenu(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?Ui.Path,
     selection: Array<Ui.Path>,
   ): Array<DItemBase>;
@@ -47,7 +47,7 @@ base class TreeMenuGetter {
 
 base class TreeExpansionListener {
   fun expansionChanged(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     value: Bool,
   ): void;
@@ -55,14 +55,14 @@ base class TreeExpansionListener {
 
 base class TreeSelectionListener {
   fun selectionChanged(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     selection: Array<Ui.Path>,
   ): void;
 }
 
 base class TreePerformer {
   fun perform(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?Ui.Path,
     selection: Array<Ui.Path>,
   ): void;
@@ -70,16 +70,16 @@ base class TreePerformer {
 
 base class TreeDropper {
   fun drop(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     from: Ui.Path,
     to: Ui.Path,
     drop: Ui.Drop,
   ): void;
 }
 
-class DDItems(value: Array<UiDropdown.ItemBase>) extends SKFS.File {
+class DDItems(value: Array<UiDropdown.ItemBase>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ DDItems _ -> x
     | _ -> invariant_violation("Must be UiEngine.DDItems")
@@ -91,9 +91,9 @@ class TreeItemChildren(
   items: Ui.Getter<?Array<String>>,
   item: Ui.GetterOne<UiTree.Item, String>,
   itemChildren: Ui.GetterOne<TreeItemChildren, String>,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TreeItemChildren _ -> x
     | _ -> invariant_violation("Must be UiEngine.TreeItemChildren")
@@ -101,18 +101,18 @@ class TreeItemChildren(
   }
 
   fun getItems(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optPath: ?Ui.Path,
   ): ?Array<String> {
     this.getChildrenForPath(context, optPath).items(context)
   }
 
-  fun getItem(context: mutable SKFS.Context, path: Ui.Path): UiTree.Item {
+  fun getItem(context: mutable SKStore.Context, path: Ui.Path): UiTree.Item {
     this.getChildrenForPath(context, path.optParent).item(context, path.id)
   }
 
   private fun getChildrenForPath(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optPath: ?Ui.Path,
   ): TreeItemChildren {
     optPath match {
@@ -127,7 +127,7 @@ class TreeItemChildren(
 }
 
 fun toTreeItemChildren(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   items: Serializable,
 ): TreeItemChildren {
   itemsProperty = toSerializableProperty(context, Some(items));
@@ -153,30 +153,30 @@ fun toTreeItemChildren(
     },
   );
   itemsIdsHdl = verifiedItemsHdl.mapChild(
-    SKFS.Strings::fromFile,
+    SKStore.Strings::type,
     context,
     "itemsIds/",
     sa ~> {
       ids = sa.value.map(TreeItem::fromSerializable).map(t -> t.id);
-      SKFS.Strings(ids)
+      SKStore.Strings(ids)
     },
   );
   splitedItemHdl = verifiedItemsHdl.mapWriterChild(
-    TreeItem::fromFile,
+    TreeItem::type,
     context,
     "splitted/",
     (writer, sa) ~>
       sa.value.each(s -> {
         item = TreeItem::fromSerializable(s);
-        writer.write(SKFS.StrID(item.id), item)
+        writer.write(SKStore.StrID(item.id), item)
       })
     ,
   );
   refDir = splitedItemHdl.getDirName();
-  treeItemChildrenHdl = splitedItemHdl.contextWriterKeyMap(
-    TreeItemChildren::fromFile,
+  treeItemChildrenHdl = splitedItemHdl.map(
+    TreeItemChildren::type,
     context,
-    SKFS.DirName::make(refDir, "children/"),
+    SKStore.DirName::make(refDir, "children/"),
     (context, writer, key, item) ~> {
       item.optItems.each(itemChildren ->
         writer.write(key, toTreeItemChildren(context, itemChildren))
@@ -185,8 +185,8 @@ fun toTreeItemChildren(
   );
   TreeItemChildren(
     ctx ~> itemsIdsHdl.maybeGet(ctx).map(v -> v.value),
-    (ctx, name) ~> splitedItemHdl.get(ctx, SKFS.StrID(name)).item,
-    (ctx, name) ~> treeItemChildrenHdl.get(ctx, SKFS.StrID(name)),
+    (ctx, name) ~> splitedItemHdl.get(ctx, SKStore.StrID(name)).item,
+    (ctx, name) ~> treeItemChildrenHdl.get(ctx, SKStore.StrID(name)),
   )
 }
 
@@ -206,10 +206,10 @@ class Tree{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     id: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#control#${static::identifier}#${id}`);
     itemChildren = toTreeItemChildren(context, this.items);

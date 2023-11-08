@@ -10,7 +10,7 @@ class Numbers{
   type Buffer = Ui.NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: NumbersController,
     cache: Ui.NodeCache,
@@ -20,7 +20,7 @@ class Numbers{
   }
 
   fun layout(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _constraints: Ui.BoxConstraints,
   ): Ui.Node {
     if (this.controller.isFontLoading(context)) {
@@ -41,7 +41,7 @@ class Numbers{
   }
 
   fun computeLayer(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -59,7 +59,7 @@ class Numbers{
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,

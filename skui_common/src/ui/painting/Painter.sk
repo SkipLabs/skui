@@ -10,7 +10,7 @@ base class AlphaSupplier {
 }
 
 base class Draw extends AlphaSupplier, SKStore.File uses Hashable, Equality {
-  static fun forFile(obj: SKStore.File): Draw {
+  static fun btype(obj: SKStore.File): Draw {
     obj match {
     | x @ Draw _ -> x
     | _ -> SKStore.cast_violation("Draw", obj)
@@ -99,7 +99,7 @@ value class Pixel(
 }
 
 base class Painter extends SKStore.File uses Hashable, Equality {
-  static fun forFile(obj: SKStore.File): Painter {
+  static fun btype(obj: SKStore.File): Painter {
     obj match {
     | x @ Painter _ -> x
     | _ -> SKStore.cast_violation("Painter", obj)

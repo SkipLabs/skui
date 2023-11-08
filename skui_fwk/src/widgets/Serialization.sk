@@ -62,8 +62,8 @@ extension base class Visible extends JSONValue {
     jso = jsv.expectObject();
     cl = jso.getString("__class");
     cl match {
-    | "Ui.Pos" -> Pos(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
-    | "Ui.Incr" -> Incr(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+    | "Ui.Pos" -> Pos(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
+    | "Ui.Incr" -> Incr(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Visible`)
     }
   }
@@ -111,20 +111,20 @@ extension base class Timed extends JSONValue {
     cl = jso.getString("__class");
     cl match {
     | "Ui.TimedBool" ->
-      TimedBool(jso.getBool("value"), SKFS.Tick(jso.getInt("tick")))
+      TimedBool(jso.getBool("value"), SKStore.Tick(jso.getInt("tick")))
     | "Ui.TimedString" ->
-      TimedString(jso.getString("value"), SKFS.Tick(jso.getInt("tick")))
+      TimedString(jso.getString("value"), SKStore.Tick(jso.getInt("tick")))
     | "Ui.TimedInt" ->
-      TimedInt(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+      TimedInt(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | "Ui.TimedRange" ->
       TimedRange(
         Range::fromJSON(jso.get("value")),
-        SKFS.Tick(jso.getInt("tick")),
+        SKStore.Tick(jso.getInt("tick")),
       )
     | "Ui.TimedStatus" ->
       TimedStatus(
         Status::fromJSON(jso.get("value")),
-        SKFS.Tick(jso.getInt("tick")),
+        SKStore.Tick(jso.getInt("tick")),
       )
     | _ -> invariant_violation(`Invalid json object ${cl} for Ui.Timed`)
     }

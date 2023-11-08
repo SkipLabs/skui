@@ -10,7 +10,7 @@ class Reducer(
   optRange: ?Text.Range = None(),
 ) {
   static fun charsReducer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     chars: Vector<Char>,
     faceId: Font.FaceID,
     optEllipsis: ?Char = Some(Text.ellipsis),
@@ -40,7 +40,7 @@ class Reducer(
   }
 
   static fun wordsReducer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     chars: Vector<Char>,
     faceId: Font.FaceID,
     optEllipsis: ?Char = Some(Text.ellipsis),

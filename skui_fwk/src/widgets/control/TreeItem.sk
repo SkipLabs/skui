@@ -11,7 +11,7 @@ class TreeItem protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiTreeItem.Parameters,
     cache: NodeCache,
@@ -29,7 +29,10 @@ class TreeItem protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     ts = context.getTextSupport();
     fil = context.getThemeFont(UiTheme.Tree());
     label = Ui.getTextInfo(
@@ -74,7 +77,7 @@ class TreeItem protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
@@ -93,7 +96,7 @@ class TreeItem protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((_, offset, node) ~> {
@@ -118,7 +121,7 @@ class TreeItem protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -143,14 +146,14 @@ class TreeItem protected {
   }
 
   fun getDragHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DragHandler>,
   ): ?DragHandlerGetter {
     Some((_ctx, _o, _ni) ~> Some(UiTreeItem.DragHandler(this)))
   }
 
   fun getDropHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DropHandler>,
   ): ?DropHandlerGetter {
     Some((_, o, ni) ~> {
@@ -168,7 +171,7 @@ class TreeItem protected {
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     di: UiTreeItem.DrawInfo,
@@ -239,7 +242,7 @@ class TreeItem protected {
   }
 
   private fun fillForeground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,

@@ -12,65 +12,65 @@ class LamController{
   side: Ui.Getter<.UiSide> = Ui.default(UiSide.Top()),
   minWidth: Ui.Getter<?Int> = Ui.default(None()),
   maxWidth: Ui.Getter<?Int> = Ui.default(None()),
-  onChange_: (mutable SKFS.Context, String, Bool) ~> void = (
+  onChange_: (mutable SKStore.Context, String, Bool) ~> void = (
     _ctx,
     _value,
     _selected,
   ) ~>
     void,
-  onClose_: (mutable SKFS.Context, Array<String>) ~> void = (_ctx, _tabs) ~>
+  onClose_: (mutable SKStore.Context, Array<String>) ~> void = (_ctx, _tabs) ~>
     void,
 } extends Controller {
   //
-  fun getActive(context: mutable SKFS.Context): ?Ui.StringProperty {
+  fun getActive(context: mutable SKStore.Context): ?Ui.StringProperty {
     this.active(context)
   }
 
-  fun getKind(context: mutable SKFS.Context): Kind {
+  fun getKind(context: mutable SKStore.Context): Kind {
     this.kind(context)
   }
 
-  fun getMode(context: mutable SKFS.Context): UiTab.Mode {
+  fun getMode(context: mutable SKStore.Context): UiTab.Mode {
     this.mode(context)
   }
 
-  fun getSide(context: mutable SKFS.Context): .UiSide {
+  fun getSide(context: mutable SKStore.Context): .UiSide {
     this.side(context)
   }
 
-  fun getTabs(context: mutable SKFS.Context): Array<String> {
+  fun getTabs(context: mutable SKStore.Context): Array<String> {
     this.tabs(context)
   }
 
-  fun getTab(context: mutable SKFS.Context, id: String): Tab {
+  fun getTab(context: mutable SKStore.Context, id: String): Tab {
     this.tab(context, id)
   }
 
-  fun getNumberOfActions(context: mutable SKFS.Context): Int {
+  fun getNumberOfActions(context: mutable SKStore.Context): Int {
     this.numberOfActions(context)
   }
 
-  fun getAction(context: mutable SKFS.Context, index: Int): Action {
+  fun getAction(context: mutable SKStore.Context, index: Int): Action {
     this.actions(context, index)
   }
 
-  fun getMinWidth(context: mutable SKFS.Context): ?Int {
+  fun getMinWidth(context: mutable SKStore.Context): ?Int {
     this.minWidth(context)
   }
 
-  fun getMaxWidth(context: mutable SKFS.Context): ?Int {
+  fun getMaxWidth(context: mutable SKStore.Context): ?Int {
     this.maxWidth(context)
   }
 
   fun onChange(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     tab: String,
     selected: Bool,
   ): void {
     this.onChange_(context, tab, selected)
   }
 
-  fun onClose(context: mutable SKFS.Context, tabs: Array<String>): void {
+  fun onClose(context: mutable SKStore.Context, tabs: Array<String>): void {
     this.onClose_(context, tabs)
   }
 }

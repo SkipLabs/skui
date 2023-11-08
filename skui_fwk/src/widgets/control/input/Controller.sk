@@ -1,6 +1,6 @@
 module UiInput;
 
-type Message = (mutable SKFS.Context, String, Bool) ~> Array<
+type Message = (mutable SKStore.Context, String, Bool) ~> Array<
   SKUIMessage.Message,
 >;
 const doNothing: Message = (_ctx, _text, _iu) ~> Array[];
@@ -28,71 +28,71 @@ class LamController{
   kind: Ui.IUGetter<Kind> = Ui.iUDefault(Text()),
 } extends Controller {
   //
-  fun isDisabled(context: mutable SKFS.Context): Bool {
+  fun isDisabled(context: mutable SKStore.Context): Bool {
     this.disabled(context)
   }
 
   fun isEditable(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool {
     this.editable(context, isUntracked)
   }
 
-  fun isWithCounter(context: mutable SKFS.Context): Bool {
+  fun isWithCounter(context: mutable SKStore.Context): Bool {
     this.withCounter(context)
   }
 
-  fun isWithStatus(context: mutable SKFS.Context): Bool {
+  fun isWithStatus(context: mutable SKStore.Context): Bool {
     this.withStatus(context)
   }
 
-  fun isWithLabel(context: mutable SKFS.Context): Bool {
+  fun isWithLabel(context: mutable SKStore.Context): Bool {
     this.withLabel(context)
   }
 
-  fun isWithClear(context: mutable SKFS.Context): Bool {
+  fun isWithClear(context: mutable SKStore.Context): Bool {
     this.withClear(context)
   }
 
-  fun isAlignRight(context: mutable SKFS.Context): Bool {
+  fun isAlignRight(context: mutable SKStore.Context): Bool {
     this.alignRight(context)
   }
 
-  fun isPlaceholderAsLabel(context: mutable SKFS.Context): Bool {
+  fun isPlaceholderAsLabel(context: mutable SKStore.Context): Bool {
     this.placeholderAsLabel(context)
   }
 
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon {
     this.icon(context, fontSize)
   }
 
-  fun getFireIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+  fun getFireIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon {
     this.fireIcon(context, fontSize)
   }
 
-  fun getTooltip(context: mutable SKFS.Context): ?.Text {
+  fun getTooltip(context: mutable SKStore.Context): ?.Text {
     this.tooltip(context)
   }
 
-  fun getLabel(context: mutable SKFS.Context): ?.Text {
+  fun getLabel(context: mutable SKStore.Context): ?.Text {
     this.label(context)
   }
 
-  fun getPrefix(context: mutable SKFS.Context): ?.Text {
+  fun getPrefix(context: mutable SKStore.Context): ?.Text {
     this.prefix(context)
   }
 
-  fun getSuffix(context: mutable SKFS.Context): ?.Text {
+  fun getSuffix(context: mutable SKStore.Context): ?.Text {
     this.suffix(context)
   }
 
-  fun getPlaceHolder(context: mutable SKFS.Context): ?.Text {
+  fun getPlaceHolder(context: mutable SKStore.Context): ?.Text {
     this.placeHolder(context)
   }
 
   fun getActionMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: String,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message> {
@@ -100,22 +100,25 @@ class LamController{
   }
 
   fun getFocusLostMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: String,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message> {
     this.focusLostMessages(context, value, isUntracked)
   }
 
-  fun getMaxChars(context: mutable SKFS.Context): Int {
+  fun getMaxChars(context: mutable SKStore.Context): Int {
     this.maxChars(context);
   }
 
-  fun getVisibleChars(context: mutable SKFS.Context): Int {
+  fun getVisibleChars(context: mutable SKStore.Context): Int {
     this.visibleChars(context);
   }
 
-  fun getKind(context: mutable SKFS.Context, isUntracked: Bool = false): Kind {
+  fun getKind(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Kind {
     this.kind(context, isUntracked)
   }
 }
@@ -128,28 +131,28 @@ class LamSupplier{
 } extends Supplier {
   //
   fun getTextProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.StringProperty {
     this.text(context, isUntracked)
   }
 
   fun getPositionProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.IntProperty {
     this.position(context, isUntracked)
   }
 
   fun getSelectionProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.RangeProperty {
     this.selection(context, isUntracked)
   }
 
   fun getStatusProperty(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.StatusProperty {
     this.status(context, isUntracked)

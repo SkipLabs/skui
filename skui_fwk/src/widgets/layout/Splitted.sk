@@ -2,32 +2,32 @@ module UiSplitted;
 
 base class Controller {
   /** The direction to use as the main axis. */
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis;
-  fun getFirstWidget(context: mutable SKFS.Context): Ui.Widget;
-  fun getSecondWidget(context: mutable SKFS.Context): Ui.Widget;
-  fun getMaxSeparation(context: mutable SKFS.Context): Int;
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis;
+  fun getFirstWidget(context: mutable SKStore.Context): Ui.Widget;
+  fun getSecondWidget(context: mutable SKStore.Context): Ui.Widget;
+  fun getMaxSeparation(context: mutable SKStore.Context): Int;
 }
 
 class LamController{
-  direction: mutable SKFS.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
-  firstWidget: mutable SKFS.Context ~> Ui.Widget,
-  secondWidget: mutable SKFS.Context ~> Ui.Widget,
-  maxSeparation: mutable SKFS.Context ~> Int = _ctx ~> 50,
+  direction: mutable SKStore.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  firstWidget: mutable SKStore.Context ~> Ui.Widget,
+  secondWidget: mutable SKStore.Context ~> Ui.Widget,
+  maxSeparation: mutable SKStore.Context ~> Int = _ctx ~> 50,
 } extends Controller {
   //
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis {
     this.direction(context)
   }
 
-  fun getFirstWidget(context: mutable SKFS.Context): Ui.Widget {
+  fun getFirstWidget(context: mutable SKStore.Context): Ui.Widget {
     this.firstWidget(context)
   }
 
-  fun getSecondWidget(context: mutable SKFS.Context): Ui.Widget {
+  fun getSecondWidget(context: mutable SKStore.Context): Ui.Widget {
     this.secondWidget(context)
   }
 
-  fun getMaxSeparation(context: mutable SKFS.Context): Int {
+  fun getMaxSeparation(context: mutable SKStore.Context): Int {
     this.maxSeparation(context)
   }
 }
@@ -68,7 +68,7 @@ class Splitted protected {
   fun getDropHandler from WithDropHandler;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiSplitted.Parameters,
     cache: NodeCache,
@@ -88,7 +88,7 @@ class Splitted protected {
   }
 
   static fun createForController(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiSplitted.Controller,
     optConfiguration: ?Ui.Configuration = None(),
@@ -101,7 +101,10 @@ class Splitted protected {
     )
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     direction = this.controller.getDirection(context);
     firstWidget = this.controller.getFirstWidget(context);
     secondWidget = this.controller.getSecondWidget(context);
@@ -193,7 +196,7 @@ class Splitted protected {
     Node(this, size, childArray);
   }
 
-  protected fun getWidgets(context: mutable SKFS.Context): Array<Widget> {
+  protected fun getWidgets(context: mutable SKStore.Context): Array<Widget> {
     Array[
       this.controller.getFirstWidget(context),
       this.controller.getSecondWidget(context),

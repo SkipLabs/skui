@@ -12,18 +12,20 @@ class Table protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     params: UiTable.Parameters,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiTable.itemsDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
-    visibleItemsHdl = mainHdl.contextWriterKeyMap(
+    visibleItemsHdl = mainHdl.map(
+      k ~> k,
       f ~> f,
       context,
       UiTable.itemsDirName(path),
@@ -35,41 +37,39 @@ class Table protected {
               .each(metrics -> {
                 offset = metrics.pages.start * metrics.pageSize;
                 rows = params.controller.getRows(context);
-                vKeys = mutable Vector<SKFS.BaseName>[];
+                vKeys = mutable Vector<SKStore.Key>[];
                 for (idx in metrics.vertical.range) {
                   rows.maybeGet(idx).each(r -> {
-                    sk = SKFS.StrID(r.id);
-                    writer.write(sk, r);
+                    sk = SKStore.StrID(r.id);
+                    writer.set(sk, r);
                     vKeys.push(sk);
-                    writer.write(
+                    writer.set(
                       UiTable.Even(r.id),
-                      SKFS.BoolFile(offset + idx % 2 == 0),
+                      SKStore.BoolFile(offset + idx % 2 == 0),
                     );
                   });
                 };
-                writer.write(
+                writer.set(
                   UiTable.RangeKey(),
-                  SKFS.RangeFile(metrics.vertical.range),
+                  SKStore.RangeFile(metrics.vertical.range),
                 );
-                writer.write(
-                  UiTable.WidthsKey(),
-                  UiTable.Widths(metrics.widths),
-                );
-                writer.write(SKFS.KKeys(), SKFS.Keys(vKeys.toArray()));
-                writer.write(SKFS.KSize(), SKFS.IntFile(vKeys.size()));
+                writer.set(UiTable.WidthsKey(), UiTable.Widths(metrics.widths));
+                writer.set(SKStore.KKeys(), SKStore.Keys(vKeys.toArray()));
+                writer.set(SKStore.KSize(), SKStore.IntFile(vKeys.size()));
               })
           )
         }
       },
     );
-    rowsHdl = visibleItemsHdl.contextWriterKeyMap(
+    rowsHdl = visibleItemsHdl.map(
+      k ~> k,
       f ~> f,
       context,
       UiTable.itemsDirName(path.makeChild("rows")),
-      (context, writer, key, file) ~> {
+      (context, writer, key, it) ~> {
         key match {
-        | sid @ SKFS.StrID _ ->
-          row = UiTable.Row::fromFile(file);
+        | sid @ SKStore.StrID _ ->
+          row = UiTable.Row::type(it.first);
           columns = params.controller.getColumns(context);
           font = context.getThemeFont(UiTheme.Table());
           fill = context.getThemeColor(UiTheme.Regular());
@@ -100,7 +100,7 @@ class Table protected {
           });
           controller = UiTableRow.LamController{
             widths => (ctx, iu) ~>
-              UiTable.Widths::fromFile(
+              UiTable.Widths::type(
                 visibleItemsHdl.getValue(ctx, UiTable.WidthsKey(), iu),
               ).value,
             height => params.controller.getRowHeight,
@@ -112,15 +112,15 @@ class Table protected {
             highlighted => ctx ~>
               visibleItemsHdl.getBool(ctx, UiTable.Even(sid.value)),
           };
-          writer.write(
+          writer.set(
             sid,
             WidgetFile(
               TableRow::create(context, path.makeChild("rows"), controller),
             ),
           )
-        | SKFS.KKeys()
-        | SKFS.KSize() ->
-          writer.write(key, file)
+        | SKStore.KKeys()
+        | SKStore.KSize() ->
+          writer.set(key, it.first)
         | _ -> void
         }
       },
@@ -148,7 +148,7 @@ class Table protected {
         visibleItemsHdl.maybeGetProp(
           ctx,
           UiTable.WidthsKey(),
-          UiTable.Widths::fromFile,
+          UiTable.Widths::type,
         ),
       optConfiguration,
       cache,
@@ -156,7 +156,10 @@ class Table protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     userData = if (constraints.hasBoundedWidth()) {
       maxWidth = constraints.maxWidth();
       remainingWidth = maxWidth;
@@ -221,7 +224,7 @@ class Table protected {
     Node(this, node.size, Array[CNode(node, offset, constraints)], userData)
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     columns = this.controller.getColumns(context);
     optWidths = this.widths(context);
     valid = optWidths

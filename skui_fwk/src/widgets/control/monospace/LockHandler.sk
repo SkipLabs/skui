@@ -5,7 +5,7 @@ class LockHandler(
   vertical: Bool,
 ) extends FWK.LockHandler {
   fun update(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): ?FWK.LockHandler {
     if (!mouse.isPrimaryDown(context.tick)) {

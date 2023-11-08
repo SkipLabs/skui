@@ -3,7 +3,7 @@ module UiDropdown;
 const statePath: String = "ui/dropdown/state";
 const computedPath: String = "ui/dropdown/computed";
 
-base class OptPath(optPath: ?Ui.Path) extends SKFS.BaseName {
+base class OptPath(optPath: ?Ui.Path) extends SKStore.Key {
   children =
   | Path()
   | FirstPath()
@@ -17,7 +17,7 @@ base class OptPath(optPath: ?Ui.Path) extends SKFS.BaseName {
 
 class Selected(optIndex: ?Int) extends OptPath
 
-base class PathKey(path: Ui.Path) extends SKFS.BaseName {
+base class PathKey(path: Ui.Path) extends SKStore.Key {
   children =
   | PreviousPath()
   | NextPath()
@@ -29,9 +29,9 @@ base class PathKey(path: Ui.Path) extends SKFS.BaseName {
   }
 }
 
-class Active(optPath: ?Ui.Path, accessor: Accessor) extends SKFS.File {
+class Active(optPath: ?Ui.Path, accessor: Accessor) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Active _ -> x
     | _ -> invariant_violation("Must be UiDropdown.Active")
@@ -48,15 +48,15 @@ class Active(optPath: ?Ui.Path, accessor: Accessor) extends SKFS.File {
 
 class HStorage(
   name: String,
-  handle: SKFS.IHandle<SKFS.File>,
+  handle: SKStore.IHandle<SKStore.Key, SKStore.File>,
 ) extends Storage uses Ui.ScrollingStorage {
   //
   static fun forNameAndScope(
-    context: readonly SKFS.Context,
+    context: readonly SKStore.Context,
     name: String,
     scope: String,
   ): ?this {
-    hdl = SKFS.IHandle(SKFS.FileConverter(f ~> f), SKFS.DirName::create(scope));
+    hdl = SKStore.IHandle::notTyped(SKStore.DirName::create(scope));
     if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
   }
 
@@ -68,26 +68,26 @@ class HStorage(
     this.handle.getDirName().toString()
   }
 
-  protected fun getHandle(): SKFS.IHandle<SKFS.File> {
+  protected fun getHandle(): SKStore.IHandle<SKStore.Key, SKStore.File> {
     this.handle
   }
 
-  fun setTodo(context: mutable SKFS.Context, value: Ui.Executable): void {
+  fun setTodo(context: mutable SKStore.Context, value: Ui.Executable): void {
     Ui.setTodo(context, this.handle, value)
   }
 }
 
 class HState(
-  storage: SKFS.IHandle<SKFS.File>,
-  splitted: SKFS.EHandle<SKFS.BoolFile>,
-  computed: SKFS.EHandle<SKFS.File>,
+  storage: SKStore.IHandle<SKStore.Key, SKStore.File>,
+  splitted: SKStore.EHandle<Selected, SKStore.BoolFile>,
+  computed: SKStore.EHandle<SKStore.Key, SKStore.File>,
 ) extends State uses Ui.ScrollingState {
   //
-  protected fun getHandle(): SKFS.EHandle<SKFS.File> {
+  protected fun getHandle(): SKStore.EHandle<SKStore.Key, SKStore.File> {
     this.storage.toEHandle()
   }
 
-  protected fun getComputed(): SKFS.EHandle<SKFS.File> {
+  protected fun getComputed(): SKStore.EHandle<SKStore.Key, SKStore.File> {
     this.computed
   }
 
@@ -101,12 +101,12 @@ class HState(
 
   protected fun manageScrollingCmd(
     value: Int,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): SKUIMessage.Command {
     ManageScrolling(value, tick)
   }
 
-  fun isSelected(context: mutable SKFS.Context, index: Int): Bool {
+  fun isSelected(context: mutable SKStore.Context, index: Int): Bool {
     optPath = this.getActive(context).optPath;
     this.splitted.maybeGet(context, Selected(Some(index), optPath))
       .map(v -> v.value)
@@ -114,74 +114,74 @@ class HState(
   }
 
   fun getSelected(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Int {
     optPath = this.getActive(context, isUntracked).optPath;
     this.computed.maybeGetProp(
       context,
       Selected(None(), optPath),
-      SKFS.IntFile::fromFile,
+      SKStore.IntFile::type,
       isUntracked,
     ).map(f ~> f.value);
   }
 
-  fun isRoot(context: mutable SKFS.Context): Bool {
+  fun isRoot(context: mutable SKStore.Context): Bool {
     this.getActive(context).optPath.isNone()
   }
 
-  fun getTitle(context: mutable SKFS.Context): ?Text {
+  fun getTitle(context: mutable SKStore.Context): ?Text {
     this.getActive(context).accessor.getTitle(context)
   }
 
-  fun getNumberOfItems(context: mutable SKFS.Context): Int {
+  fun getNumberOfItems(context: mutable SKStore.Context): Int {
     this.getActive(context)
       .accessor.items(context, false)
       .getNumberOfItems(context)
   }
 
-  fun getItem(context: mutable SKFS.Context, index: Int): ItemBase {
+  fun getItem(context: mutable SKStore.Context, index: Int): ItemBase {
     this.getActive(context)
       .accessor.items(context, false)
       .getItem(context, index)
   }
 
-  fun getHover(context: mutable SKFS.Context): ?Ui.Path {
-    this.storage.maybeGetProp(context, Ui.hoverProp, Ui.Path::fromFile)
+  fun getHover(context: mutable SKStore.Context): ?Ui.Path {
+    this.storage.maybeGetProp(context, Ui.hoverProp, Ui.Path::type)
   }
 
-  fun getCurrent(context: mutable SKFS.Context): ?Ui.Path {
+  fun getCurrent(context: mutable SKStore.Context): ?Ui.Path {
     this.getActive(context).optPath
   }
 
   fun emitSelect(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void {
     this.emit(context, Select(value, optRepeatOn));
   }
 
-  fun setGoto(context: mutable SKFS.Context, value: Spot): void {
+  fun setGoto(context: mutable SKStore.Context, value: Spot): void {
     Ui.setTodo(context, this.storage, Goto(value));
   }
 
-  fun setClose(context: mutable SKFS.Context): void {
+  fun setClose(context: mutable SKStore.Context): void {
     Ui.setTodo(context, this.storage, Close());
   }
 
-  fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void {
+  fun setHover(context: mutable SKStore.Context, optPath: ?Ui.Path): void {
     this.storage.writeOrRemove(context, Ui.hoverProp, optPath)
   }
 
   fun getActive(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Active {
     this.computed.maybeGetProp(
       context,
       Ui.currentProp,
-      Active::fromFile,
+      Active::type,
       isUntracked,
     ).fromSome()
   }
@@ -189,20 +189,17 @@ class HState(
 
 @debug
 fun init(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   controller: Controller,
 ): Parameters {
   dirName = Ui.controllerDirName(path);
-  stateHdl = context.makeDir(
-    f ~> f,
+  stateHdl = context.makeNotTyped(
     dirName,
-    Array<(SKFS.BaseName, SKFS.File)>[
-      (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
-    ],
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
   );
-  computedDirName = SKFS.DirName::make(dirName, "computed/");
-  computedHdl = SKFS.derive(
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  computedHdl = SKStore.derive(
     context,
     dirName.toString(),
     computedDirName,
@@ -212,51 +209,52 @@ fun init(
     update,
     Some(controller),
   );
-  splittedHdl = computedHdl.contextWriterKeyMap(
-    SKFS.BoolFile::fromFile,
+  splittedHdl = computedHdl.map(
+    Selected::keyType,
+    SKStore.BoolFile::type,
     context,
-    SKFS.DirName::make(dirName, "splitted/"),
-    (_, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "splitted/"),
+    (_, writer, key, it) ~> {
       key match {
       | Selected(_, optPath) ->
-        sKey = Selected(Some(SKFS.IntFile::fromFile(file).value), optPath);
-        writer.write(sKey, SKFS.BoolFile(true))
+        sKey = Selected(Some(SKStore.IntFile::type(it.first).value), optPath);
+        writer.set(sKey, SKStore.BoolFile(true))
       | _ -> void
       }
     },
   );
   Parameters(
     controller,
-    HState(SKFS.toIHandle(stateHdl), splittedHdl, computedHdl),
+    HState(SKStore.toIHandle(stateHdl), splittedHdl, computedHdl),
   )
 }
 
 @debug
 fun update(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
-  todo: SKFS.File,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  todo: SKStore.File,
   optUtils: ?Controller,
 ): void {
-  execute(context, Ui.Todo::fromFile(todo).command, values, optUtils.fromSome())
+  execute(context, Ui.Todo::type(todo).command, values, optUtils.fromSome())
 }
 
 @debug
 fun execute(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   executable: Ui.Executable,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   controller: Controller,
 ): void {
   current = values
     .get(Ui.currentProp)
-    .map(Active::fromFile)
+    .map(Active::type)
     .default(Active(None(), controller));
   optSelected = values
     .maybeGet(Selected(None(), current.optPath))
     .default(None())
-    .map(SKFS.IntFile::fromFile)
+    .map(SKStore.IntFile::type)
     .map(f ~> f.value);
   executable match {
   | Ui.Init() -> !current = Active(None(), controller)
@@ -298,9 +296,9 @@ fun execute(
     values.set(Ui.ensureVisibleProp, Some(Ui.Pos(newSelected, context.tick)));
     values.set(
       Selected(None(), current.optPath),
-      Some(SKFS.IntFile(newSelected)),
+      Some(SKStore.IntFile(newSelected)),
     )
-  | _ -> SKFS.cast_violation("UiDropdown.Executable", executable)
+  | _ -> SKStore.cast_violation("UiDropdown.Executable", executable)
   };
   values.set(Ui.currentProp, Some(current));
   values.set(Path(current.optPath), Some(current));

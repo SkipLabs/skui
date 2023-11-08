@@ -1,14 +1,14 @@
 module UiTable;
 
-fun itemsDirName(path: Ui.Path): SKFS.DirName {
+fun itemsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/table/items/")
 }
 
-fun widgetsDirName(path: Ui.Path): SKFS.DirName {
+fun widgetsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/table/widgets/")
 }
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/table/widget/")
 }
 
@@ -72,7 +72,7 @@ class Cell{
   alignment: Text.FixedAlign = Text.Left(),
 }
 
-class Row(id: String, cells: Array<Cell>) extends SKFS.File
+class Row(id: String, cells: Array<Cell>) extends SKStore.File
 
 base class GridPolicy {
   children =
@@ -135,56 +135,59 @@ base class STarget {
 
 base class Controller {
   //
-  fun getColumns(context: mutable SKFS.Context): Array<Column>;
+  fun getColumns(context: mutable SKStore.Context): Array<Column>;
 
-  fun getRows(context: mutable SKFS.Context): Array<Row>;
+  fun getRows(context: mutable SKStore.Context): Array<Row>;
 
-  fun isShowCheckboxes(context: mutable SKFS.Context): Bool;
-  fun isShowOddEven(context: mutable SKFS.Context): Bool;
+  fun isShowCheckboxes(context: mutable SKStore.Context): Bool;
+  fun isShowOddEven(context: mutable SKStore.Context): Bool;
   fun getSelectionModel(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): SelectionModel;
 
-  fun getProgress(context: mutable SKFS.Context): ?Ui.Progress;
-  fun getRowProgress(context: mutable SKFS.Context, row: String): ?Ui.Progress;
-  fun getPlaceHolder(context: mutable SKFS.Context): Text;
-  fun getGridPolicy(context: mutable SKFS.Context): GridPolicy;
+  fun getProgress(context: mutable SKStore.Context): ?Ui.Progress;
+  fun getRowProgress(
+    context: mutable SKStore.Context,
+    row: String,
+  ): ?Ui.Progress;
+  fun getPlaceHolder(context: mutable SKStore.Context): Text;
+  fun getGridPolicy(context: mutable SKStore.Context): GridPolicy;
 
-  fun getColumnOrder(context: mutable SKFS.Context, column: String): ?Order;
-  fun getColumnWidth(context: mutable SKFS.Context, column: String): Width;
+  fun getColumnOrder(context: mutable SKStore.Context, column: String): ?Order;
+  fun getColumnWidth(context: mutable SKStore.Context, column: String): Width;
 
   fun getRowHeight(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Float;
 
   fun getHeaderHeight(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Float;
 
   fun getContextMenuItems(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?String,
     selections: Array<String>,
   ): Array<UiDropdown.Item>;
 
   fun getSelectionChangeMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     selections: Array<String>,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message>;
 
   fun getFireMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?String,
     selections: Array<String>,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message>;
 
   fun getSortMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     column: String,
     sort: Sort,
     isUntracked: Bool = false,
@@ -192,41 +195,44 @@ base class Controller {
 }
 
 base class State {
-  fun isSelected(context: mutable SKFS.Context, row: String): Bool;
-  fun isHover(context: mutable SKFS.Context, row: String): Bool;
+  fun isSelected(context: mutable SKStore.Context, row: String): Bool;
+  fun isHover(context: mutable SKStore.Context, row: String): Bool;
 }
 
 base class Storage {
   fun getName(): String;
   fun getScope(): String;
-  fun setHScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void;
-  fun setVScroll(context: mutable SKFS.Context, optScroll: ?Ui.Scroll): void;
-  fun setScrolling(context: mutable SKFS.Context, optTick: ?SKFS.Tick): void;
-  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
+  fun setHScroll(context: mutable SKStore.Context, optScroll: ?Ui.Scroll): void;
+  fun setVScroll(context: mutable SKStore.Context, optScroll: ?Ui.Scroll): void;
+  fun setScrolling(
+    context: mutable SKStore.Context,
+    optTick: ?SKStore.Tick,
+  ): void;
+  fun setTodo(context: mutable SKStore.Context, cmd: Executable): void;
   //
-  fun getScrolling(context: mutable SKFS.Context): ?SKFS.Tick;
+  fun getScrolling(context: mutable SKStore.Context): ?SKStore.Tick;
 }
 
 class Parameters(controller: Controller, state: State) extends Ui.Parameters
 
-class RangeKey() extends SKFS.BaseName {
+class RangeKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class WidthsKey() extends SKFS.BaseName {
+class WidthsKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class Even(value: String) extends SKFS.BaseName {
+class Even(value: String) extends SKStore.Key {
   fun toString(): String {
     `${this.getClassName()}:${this.value}`
   }
 }
 
-class Widths(value: Array<Float>) extends SKFS.File
+class Widths(value: Array<Float>) extends SKStore.File
 
 module end;

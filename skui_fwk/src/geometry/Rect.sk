@@ -1,8 +1,8 @@
 module Geometry;
 
-extension class Rect extends SKFS.File, JSONValue uses Show {
+extension class Rect extends SKStore.File, JSONValue uses Show {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Rect _ -> x
     | _ -> invariant_violation("Must be Geometry.Rect")

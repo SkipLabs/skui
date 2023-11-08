@@ -13,13 +13,13 @@ class Renderable() extends UiEngine.Renderable uses HasClassName {
     this.getClassName()
   }
 
-  fun render(ctx: mutable SKFS.Context): ?UiEngine.Description {
+  fun render(ctx: mutable SKStore.Context): ?UiEngine.Description {
     time = ctx.timeStamp();
     path = time.toString();
     UiSerializableProp.Property::initValues(
       ctx,
       Some(path),
-      Array[(SKFS.StrID("text"), Some(!"Updated text on button click."))],
+      Array[(SKStore.StrID("text"), Some(!"Updated text on button click."))],
     );
     textProp = UiSerializableProp.Property::forName(ctx, Some(path), "text");
     icon = name ~> UiIcon.Description(UiIcon.KCategory("themify"), name);

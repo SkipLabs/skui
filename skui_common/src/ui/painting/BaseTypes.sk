@@ -27,7 +27,7 @@ class Handles(
   optViewport: ?Ui.Path = None(),
 ) extends SKStore.File {
   //
-  static fun fromFile(obj: SKStore.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Handles _ -> x
     | _ -> SKStore.cast_violation("Ui.Handles", obj)
@@ -45,7 +45,7 @@ class Drawables(
   optViewport: ?Ui.Path = None(),
 ) extends SKStore.File {
   //
-  static fun fromFile(obj: SKStore.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Drawables _ -> x
     | _ -> SKStore.cast_violation("Ui.Drawables", obj)

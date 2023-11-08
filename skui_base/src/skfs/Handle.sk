@@ -1,5 +1,11 @@
 module SKStore;
 
+type ENotTyped = EHandle<Key, File>;
+type INotTyped = IHandle<Key, File>;
+type NotTyped = Handle<Key, File>;
+type EHandleSK<T> = EHandle<StrID, T>;
+type EHandleIK<T> = EHandle<IID, T>;
+
 class HValue<K: Key, T: File>(hdl: Handle<K, T>, key: K) {
   fun get(context: mutable Context, isUntracked: Bool = false): T {
     this.hdl.getValue(context, this.key, isUntracked)
@@ -425,6 +431,10 @@ extension class LHandle {
 
 extension class EHandle {
   //
+  static fun notTyped(dirName: DirName): EHandle<Key, File> {
+    EHandle<Key, File>(k ~> k, f ~> f, dirName)
+  }
+
   fun contextKeyMap<T2: File>(
     conv: File ~> T2,
     context: mutable Context,
@@ -486,6 +496,10 @@ class IHandle<K: Key, T: File>(
   dirName: DirName,
 ) extends Handle<K, T> {
   //
+  static fun notTyped(dirName: DirName): IHandle<Key, File> {
+    IHandle<Key, File>(k ~> k, f ~> f, dirName)
+  }
+
   fun toEHandle(): EHandle<K, T> {
     EHandle(this.keyType, this.type, this.dirName)
   }

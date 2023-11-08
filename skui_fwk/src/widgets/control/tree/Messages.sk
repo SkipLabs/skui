@@ -4,12 +4,12 @@ base class ForStorage
   extends SKUIMessage.Support
   uses SKUIMessage.WithUpdate<Command> {
   //
-  fun init(_context: mutable SKFS.Context): void {
+  fun init(_context: mutable SKStore.Context): void {
     void
   }
 
   protected fun executeForStorage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     storage: Storage,
     command: Command,
   ): void {
@@ -91,7 +91,7 @@ class Messages(storage: Storage) extends ForStorage {
   }
 
   protected fun execute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _name: String,
     _scope: String,
     command: Command,
@@ -103,7 +103,7 @@ class Messages(storage: Storage) extends ForStorage {
 class AllMessages() extends ForStorage {
   //
   protected fun execute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     command: Command,

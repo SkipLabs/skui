@@ -1,26 +1,26 @@
 module UiAspectRatio;
 
 base class Controller extends Ui.Parameters {
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
-  fun getAspectRatio(context: mutable SKFS.Context): Float;
-  fun isCentered(context: mutable SKFS.Context): Bool;
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget;
+  fun getAspectRatio(context: mutable SKStore.Context): Float;
+  fun isCentered(context: mutable SKStore.Context): Bool;
 }
 
 class LamController{
-  widget: mutable SKFS.Context ~> Ui.Widget,
+  widget: mutable SKStore.Context ~> Ui.Widget,
   aspectRatio: Ui.Getter<Float> = Ui.default(0.0),
   centered: Ui.Getter<Bool> = Ui.default(true),
 } extends Controller {
   //
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget {
     this.widget(context)
   }
 
-  fun getAspectRatio(context: mutable SKFS.Context): Float {
+  fun getAspectRatio(context: mutable SKStore.Context): Float {
     this.aspectRatio(context)
   }
 
-  fun isCentered(context: mutable SKFS.Context): Bool {
+  fun isCentered(context: mutable SKStore.Context): Bool {
     this.centered(context)
   }
 }
@@ -37,7 +37,7 @@ class AspectRatio{
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     controller: UiAspectRatio.Controller,
     cache: NodeCache,
@@ -46,11 +46,14 @@ class AspectRatio{
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.controller.getWidget(context).getViewportDefinition(context)
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     widget = this.controller.getWidget(context);
     aspectRatio = this.controller.getAspectRatio(context);
     centered = this.controller.isCentered(context);

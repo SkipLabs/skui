@@ -1,10 +1,10 @@
 module UiProgress;
 
 class LamController{
-  progress: mutable SKFS.Context ~> ?Int = _ctx ~> None(),
+  progress: mutable SKStore.Context ~> ?Int = _ctx ~> None(),
 } extends Controller {
   //
-  fun getProgress(context: mutable SKFS.Context): ?Int {
+  fun getProgress(context: mutable SKStore.Context): ?Int {
     this.progress(context)
   }
 }

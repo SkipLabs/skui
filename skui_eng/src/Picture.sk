@@ -2,27 +2,27 @@ module UiEnginePicture;
 
 // TODO Manage scoping
 
-const dirName: SKFS.DirName = SKFS.DirName::create("/ui/engine/pictures/");
-const resizedDirName: SKFS.DirName = SKFS.DirName::create(
+const dirName: SKStore.DirName = SKStore.DirName::create("/ui/engine/pictures/");
+const resizedDirName: SKStore.DirName = SKStore.DirName::create(
   "/ui/engine/pictures/resized/",
 );
 
-const pictureHdl: SKFS.IHandle<Impl> = SKFS.IHandle(
-  SKFS.FileConverter(Impl::fromFile),
+const pictureHdl: SKStore.IHandle<Impl> = SKStore.IHandle(
+  SKStore.FileConverter(Impl::type),
   dirName,
 );
 
-const resizedHdl: SKFS.IHandle<Variable> = SKFS.IHandle(
-  SKFS.FileConverter(Variable::fromFile),
+const resizedHdl: SKStore.IHandle<Variable> = SKStore.IHandle(
+  SKStore.FileConverter(Variable::type),
   resizedDirName,
 );
 
-class Variable(optSuccess: ?UInt32, optError: ?Text) extends SKFS.File {
+class Variable(optSuccess: ?UInt32, optError: ?Text) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Variable _ -> x
-    | _ -> SKFS.cast_violation("UiEnginePicture.Variable", obj)
+    | _ -> SKStore.cast_violation("UiEnginePicture.Variable", obj)
     }
   }
 }
@@ -33,7 +33,7 @@ class Key(
   height: UInt32,
   oWidth: UInt32,
   oHeight: UInt32,
-) extends SKFS.BaseName {
+) extends SKStore.BaseName {
   //
   fun toString(): String {
     `${this.picture}:${this.width}x${this.height}:${this.oWidth}x${
@@ -41,7 +41,7 @@ class Key(
     }`;
   }
 
-  fun compare(other: SKFS.BaseName): Order {
+  fun compare(other: SKStore.BaseName): Order {
     other match {
     | ok @ Key _ ->
       (
@@ -60,19 +60,19 @@ class RKey(
   picture: UInt32,
   width: UInt32,
   height: UInt32,
-) extends SKFS.BaseName {
+) extends SKStore.BaseName {
   //
   fun toString(): String {
     `${this.picture}:${this.width}x${this.height}`;
   }
 }
 
-class Variables(hdl: SKFS.LHandle<SKFS.Loadable>) extends SKFS.File {
+class Variables(hdl: SKStore.LHandle<SKStore.Loadable>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Variables _ -> x
-    | _ -> SKFS.cast_violation("UiEnginePicture.Variables", obj)
+    | _ -> SKStore.cast_violation("UiEnginePicture.Variables", obj)
     }
   }
 }
@@ -101,13 +101,13 @@ fun s(v1: UInt32, v2: UInt32, factor: Float): UInt32 {
   Math.max(v1, i(f(v2) * factor))
 }
 
-fun init(context: mutable SKFS.Context): void {
-  pictures = context.makeDir(Impl::fromFile, dirName, Array[]);
-  resized = context.makeDir(Variable::fromFile, resizedDirName, Array[]);
-  _ = SKFS.LHandle::lazy(
-    SKFS.Loadable::forFile,
+fun init(context: mutable SKStore.Context): void {
+  pictures = context.makeDir(Impl::type, dirName, Array[]);
+  resized = context.makeDir(Variable::type, resizedDirName, Array[]);
+  _ = SKStore.LHandle::lazy(
+    SKStore.Loadable::btype,
     context,
-    SKFS.DirName::make(resizedDirName, "cache/"),
+    SKStore.DirName::make(resizedDirName, "cache/"),
     (context, _self, key) ~> {
       key match {
       | tKey @ Key _ ->
@@ -145,22 +145,22 @@ fun init(context: mutable SKFS.Context): void {
             .map(var ->
               var.optSuccess
                 .map(p ->
-                  SKFS.Loaded(pictures.get(context, SKFS.IID(p.toInt())))
+                  SKStore.Loaded(pictures.get(context, SKStore.IID(p.toInt())))
                 )
-                .default(SKFS.LoadFailed(var.optError))
+                .default(SKStore.LoadFailed(var.optError))
             );
-          load: (?SKFS.Loadable) -> SKFS.Loadable = optLoadable -> {
+          load: (?SKStore.Loadable) -> SKStore.Loadable = optLoadable -> {
             resize(tKey.picture, refWidth, refHeight);
-            optLoadable.default(SKFS.Loading())
+            optLoadable.default(SKStore.Loading())
           };
           optLoadable match {
           | Some(l) -> l
           | None() -> load(None())
           }
         } else {
-          SKFS.LoadFailed(Some(!"Empty image to display."))
+          SKStore.LoadFailed(Some(!"Empty image to display."))
         }
-      | _ -> SKFS.cast_violation("UiEnginePicture.Key", key)
+      | _ -> SKStore.cast_violation("UiEnginePicture.Key", key)
       }
     },
     false,
@@ -170,8 +170,8 @@ fun init(context: mutable SKFS.Context): void {
 class Impl private (
   width: UInt32,
   height: UInt32,
-  private optEptr: ?SKFS.ExternalPointer,
-) extends Ui.Picture, SKFS.File uses Hashable, HasClassName {
+  private optEptr: ?SKStore.ExternalPointer,
+) extends Ui.Picture, SKStore.File uses Hashable, HasClassName {
   //
   static fun empty(): this {
     static(UInt32::truncate(0), UInt32::truncate(0), None())
@@ -188,7 +188,7 @@ class Impl private (
   }
 
   static fun make(id: UInt32, oWidth: UInt32, oHeight: UInt32): this {
-    static(oWidth, oHeight, Some(SKFS.ExternalPointer::create(id, delete)))
+    static(oWidth, oHeight, Some(SKStore.ExternalPointer::create(id, delete)))
   }
 
   fun optId(): ?Int {
@@ -220,11 +220,11 @@ private native fun asTexture(picture: UInt32, ctx: UInt32): UInt32;
 
 @wasm_export("SKIP_UiEnginePicture_register")
 fun register(id: UInt32, width: UInt32, height: UInt32): void {
-  SKFS.Context::withoutGc(context ~>
+  SKStore.Context::withoutGc(context ~>
     if (pictureHdl.exists(context)) {
       pictureHdl.write(
         context,
-        SKFS.IID(id.toInt()),
+        SKStore.IID(id.toInt()),
         Impl::make(id, width, height),
       )
     }
@@ -233,9 +233,9 @@ fun register(id: UInt32, width: UInt32, height: UInt32): void {
 
 @wasm_export("SKIP_UiEnginePicture_unregister")
 fun unregister(picture: UInt32): void {
-  SKFS.Context::withoutGc(context ~>
+  SKStore.Context::withoutGc(context ~>
     if (pictureHdl.exists(context)) {
-      pictureHdl.remove(context, SKFS.IID(picture.toInt()))
+      pictureHdl.remove(context, SKStore.IID(picture.toInt()))
     }
   )
 }
@@ -248,7 +248,7 @@ fun resized(
   result: UInt32,
   optError: ?Text,
 ): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     if (resizedHdl.exists(context)) {
       fsKey = RKey(picture, width, height);
       if (result.toInt() == 0 && optError.isNone()) {

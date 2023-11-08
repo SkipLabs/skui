@@ -56,8 +56,8 @@ base class ExecCommand extends Executable {
 const statePath: String = "ui/tpview/state";
 const colors: Array<String> = Array["yellow", "blue", "green", "red", "black"];
 
-const tabsKey: SKFS.BaseName = SKFS.StrID("tabs");
-const nextKey: SKFS.BaseName = SKFS.StrID("next");
+const tabsKey: SKStore.BaseName = SKStore.StrID("tabs");
+const nextKey: SKStore.BaseName = SKStore.StrID("next");
 
 class Tab(color: String, alpha: Int = 100) uses Orderable {
   fun toId(): String {
@@ -72,22 +72,22 @@ class Tab(color: String, alpha: Int = 100) uses Orderable {
   }
 }
 
-class Tabs(v: Array<Tab>) extends SKFS.File
-class TabIds(v: Array<String>) extends SKFS.File
+class Tabs(v: Array<Tab>) extends SKStore.File
+class TabIds(v: Array<String>) extends SKStore.File
 
 class State(
-  storage: SKFS.IHandle<SKFS.File>,
-  computed: SKFS.EHandle<SKFS.File>,
+  storage: SKStore.IHandle<SKStore.File>,
+  computed: SKStore.EHandle<SKStore.File>,
 ) {
   //
-  fun getTabs(context: mutable SKFS.Context): Array<String> {
+  fun getTabs(context: mutable SKStore.Context): Array<String> {
     default: Tabs = Tabs(Array[]);
-    this.computed.getProp(context, tabsKey, Tabs::fromFile, default).v.map(t ->
+    this.computed.getProp(context, tabsKey, Tabs::type, default).v.map(t ->
       t.toId()
     )
   }
 
-  fun getTab(_context: mutable SKFS.Context, id: String): UiTabPane.Tab {
+  fun getTab(_context: mutable SKStore.Context, id: String): UiTabPane.Tab {
     elems = id.split("_");
     color = elems[0];
     alpha = elems[1].toInt();
@@ -107,11 +107,11 @@ class State(
     }
   }
 
-  fun getActions(_context: mutable SKFS.Context): Array<String> {
+  fun getActions(_context: mutable SKStore.Context): Array<String> {
     Array["add"]
   }
 
-  fun getAction(context: mutable SKFS.Context, action: String): UiTabs.Action {
+  fun getAction(context: mutable SKStore.Context, action: String): UiTabs.Action {
     action match {
     | "add" ->
       UiTabs.Action(
@@ -124,7 +124,7 @@ class State(
     }
   }
 
-  fun getWidget(context: mutable SKFS.Context, id: String): ?Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context, id: String): ?Ui.Widget {
     elems = id.split("_");
     color = elems[0];
     alpha = elems[1].toInt();
@@ -148,34 +148,34 @@ class State(
     );
   }
 
-  fun create(context: mutable SKFS.Context): void {
+  fun create(context: mutable SKStore.Context): void {
     this.setTodo(context, Create())
   }
 
-  fun close(context: mutable SKFS.Context, toClose: Array<String>): void {
+  fun close(context: mutable SKStore.Context, toClose: Array<String>): void {
     this.setTodo(context, Close(toClose))
   }
 
-  private fun setTodo(context: mutable SKFS.Context, value: Executable): void {
+  private fun setTodo(context: mutable SKStore.Context, value: Executable): void {
     Ui.setTodo(context, this.storage, value);
   }
 }
 
 fun update(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.BaseName, ?SKStore.File>,
   todo: Ui.Todo,
-  _optUserData: ?SKFS.UserData,
+  _optUserData: ?SKStore.UserData,
 ): void {
   execute(context, todo.command, values);
 }
 
 @debug
 fun execute(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   executable: Ui.Executable,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.BaseName, ?SKStore.File>,
 ): void {
   executable match {
   | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
@@ -194,12 +194,12 @@ fun execute(
         ),
       ),
     );
-    values.set(nextKey, Some(SKFS.IntFile(0)))
+    values.set(nextKey, Some(SKStore.IntFile(0)))
   | Create() ->
-    tabs = values.get(tabsKey).map(Tabs::fromFile).fromSome().v;
+    tabs = values.get(tabsKey).map(Tabs::type).fromSome().v;
     next = values
       .get(nextKey)
-      .map(f ~> SKFS.IntFile::fromFile(f).value)
+      .map(f ~> SKStore.IntFile::type(f).value)
       .default(0);
     nColor = colors[next];
     current = tabs.filter(t -> t.color == nColor);
@@ -215,25 +215,25 @@ fun execute(
       !tabs = Arrays.add(tabs, Tab(nColor, nAlpha));
     };
     values.set(tabsKey, Some(Tabs(tabs)));
-    values.set(nextKey, Some(SKFS.IntFile((next + 1) % 5)))
+    values.set(nextKey, Some(SKStore.IntFile((next + 1) % 5)))
   | Close(toClose) ->
-    tabs = values.get(tabsKey).map(Tabs::fromFile).fromSome().v;
+    tabs = values.get(tabsKey).map(Tabs::type).fromSome().v;
     set = SortedSet::createFromItems(toClose);
     values.set(tabsKey, Some(Tabs(tabs.filter(t -> !set.contains(t.toId())))))
-  | _ -> SKFS.cast_violation("SKUIViewsTabpane.Executable", executable)
+  | _ -> SKStore.cast_violation("SKUIViewsTabpane.Executable", executable)
   }
 }
 
 @debug
-fun init(context: mutable SKFS.Context, path: Ui.Path): State {
+fun init(context: mutable SKStore.Context, path: Ui.Path): State {
   dirName = Ui.controllerDirName(path);
   stateHdl = context.makeDir(
-    Ui.Todo::fromFile,
+    Ui.Todo::type,
     dirName,
     Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
   );
-  computedDirName = SKFS.DirName::make(dirName, "computed/");
-  computedHdl = SKFS.derive(
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  computedHdl = SKStore.derive(
     context,
     dirName.toString(),
     computedDirName,
@@ -243,5 +243,5 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
     update,
     None(),
   );
-  State(SKFS.IHandle(SKFS.FileConverter(f ~> f), dirName), computedHdl)
+  State(SKStore.IHandle(SKStore.FileConverter(f ~> f), dirName), computedHdl)
 }

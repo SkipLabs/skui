@@ -13,7 +13,7 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     if (!this.slider.controller.isDisabled(context)) {
       this.slider.controller.getDirection(context) match {

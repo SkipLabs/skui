@@ -3,7 +3,7 @@ module Ui;
 class Tree protected {
   controller: UiTree.Controller,
   state: UiTree.State,
-  widget: mutable SKFS.Context ~> Widget,
+  widget: mutable SKStore.Context ~> Widget,
   private bar: UiTree.Bar,
 } extends StrictWidget uses WithNodeCache {
   //
@@ -11,16 +11,17 @@ class Tree protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     params: UiTree.Parameters,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiTree.widgetDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
     visibleWidgetsList = params.state
       .getVisibleItems()
@@ -69,15 +70,17 @@ class Tree protected {
             ),
           )
         },
-        SKFS.FileConverter(WidgetFile::fromFile),
+        WidgetFile::type,
+        w ~> w,
       );
-    widgetHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    widgetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       UiTree.widgetDirName(path),
       (context, writer, key, _) ~> {
         subPath = path.makeChild("viewport");
-        writer.write(
+        writer.set(
           key,
           WidgetFile(
             Flex::createForController(
@@ -99,7 +102,7 @@ class Tree protected {
       state => params.state,
       optConfiguration,
       cache,
-      widget => ctx ~> widgetHdl.get(ctx, SKFS.IID(0)).widget,
+      widget => ctx ~> widgetHdl.get(ctx, SKStore.IID(0)).widget,
       tick => context.tick,
       bar => UiTree.Bar{
         path => path.makeChild("bar"),
@@ -110,7 +113,10 @@ class Tree protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     widget = this.widget(context);
     cConstraints = constraints.freeHeight();
     node = widget.getNode(context, cConstraints);
@@ -158,7 +164,7 @@ class Tree protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: NodeSum,
@@ -169,7 +175,7 @@ class Tree protected {
     Some(drawInfo);
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     Some(
       ViewportDef(
         None(),
@@ -194,7 +200,7 @@ class Tree protected {
   }
 
   fun checkFocusHandlers(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _nodeInfo: Getter<NodeInfo>,
     _handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -202,7 +208,7 @@ class Tree protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((ctx, offset, ni) ~> {
@@ -216,7 +222,7 @@ class Tree protected {
   }
 
   fun getLockHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.LockHandler>,
   ): ?LockHandlerGetter {
     Some((ctx, mouse, ni) ~> {
@@ -239,7 +245,7 @@ class Tree protected {
   }
 
   fun getDropHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.DropHandler>,
   ): ?DropHandlerGetter {
     Some((ctx, _o, ni) ~> Some(UiTree.DropHandler(this, ni, childGetter(ctx))));

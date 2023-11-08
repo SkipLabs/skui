@@ -5,7 +5,7 @@ class DrawInfo private (
   optScrollAfter: ?Geometry.Rect,
 ) extends Ui.DrawInfo {
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     scroll: Ui.TabsSc,
     size: Geometry.Size,
     metrics: Ui.Metrics,

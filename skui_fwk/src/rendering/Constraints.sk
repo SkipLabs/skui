@@ -260,9 +260,9 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
 class BoxConstraints(
   width: Interval,
   height: Interval,
-) extends Ui.Constraints, SKFS.File uses Orderable, Hashable {
+) extends Ui.Constraints, SKStore.File uses Orderable, Hashable {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ BoxConstraints _ -> x
     | _ -> invariant_violation("Must be Ui.BoxConstraints")

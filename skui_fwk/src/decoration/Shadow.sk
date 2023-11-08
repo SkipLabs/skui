@@ -1,8 +1,8 @@
 module Ui;
 
-class ShadowData(scales: Array<Float>) extends SKFS.File {
+class ShadowData(scales: Array<Float>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ ShadowData _ -> x
     | _ -> invariant_violation("Must be Ui.ShadowData")
@@ -27,7 +27,7 @@ class Shadow{
   }
 
   fun fillDrawables(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,

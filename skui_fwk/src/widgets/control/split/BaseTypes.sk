@@ -2,18 +2,18 @@ module UiSplit;
 
 base class Controller extends Ui.Parameters {
   fun getAxis(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.Axis;
 
   fun getSeparation(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.SeparationProperty;
 
-  fun getFirstWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getFirstWidget(context: mutable SKStore.Context): Ui.Widget;
 
-  fun getSecondWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getSecondWidget(context: mutable SKStore.Context): Ui.Widget;
 }
 
 class UserData(bar: Geometry.Rect) extends Ui.UserData {}

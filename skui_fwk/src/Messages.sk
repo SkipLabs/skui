@@ -1,6 +1,6 @@
 module Ui;
 
-fun init(context: mutable SKFS.Context): void {
+fun init(context: mutable SKStore.Context): void {
   context.registerMessageSupport(
     UiToggle.statePath,
     "*",

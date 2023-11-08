@@ -72,7 +72,7 @@ extension base class Text extends UiEngine.SObject {
     s match {
     | t @ Text _ -> t
     | str @ UiEngine.SString _ -> static::fromString(str.value)
-    | _ -> SKFS.cast_violation("Text", s)
+    | _ -> SKStore.cast_violation("Text", s)
     }
   }
 }
@@ -97,11 +97,11 @@ extension class Range extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Range {
     s match {
     | t @ Range _ -> t
-    | _ -> SKFS.cast_violation("Range", s)
+    | _ -> SKStore.cast_violation("Range", s)
     }
   }
 
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Range _ -> x
     | _ -> invariant_violation("Must be Range")
@@ -167,7 +167,7 @@ extension base class Status extends UiEngine.SObject {
         err match {
         | txt @ Text _ -> txt
         | ss @ UiEngine.SString _ -> Text::fromString(ss.value)
-        | _ -> SKFS.cast_violation("String or Text", err)
+        | _ -> SKStore.cast_violation("String or Text", err)
         }
       );
       KO(optError, level)
@@ -184,7 +184,7 @@ extension base class Status extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Status {
     s match {
     | t @ Status _ -> t
-    | _ -> SKFS.cast_violation("Status", s)
+    | _ -> SKStore.cast_violation("Status", s)
     }
   }
 }
