@@ -145,7 +145,7 @@ fun toTreeItemChildren(
         | TreeItem _ -> true
         | _ -> false
         };
-      sf match {
+      sf.value match {
       | arr @ SArray _ -> SArray(arr.value.filter(isItem))
       | s if (isItem(s)) -> SArray(Array[s])
       | _ -> SArray(Array[])
@@ -168,18 +168,19 @@ fun toTreeItemChildren(
     (writer, sa) ~>
       sa.value.each(s -> {
         item = TreeItem::fromSerializable(s);
-        writer.write(SKStore.StrID(item.id), item)
+        writer.set(SKStore.StrID(item.id), item)
       })
     ,
   );
   refDir = splitedItemHdl.getDirName();
   treeItemChildrenHdl = splitedItemHdl.map(
+    SKStore.StrID::keyType,
     TreeItemChildren::type,
     context,
     SKStore.DirName::make(refDir, "children/"),
-    (context, writer, key, item) ~> {
-      item.optItems.each(itemChildren ->
-        writer.write(key, toTreeItemChildren(context, itemChildren))
+    (context, writer, key, it) ~> {
+      it.first.optItems.each(itemChildren ->
+        writer.set(key, toTreeItemChildren(context, itemChildren))
       )
     },
   );

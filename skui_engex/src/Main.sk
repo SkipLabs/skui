@@ -125,7 +125,7 @@ fun initEngineWidget(
     `UiEngine.Deserializer.${example.deserializer.i0}`,
     UiEngine.Deserializer(example.deserializer.i1),
   );
-  context.setGlobal("Ui.Properties.Root", rootPath);
+  context.setGlobal("Ui.Properties.Root", SKStore.DirNameFile(rootPath));
   support = SKUIGL.DrawableSupport(SkuiViews.pictureToTexturable);
   optPath: ?String = None();
   H.init(context, optPath);

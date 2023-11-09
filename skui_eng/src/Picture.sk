@@ -2,18 +2,22 @@ module UiEnginePicture;
 
 // TODO Manage scoping
 
-const dirName: SKStore.DirName = SKStore.DirName::create("/ui/engine/pictures/");
+const dirName: SKStore.DirName = SKStore.DirName::create(
+  "/ui/engine/pictures/",
+);
 const resizedDirName: SKStore.DirName = SKStore.DirName::create(
   "/ui/engine/pictures/resized/",
 );
 
-const pictureHdl: SKStore.IHandle<Impl> = SKStore.IHandle(
-  SKStore.FileConverter(Impl::type),
+const pictureHdl: SKStore.IHandle<SKStore.IID, Impl> = SKStore.IHandle(
+  SKStore.IID::keyType,
+  Impl::type,
   dirName,
 );
 
-const resizedHdl: SKStore.IHandle<Variable> = SKStore.IHandle(
-  SKStore.FileConverter(Variable::type),
+const resizedHdl: SKStore.IHandle<RKey, Variable> = SKStore.IHandle(
+  RKey::keyType,
+  Variable::type,
   resizedDirName,
 );
 
@@ -56,24 +60,10 @@ class Key(
   }
 }
 
-class RKey(
-  picture: UInt32,
-  width: UInt32,
-  height: UInt32,
-) extends SKStore.Key {
+class RKey(picture: UInt32, width: UInt32, height: UInt32) extends SKStore.Key {
   //
   fun toString(): String {
     `${this.picture}:${this.width}x${this.height}`;
-  }
-}
-
-class Variables(hdl: SKStore.LHandle<SKStore.Loadable>) extends SKStore.File {
-  //
-  static fun type(obj: SKStore.File): this {
-    obj match {
-    | x @ Variables _ -> x
-    | _ -> SKStore.cast_violation("UiEnginePicture.Variables", obj)
-    }
   }
 }
 
@@ -102,65 +92,72 @@ fun s(v1: UInt32, v2: UInt32, factor: Float): UInt32 {
 }
 
 fun init(context: mutable SKStore.Context): void {
-  pictures = context.makeDir(Impl::type, dirName, Array[]);
-  resized = context.makeDir(Variable::type, resizedDirName, Array[]);
+  pictures = context.makeDir(
+    SKStore.IID::keyType,
+    Impl::type,
+    dirName,
+    Array[],
+  );
+  resized = context.makeDir(
+    RKey::keyType,
+    Variable::type,
+    resizedDirName,
+    Array[],
+  );
   _ = SKStore.LHandle::lazy(
+    Key::keyType,
     SKStore.Loadable::btype,
     context,
     SKStore.DirName::make(resizedDirName, "cache/"),
-    (context, _self, key) ~> {
-      key match {
-      | tKey @ Key _ ->
-        (oWidth, oHeight) = (tKey.oWidth, tKey.oHeight);
-        if (oWidth > 0 && oHeight > 0) {
-          factor = if (oWidth > oHeight) {
-            (oHeight.toFloat() / oWidth.toFloat())
-          } else {
-            (oWidth.toFloat() / oHeight.toFloat())
-          };
-          width = if (oWidth > oHeight) {
-            s(tKey.width, tKey.height, 1.0 / factor)
-          } else {
-            s(tKey.width, tKey.height, factor)
-          };
-          height = if (oWidth > oHeight) {
-            s(tKey.height, tKey.width, factor)
-          } else {
-            s(tKey.height, tKey.width, 1.0 / factor)
-          };
-          maxSize = log2Size(Math.max(oWidth, oHeight));
-          refSize = log2Size(Math.max(width, height));
-          (refWidth, refHeight) = if (refSize < maxSize) {
-            min = UInt32::truncate((refSize.toFloat() * factor).toInt());
-            (
-              if (oWidth > oHeight) refSize else min,
-              if (oWidth > oHeight) min else refSize,
-            )
-          } else {
-            !refSize = maxSize;
-            (oWidth, oHeight)
-          };
-          optLoadable = resized
-            .maybeGet(context, RKey(tKey.picture, refWidth, refHeight))
-            .map(var ->
-              var.optSuccess
-                .map(p ->
-                  SKStore.Loaded(pictures.get(context, SKStore.IID(p.toInt())))
-                )
-                .default(SKStore.LoadFailed(var.optError))
-            );
-          load: (?SKStore.Loadable) -> SKStore.Loadable = optLoadable -> {
-            resize(tKey.picture, refWidth, refHeight);
-            optLoadable.default(SKStore.Loading())
-          };
-          optLoadable match {
-          | Some(l) -> l
-          | None() -> load(None())
-          }
+    (context, _self, tKey) ~> {
+      (oWidth, oHeight) = (tKey.oWidth, tKey.oHeight);
+      if (oWidth > 0 && oHeight > 0) {
+        factor = if (oWidth > oHeight) {
+          (oHeight.toFloat() / oWidth.toFloat())
         } else {
-          SKStore.LoadFailed(Some(!"Empty image to display."))
+          (oWidth.toFloat() / oHeight.toFloat())
+        };
+        width = if (oWidth > oHeight) {
+          s(tKey.width, tKey.height, 1.0 / factor)
+        } else {
+          s(tKey.width, tKey.height, factor)
+        };
+        height = if (oWidth > oHeight) {
+          s(tKey.height, tKey.width, factor)
+        } else {
+          s(tKey.height, tKey.width, 1.0 / factor)
+        };
+        maxSize = log2Size(Math.max(oWidth, oHeight));
+        refSize = log2Size(Math.max(width, height));
+        (refWidth, refHeight) = if (refSize < maxSize) {
+          min = UInt32::truncate((refSize.toFloat() * factor).toInt());
+          (
+            if (oWidth > oHeight) refSize else min,
+            if (oWidth > oHeight) min else refSize,
+          )
+        } else {
+          !refSize = maxSize;
+          (oWidth, oHeight)
+        };
+        optLoadable = resized
+          .maybeGet(context, RKey(tKey.picture, refWidth, refHeight))
+          .map(var ->
+            var.optSuccess
+              .map(p ->
+                SKStore.Loaded(pictures.get(context, SKStore.IID(p.toInt())))
+              )
+              .default(SKStore.LoadFailed(var.optError))
+          );
+        load: (?SKStore.Loadable) -> SKStore.Loadable = optLoadable -> {
+          resize(tKey.picture, refWidth, refHeight);
+          optLoadable.default(SKStore.Loading())
+        };
+        optLoadable match {
+        | Some(l) -> l
+        | None() -> load(None())
         }
-      | _ -> SKStore.cast_violation("UiEnginePicture.Key", key)
+      } else {
+        SKStore.LoadFailed(Some(!"Empty image to display."))
       }
     },
     false,

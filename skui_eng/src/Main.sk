@@ -73,7 +73,7 @@ fun initEngineWidget(
   wId: Int,
   name: String,
 ): void {
-  context.setGlobal("Ui.Properties.Root", rootPath);
+  context.setGlobal("Ui.Properties.Root", SKStore.DirNameFile(rootPath));
   UiEnginePicture.init(context);
   support = SKUIGL.DrawableSupport(UiEnginePicture.pictureToTexturable);
   optPath: ?String = None();

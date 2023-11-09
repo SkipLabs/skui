@@ -184,11 +184,7 @@ class Tabs{
       toSerializableProperty(context, this.optTabs)
     };
     verifiedTabsHdl = tabsProperty.valueHdl.mapChild(
-      file ~>
-        file match {
-        | x @ SArray _ -> x
-        | _ -> invariant_violation("Must be UiEngine.SArray")
-        },
+      SArray::type,
       context,
       "verifiedTabs/",
       sf ~> {
@@ -197,7 +193,7 @@ class Tabs{
           | Tab _ -> true
           | _ -> false
           };
-        sf match {
+        sf.value match {
         | arr @ SArray _ -> SArray(arr.value.filter(isTab))
         | s if (isTab(s)) -> SArray(Array[s])
         | _ -> SArray(Array[])
@@ -220,32 +216,35 @@ class Tabs{
       (writer, sa) ~>
         sa.value.each(var -> {
           tab = Tab::fromSerializable(var);
-          writer.write(SKStore.StrID(tab.id), tab)
+          writer.set(SKStore.StrID(tab.id), tab)
         })
       ,
     );
     refDir = splitedTabsHdl.getDirName();
     tabsWidgetsHdl = splitedTabsHdl.map(
+      SKStore.StrID::keyType,
       WidgetHandle::type,
       context,
       SKStore.DirName::make(refDir, "widgets/"),
-      (context, writer, key, tab) ~> {
-        property = toSerializableProperty(context, tab.optWidget);
+      (context, writer, key, it) ~> {
+        property = toSerializableProperty(context, it.first.optWidget);
         hdl = WidgetHandle(widgetPipeline(context, property, root, prebuilt));
-        writer.write(key, hdl);
+        writer.set(key, hdl);
       },
     );
-    tabGettersHdl = splitedTabsHdl.contextMap(
+    tabGettersHdl = splitedTabsHdl.map(
+      SKStore.StrID::keyType,
       TabGetter::type,
       context,
       SKStore.DirName::make(refDir, "getters/"),
-      (ctx, tab) ~> tab.toGetters(ctx),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toGetters(ctx)),
     );
-    uiTabsHdl = tabGettersHdl.contextMap(
+    uiTabsHdl = tabGettersHdl.map(
+      SKStore.StrID::keyType,
       UiTabPane.Tab::type,
       context,
       SKStore.DirName::make(refDir, "uitabs/"),
-      (ctx, g) ~> g.toTab(ctx),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toTab(ctx)),
     );
     actionsProperty = if (actionsNeeded) {
       UiSerializableProp.Property::forName(context, Some(ppsPath), "actions")
@@ -253,11 +252,7 @@ class Tabs{
       toSerializableProperty(context, this.optActions)
     };
     verifiedActionsHdl = actionsProperty.valueHdl.mapChild(
-      file ~>
-        file match {
-        | x @ SArray _ -> x
-        | _ -> invariant_violation("Must be UiEngine.SArray")
-        },
+      SArray::type,
       context,
       "verifiedActions/",
       sf ~> {
@@ -266,7 +261,7 @@ class Tabs{
           | Action _ -> true
           | _ -> false
           };
-        sf match {
+        sf.value match {
         | arr @ SArray _ -> SArray(arr.value.filter(isAction))
         | s if (isAction(s)) -> SArray(Array[s])
         | _ -> SArray(Array[])
@@ -277,7 +272,9 @@ class Tabs{
       SKStore.Strings::type,
       context,
       "actionsIds/",
-      sa ~> SKStore.Strings(sa.value.map(Action::fromSerializable).map(t -> t.id)),
+      sa ~>
+        SKStore.Strings(sa.value.map(Action::fromSerializable).map(t -> t.id))
+      ,
     );
     splitedActionsHdl = verifiedActionsHdl.mapWriterChild(
       Action::type,
@@ -286,21 +283,23 @@ class Tabs{
       (writer, vars) ~>
         vars.value.each(var -> {
           action = Action::fromSerializable(var);
-          writer.write(SKStore.StrID(action.id), action)
+          writer.set(SKStore.StrID(action.id), action)
         })
       ,
     );
-    actionGettersHdl = splitedActionsHdl.contextMap(
+    actionGettersHdl = splitedActionsHdl.map(
+      SKStore.StrID::keyType,
       ActionGetter::type,
       context,
       SKStore.DirName::make(splitedActionsHdl.getDirName(), "getters/"),
-      (ctx, action) ~> action.toGetters(ctx),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toGetters(ctx)),
     );
-    uiActionsHdl = actionGettersHdl.contextMap(
+    uiActionsHdl = actionGettersHdl.map(
+      SKStore.StrID::keyType,
       UiTabs.Action::type,
       context,
       SKStore.DirName::make(refDir, "uiactions/"),
-      (ctx, g) ~> g.toAction(ctx),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toAction(ctx)),
     );
     kindGetter = toIntOptGetter(context, this.optKind);
     modeGetter = toIntOptGetter(context, this.optMode);

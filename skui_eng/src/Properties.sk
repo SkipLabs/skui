@@ -6,7 +6,9 @@ base class SerializableProperty extends Ui.Property<Serializable>
 
 class Prop extends Ui.Prop {
   //
-  fun toProperty(context: readonly SKStore.Context): UiSerializableProp.Property {
+  fun toProperty(
+    context: readonly SKStore.Context,
+  ): UiSerializableProp.Property {
     this.kind match {
     | Ui.PProp() ->
       UiSerializableProp.Property::forName(context, this.optPath, this.name)
@@ -38,7 +40,10 @@ base class PropertySerializable<T: frozen> final (
     this.property.getPath()
   }
 
-  fun maybeGet(context: mutable SKStore.Context, isUntracked: Bool = false): ?T {
+  fun maybeGet(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?T {
     this.property.maybeGet(context, isUntracked).map(
       static::valueFromSerializable,
     )
@@ -115,7 +120,9 @@ class Property extends
     }
   }
 
-  protected static fun valueFromFile(file: SKStore.File): UiEngine.Serializable {
+  protected static fun valueFromFile(
+    file: SKStore.File,
+  ): UiEngine.Serializable {
     UiEngine.File::type(file).value
   }
 
@@ -123,7 +130,9 @@ class Property extends
     UiEngine.File::type(file)
   }
 
-  protected static fun valueToFile(value: UiEngine.Serializable): SKStore.File {
+  protected static fun valueToFile(
+    value: UiEngine.Serializable,
+  ): UiEngine.File {
     UiEngine.File(value)
   }
 
@@ -131,7 +140,9 @@ class Property extends
     UiEngine.SOption(None())
   }
 
-  static fun toIHandle(hdl: SKStore.EHandle<Timed>): SKStore.IHandle<Timed> {
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
     SKStore.toIHandle(hdl)
   }
 
@@ -173,7 +184,11 @@ class Property extends
         this.timedHdl.hdl.getDirName(),
         "combines/",
       );
-      combinesHdl = SKStore.EHandle(UiEngine.Combine::sinceFile, combinesDirName);
+      combinesHdl = SKStore.EHandle(
+        SKStore.StrID::keyType,
+        UiEngine.Combine::sinceFile,
+        combinesDirName,
+      );
       if (combinesHdl.exists(context)) {
         combinesHdl.maybeGet(context, this.timedHdl.key).each(combine ->
           combine.write(context, optValue)
@@ -192,21 +207,33 @@ class Property extends
     className = SKStore.normalize(static::sClassName().lowercase());
     timedDirName = SKStore.DirName::make(dirName, `${className}/`);
     combinesDirName = SKStore.DirName::make(timedDirName, "combines/");
-    hdl = SKStore.EHandle(UiEngine.Combine::sinceFile, combinesDirName);
+    hdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      UiEngine.Combine::sinceFile,
+      combinesDirName,
+    );
     key = SKStore.StrID(`prop${context.timeStamp().value}`);
     SKStore.toIHandle(hdl).write(context, key, combine);
     key;
   }
 
-  static fun initCombines(context: mutable SKStore.Context, path: String): void {
+  static fun initCombines(
+    context: mutable SKStore.Context,
+    path: String,
+  ): void {
     dirName = Ui.toDirName(context, Some(path));
     className = SKStore.normalize(static::sClassName().lowercase());
     timedDirName = SKStore.DirName::make(dirName, `${className}/`);
     combinesDirName = SKStore.DirName::make(timedDirName, "combines/");
     combinesCacheDirName = SKStore.DirName::make(combinesDirName, "cache/");
     valueDirName = SKStore.DirName::make(timedDirName, "value/");
-    combinesHdl = context.makeDir(UiEngine.Combine::sinceFile, combinesDirName);
+    combinesHdl = context.makeDir(
+      SKStore.StrID::keyType,
+      UiEngine.Combine::sinceFile,
+      combinesDirName,
+    );
     cache = SKStore.LHandle::lazy(
+      SKStore.StrID::keyType,
       static::timedFromFile,
       context,
       combinesCacheDirName,
@@ -219,19 +246,21 @@ class Property extends
     );
     _ = combinesHdl
       .map(
+        SKStore.StrID::keyType,
         static::timedFromFile,
         context,
         timedDirName,
-        (ctx, writer, key, _) ~> writer.write(key, cache.get(ctx, key)),
+        (ctx, writer, key, _) ~> writer.set(key, cache.get(ctx, key)),
       )
       .map(
+        SKStore.StrID::keyType,
         static::fileValueFromFile,
         context,
         valueDirName,
-        (_ctx, writer, key, timed) ~>
-          timed.optValue.each(v -> writer.write(key, static::valueToFile(v)))
+        (_ctx, writer, key, it) ~>
+          it.first.optValue.each(v -> writer.set(key, static::valueToFile(v)))
         ,
-      );
+      )
   }
 }
 

@@ -44,7 +44,7 @@ class Settings{
 class Confirm{
   text: Text,
   optAction: ?Function,
-  type: UiDialogs.QType = UiDialogs.YesNo(),
+  type_: UiDialogs.QType = UiDialogs.YesNo(),
   optTitle: ?Text = None(),
 } extends Dialog {
   fun open(context: mutable SKStore.Context): void {
@@ -54,7 +54,7 @@ class Confirm{
       (ctx, confirm, dId) ~>
         optConfirmation.each(c -> c.confirm(ctx, confirm, dId)),
       true,
-      this.type,
+      this.type_,
       this.optTitle,
     );
   }

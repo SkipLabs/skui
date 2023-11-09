@@ -219,12 +219,13 @@ fun widgetableToWidget(
   )
 }
 
-fun toOptGetter<T: frozen>(
+fun toOptGetter<T: frozen, FT: SKStore.File>(
   context: readonly SKStore.Context,
   optVar: ?Serializable,
   propConv: UiSerializableProp.Property ~> Ui.GetterOne<?T, Bool>,
   optConv: Serializable ~> ?T,
-  fileConv: SKStore.File ~> T,
+  fileConv: SKStore.File ~> FT,
+  valueConv: FT ~> T,
 ): Ui.GetterOne<?T, Bool> {
   optVar match {
   | Some(s) ->
@@ -246,23 +247,44 @@ fun toOptGetter<T: frozen>(
         )
       | Ui.PLoadable() ->
         optHandle = optPath.map(path ->
-          SKStore.LHandle(SKStore.Loadable::btype, SKStore.DirName::create(path))
+          SKStore.LHandle(
+            SKStore.StrID::keyType,
+            SKStore.Loadable::btype,
+            SKStore.DirName::create(path),
+          )
         );
         (ctx, iu) ~>
           optHandle
             .flatMap(hdl -> hdl.maybeGetValue(ctx, SKStore.StrID(name), iu))
             .flatMap(loadable -> loadable.maybeGet(fileConv))
+            .map(valueConv)
       | Ui.PHandle() ->
         optHandle = optPath.map(path ->
-          SKStore.EHandle(fileConv, SKStore.DirName::create(path))
+          SKStore.EHandle(
+            SKStore.StrID::keyType,
+            fileConv,
+            SKStore.DirName::create(path),
+          )
         );
         (ctx, iu) ~>
-          optHandle.flatMap(hdl -> hdl.maybeGetValue(ctx, SKStore.StrID(name), iu))
+          optHandle
+            .flatMap(hdl -> hdl.maybeGetValue(ctx, SKStore.StrID(name), iu))
+            .map(valueConv)
       }
     | _ -> Ui.defaultOne(optConv(s))
     }
   | _ -> Ui.defaultOne(None())
   };
+}
+
+fun toOptGetterFile<T: SKStore.File>(
+  context: readonly SKStore.Context,
+  optVar: ?Serializable,
+  propConv: UiSerializableProp.Property ~> Ui.GetterOne<?T, Bool>,
+  optConv: Serializable ~> ?T,
+  fileConv: SKStore.File ~> T,
+): Ui.GetterOne<?T, Bool> {
+  toOptGetter(context, optVar, propConv, optConv, fileConv, f ~> f)
 }
 
 fun toBoolOptGetter(
@@ -274,7 +296,8 @@ fun toBoolOptGetter(
     optVar,
     p ~> p.toOptBoolGetter(),
     optBool,
-    f ~> SKStore.BoolFile::type(f).value,
+    f ~> SKStore.BoolFile::type(f),
+    f ~> f.value,
   )
 }
 
@@ -287,7 +310,8 @@ fun toIntOptGetter(
     optVar,
     p ~> p.toOptIntGetter(),
     optInt,
-    f ~> SKStore.IntFile::type(f).value,
+    f ~> SKStore.IntFile::type(f),
+    f ~> f.value,
   )
 }
 
@@ -300,7 +324,8 @@ fun toFloatOptGetter(
     optVar,
     p ~> p.toOptFloatGetter(),
     optFloat,
-    f ~> SKStore.FloatFile::type(f).value,
+    f ~> SKStore.FloatFile::type(f),
+    f ~> f.value,
   )
 }
 
@@ -308,7 +333,7 @@ fun toIconOptGetter(
   context: readonly SKStore.Context,
   optVar: ?Serializable,
 ): Ui.GetterOne<?UiIcon.Description, Bool> {
-  toOptGetter(
+  toOptGetterFile(
     context,
     optVar,
     p ~> p.toOptValueGetter(s ~> optIcon(s)),
@@ -321,7 +346,7 @@ fun toDecorationOptGetter(
   context: readonly SKStore.Context,
   optVar: ?Serializable,
 ): Ui.GetterOne<?Ui.Decoration, Bool> {
-  toOptGetter(
+  toOptGetterFile(
     context,
     optVar,
     p ~> p.toOptValueGetter(s ~> optDecoration(s)),
@@ -334,7 +359,7 @@ fun toConstraintsOptGetter(
   context: readonly SKStore.Context,
   optVar: ?Serializable,
 ): Ui.GetterOne<?Ui.BoxConstraints, Bool> {
-  toOptGetter(
+  toOptGetterFile(
     context,
     optVar,
     p ~> p.toOptValueGetter(s ~> optConstraints(s)),
@@ -347,7 +372,7 @@ fun toTextOptGetter(
   context: readonly SKStore.Context,
   optVar: ?Serializable,
 ): Ui.GetterOne<?Text, Bool> {
-  toOptGetter(
+  toOptGetterFile(
     context,
     optVar,
     p ~> p.toOptValueGetter(s ~> optText(s)),
@@ -383,7 +408,7 @@ fun toRangeOptGetter(
   context: readonly SKStore.Context,
   optVar: ?Serializable,
 ): Ui.GetterOne<?Range, Bool> {
-  toOptGetter(
+  toOptGetterFile(
     context,
     optVar,
     p ~> p.toOptValueGetter(s ~> optRange(s)),
@@ -396,7 +421,7 @@ fun toStyleOptGetter(
   context: readonly SKStore.Context,
   optVar: ?Serializable,
 ): Ui.GetterOne<?Text.Style, Bool> {
-  toOptGetter(
+  toOptGetterFile(
     context,
     optVar,
     p ~> p.toOptValueGetter(s ~> optStyle(s)),
@@ -464,7 +489,9 @@ fun toValueProperty(
   }
 }
 
-class WidgetHandle(hdl: SKStore.EHValue<Ui.WidgetFile>) extends SKStore.File {
+class WidgetHandle(
+  hdl: SKStore.EHValue<SKStore.StrID, Ui.WidgetFile>,
+) extends SKStore.File {
   //
   static fun type(obj: SKStore.File): this {
     obj match {
@@ -489,7 +516,7 @@ fun widgetPipeline(
   root: UiRoot.Storage,
   prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget = (_ctx, _name) ~>
     None(),
-): SKStore.EHValue<Ui.WidgetFile> {
+): SKStore.EHValue<SKStore.StrID, Ui.WidgetFile> {
   dirname = property.valueHdl.getChildDirName;
   verifiedHdl = property.valueHdl.mapChild(
     WidgetableFile::type,
@@ -497,7 +524,7 @@ fun widgetPipeline(
     "verifiedwidget/",
     s ~>
       WidgetableFile(
-        s match {
+        s.value match {
         | widget @ Widgetable _
         | SOption(Some(widget @ Widgetable _)) ->
           widget
@@ -508,15 +535,16 @@ fun widgetPipeline(
     ,
   );
   renderablesHdl = verifiedHdl.hdl.map(
+    SKStore.StrID::keyType,
     RenderableFile::type,
     context,
     dirname("renderables/"),
-    (_context, writer, _key, widgetable) ~> {
+    (_context, writer, _key, it) ~> {
       collector: Renderable -> void = r -> {
         id = r.getId();
-        writer.write(SKStore.StrID(id), RenderableFile(r));
+        writer.set(SKStore.StrID(id), RenderableFile(r));
       };
-      widgetable.value match {
+      it.first.value match {
       | r @ Renderable _ -> collector(r)
       | d @ Description _ -> d.collect(collector)
       }
@@ -524,26 +552,23 @@ fun widgetPipeline(
   );
   renderedsHdl = renderablesHdl
     .map(
+      SKStore.StrID::keyType,
       DescriptionFile::type,
       context,
       dirname("descriptions/"),
-      (context, writer, key, renderable) ~> {
-        desc = renderable.value.render(context).default(UiEngine.Indicator{});
-        writer.write(key, DescriptionFile(desc))
+      (context, writer, key, it) ~> {
+        desc = it.first.value.render(context).default(UiEngine.Indicator{});
+        writer.set(key, DescriptionFile(desc))
       },
     )
     .map(
+      SKStore.StrID::keyType,
       Ui.WidgetFile::type,
       context,
       dirname("rendereds/"),
-      (context, writer, key, description) ~> {
-        widget = description.value.build(
-          context,
-          key.toString(),
-          root,
-          prebuilt,
-        );
-        writer.write(key, Ui.WidgetFile(widget))
+      (context, writer, key, it) ~> {
+        widget = it.first.value.build(context, key.value, root, prebuilt);
+        writer.set(key, Ui.WidgetFile(widget))
       },
     );
   cPrebuilt = (ctx, name) ~>
@@ -560,9 +585,9 @@ fun widgetPipeline(
         widget = widgetable.value match {
         | r @ Renderable _ ->
           renderedsHdl.get(context, SKStore.StrID(r.getId())).widget
-        | d @ Description _ -> d.build(context, key.toString(), root, cPrebuilt)
+        | d @ Description _ -> d.build(context, key.value, root, cPrebuilt)
         };
-        writer.write(key, Ui.WidgetFile(widget))
+        writer.set(key, Ui.WidgetFile(widget))
       },
     ),
     verifiedHdl.key,
@@ -597,37 +622,39 @@ fun toWidgetsCollection(
     context,
     "verifiedwidgets/",
     sf ~>
-      sf match {
+      sf.value match {
       | arr @ SArray _ -> SArray(arr.value.filter(isWidgetable))
       | s if (isWidgetable(s)) -> SArray(Array[s])
       | _ -> SArray(Array[])
       }
     ,
   );
-  widgetVarsHdl = verifiedVarsHdl.mapContextWriterChild(
+  widgetVarsHdl = verifiedVarsHdl.hdl.map(
+    SKStore.KIndexed::bKeyType,
     f ~> f,
     context,
-    "splittedwidgets/",
-    (_context, writer, _key, array) ~> {
+    dirname("splittedwidgets/"),
+    (_context, writer, _key, it) ~> {
       keys = mutable Vector<SKStore.Key>[];
-      array.value.each(s -> {
+      it.each(s -> {
         sk = SKStore.IID(hash(s));
         keys.push(sk);
-        writer.write(sk, s)
+        writer.set(SKStore.KIdx(sk), s)
       });
-      writer.write(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
-      writer.write(SKStore.KSize(), SKStore.IntFile(keys.size()));
+      writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
+      writer.set(SKStore.KSize(), SKStore.IntFile(keys.size()));
     },
   );
   renderablesHdl = widgetVarsHdl.map(
+    SKStore.StrID::keyType,
     RenderableFile::type,
     context,
     dirname("renderables/"),
-    (_context, writer, _key, file) ~> {
+    (_context, writer, _key, it) ~> {
       collector: Renderable -> void = r -> {
-        writer.write(SKStore.StrID(r.getId()), RenderableFile(r));
+        writer.set(SKStore.StrID(r.getId()), RenderableFile(r));
       };
-      file match {
+      it.first match {
       | r @ Renderable _ -> collector(r)
       | d @ Description _ -> d.collect(collector)
       | _ -> void
@@ -635,37 +662,47 @@ fun toWidgetsCollection(
     },
   );
   propertiesHdl = widgetVarsHdl.map(
+    SKStore.StrID::keyType,
     WidgetHandle::type,
     context,
     dirname("properties/"),
-    (context, writer, key, file) ~> {
-      file match {
-      | prop @ UiEngine.Prop _ ->
-        writer.write(key, toWidgetHandle(context, prop, root))
+    (context, writer, key, it) ~> {
+      key match {
+      | SKStore.KIdx(sid) ->
+        it.first match {
+        | prop @ UiEngine.Prop _ ->
+          writer.set(
+            SKStore.StrID::keyType(sid),
+            toWidgetHandle(context, prop, root),
+          )
+        | _ -> void
+        }
       | _ -> void
       }
     },
   );
   descriptionsHdl = renderablesHdl.map(
+    SKStore.StrID::keyType,
     DescriptionFile::type,
     context,
     dirname("descriptions/"),
-    (context, writer, key, renderable) ~> {
-      writer.write(
+    (context, writer, key, it) ~> {
+      writer.set(
         key,
         DescriptionFile(
-          renderable.value.render(context).default(UiEngine.Indicator{}),
+          it.first.value.render(context).default(UiEngine.Indicator{}),
         ),
       )
     },
   );
   renderedsHdl = descriptionsHdl.map(
+    SKStore.StrID::keyType,
     Ui.WidgetFile::type,
     context,
     dirname("rendereds/"),
-    (context, writer, key, description) ~> {
-      widget = description.value.build(context, key.toString(), root, prebuilt);
-      writer.write(key, Ui.WidgetFile(widget))
+    (context, writer, key, it) ~> {
+      widget = it.first.value.build(context, key.toString(), root, prebuilt);
+      writer.set(key, Ui.WidgetFile(widget))
     },
   );
   cPrebuilt = (ctx, name) ~>
@@ -674,23 +711,32 @@ fun toWidgetsCollection(
     | v -> v.map(wf -> wf.widget)
     };
   widgetsHdl = widgetVarsHdl.map(
+    SKStore.KIndexed::bKeyType,
     f ~> f,
     context,
     dirname("built/"),
-    (context, writer, key, file) ~> {
-      toWrite = file match {
-      | r @ Renderable _ -> renderedsHdl.get(context, SKStore.StrID(r.getId()))
-      | d @ Description _ ->
-        Ui.WidgetFile(
-          d.build(context, `${key}#${context.timeStamp()}`, root, cPrebuilt),
-        )
-      | UiEngine.Prop _ -> propertiesHdl.get(context, key).hdl.get(context)
-      | _ -> file
+    (context, writer, key, it) ~> {
+      toWrite = key match {
+      | SKStore.KIdx(sid) ->
+        it.first match {
+        | r @ Renderable _ ->
+          renderedsHdl.get(context, SKStore.StrID(r.getId()))
+        | d @ Description _ ->
+          Ui.WidgetFile(
+            d.build(context, `${key}#${context.timeStamp()}`, root, cPrebuilt),
+          )
+        | UiEngine.Prop _ ->
+          propertiesHdl
+            .get(context, SKStore.StrID::keyType(sid))
+            .hdl.get(context)
+        | _ -> it.first
+        }
+      | _ -> it.first
       };
-      writer.write(key, toWrite)
+      writer.set(key, toWrite)
     },
   );
-  Ui.HandledCollection(widgetsHdl)
+  Ui.KIndexedCollection(widgetsHdl)
 }
 
 fun toWidgetGetter(

@@ -10,8 +10,8 @@ fun toDirName(optPath: ?String): SKStore.DirName {
     .default(dirName)
 }
 
-fun handlesHdl(optPath: ?String): SKStore.IHandle<Handle> {
-  SKStore.IHandle(SKStore.FileConverter(Handle::type), toDirName(optPath));
+fun handlesHdl(optPath: ?String): SKStore.IHandle<SKStore.IID, Handle> {
+  SKStore.IHandle(SKStore.IID::keyType, Handle::type, toDirName(optPath));
 }
 
 class Handle private (
@@ -38,7 +38,12 @@ class Handle private (
 }
 
 fun init(context: mutable SKStore.Context, optPath: ?String): void {
-  _ = context.makeDir(Handle::type, toDirName(optPath), Array[]);
+  _ = context.makeDir(
+    SKStore.IID::keyType,
+    Handle::type,
+    toDirName(optPath),
+    Array[],
+  );
 }
 
 private fun delete(actor: UInt32): void {
@@ -65,7 +70,11 @@ fun register(id: UInt32, optPath: ?String, type_: String): void {
   SKStore.Context::withoutGc(context ~> {
     handlesHdl = handlesHdl(optPath);
     if (handlesHdl.exists(context)) {
-      handlesHdl.write(context, SKStore.IID(id.toInt()), Handle::make(id, type_))
+      handlesHdl.write(
+        context,
+        SKStore.IID(id.toInt()),
+        Handle::make(id, type_),
+      )
     }
   })
 }
