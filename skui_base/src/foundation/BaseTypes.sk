@@ -71,7 +71,7 @@ base class Level uses Orderable, Hashable {
   | Error()
 }
 
-base class Status extends SKFS.File uses Orderable, Hashable {
+base class Status extends SKStore.File uses Orderable, Hashable {
   children =
   | Running(optProgress: ?Int = None())
 
@@ -85,10 +85,10 @@ base class Status extends SKFS.File uses Orderable, Hashable {
   | Running(_) -> true
   | _ -> false
 
-  static fun forFile(obj: SKFS.File): Status {
+  static fun btype(obj: SKStore.File): Status {
     obj match {
     | x @ Status _ -> x
-    | _ -> SKFS.cast_violation("Status", obj)
+    | _ -> SKStore.cast_violation("Status", obj)
     }
   }
 }
@@ -152,47 +152,20 @@ fun isLike<T: Equivalent>(a: T, b: T, precision: Float): Bool {
   a.like(b, precision)
 }
 
-class JSException(private eptr: SKFS.ExternalPointer) extends Exception {
-  //
-  static fun make(id: UInt32): this {
-    static(SKFS.ExternalPointer::create(id, deleteJSException))
-  }
-
-  fun getMessage(): String {
-    getJSExceptionMessage(this.eptr.value)
-  }
-}
-
-@cpp_runtime("SKIP_saveExn")
-native fun saveExn(exn: Exception): void;
-
-@wasm_export("SKIP_callWithException")
-@cpp_export("SKIP_callWithException")
-fun callWithException(f: () -> void, exc: UInt32): void {
-  saveExn(JSException::make(exc));
-  f();
-}
-
-@cpp_extern("SKIP_JS_getExceptionMessage")
-native fun getJSExceptionMessage(actor: UInt32): String;
-
-@cpp_extern("SKIP_JS_deleteException")
-native fun deleteJSException(actor: UInt32): void;
-
 @cpp_extern("SKIP_SKUI_checkObstack")
-native fun skuiCheckObstack(): ?SKFS.Obstack;
+native fun skuiCheckObstack(): ?SKStore.Obstack;
 
 @cpp_extern("SKIP_SKUI_cleanObstack")
-native fun skuiCleanObstack(optObstack: ?SKFS.Obstack): void;
+native fun skuiCleanObstack(optObstack: ?SKStore.Obstack): void;
 
 @wams_export("SKIP_checkObstack")
 @cpp_export("SKIP_checkObstack")
-fun checkObstack(): ?SKFS.Obstack {
+fun checkObstack(): ?SKStore.Obstack {
   skuiCheckObstack()
 }
 
 @wasm_export("SKIP_cleanObstack")
 @cpp_export("SKIP_checkObstack")
-fun cleanObstack(optObstack: ?SKFS.Obstack): void {
+fun cleanObstack(optObstack: ?SKStore.Obstack): void {
   skuiCleanObstack(optObstack)
 }

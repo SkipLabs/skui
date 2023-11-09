@@ -19,7 +19,7 @@ class TextInfo(
 
 class IconInfo(icon: Ui.Icon, size: Geometry.Size) {
   static fun create(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     builder: Ui.IconBuilder,
     size: Float,
   ): ?this {
@@ -29,7 +29,7 @@ class IconInfo(icon: Ui.Icon, size: Geometry.Size) {
   }
 
   fun fillDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -56,7 +56,7 @@ class SelectionInfo(
 ) {
   //
   static fun create(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     selected: Ui.IconBuilder,
     unselected: Ui.IconBuilder,
     indeterminate: Ui.IconBuilder,
@@ -106,7 +106,7 @@ class Layout(
 ) extends Ui.UserData {
   //
   static fun create(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     controller: Controller,
   ): this {
     faceId = context.getThemeFont(UiTheme.Action());

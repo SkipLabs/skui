@@ -75,7 +75,6 @@ bool computeHash(const std::string &unhashed, std::string &hashed)
 extern "C"
 {
   char *SKIP_createByteArray(int32_t);
-  void SKIP_setByte(char *, int32_t, uint8_t);
   char *SKIP_chillByteArray(char *);
   void SKIP_throw(void *);
   uint32_t SKIP_String_byteSize(char *str);
@@ -140,20 +139,20 @@ extern "C"
     }
   }
 
-  void SKIP_SKFS_setMainContext(char * context) {
+  void SKIP_SKStore_setMainContext(char * context) {
     mainContext = context;
   }
 
-  char *SKIP_SKFS_getMainContext()
+  char *SKIP_SKStore_getMainContext()
   {
     return mainContext;
   }
 
-  void SKIP_SKFS_setWorkingContext(char * context) {
+  void SKIP_SKStore_setWorkingContext(char * context) {
     workingContext = context;
   }
 
-  char *SKIP_SKFS_getWorkingContext()
+  char *SKIP_SKStore_getWorkingContext()
   {
     return workingContext;
   }

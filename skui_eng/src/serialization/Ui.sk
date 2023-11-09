@@ -99,7 +99,7 @@ extension class Shortcut extends UiEngine.SObject {
   static fun fromSerializable(obj: UiEngine.Serializable): Shortcut {
     obj match {
     | x @ Shortcut _ -> x
-    | _ -> SKFS.cast_violation("Ui.Shortcut", obj)
+    | _ -> SKStore.cast_violation("Ui.Shortcut", obj)
     }
   }
 }
@@ -138,7 +138,7 @@ extension base class Separation extends UiEngine.SObject {
   static fun fromSerializable(obj: UiEngine.Serializable): Separation {
     obj match {
     | x @ Separation _ -> x
-    | _ -> SKFS.cast_violation("Ui.Separation", obj)
+    | _ -> SKStore.cast_violation("Ui.Separation", obj)
     }
   }
 }
@@ -148,7 +148,7 @@ extension base class Decoration extends UiEngine.SObject {
   static fun fromSerializable(obj: UiEngine.Serializable): Decoration {
     obj match {
     | x @ Decoration _ -> x
-    | _ -> SKFS.cast_violation("Ui.Decoration", obj)
+    | _ -> SKStore.cast_violation("Ui.Decoration", obj)
     }
   }
 }
@@ -292,7 +292,7 @@ extension base class EndLine extends UiEngine.SObject {
   static fun fromSerializable(obj: UiEngine.Serializable): EndLine {
     obj match {
     | x @ EndLine _ -> x
-    | _ -> SKFS.cast_violation("Ui.EndLine", obj)
+    | _ -> SKStore.cast_violation("Ui.EndLine", obj)
     }
   }
 }
@@ -329,7 +329,7 @@ extension base class Indentation extends UiEngine.SObject {
   static fun fromSerializable(obj: UiEngine.Serializable): Indentation {
     obj match {
     | x @ Indentation _ -> x
-    | _ -> SKFS.cast_violation("Ui.Indentation", obj)
+    | _ -> SKStore.cast_violation("Ui.Indentation", obj)
     }
   }
 }
@@ -354,7 +354,7 @@ extension class Position extends UiEngine.SObject {
   static fun fromSerializable(obj: UiEngine.Serializable): Position {
     obj match {
     | x @ Position _ -> x
-    | _ -> SKFS.cast_violation("Ui.Position", obj)
+    | _ -> SKStore.cast_violation("Ui.Position", obj)
     }
   }
 }
@@ -376,7 +376,7 @@ extension class Portion extends UiEngine.SObject {
   static fun fromSerializable(obj: UiEngine.Serializable): Portion {
     obj match {
     | x @ Portion _ -> x
-    | _ -> SKFS.cast_violation("Ui.Portion", obj)
+    | _ -> SKStore.cast_violation("Ui.Portion", obj)
     }
   }
 }
@@ -599,7 +599,7 @@ extension base class QType extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): QType {
     s match {
     | t @ QType _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.QType", s)
+    | _ -> SKStore.cast_violation("UiEngine.QType", s)
     }
   }
 }

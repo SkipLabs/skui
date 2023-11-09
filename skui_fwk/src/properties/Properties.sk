@@ -1,54 +1,60 @@
 module UiBoolProp;
 
 class Timed extends Ui.TimedFile<Bool> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiBoolProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiBoolProp.Timed", file)
     }
   }
 }
 
 class Property extends
   Ui.BoolProperty,
-  Ui.PropertyFile<Bool, Timed, SKFS.BoolFile>,
+  Ui.PropertyFile<Bool, Timed, SKStore.BoolFile>,
 {
   //
   fun get from Ui.PropertyFile;
   fun getTimed from Ui.PropertyFile;
 
-  protected static fun timed(optV: ?Bool, tick: SKFS.Tick, source: Int): Timed {
+  protected static fun timed(
+    optV: ?Bool,
+    tick: SKStore.Tick,
+    source: Int,
+  ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiBoolProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiBoolProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Bool {
-    SKFS.BoolFile::fromFile(file).value
+  protected static fun valueFromFile(file: SKStore.File): Bool {
+    SKStore.BoolFile::type(file).value
   }
 
-  protected static fun fileValueFromFile(file: SKFS.File): SKFS.BoolFile {
-    SKFS.BoolFile::fromFile(file)
+  protected static fun fileValueFromFile(file: SKStore.File): SKStore.BoolFile {
+    SKStore.BoolFile::type(file)
   }
 
-  protected static fun valueToFile(value: Bool): SKFS.File {
-    SKFS.BoolFile(value)
+  protected static fun valueToFile(value: Bool): SKStore.BoolFile {
+    SKStore.BoolFile(value)
   }
 
   protected static fun getDefaultValue(): Bool {
     false
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 
-  fun toggle(context: mutable SKFS.Context, source: Int): void {
+  fun toggle(context: mutable SKStore.Context, source: Int): void {
     this.set(context, Some(!this.get(context, true)), source)
   }
 }
@@ -58,7 +64,7 @@ class Const extends Ui.BoolProperty, Ui.PropertyConst<Bool, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Bool, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Bool, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -66,7 +72,7 @@ class Const extends Ui.BoolProperty, Ui.PropertyConst<Bool, Timed> {
     false
   }
 
-  fun toggle(_context: mutable SKFS.Context, _source: Int): void {
+  fun toggle(_context: mutable SKStore.Context, _source: Int): void {
     void
   }
 }
@@ -76,51 +82,57 @@ module end;
 module UiIntProp;
 
 class Timed extends Ui.TimedFile<Int> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiIntProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiIntProp.Timed", file)
     }
   }
 }
 
 class Property extends
   Ui.IntProperty,
-  Ui.PropertyFile<Int, Timed, SKFS.IntFile>,
+  Ui.PropertyFile<Int, Timed, SKStore.IntFile>,
 {
   //
   fun get from Ui.PropertyFile;
   fun getTimed from Ui.PropertyFile;
 
-  protected static fun timed(optV: ?Int, tick: SKFS.Tick, source: Int): Timed {
+  protected static fun timed(
+    optV: ?Int,
+    tick: SKStore.Tick,
+    source: Int,
+  ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiIntProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiIntProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Int {
-    SKFS.IntFile::fromFile(file).value
+  protected static fun valueFromFile(file: SKStore.File): Int {
+    SKStore.IntFile::type(file).value
   }
 
-  protected static fun fileValueFromFile(file: SKFS.File): SKFS.IntFile {
-    SKFS.IntFile::fromFile(file)
+  protected static fun fileValueFromFile(file: SKStore.File): SKStore.IntFile {
+    SKStore.IntFile::type(file)
   }
 
-  protected static fun valueToFile(value: Int): SKFS.File {
-    SKFS.IntFile(value)
+  protected static fun valueToFile(value: Int): SKStore.IntFile {
+    SKStore.IntFile(value)
   }
 
   protected static fun getDefaultValue(): Int {
     0
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -129,7 +141,7 @@ class Const extends Ui.IntProperty, Ui.PropertyConst<Int, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Int, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Int, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -143,17 +155,17 @@ module end;
 module UiFloatProp;
 
 class Timed extends Ui.TimedFile<Float> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiFloatProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiFloatProp.Timed", file)
     }
   }
 }
 
 class Property extends
   Ui.FloatProperty,
-  Ui.PropertyFile<Float, Timed, SKFS.FloatFile>,
+  Ui.PropertyFile<Float, Timed, SKStore.FloatFile>,
 {
   //
   fun get from Ui.PropertyFile;
@@ -161,37 +173,41 @@ class Property extends
 
   protected static fun timed(
     optV: ?Float,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiFloatProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiFloatProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Float {
-    SKFS.FloatFile::fromFile(file).value
+  protected static fun valueFromFile(file: SKStore.File): Float {
+    SKStore.FloatFile::type(file).value
   }
 
-  protected static fun fileValueFromFile(file: SKFS.File): SKFS.FloatFile {
-    SKFS.FloatFile::fromFile(file)
+  protected static fun fileValueFromFile(
+    file: SKStore.File,
+  ): SKStore.FloatFile {
+    SKStore.FloatFile::type(file)
   }
 
-  protected static fun valueToFile(value: Float): SKFS.File {
-    SKFS.FloatFile(value)
+  protected static fun valueToFile(value: Float): SKStore.FloatFile {
+    SKStore.FloatFile(value)
   }
 
   protected static fun getDefaultValue(): Float {
     0.0
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -200,7 +216,7 @@ class Const extends Ui.FloatProperty, Ui.PropertyConst<Float, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Float, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Float, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -214,48 +230,46 @@ module end;
 module UiTextProp;
 
 class Timed extends Ui.TimedFile<Text> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiTextProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiTextProp.Timed", file)
     }
   }
 }
 
-class Property extends Ui.TextProperty, Ui.PropertyFile<Text, Timed, Text> {
+class Property extends Ui.TextProperty, Ui.FPropertyFile<Text, Timed> {
   //
-  fun get from Ui.PropertyFile;
-  fun getTimed from Ui.PropertyFile;
+  fun get from Ui.FPropertyFile;
+  fun getTimed from Ui.FPropertyFile;
 
-  protected static fun timed(optV: ?Text, tick: SKFS.Tick, source: Int): Timed {
+  protected static fun timed(
+    optV: ?Text,
+    tick: SKStore.Tick,
+    source: Int,
+  ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiStringProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiStringProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Text {
-    Text::forFile(file)
-  }
-
-  protected static fun fileValueFromFile(file: SKFS.File): Text {
-    Text::forFile(file)
-  }
-
-  protected static fun valueToFile(value: Text): SKFS.File {
-    value
+  protected static fun valueFromFile(file: SKStore.File): Text {
+    Text::btype(file)
   }
 
   protected static fun getDefaultValue(): Text {
     Raw("")
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -264,7 +278,7 @@ class Const extends Ui.TextProperty, Ui.PropertyConst<Text, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Text, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Text, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -283,13 +297,16 @@ class String(property: Property) extends Ui.StringProperty {
   }
 
   fun maybeGet(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?.String {
     this.property.maybeGet(context, isUntracked).map(context.uTranslate)
   }
 
-  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): .String {
+  fun get(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): .String {
     this.maybeGet(context, isUntracked) match {
     | Some(v) -> v
     | _ -> ""
@@ -297,26 +314,26 @@ class String(property: Property) extends Ui.StringProperty {
   }
 
   fun maybeGetTimed(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
-  ): ?(?.String, SKFS.Tick, Int) {
+  ): ?(?.String, SKStore.Tick, Int) {
     this.property.maybeGetTimed(context, isUntracked).map(t ->
       (t.i0.map(context.uTranslate), t.i1, t.i2)
     )
   }
 
   fun getTimed(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
-  ): (.String, SKFS.Tick, Int) {
+  ): (.String, SKStore.Tick, Int) {
     this.maybeGetTimed(context, isUntracked) match {
     | Some(v) -> (v.i0.default(""), v.i1, v.i2)
-    | _ -> ("", SKFS.Tick(0), 0)
+    | _ -> ("", SKStore.Tick(0), 0)
     }
   }
 
   fun set(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optValue: ?.String,
     source: Int,
   ): void {
@@ -329,17 +346,17 @@ module end;
 module UiStringProp;
 
 class Timed extends Ui.TimedFile<String> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiStringProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiStringProp.Timed", file)
     }
   }
 }
 
 class Property extends
   Ui.StringProperty,
-  Ui.PropertyFile<String, Timed, SKFS.StringFile>,
+  Ui.PropertyFile<String, Timed, SKStore.StringFile>,
 {
   //
   fun get from Ui.PropertyFile;
@@ -347,37 +364,41 @@ class Property extends
 
   protected static fun timed(
     optV: ?String,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiStringProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiStringProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): String {
-    SKFS.StringFile::fromFile(file).value
+  protected static fun valueFromFile(file: SKStore.File): String {
+    SKStore.StringFile::type(file).value
   }
 
-  protected static fun fileValueFromFile(file: SKFS.File): SKFS.StringFile {
-    SKFS.StringFile::fromFile(file)
+  protected static fun fileValueFromFile(
+    file: SKStore.File,
+  ): SKStore.StringFile {
+    SKStore.StringFile::type(file)
   }
 
-  protected static fun valueToFile(value: String): SKFS.File {
-    SKFS.StringFile(value)
+  protected static fun valueToFile(value: String): SKStore.StringFile {
+    SKStore.StringFile(value)
   }
 
   protected static fun getDefaultValue(): String {
     ""
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -386,7 +407,7 @@ class Const extends Ui.StringProperty, Ui.PropertyConst<String, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?String, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?String, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -400,10 +421,10 @@ module end;
 module UiPositionProp;
 
 class Timed extends Ui.TimedFile<Ui.Position> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiPositionProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiPositionProp.Timed", file)
     }
   }
 }
@@ -418,33 +439,31 @@ class Property extends
 
   protected static fun timed(
     optV: ?Ui.Position,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiPositionProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiPositionProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Ui.Position {
-    Ui.Position::fromFile(file)
-  }
-
-  protected static fun valueToFile(value: Ui.Position): SKFS.File {
-    value
+  protected static fun valueFromFile(file: SKStore.File): Ui.Position {
+    Ui.Position::type(file)
   }
 
   protected static fun getDefaultValue(): Ui.Position {
     Ui.Position::zero
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -453,7 +472,7 @@ class Const extends Ui.PositionProperty, Ui.PropertyConst<Ui.Position, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Ui.Position, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Ui.Position, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -467,10 +486,10 @@ module end;
 module UiPortionProp;
 
 class Timed extends Ui.TimedFile<Ui.Portion> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiPortionProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiPortionProp.Timed", file)
     }
   }
 }
@@ -482,33 +501,31 @@ class Property extends Ui.PortionProperty, Ui.FPropertyFile<Ui.Portion, Timed> {
 
   protected static fun timed(
     optV: ?Ui.Portion,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiPortionProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiPortionProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Ui.Portion {
-    Ui.Portion::fromFile(file)
-  }
-
-  protected static fun valueToFile(value: Ui.Portion): SKFS.File {
-    value
+  protected static fun valueFromFile(file: SKStore.File): Ui.Portion {
+    Ui.Portion::type(file)
   }
 
   protected static fun getDefaultValue(): Ui.Portion {
     Ui.Portion::empty
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -517,7 +534,7 @@ class Const extends Ui.PortionProperty, Ui.PropertyConst<Ui.Portion, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Ui.Portion, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Ui.Portion, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -531,10 +548,10 @@ module end;
 module UiIndentationProp;
 
 class Timed extends Ui.TimedFile<Ui.Indentation> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiIndentationProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiIndentationProp.Timed", file)
     }
   }
 }
@@ -549,33 +566,31 @@ class Property extends
 
   protected static fun timed(
     optV: ?Ui.Indentation,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiIndentationProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiIndentationProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Ui.Indentation {
-    Ui.Indentation::forFile(file)
-  }
-
-  protected static fun valueToFile(value: Ui.Indentation): SKFS.File {
-    value
+  protected static fun valueFromFile(file: SKStore.File): Ui.Indentation {
+    Ui.Indentation::btype(file)
   }
 
   protected static fun getDefaultValue(): Ui.Indentation {
     Ui.Space(2)
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -587,7 +602,7 @@ class Const extends
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Ui.Indentation, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Ui.Indentation, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -601,10 +616,10 @@ module end;
 module UiEndLineProp;
 
 class Timed extends Ui.TimedFile<Ui.EndLine> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiEndLineProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiEndLineProp.Timed", file)
     }
   }
 }
@@ -616,33 +631,31 @@ class Property extends Ui.EndLineProperty, Ui.FPropertyFile<Ui.EndLine, Timed> {
 
   protected static fun timed(
     optV: ?Ui.EndLine,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiEndLineProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiEndLineProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Ui.EndLine {
-    Ui.EndLine::forFile(file)
-  }
-
-  protected static fun valueToFile(value: Ui.EndLine): SKFS.File {
-    value
+  protected static fun valueFromFile(file: SKStore.File): Ui.EndLine {
+    Ui.EndLine::btype(file)
   }
 
   protected static fun getDefaultValue(): Ui.EndLine {
     Ui.LF()
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -651,7 +664,7 @@ class Const extends Ui.EndLineProperty, Ui.PropertyConst<Ui.EndLine, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Ui.EndLine, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Ui.EndLine, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -665,10 +678,10 @@ module end;
 module UiSeparationProp;
 
 class Timed extends Ui.TimedFile<Ui.Separation> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiSeparationProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiSeparationProp.Timed", file)
     }
   }
 }
@@ -683,33 +696,31 @@ class Property extends
 
   protected static fun timed(
     optV: ?Ui.Separation,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiSeparationProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiSeparationProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Ui.Separation {
-    Ui.Separation::forFile(file)
-  }
-
-  protected static fun valueToFile(value: Ui.Separation): SKFS.File {
-    value
+  protected static fun valueFromFile(file: SKStore.File): Ui.Separation {
+    Ui.Separation::btype(file)
   }
 
   protected static fun getDefaultValue(): Ui.Separation {
     Ui.FromStart(100)
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -721,7 +732,7 @@ class Const extends
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Ui.Separation, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Ui.Separation, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -735,10 +746,10 @@ module end;
 module UiIconProp;
 
 class Timed extends Ui.TimedFile<UiIcon.Description> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiIconProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiIconProp.Timed", file)
     }
   }
 }
@@ -753,33 +764,31 @@ class Property extends
 
   protected static fun timed(
     optV: ?UiIcon.Description,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiIconProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiIconProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): UiIcon.Description {
-    UiIcon.Description::fromFile(file)
-  }
-
-  protected static fun valueToFile(value: UiIcon.Description): SKFS.File {
-    value
+  protected static fun valueFromFile(file: SKStore.File): UiIcon.Description {
+    UiIcon.Description::type(file)
   }
 
   protected static fun getDefaultValue(): UiIcon.Description {
     UiIcon.Description(UiIcon.KTheme(), "forbiden", None())
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -793,7 +802,7 @@ class Const extends
 
   protected static fun timed(
     optV: ?UiIcon.Description,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
   ): Timed {
     Timed(optV, tick, 0)
   }
@@ -808,10 +817,10 @@ module end;
 module UiDecorationProp;
 
 class Timed extends Ui.TimedFile<Ui.Decoration> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiDecorationProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiDecorationProp.Timed", file)
     }
   }
 }
@@ -826,36 +835,34 @@ class Property extends
 
   protected static fun timed(
     optV: ?Ui.Decoration,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiDecorationProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiDecorationProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Ui.Decoration {
+  protected static fun valueFromFile(file: SKStore.File): Ui.Decoration {
     file match {
     | x @ Ui.Decoration _ -> x
-    | _ -> SKFS.cast_violation("Ui.Decoration", file)
+    | _ -> SKStore.cast_violation("Ui.Decoration", file)
     }
-  }
-
-  protected static fun valueToFile(value: Ui.Decoration): SKFS.File {
-    value
   }
 
   protected static fun getDefaultValue(): Ui.Decoration {
     Ui.Padding::all(0.0)
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -867,7 +874,7 @@ class Const extends
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Ui.Decoration, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Ui.Decoration, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -881,17 +888,17 @@ module end;
 module UiRangeProp;
 
 class Timed extends Ui.TimedFile<Range> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiRangeProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiRangeProp.Timed", file)
     }
   }
 }
 
 class Property extends
   Ui.RangeProperty,
-  Ui.PropertyFile<Range, Timed, SKFS.RangeFile>,
+  Ui.PropertyFile<Range, Timed, SKStore.RangeFile>,
 {
   //
   fun get from Ui.PropertyFile;
@@ -899,40 +906,44 @@ class Property extends
 
   protected static fun timed(
     optV: ?Range,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiRangeProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiRangeProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Range {
+  protected static fun valueFromFile(file: SKStore.File): Range {
     static::fileValueFromFile(file).value
   }
 
-  protected static fun fileValueFromFile(file: SKFS.File): SKFS.RangeFile {
+  protected static fun fileValueFromFile(
+    file: SKStore.File,
+  ): SKStore.RangeFile {
     file match {
-    | x @ SKFS.RangeFile _ -> x
-    | _ -> SKFS.cast_violation("SKFS.RangeFile", file)
+    | x @ SKStore.RangeFile _ -> x
+    | _ -> SKStore.cast_violation("SKStore.RangeFile", file)
     }
   }
 
-  protected static fun valueToFile(value: Range): SKFS.File {
-    SKFS.RangeFile(value)
+  protected static fun valueToFile(value: Range): SKStore.RangeFile {
+    SKStore.RangeFile(value)
   }
 
   protected static fun getDefaultValue(): Range {
     Range(0, 0)
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -941,7 +952,7 @@ class Const extends Ui.RangeProperty, Ui.PropertyConst<Range, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Range, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Range, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 
@@ -955,10 +966,10 @@ module end;
 module UiStatusProp;
 
 class Timed extends Ui.TimedFile<Status> {
-  static fun fromFile(file: SKFS.File): Timed {
+  static fun type(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiStatusProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiStatusProp.Timed", file)
     }
   }
 }
@@ -970,36 +981,34 @@ class Property extends Ui.StatusProperty, Ui.FPropertyFile<Status, Timed> {
 
   protected static fun timed(
     optV: ?Status,
-    tick: SKFS.Tick,
+    tick: SKStore.Tick,
     source: Int,
   ): Timed {
     Timed(optV, tick, source)
   }
 
-  protected static fun timedFromFile(file: SKFS.File): Timed {
+  protected static fun timedFromFile(file: SKStore.File): Timed {
     file match {
     | x @ Timed _ -> x
-    | _ -> SKFS.cast_violation("UiStatusProp.Timed", file)
+    | _ -> SKStore.cast_violation("UiStatusProp.Timed", file)
     }
   }
 
-  protected static fun valueFromFile(file: SKFS.File): Status {
+  protected static fun valueFromFile(file: SKStore.File): Status {
     file match {
     | x @ Status _ -> x
-    | _ -> SKFS.cast_violation("SKFS.StatusFile", file)
+    | _ -> SKStore.cast_violation("SKStore.StatusFile", file)
     }
-  }
-
-  protected static fun valueToFile(value: Status): SKFS.File {
-    value
   }
 
   protected static fun getDefaultValue(): Status {
     OK()
   }
 
-  static fun toIHandle(hdl: SKFS.EHandle<Timed>): SKFS.IHandle<Timed> {
-    SKFS.toIHandle(hdl)
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, Timed>,
+  ): SKStore.IHandle<SKStore.StrID, Timed> {
+    SKStore.toIHandle(hdl)
   }
 }
 
@@ -1008,7 +1017,7 @@ class Const extends Ui.StatusProperty, Ui.PropertyConst<Status, Timed> {
   fun get from Ui.PropertyConst;
   fun getTimed from Ui.PropertyConst;
 
-  protected static fun timed(optV: ?Status, tick: SKFS.Tick): Timed {
+  protected static fun timed(optV: ?Status, tick: SKStore.Tick): Timed {
     Timed(optV, tick, 0)
   }
 

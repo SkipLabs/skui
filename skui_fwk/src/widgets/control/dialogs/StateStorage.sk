@@ -5,9 +5,9 @@ const computedPath: String = "ui/dialogs/computed";
 
 class Info(id: Int, visible: Bool, optFocused: ?Ui.Path)
 
-class Infos(value: Array<Info> = Array[], next: Int = 0) extends SKFS.File {
+class Infos(value: Array<Info> = Array[], next: Int = 0) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Infos _ -> x
     | _ -> invariant_violation("Must be UiDialogs.Infos")
@@ -16,37 +16,37 @@ class Infos(value: Array<Info> = Array[], next: Int = 0) extends SKFS.File {
 }
 
 class HState(
-  storage: SKFS.IHandle<SKFS.File>,
-  computed: SKFS.EHandle<SKFS.File>,
+  storage: SKStore.IHandle<SKStore.Key, SKStore.File>,
+  computed: SKStore.EHandle<SKStore.Key, SKStore.File>,
 ) extends State {
-  fun getDialogCount(context: mutable SKFS.Context): Int {
-    this.computed.getInt(context, SKFS.KSize())
+  fun getDialogCount(context: mutable SKStore.Context): Int {
+    this.computed.getInt(context, SKStore.KSize())
   }
 
-  fun getDialog(context: mutable SKFS.Context, index: Int): Ui.Dialog {
-    this.computed.maybeGetProp(
-      context,
-      SKFS.IID(index),
-      Ui.WidgetFile::fromFile,
-    )
+  fun getDialog(context: mutable SKStore.Context, index: Int): Ui.Dialog {
+    this.computed.maybeGetProp(context, SKStore.IID(index), Ui.WidgetFile::type)
       .map(f -> f.widget as Ui.Dialog _)
       .fromSome()
   }
 
-  fun open(context: mutable SKFS.Context, kind: Kind): void {
+  fun open(context: mutable SKStore.Context, kind: Kind): void {
     Ui.setTodo(context, this.storage, Open(kind));
   }
 
-  fun close(context: mutable SKFS.Context, id: Int): void {
+  fun close(context: mutable SKStore.Context, id: Int): void {
     Ui.setTodo(context, this.storage, Close(id));
   }
 
-  fun setVisible(context: mutable SKFS.Context, id: Int, visible: Bool): void {
+  fun setVisible(
+    context: mutable SKStore.Context,
+    id: Int,
+    visible: Bool,
+  ): void {
     Ui.setTodo(context, this.storage, SetVisible(id, visible));
   }
 
   fun openAlert(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: Text,
     optTitle: ?Text = None(),
   ): void {
@@ -54,9 +54,9 @@ class HState(
   }
 
   fun openConfirmDialog(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: Text,
-    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
+    onConfirm: (mutable SKStore.Context, Bool, Int) ~> void,
     autoClose: Bool = true,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
@@ -69,9 +69,9 @@ class HState(
   }
 
   fun openInputDialog(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     message: Text,
-    onInput: (mutable SKFS.Context, String, Int) ~> void,
+    onInput: (mutable SKStore.Context, String, Int) ~> void,
     autoClose: Bool = true,
     optTitle: ?Text = None(),
     settings: Settings = Settings{},
@@ -84,16 +84,17 @@ class HState(
   }
 }
 
-fun init(context: mutable SKFS.Context, path: Ui.Path): State {
+fun init(context: mutable SKStore.Context, path: Ui.Path): State {
   dirName = Ui.controllerDirName(path);
   stateHdl = context.makeDir(
-    Ui.Todo::fromFile,
+    SKStore.StrID::keyType,
+    Ui.Todo::type,
     dirName,
     Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
   );
-  storage = SKFS.IHandle(SKFS.Identity(), dirName);
-  computedDirName = SKFS.DirName::make(dirName, "computed/");
-  computedHdl = SKFS.derive(
+  storage = SKStore.IHandle::notTyped(dirName);
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  computedHdl = SKStore.derive(
     context,
     dirName.toString(),
     computedDirName,
@@ -103,14 +104,15 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
     update,
     None(),
   );
-  afterHdl = computedHdl.contextWriterKeyMap(
+  afterHdl = computedHdl.map(
+    k ~> k,
     f ~> f,
     context,
-    SKFS.DirName::make(dirName, "after/"),
-    (context, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "after/"),
+    (context, writer, key, it) ~> {
       key match {
-      | iid @ SKFS.IID _ ->
-        dialog = (file as Kind _).toDialog(
+      | iid @ SKStore.IID _ ->
+        dialog = (it.first as Kind _).toDialog(
           context,
           path.makeChild("dialog").makeChild(`k${iid}`),
           iid.value,
@@ -119,28 +121,29 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
         dialog.getMainFocusable(context).each(focusable ->
           SystemProperties.setRequireFocus(context, focusable)
         );
-        writer.write(iid, Ui.WidgetFile(dialog))
+        writer.set(iid, Ui.WidgetFile(dialog))
       | _ -> void
       }
     },
   );
-  indexedHdl = computedHdl.contextWriterKeyMap(
+  indexedHdl = computedHdl.map(
+    k ~> k,
     f ~> f,
     context,
-    SKFS.DirName::make(dirName, "indexed/"),
-    (context, writer, key, file) ~>
+    SKStore.DirName::make(dirName, "indexed/"),
+    (context, writer, key, it) ~>
       if (key == Ui.keysProp) {
-        keys = Infos::fromFile(file);
+        keys = Infos::type(it.first);
         count = 0;
         for (info in keys.value) {
-          afterHdl.maybeGet(context, SKFS.IID(info.id)) match {
+          afterHdl.maybeGet(context, SKStore.IID(info.id)) match {
           | Some(f) if (info.visible) ->
-            writer.write(SKFS.IID(count), f);
+            writer.set(SKStore.IID(count), f);
             !count = count + 1
           | _ -> void
           }
         };
-        writer.write(SKFS.KSize(), SKFS.IntFile(count));
+        writer.set(SKStore.KSize(), SKStore.IntFile(count));
       }
     ,
   );
@@ -148,21 +151,21 @@ fun init(context: mutable SKFS.Context, path: Ui.Path): State {
 }
 
 fun update(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   todo: Ui.Todo,
-  _optUserData: ?SKFS.UserData,
+  _optUserData: ?SKStore.UserData,
 ): void {
   execute(context, todo.command, values)
 }
 
 fun execute(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   executable: Ui.Executable,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
 ): void {
-  keys = values.get(Ui.keysProp).map(Infos::fromFile).default(Infos());
+  keys = values.get(Ui.keysProp).map(Infos::type).default(Infos());
   executable match {
   | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
   | Ui.Init() -> void
@@ -170,7 +173,7 @@ fun execute(
     focusState = FWK.getFocusState(context, true);
     optFocused = focusState.optFocused.map(fh -> fh.getIdentifier());
     !keys.value = Arrays.add(keys.value, Info(keys.next, true, optFocused));
-    values.set(SKFS.IID(keys.next), Some(kind));
+    values.set(SKStore.IID(keys.next), Some(kind));
     !keys.next = keys.next + 1
   | SetVisible(dialogId, visible) ->
     !keys.value = keys.value.map(i -> {
@@ -186,8 +189,8 @@ fun execute(
       }
     );
     !keys.value = keys.value.filter(i -> i.id != dialogId);
-    values.remove(SKFS.IID(dialogId))
-  | _ -> SKFS.cast_violation("UiDialogs.Executable", executable)
+    values.remove(SKStore.IID(dialogId))
+  | _ -> SKStore.cast_violation("UiDialogs.Executable", executable)
   };
   values.set(Ui.keysProp, Some(keys));
 }

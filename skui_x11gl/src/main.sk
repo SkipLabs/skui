@@ -62,11 +62,11 @@ native fun run(
   framePerSecond: Int,
 ): void;
 
-fun destroyObstackKeep<T>(pos: SKFS.Obstack, value: T): T {
-  copied = SKFS.destroyObstackWithValue(pos, List.Cons(value, List.Nil()));
+fun destroyObstackKeep<T>(pos: SKStore.Obstack, value: T): T {
+  copied = SKStore.destroyObstackWithValue(pos, List.Cons(value, List.Nil()));
   copied match {
   | List.Cons(v, _) -> v
-  | _ -> SKFS.cast_violation("List.Cons", "List.Nil")
+  | _ -> SKStore.cast_violation("List.Cons", "List.Nil")
   }
 }
 
@@ -79,7 +79,7 @@ fun performFrame(
   height: Int,
   ratio: Float,
 ): Context {
-  pos = SKFS.newObstack();
+  pos = SKStore.newObstack();
   ctx = GL.Ctx(UInt32::truncate(cid));
   ctx.bindMainFrameBuffer();
   ctx.enableBlend();

@@ -9,7 +9,7 @@ class Indicator protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiProgress.Parameters,
     cache: NodeCache,
@@ -25,7 +25,10 @@ class Indicator protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     refSize = Geometry.Size::square(
       context.getThemeThickness(UiTheme.Indicator()).toFloat(),
     );
@@ -34,7 +37,7 @@ class Indicator protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -49,7 +52,7 @@ class Indicator protected {
   }
 
   fun computeMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,

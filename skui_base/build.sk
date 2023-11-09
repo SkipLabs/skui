@@ -1,0 +1,33 @@
+module SkuiBaseBuild;
+
+@skbuild_source_dirs
+fun source_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array["native/src"]
+  } else {
+    Array["wasm/src"]
+  }
+}
+
+@skbuild_include_dirs
+fun include_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array["native/src/includes"]
+  } else {
+    Array[]
+  }
+}
+
+@skbuild_links
+fun links(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array["-lssl", "-lcrypto", "-lstdc++fs"]
+  } else {
+    Array[]
+  }
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build();
+}

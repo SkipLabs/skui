@@ -10,7 +10,7 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     utils = this.nodeInfo.optUserData.map(ud ~> ud as Utils _).fromSome();
     submit = message ->

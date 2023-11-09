@@ -3,7 +3,7 @@ module UiTree;
 class Metrics(axis: Ui.MAxis) extends Ui.UserData {
   //
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     unity: Float,
     count: Int,
     size: Float,

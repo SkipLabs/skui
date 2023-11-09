@@ -10,13 +10,13 @@ class HoverHandler(
     if (this.expand) this.path.makeChild("expand") else this.path;
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     this.state.emitHover(context, this.expand, true);
     FWKPointer.setCursor(context, Ui.HandCursor());
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
@@ -43,12 +43,12 @@ class HoverHandler(
     )
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     FWKPointer.resetCursor(context);
     this.state.emitAll(context, this.expand, false, false);
   }
 
-  fun getTooltip(context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getTooltip(context: mutable SKStore.Context): ?FWK.SourcedWidget {
     if (!this.expand) {
       Ui.buildTooltip(context, this.path, this.controller.getTooltip)
     } else {
@@ -56,7 +56,7 @@ class HoverHandler(
     }
   }
 
-  fun getDropdown(_context: mutable SKFS.Context): ?FWK.SourcedWidget {
+  fun getDropdown(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
     Some(
       FWK.SourcedWidget(Some(this.path), (ctx, root) ~> {
         items = this.controller.getContextMenuItems(ctx);

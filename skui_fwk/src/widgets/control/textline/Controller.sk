@@ -22,82 +22,88 @@ class LamController{
 } extends Controller {
   //
   fun computeClipboardContent(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?FWKClipboard.Content {
     this.clipboardContent(context, isUntracked)
   }
 
-  fun getLine(context: mutable SKFS.Context, isUntracked: Bool = false): Int {
+  fun getLine(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Int {
     this.line(context, isUntracked)
   }
 
-  fun getTokens(context: mutable SKFS.Context): Ui.Tokens {
+  fun getTokens(context: mutable SKStore.Context): Ui.Tokens {
     this.tokens(context)
   }
 
-  fun getOffset(context: mutable SKFS.Context): Offset {
+  fun getOffset(context: mutable SKStore.Context): Offset {
     this.offset(context)
   }
 
-  fun getCount(context: mutable SKFS.Context): Int {
+  fun getCount(context: mutable SKStore.Context): Int {
     this.count(context)
   }
 
   fun getFontSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.FontSize {
     this.fontSize(context, isUntracked)
   }
 
   fun getSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.LinePortion {
     this.selection(context, isUntracked)
   }
 
-  fun getPosition(context: mutable SKFS.Context): ?Int {
+  fun getPosition(context: mutable SKStore.Context): ?Int {
     this.position(context)
   }
 
   fun getTarget(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Int {
     this.target(context, isUntracked)
   }
 
-  fun isCaretVisible(context: mutable SKFS.Context): Bool {
+  fun isCaretVisible(context: mutable SKStore.Context): Bool {
     this.carretVisible(context)
   }
 
-  fun isSpacesVisible(context: mutable SKFS.Context): Bool {
+  fun isSpacesVisible(context: mutable SKStore.Context): Bool {
     this.spacesVisible(context)
   }
 
-  fun isScrolling(context: mutable SKFS.Context): Bool {
+  fun isScrolling(context: mutable SKStore.Context): Bool {
     this.scrolling(context)
   }
 
-  fun isEditable(context: mutable SKFS.Context): Bool {
+  fun isEditable(context: mutable SKStore.Context): Bool {
     this.editable(context)
   }
 
-  fun isArmed(context: mutable SKFS.Context, isUntracked: Bool = false): Bool {
+  fun isArmed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Bool {
     this.armed(context, isUntracked);
   }
 
   fun isMoveSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool {
     this.moveSelection(context, isUntracked);
   }
 
   fun getTextCommandsManager(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.TextCommandsManager {
     this.textCommandsManager(context, isUntracked)

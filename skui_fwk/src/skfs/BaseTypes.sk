@@ -1,45 +1,35 @@
-module SKFS;
+module SKStore;
 
 extension base class File uses HasClassName {}
 
-class TSFile(value: System.TimeStamp) extends File {}
+class TSFile(value: System.TimeStamp) extends File
 
-class TimeStampConverter() extends Converter<System.TimeStamp> {
-  fun fromFile(file: SKFS.File): System.TimeStamp {
-    TSFile::fromFile(file).value;
-  }
-
-  fun toFile(value: System.TimeStamp): SKFS.File {
-    TSFile(value)
-  }
-}
-
-class HandleFile(handle: Handle<File>) extends File {
+class HandleFile(handle: Handle<Key, File>) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ HandleFile _ -> x
-    | _ -> invariant_violation("Must be SKFS.HandleFile")
+    | _ -> cast_violation("SKStore.HandleFile", obj)
     }
   }
 }
 
 class Strings(value: Array<String>) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Strings _ -> x
-    | _ -> invariant_violation("Must be SKFS.Strings")
+    | _ -> invariant_violation("Must be SKStore.Strings")
     }
   }
 }
 
 class StringSet(value: Set<String>) extends File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ StringSet _ -> x
-    | _ -> invariant_violation("Must be SKFS.StringSet")
+    | _ -> invariant_violation("Must be SKStore.StringSet")
     }
   }
 }

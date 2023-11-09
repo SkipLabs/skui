@@ -9,7 +9,7 @@ class Button protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiButton.Parameters,
     cache: NodeCache,
@@ -25,7 +25,10 @@ class Button protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     faceId = context.getThemeFont(UiTheme.Action());
     (size, innerSize) = this.controller.getMode(context) match {
     | UiButton.Basic()
@@ -71,7 +74,7 @@ class Button protected {
   }
 
   fun getHoverHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     if (this.controller.isDisabled(context)) {
@@ -82,7 +85,7 @@ class Button protected {
   }
 
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -94,7 +97,7 @@ class Button protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -123,7 +126,7 @@ class Button protected {
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -182,7 +185,7 @@ class Button protected {
   }
 
   private fun fillBackground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -241,7 +244,7 @@ class Button protected {
   }
 
   private fun fillForeground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -270,7 +273,7 @@ class Button protected {
   }
 
   private fun onlyIconSizes(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     fontSize: Float,
     maxValue: Float = 36.0,
   ): (Geometry.Size, Geometry.Size) {
@@ -286,7 +289,7 @@ class Button protected {
   }
 
   private fun getForegroundColor(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mode: UiButton.Mode,
   ): .Color {
     mode match {

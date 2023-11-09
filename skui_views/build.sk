@@ -1,0 +1,29 @@
+module SkuiViewsBuild;
+
+@skbuild_source_dirs
+fun source_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) Array["native/src"] else Array[]
+}
+
+@skbuild_include_dirs
+fun include_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array[
+      "../skui_opengl/native/src/includes",
+      "../skui_base/native/src/includes",
+      "../skui_x11gl/native/src/includes",
+    ]
+  } else {
+    Array[]
+  }
+}
+
+@skbuild_resources
+fun resources(_env: Skbuild.Env): Array<String> {
+  Array["resources/src/big.bin", "resources/src/small.bin"]
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build();
+}

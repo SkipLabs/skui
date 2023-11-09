@@ -185,7 +185,7 @@ class TypefaceInfo(
   family: String,
   weight: Weight,
   slant: Slant,
-) extends SKFS.BaseName {
+) extends SKStore.Key {
   static fun create(
     family: String,
     weight: Weight = Weight::normal,
@@ -292,9 +292,9 @@ class FaceSource{
   typeface: Font.TypefaceInfo,
   source: String,
   default: Bool = false,
-} extends SKFS.File uses Equality {
+} extends SKStore.File uses Equality {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ FaceSource _ -> x
     | _ -> invariant_violation("Must be Font.FaceSource")
@@ -316,9 +316,9 @@ class FaceSource{
   }
 }
 
-class FaceSources(value: Array<FaceSource>) extends SKFS.File {
+class FaceSources(value: Array<FaceSource>) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ FaceSources _ -> x
     | _ -> invariant_violation("Must be Font.FaceSources")
@@ -337,9 +337,9 @@ class FaceSources(value: Array<FaceSource>) extends SKFS.File {
   }
 }
 
-class TypeFace(typeface: TypefaceInfo, face: Face) extends SKFS.File {
+class TypeFace(typeface: TypefaceInfo, face: Face) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TypeFace _ -> x
     | _ -> invariant_violation("Must be Font.TypeFace")
@@ -360,7 +360,7 @@ class FaceID(
   size: Float,
   dpi: Float,
   hinting: Font.Hinting,
-) extends SKFS.BaseName {
+) extends SKStore.Key {
   static fun create(
     typeface: TypefaceInfo,
     size: Float,
@@ -379,7 +379,7 @@ class FaceID(
   }
 }
 
-class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
+class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKStore.Key {
   //
   static fun create(fid: FaceID, char: Char, pxRange: Int = 8): this {
     GlyphID(fid, char, pxRange);
@@ -390,7 +390,7 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
     this
   }
 
-  fun compare(other: SKFS.BaseName): Order {
+  fun compare(other: SKStore.Key): Order {
     other match {
     | oid @ GlyphID _ ->
       cOrder = this.char.compare(oid.char);
@@ -416,7 +416,7 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
 class Msdf(
   image: Ui.Image,
   conv: Geometry.Rect ~> Geometry.Rect,
-) extends SKFS.File {
+) extends SKStore.File {
   //
   static fun make(
     _char: Char,
@@ -427,9 +427,9 @@ class Msdf(
   }
 }
 
-class GlyphFile(optFace: ?Face, glyph: Glyph) extends SKFS.File {
+class GlyphFile(optFace: ?Face, glyph: Glyph) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ GlyphFile _ -> x
     | _ -> invariant_violation("Must be Font.GlyphFile")

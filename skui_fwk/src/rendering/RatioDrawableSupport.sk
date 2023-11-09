@@ -6,8 +6,8 @@ class RatioDrawableSupport(
 ) extends DrawableSupport {
   //
   fun init(
-    context: mutable SKFS.Context,
-    drawables: SKFS.EHandle<Ui.Drawables>,
+    context: mutable SKStore.Context,
+    drawables: SKStore.EHandle<KLayer, Drawables>,
   ): void {
     this.support.init(context, drawables);
   }

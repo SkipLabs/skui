@@ -20,7 +20,7 @@ class Settings{
   optDisabled: ?Ui.GetterOne<Bool, Bool> = None(),
 } {
   //
-  fun toSupplier(_context: mutable SKFS.Context): UiInput.Supplier {
+  fun toSupplier(_context: mutable SKStore.Context): UiInput.Supplier {
     // Supplier
     /*textPropertyGetter = Ui.toStringPropOptGetter(context, this.optText);
     positionPropertyGetter = Ui.toIntPropOptGetter(context, this.optPosition);
@@ -38,13 +38,13 @@ class Settings{
     todo("UiDialog.Settings.toSupplier")
   }
 
-  fun toDisabled(_context: mutable SKFS.Context): Ui.GetterOne<Bool, Bool> {
+  fun toDisabled(_context: mutable SKStore.Context): Ui.GetterOne<Bool, Bool> {
     /*disabledGetter = Ui.toBoolOptGetter(context, this.optDisabled);
     (ctx, iu) ~> disabledGetter(ctx, iu).default(false)*/
     todo("UiDialog.Settings.toDisabled")
   }
 
-  fun toController(_context: mutable SKFS.Context): UiInput.Controller {
+  fun toController(_context: mutable SKStore.Context): UiInput.Controller {
     /*prefixGetter = Ui.toTextOptGetter(context, this.optPrefix);
     suffixGetter = Ui.toTextOptGetter(context, this.optSuffix);
     placeHolderGetter = Ui.toTextOptGetter(context, this.optPlaceHolder);
@@ -77,30 +77,30 @@ class Settings{
   }
 }
 
-base class Kind extends SKFS.File {
+base class Kind extends SKStore.File {
   children =
   | Alert{text: Text, optTitle: ?Text = None()}
   | Question{
     text: Text,
-    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
+    onConfirm: (mutable SKStore.Context, Bool, Int) ~> void,
     type_: QType = YesNo(),
     optTitle: ?Text = None(),
     autoClose: Bool = true,
   }
   | Input{
     message: Text,
-    onInput: (mutable SKFS.Context, String, Int) ~> void,
+    onInput: (mutable SKStore.Context, String, Int) ~> void,
     optTitle: ?Text = None(),
     autoClose: Bool = true,
     settings: Settings = Settings{},
   }
-  | Custom(dirName: SKFS.DirName, key: String)
+  | Custom(dirName: SKStore.DirName, key: String)
 
   fun toDialog(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     id: Int,
-    close: mutable SKFS.Context ~> void,
+    close: mutable SKStore.Context ~> void,
   ): Ui.Dialog
   | Alert{text, optTitle} ->
     alert(context, path.makeChild("alert"), text, close, optTitle)
@@ -147,41 +147,49 @@ base class Kind extends SKFS.File {
       optTitle,
     )
   | Custom(dirName, key) ->
-    handle = SKFS.EHandle<UiDialog.Builder>(UiDialog.Builder::forFile, dirName);
-    handle.get(context, SKFS.StrID(key)).build(context, id, close)
+    handle = SKStore.EHandle<SKStore.StrID, UiDialog.Builder>(
+      SKStore.StrID::keyType,
+      UiDialog.Builder::btype,
+      dirName,
+    );
+    handle.get(context, SKStore.StrID(key)).build(context, id, close)
 }
 
 base class Controller {
-  fun getContent(context: mutable SKFS.Context): Ui.Widget;
+  fun getContent(context: mutable SKStore.Context): Ui.Widget;
 }
 
-base class State extends SKFS.File {
-  fun getDialogCount(context: mutable SKFS.Context): Int;
-  fun getDialog(context: mutable SKFS.Context, index: Int): Ui.Dialog;
+base class State extends SKStore.File {
+  fun getDialogCount(context: mutable SKStore.Context): Int;
+  fun getDialog(context: mutable SKStore.Context, index: Int): Ui.Dialog;
 
-  fun open(context: mutable SKFS.Context, kind: Kind): void;
-  fun close(context: mutable SKFS.Context, id: Int): void;
-  fun setVisible(context: mutable SKFS.Context, id: Int, visible: Bool): void;
+  fun open(context: mutable SKStore.Context, kind: Kind): void;
+  fun close(context: mutable SKStore.Context, id: Int): void;
+  fun setVisible(
+    context: mutable SKStore.Context,
+    id: Int,
+    visible: Bool,
+  ): void;
 
   fun openAlert(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: Text,
     optTitle: ?Text = None(),
   ): void;
 
   fun openConfirmDialog(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     text: Text,
-    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
+    onConfirm: (mutable SKStore.Context, Bool, Int) ~> void,
     autoClose: Bool = true,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
   ): void;
 
   fun openInputDialog(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     message: Text,
-    onInput: (mutable SKFS.Context, String, Int) ~> void,
+    onInput: (mutable SKStore.Context, String, Int) ~> void,
     autoClose: Bool = true,
     optTitle: ?Text = None(),
     settings: Settings = Settings{},
@@ -194,11 +202,11 @@ class Collection(
   controller: Controller,
   state: State,
 ) extends Ui.WidgetsCollection {
-  fun getSize(context: mutable SKFS.Context): Int {
+  fun getSize(context: mutable SKStore.Context): Int {
     this.state.getDialogCount(context) + 1;
   }
 
-  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context, index: Int): Ui.Widget {
     if (index == 0) {
       this.controller.getContent(context)
     } else {
@@ -208,10 +216,10 @@ class Collection(
 }
 
 fun alert(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   message: Text,
-  onClose: mutable SKFS.Context ~> void,
+  onClose: mutable SKStore.Context ~> void,
   optTitle: ?Text = None(),
 ): Ui.Dialog {
   content = Ui.VText::createForController(
@@ -245,13 +253,13 @@ fun alert(
 }
 
 fun confirm(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   message: Text,
   qType: QType,
-  onConfirm: mutable SKFS.Context ~> void,
-  onDismiss: mutable SKFS.Context ~> void,
-  optOnNeutral: ?mutable SKFS.Context ~> void = None(),
+  onConfirm: mutable SKStore.Context ~> void,
+  onDismiss: mutable SKStore.Context ~> void,
+  optOnNeutral: ?mutable SKStore.Context ~> void = None(),
   optTitle: ?Text = None(),
   neutralInEach: Bool = false,
 ): Ui.Dialog {
@@ -324,11 +332,11 @@ fun confirm(
 }
 
 fun input(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   message: Text,
   settings: Settings,
-  onSubmit: (mutable SKFS.Context, ?String) ~> void,
+  onSubmit: (mutable SKStore.Context, ?String) ~> void,
   optTitle: ?Text = None(),
 ): Ui.Dialog {
   contentPath = path.makeChild("content");

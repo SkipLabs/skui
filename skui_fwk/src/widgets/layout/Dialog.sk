@@ -2,41 +2,44 @@ module Ui;
 
 class Dialog protected {
   controller: UiDialog.Controller,
-  private supplier: mutable SKFS.Context ~> Widget,
+  private supplier: mutable SKStore.Context ~> Widget,
 } extends StrictWidget uses WithNodeCache {
   //
   type Params = UiDialog.Controller;
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     controller: UiDialog.Controller,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
     intermediateHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.StrID::keyType,
+      SKStore.IntFile::type,
       UiDialog.widgetsDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[
-        (SKFS.StrID("title"), SKFS.IntFile(0)),
-        (SKFS.StrID("action"), SKFS.IntFile(0)),
+      Array[
+        (SKStore.StrID("title"), SKStore.IntFile(0)),
+        (SKStore.StrID("action"), SKStore.IntFile(0)),
       ],
     );
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiDialog.widgetDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
-    builtHdl = intermediateHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    builtHdl = intermediateHdl.map(
+      SKStore.StrID::keyType,
+      WidgetFile::type,
       context,
       UiDialog.widgetsDirName(path),
       (context, writer, key, _) ~> {
-        key.toString() match {
+        key.value match {
         | "title" ->
           controller.getTitle(context).each(title -> {
-            writer.write(
+            writer.set(
               key,
               WidgetFile(
                 controller.getKind(context) match {
@@ -105,7 +108,7 @@ class Dialog protected {
               )
             }
           }).each(w ->
-            writer.write(
+            writer.set(
               key,
               WidgetFile(
                 Decorated::create(
@@ -124,8 +127,9 @@ class Dialog protected {
         }
       },
     );
-    builderHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    builderHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       UiDialog.widgetDirName(path),
       (context, writer, key, _file) ~> {
@@ -140,12 +144,12 @@ class Dialog protected {
           )
         | _ -> controller.getContent(context)
         };
-        optTitle = builtHdl.maybeGet(context, SKFS.StrID("title")).map(f ~>
+        optTitle = builtHdl.maybeGet(context, SKStore.StrID("title")).map(f ~>
           f.widget
         );
-        optAction = builtHdl.maybeGet(context, SKFS.StrID("action")).map(f ~>
-          f.widget
-        );
+        optAction = builtHdl
+          .maybeGet(context, SKStore.StrID("action"))
+          .map(f ~> f.widget);
         widgets = optTitle match {
         | Some(title) ->
           optAction match {
@@ -168,7 +172,7 @@ class Dialog protected {
           },
           Some(UiFlex.Configuration{flex => 1}),
         );
-        writer.write(
+        writer.set(
           key,
           WidgetFile(
             controller.getKind(context) match {
@@ -248,12 +252,15 @@ class Dialog protected {
       controller,
       cache,
       optConfiguration,
-      supplier => ctx ~> builderHdl.get(ctx, SKFS.IID(0)).widget,
+      supplier => ctx ~> builderHdl.get(ctx, SKStore.IID(0)).widget,
       tick => context.tick,
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     builtNode = this.supplier(context).getNode(context, constraints);
     utils = this.controller.getKind(context).getSubmitExit();
     Node(
@@ -264,12 +271,12 @@ class Dialog protected {
     )
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.supplier(context).getViewportDefinition(context);
   }
 
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     nodeInfo: Getter<NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -285,7 +292,7 @@ class Dialog protected {
     })
   }
 
-  fun getMainFocusable(context: mutable SKFS.Context): ?Path {
+  fun getMainFocusable(context: mutable SKStore.Context): ?Path {
     this.controller.getMainFocusable(context) match {
     | Some(path) -> Some(path)
     | _ ->
@@ -297,7 +304,11 @@ class Dialog protected {
   }
 }
 
-fun buildTitle(context: mutable SKFS.Context, path: Path, title: Text): Widget {
+fun buildTitle(
+  context: mutable SKStore.Context,
+  path: Path,
+  title: Text,
+): Widget {
   text = VText::createForController(
     context,
     path,
@@ -321,7 +332,7 @@ fun buildTitle(context: mutable SKFS.Context, path: Path, title: Text): Widget {
 }
 
 fun buildFullScreenTitle(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Path,
   title: Text,
   fs: UiDialog.FullScreen,
@@ -401,7 +412,7 @@ fun buildFullScreenTitle(
 }
 
 fun buildActions(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Path,
   actions: Array<UiDialog.Action>,
   mode: UiButton.Mode = UiButton.Basic(),

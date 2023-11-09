@@ -6,7 +6,7 @@ class Elem(offset: Float, size: Float) {
   }
 }
 
-base class Scroll(index: Int) extends SKFS.File uses Orderable {
+base class Scroll(index: Int) extends SKStore.File uses Orderable {
   children =
   | Start()
   | End()
@@ -16,7 +16,7 @@ base class Scroll(index: Int) extends SKFS.File uses Orderable {
   | End _ -> true
 }
 
-base class Visible(index: Int, tick: SKFS.Tick) extends SKFS.File {
+base class Visible(index: Int, tick: SKStore.Tick) extends SKStore.File {
   children =
   | Pos()
   | Incr()
@@ -34,7 +34,7 @@ class MAxis(
   optScroll: ?Ui.Scroll = None(),
 ) uses Show {
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     size: Float,
     count: Int,
     unity: Float,
@@ -127,7 +127,7 @@ class Metrics(
 ) extends Ui.UserData {
   //
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     sizes: Array<Elem>,
     reversed: Array<Elem>,
     size: Float,

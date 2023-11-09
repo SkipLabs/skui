@@ -2,11 +2,11 @@ module UiMenuLayout;
 
 base class Controller extends Ui.Parameters {
   //
-  fun getOffset(context: mutable SKFS.Context): Geometry.Offset;
+  fun getOffset(context: mutable SKStore.Context): Geometry.Offset;
 
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget;
 
-  fun onClose(context: mutable SKFS.Context): void;
+  fun onClose(context: mutable SKStore.Context): void;
 }
 
 class LamController{
@@ -15,15 +15,15 @@ class LamController{
   onClose_: Ui.Getter<void>,
 } extends Controller {
   //
-  fun getOffset(context: mutable SKFS.Context): Geometry.Offset {
+  fun getOffset(context: mutable SKStore.Context): Geometry.Offset {
     this.offset(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget {
     this.widget(context)
   }
 
-  fun onClose(context: mutable SKFS.Context): void {
+  fun onClose(context: mutable SKStore.Context): void {
     this.onClose_(context)
   }
 }
@@ -38,7 +38,7 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     Array[
       FWK.ShortcutAction(
@@ -64,7 +64,7 @@ class HoverHandler(
   }
 
   protected fun onMouse(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
     FWK.Result(
@@ -90,7 +90,7 @@ class MenuLayout protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiMenuLayout.Controller,
     cache: NodeCache,
@@ -105,7 +105,10 @@ class MenuLayout protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     offset = this.controller.getOffset(context);
     size = constraints.biggest();
     bottom = size.height - offset.dy;
@@ -128,7 +131,7 @@ class MenuLayout protected {
   }
 
   fun checkFocusHandlers(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -145,7 +148,7 @@ class MenuLayout protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((context, _offset, _node) ~>
@@ -159,7 +162,7 @@ class MenuLayout protected {
     )
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.controller.getWidget(context).getViewportDefinition(context);
   }
 }

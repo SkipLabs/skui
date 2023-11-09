@@ -1,7 +1,7 @@
 module Ui;
 
 fun buildTooltip(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   ttGetter: Getter<?Text>,
 ): ?FWK.SourcedWidget {
@@ -18,7 +18,7 @@ fun buildTooltip(
   )
 }
 
-base class Timed(tick: SKFS.Tick) extends SKFS.File {
+base class Timed(tick: SKStore.Tick) extends SKStore.File {
   children =
   | TimedBool(value: Bool)
   | TimedString(value: String)
@@ -28,7 +28,7 @@ base class Timed(tick: SKFS.Tick) extends SKFS.File {
 }
 
 fun getTextInfo(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   textSupport: Ui.TextSupport,
   faceId: Font.FaceID,
   str: String,
@@ -41,7 +41,7 @@ fun getTextInfo(
 }
 
 fun drawConstrainedText(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   support: Ui.DrawableSupport,
   textSupport: Ui.TextSupport,
   text: String,
@@ -70,7 +70,7 @@ fun drawConstrainedText(
 }
 
 fun themeShadow(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   support: DrawableSupport,
   offset: Geometry.Offset,
   size: Geometry.Size,

@@ -7,7 +7,7 @@ class Url{
   optPath: ?String = None(),
   optQuery: ?String = None(),
   optUserInfo: ?String = None(),
-} extends SKFS.File uses Show {
+} extends SKStore.File uses Show {
   static fun parse(strUrl: String): this {
     spec = strUrl.chars();
     limit = spec.size();

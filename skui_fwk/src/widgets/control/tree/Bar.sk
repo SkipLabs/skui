@@ -5,7 +5,7 @@ class Bar{
   state: State,
 } extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
   fun getNode(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
@@ -16,7 +16,7 @@ class Bar{
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -35,7 +35,7 @@ class Bar{
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     _nodeSum: Ui.NodeSum,
@@ -47,7 +47,7 @@ class Bar{
   }
 
   private fun computeMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     drawInfo: UiTree.DrawInfo,

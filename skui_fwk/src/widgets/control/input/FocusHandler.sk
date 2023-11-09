@@ -8,11 +8,11 @@ class FocusHandler{
     this.input.path;
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     this.input.state.emitBlinking(context, true)
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     this.input.state.emitBlinking(context, false);
     _ = emitMessage(
       context,
@@ -22,20 +22,20 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     getShortcuts(context, this.input.state, this.input.controller)
   }
 
   protected fun beforeShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false
   }
 
   protected fun afterShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool {
     if (this.input.controller.isEditable(context)) {
@@ -66,7 +66,7 @@ class FocusHandler{
 }
 
 fun emitMessage(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   state: State,
   messages: Message,
 ): Bool {
@@ -86,7 +86,7 @@ fun emitMessage(
 }
 
 fun getShortcuts(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   state: State,
   controller: Controller,
 ): Array<FWK.ShortcutAction> {

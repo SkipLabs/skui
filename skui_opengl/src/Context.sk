@@ -1,6 +1,6 @@
 module GL;
 
-class Ctx(id: UInt32) extends SKFS.File uses Hashable, HasClassName {
+class Ctx(id: UInt32) extends SKStore.File uses Hashable, HasClassName {
   // UTILS
 
   @debug

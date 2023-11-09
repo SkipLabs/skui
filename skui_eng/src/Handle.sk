@@ -2,28 +2,28 @@ module UiEngineHandle;
 
 // TODO Manage scoping
 
-const dirName: SKFS.DirName = SKFS.DirName::create("/ui/engine/handles/");
+const dirName: SKStore.DirName = SKStore.DirName::create("/ui/engine/handles/");
 
-fun toDirName(optPath: ?String): SKFS.DirName {
+fun toDirName(optPath: ?String): SKStore.DirName {
   optPath
-    .map(p -> SKFS.DirName::make(dirName, `${SKFS.normalize(p, true)}/`))
+    .map(p -> SKStore.DirName::make(dirName, `${SKStore.normalize(p, true)}/`))
     .default(dirName)
 }
 
-fun handlesHdl(optPath: ?String): SKFS.IHandle<Handle> {
-  SKFS.IHandle(SKFS.FileConverter(Handle::fromFile), toDirName(optPath));
+fun handlesHdl(optPath: ?String): SKStore.IHandle<SKStore.IID, Handle> {
+  SKStore.IHandle(SKStore.IID::keyType, Handle::type, toDirName(optPath));
 }
 
 class Handle private (
   type_: String,
-  eptr: SKFS.ExternalPointer,
-) extends SKFS.File uses Hashable, HasClassName {
+  eptr: SKStore.ExternalPointer,
+) extends SKStore.File uses Hashable, HasClassName {
   static fun make(id: UInt32, type_: String): this {
-    static(type_, SKFS.ExternalPointer::create(id, delete))
+    static(type_, SKStore.ExternalPointer::create(id, delete))
   }
 
   fun apply(parameters: Vector<JSON.Value>): ?JSON.Value {
-    if (SkargoVersion.kWasm) {
+    if (SkargoVersion.kWasm32) {
       apply(this.eptr.value, this.type_, JSON.Array(parameters))
     } else {
       invariant_violation("Shall not be called in non wasm version")
@@ -37,12 +37,17 @@ class Handle private (
   }
 }
 
-fun init(context: mutable SKFS.Context, optPath: ?String): void {
-  _ = context.makeDir(Handle::fromFile, toDirName(optPath), Array[]);
+fun init(context: mutable SKStore.Context, optPath: ?String): void {
+  _ = context.makeDir(
+    SKStore.IID::keyType,
+    Handle::type,
+    toDirName(optPath),
+    Array[],
+  );
 }
 
 private fun delete(actor: UInt32): void {
-  if (SkargoVersion.kWasm) {
+  if (SkargoVersion.kWasm32) {
     delete_(actor)
   } else {
     invariant_violation("Shall not be called in non wasm version")
@@ -62,10 +67,14 @@ private native fun apply(
 @wasm_export("SKIP_UiEngineJS_register")
 @cpp_export("SKIP_UiEngineJS_register")
 fun register(id: UInt32, optPath: ?String, type_: String): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     handlesHdl = handlesHdl(optPath);
     if (handlesHdl.exists(context)) {
-      handlesHdl.write(context, SKFS.IID(id.toInt()), Handle::make(id, type_))
+      handlesHdl.write(
+        context,
+        SKStore.IID(id.toInt()),
+        Handle::make(id, type_),
+      )
     }
   })
 }
@@ -73,28 +82,28 @@ fun register(id: UInt32, optPath: ?String, type_: String): void {
 @wasm_export("SKIP_UiEngineJS_unregister")
 @cpp_export("SKIP_UiEngineJS_unregister")
 fun unregister(id: UInt32, optPath: ?String): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     handlesHdl = handlesHdl(optPath);
     if (handlesHdl.exists(context)) {
-      handlesHdl.remove(context, SKFS.IID(id.toInt()))
+      handlesHdl.remove(context, SKStore.IID(id.toInt()))
     }
   })
 }
 
-fun get(context: mutable SKFS.Context, fn: UiEngine.Function): ?Handle {
-  handlesHdl(fn.optScope).maybeGetValue(context, SKFS.IID(fn.hdl), true)
+fun get(context: mutable SKStore.Context, fn: UiEngine.Function): ?Handle {
+  handlesHdl(fn.optScope).maybeGetValue(context, SKStore.IID(fn.hdl), true)
 }
 
 class ActionPerformer(fn: UiEngine.Function) extends UiEngine.ActionPerformer {
   //
-  fun perform(context: mutable SKFS.Context, count: Int): void {
+  fun perform(context: mutable SKStore.Context, count: Int): void {
     _ = get(context, this.fn).map(h -> h.apply(Vector[JSON.IntNumber(count)]))
   }
 }
 
 class TabsCloser(fn: UiEngine.Function) extends UiEngine.TabsCloser {
   //
-  fun close(context: mutable SKFS.Context, tabs: Array<String>): void {
+  fun close(context: mutable SKStore.Context, tabs: Array<String>): void {
     _ = get(context, this.fn).map(h ->
       h.apply(Vector[JSON.arrayToJSON(tabs, v ~> JSON.String(v))])
     )
@@ -103,7 +112,7 @@ class TabsCloser(fn: UiEngine.Function) extends UiEngine.TabsCloser {
 
 class Performer(fn: UiEngine.Function) extends UiEngine.Performer {
   //
-  fun perform(context: mutable SKFS.Context): void {
+  fun perform(context: mutable SKStore.Context): void {
     _ = get(context, this.fn).map(h -> h.apply(Vector[]))
   }
 }
@@ -111,7 +120,7 @@ class Performer(fn: UiEngine.Function) extends UiEngine.Performer {
 class Confirmation(fn: UiEngine.Function) extends UiEngine.Confirmation {
   //
   fun confirm(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     confirm: Bool,
     dialogId: Int,
   ): void {
@@ -124,7 +133,7 @@ class Confirmation(fn: UiEngine.Function) extends UiEngine.Confirmation {
 class OnInput(fn: UiEngine.Function) extends UiEngine.OnInput {
   //
   fun perform(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: String,
     dialogId: Int,
   ): void {
@@ -136,7 +145,7 @@ class OnInput(fn: UiEngine.Function) extends UiEngine.OnInput {
 
 class InputPerformer(fn: UiEngine.Function) extends UiEngine.InputPerformer {
   //
-  fun perform(context: mutable SKFS.Context, text: String): void {
+  fun perform(context: mutable SKStore.Context, text: String): void {
     _ = get(context, this.fn).map(h -> h.apply(Vector[JSON.String(text)]))
   }
 }
@@ -146,7 +155,7 @@ class TreeSelectionListener(
 ) extends UiEngine.TreeSelectionListener {
   //
   fun selectionChanged(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     selection: Array<Ui.Path>,
   ): void {
     sSelection = UiEngine.SArray(selection.map(p -> UiEngine.pathToSArray(p)));
@@ -161,7 +170,7 @@ class TreeExpansionListener(
 ) extends UiEngine.TreeExpansionListener {
   //
   fun expansionChanged(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     value: Bool,
   ): void {
@@ -176,7 +185,7 @@ class TreeExpansionListener(
 class TreePerformer(fn: UiEngine.Function) extends UiEngine.TreePerformer {
   //
   fun perform(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?Ui.Path,
     selection: Array<Ui.Path>,
   ): void {
@@ -193,7 +202,7 @@ class TreePerformer(fn: UiEngine.Function) extends UiEngine.TreePerformer {
 class TreeDropper(fn: UiEngine.Function) extends UiEngine.TreeDropper {
   //
   fun drop(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     from: Ui.Path,
     to: Ui.Path,
     drop: Ui.Drop,
@@ -215,7 +224,7 @@ class TreeDropper(fn: UiEngine.Function) extends UiEngine.TreeDropper {
 class TreeMenuGetter(fn: UiEngine.Function) extends UiEngine.TreeMenuGetter {
   //
   fun getContextMenu(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optCurrent: ?Ui.Path,
     selection: Array<Ui.Path>,
   ): Array<UiEngine.DItemBase> {
@@ -245,7 +254,7 @@ class TreeMenuGetter(fn: UiEngine.Function) extends UiEngine.TreeMenuGetter {
 class DropdownSupplier(
   fn: UiEngine.Function,
 ) extends UiEngine.DropdownSupplier {
-  fun supply(context: mutable SKFS.Context): ?Array<UiEngine.DItemBase> {
+  fun supply(context: mutable SKStore.Context): ?Array<UiEngine.DItemBase> {
     optJSV = get(context, this.fn).flatMap(h -> h.apply(Vector[]));
     optJSV.flatMap(jsv ->
       jsv match {
@@ -264,7 +273,7 @@ class DropdownSupplier(
 class EWriter(fn: UiEngine.Function) extends UiEngine.Writer {
   //
   fun write(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optValue: ?UiEngine.Serializable,
   ): void {
     _ = get(context, this.fn).map(h ->
@@ -279,7 +288,7 @@ class ECombine(
 ) extends UiEngine.Combine {
   //
   fun combine(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: String,
   ): UiEngine.Serializable {
     value = get(context, this.combineFn)
@@ -289,7 +298,7 @@ class ECombine(
   }
 
   fun write(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optValue: ?UiEngine.Serializable,
   ): void {
     this.optWriteFn.each(writeFn -> {

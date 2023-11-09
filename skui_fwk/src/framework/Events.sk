@@ -1,8 +1,12 @@
 module FWK;
 
-class KeyDown(symbol: String, tick: SKFS.Tick) {}
+class KeyDown(symbol: String, tick: SKStore.Tick) {}
 
-class MouseDown(button: Button, tick: SKFS.Tick, optOffset: ?Geometry.Offset) {}
+class MouseDown(
+  button: Button,
+  tick: SKStore.Tick,
+  optOffset: ?Geometry.Offset,
+) {}
 
 base class Repeat(
   ctrl: Bool,
@@ -13,7 +17,7 @@ base class Repeat(
   | KeysRepeat(keys: Array<KeyDown>)
   | MouseRepeat(buttons: Array<MouseDown>)
 
-  fun isRepeating(context: mutable SKFS.Context): Bool
+  fun isRepeating(context: mutable SKStore.Context): Bool
   | KeysRepeat(keys, ctrl, shift, alt) ->
     keysFile = FWKKeys.getKeys(context);
     modifier = UiEvent.Modifier(ctrl, shift, alt);
@@ -75,7 +79,7 @@ base class Button uses Equality {
 }
 
 class PrimaryDown(offset: Geometry.Offset) {
-  fun test(toTest: UiEvent.MouseFile, tick: SKFS.Tick): Bool {
+  fun test(toTest: UiEvent.MouseFile, tick: SKStore.Tick): Bool {
     toTest.offset().like(this.offset) && toTest.isPrimaryDown(tick)
   }
 }
@@ -85,25 +89,28 @@ fun env_violation(): _ {
 }
 
 fun isShiftDown(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): Bool {
   FWKKeys.isShiftDown(context, isUntracked)
 }
 
 fun isControlDown(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): Bool {
   FWKKeys.isControlDown(context, isUntracked)
 }
 
-fun isAltDown(context: mutable SKFS.Context, isUntracked: Bool = false): Bool {
+fun isAltDown(
+  context: mutable SKStore.Context,
+  isUntracked: Bool = false,
+): Bool {
   FWKKeys.isAltDown(context, isUntracked)
 }
 
 fun getModifier(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): UiEvent.Modifier {
   UiEvent.Modifier(
@@ -113,28 +120,28 @@ fun getModifier(
   )
 }
 
-fun isScrolling(context: mutable SKFS.Context): Bool {
+fun isScrolling(context: mutable SKStore.Context): Bool {
   FWKMouse.getMouse(context).isScrolling()
 }
 
 class Sizer(
-  value: (mutable SKFS.Context, Int, Int, Int, Float) ~> void,
-) extends SKFS.File {
+  value: (mutable SKStore.Context, Int, Int, Int, Float) ~> void,
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Sizer _ -> x
-    | _ -> SKFS.cast_violation("FWK.Sizer", obj)
+    | _ -> SKStore.cast_violation("FWK.Sizer", obj)
     }
   }
 }
 
-class Ratio(fn: (mutable SKFS.Context, Int) ~> Float) extends SKFS.File {
+class Ratio(fn: (mutable SKStore.Context, Int) ~> Float) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Ratio _ -> x
-    | _ -> SKFS.cast_violation("FWK.Ratio", obj)
+    | _ -> SKStore.cast_violation("FWK.Ratio", obj)
     }
   }
 }

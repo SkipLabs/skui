@@ -8,7 +8,7 @@ native fun jsTimeStamp(): Float;
 native fun systemTimeStamp(): TimeStamp;
 
 fun timeStamp(): TimeStamp {
-  if (SkargoVersion.kWasm) {
+  if (SkargoVersion.kWasm32) {
     convertFTime(jsTimeStamp())
   } else {
     systemTimeStamp()

@@ -1,14 +1,20 @@
 module SystemProperties;
 
-const path: SKFS.DirName = SKFS.DirName::create("/ui/system/properties/");
+const path: SKStore.DirName = SKStore.DirName::create("/ui/system/properties/");
 
-const handle: SKFS.IHandle<SKFS.File> = SKFS.IHandle(SKFS.Identity(), path);
-const requiredFocus: SKFS.StrID = SKFS.StrID("required-visible");
-const horizontalDirection: SKFS.StrID = SKFS.StrID("horizontal-direction");
+const handle: SKStore.IHandle<SKStore.StrID, SKStore.File> = SKStore.IHandle(
+  SKStore.StrID::keyType,
+  f ~> f,
+  path,
+);
+const requiredFocus: SKStore.StrID = SKStore.StrID("required-visible");
+const horizontalDirection: SKStore.StrID = SKStore.StrID(
+  "horizontal-direction",
+);
 
-class Todo(todo: (mutable SKFS.Context) ~> void) extends SKFS.File {
+class Todo(todo: (mutable SKStore.Context) ~> void) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Todo _ -> x
     | _ -> invariant_violation("Must be SystemProperties.Todo")
@@ -16,24 +22,24 @@ class Todo(todo: (mutable SKFS.Context) ~> void) extends SKFS.File {
   }
 }
 
-class QuitManager(manage: Ui.Getter<Bool>) extends SKFS.File
-class ExitManager(exit: Ui.Getter<void>) extends SKFS.File
+class QuitManager(manage: Ui.Getter<Bool>) extends SKStore.File
+class ExitManager(exit: Ui.Getter<void>) extends SKStore.File
 
-fun initOnExit(context: mutable SKFS.Context, exit: Ui.Getter<void>): void {
+fun initOnExit(context: mutable SKStore.Context, exit: Ui.Getter<void>): void {
   context.setGlobal("FWK.Exit", ExitManager(exit))
 }
 
-fun exit(context: mutable SKFS.Context): void {
-  context.getGlobal("FWK.Exit").map(ExitManager::fromFile).each(m ->
+fun exit(context: mutable SKStore.Context): void {
+  context.getGlobal("FWK.Exit").map(ExitManager::type).each(m ->
     m.exit(context)
   )
 }
 
-fun quit(context: mutable SKFS.Context, wId: Int): Bool {
+fun quit(context: mutable SKStore.Context, wId: Int): Bool {
   //
   context
     .getGlobal(`FWK.Quit[${wId}]`)
-    .map(QuitManager::fromFile)
+    .map(QuitManager::type)
     .map(m -> m.manage(context))
     .default(true)
 }
@@ -91,8 +97,8 @@ fun statusFromJSON(jsv: JSON.Value): Status {
 }
 
 fun repeat(
-  context: mutable SKFS.Context,
-  todo: mutable SKFS.Context ~> void,
+  context: mutable SKStore.Context,
+  todo: mutable SKStore.Context ~> void,
   optRepeatOn: ?FWK.Repeat = None(),
 ): void {
   todo(context);
@@ -106,7 +112,7 @@ fun repeat(
 class Messages()
   extends SKUIMessage.Support
   uses SKUIMessage.WithUpdate<Command> {
-  fun init(_context: mutable SKFS.Context): void {
+  fun init(_context: mutable SKStore.Context): void {
     void
   }
 
@@ -119,7 +125,7 @@ class Messages()
   }
 
   protected fun execute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     scope: String,
     command: Command,
@@ -134,7 +140,7 @@ class Messages()
         ctx ~> {
           ctx
             .getGlobal(`SystemProperties.Repeat(${repeatable.toRepeat})`)
-            .map(Todo::fromFile)
+            .map(Todo::type)
             .each(todo -> todo.todo(ctx))
         },
         repeatable.optRepeatOn,
@@ -148,13 +154,13 @@ class Messages()
   }
 }
 
-fun init(context: mutable SKFS.Context): void {
-  _ = context.makeDir(f ~> f, path, Array[]);
+fun init(context: mutable SKStore.Context): void {
+  _ = context.makeNotTyped(path, Array[]);
   context.registerMessageSupport("system", "properties", Messages());
 }
 
 fun emit(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   command: Command,
   asyncMode: Bool = false,
   optDelay: ?Int = None(),
@@ -173,18 +179,18 @@ fun message(command: Command): SKUIMessage.Message {
   SKUIMessage.Message("system", "properties", command);
 }
 
-class TPath(path: Ui.Path, tick: SKFS.Tick) extends SKFS.File {
+class TPath(path: Ui.Path, tick: SKStore.Tick) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TPath _ -> x
-    | _ -> invariant_violation("Must be SystemProperties.TPath")
+    | _ -> SKStore.cast_violation("SystemProperties.TPath", obj)
     }
   }
 }
 
-fun getRequiredFocus(context: mutable SKFS.Context): ?Ui.Path {
-  handle.maybeGet(context, requiredFocus).map(TPath::fromFile).flatMap(td ->
+fun getRequiredFocus(context: mutable SKStore.Context): ?Ui.Path {
+  handle.maybeGetValue(context, requiredFocus).map(TPath::type).flatMap(td ->
     if (td.tick == context.tick) {
       Some(td.path)
     } else {
@@ -194,31 +200,35 @@ fun getRequiredFocus(context: mutable SKFS.Context): ?Ui.Path {
 }
 
 fun getHorizontalDirection(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
 ): Ui.HorizontalDirection {
   handle
-    .maybeGet(context, horizontalDirection)
-    .map(Ui.HorizontalDirection::forFile)
+    .maybeGetValue(context, horizontalDirection)
+    .map(Ui.HorizontalDirection::btype)
     .default(Ui.ToRight());
 }
 
-fun setRequireFocus(context: mutable SKFS.Context, path: Ui.Path): void {
+fun setRequireFocus(context: mutable SKStore.Context, path: Ui.Path): void {
   handle.write(context, requiredFocus, TPath(path, context.tick));
 }
 
 fun setHorizontalDirection(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   direction: Ui.HorizontalDirection,
 ): void {
   handle.write(context, horizontalDirection, direction)
 }
 
 fun setQuitManager(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   manage: Ui.Getter<Bool>,
   wId: Int,
 ): void {
-  handle.write(context, SKFS.StrID(`quit-manager${wId}`), QuitManager(manage))
+  handle.write(
+    context,
+    SKStore.StrID(`quit-manager${wId}`),
+    QuitManager(manage),
+  )
 }
 
 module end;

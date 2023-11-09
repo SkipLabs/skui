@@ -1,22 +1,22 @@
 module SKIP_SKUIFontTestsRes;
 
-@cpp_extern("SKIP_skui_font_tests_luximr_bin")
+@cpp_extern("SKIP_resources_tests_luximr_bin")
 native fun luximrBin(): Array<UInt8>;
 
-@cpp_extern("SKIP_skui_font_tests_luxirr_bin")
+@cpp_extern("SKIP_resources_tests_luxirr_bin")
 native fun luxirrBin(): Array<UInt8>;
 
-@cpp_extern("SKIP_skui_font_tests_luxisr_bin")
+@cpp_extern("SKIP_resources_tests_luxisr_bin")
 native fun luxisrBin(): Array<UInt8>;
 
-@cpp_extern("SKIP_skui_font_tests_xab_bin")
+@cpp_extern("SKIP_resources_tests_xab_bin")
 native fun xabBin(): Array<UInt8>;
 
-@cpp_extern("SKIP_skui_font_tests_xdsff_bin")
+@cpp_extern("SKIP_resources_tests_xdsff_bin")
 native fun xdsffBin(): Array<UInt8>;
 
-@cpp_extern("SKIP_skui_font_tests_xdvso_bin")
+@cpp_extern("SKIP_resources_tests_xdvso_bin")
 native fun xdvsoBin(): Array<UInt8>;
 
-@cpp_extern("SKIP_skui_font_tests_xtnr_bin")
+@cpp_extern("SKIP_resources_tests_xtnr_bin")
 native fun xtnrBin(): Array<UInt8>;

@@ -1,19 +1,19 @@
 module UiTree;
 
-fun itemsDirName(path: Ui.Path): SKFS.DirName {
+fun itemsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tree/items/")
 }
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tree/widget/")
 }
 
-class MainKey() extends SKFS.BaseName {
+class MainKey() extends SKStore.Key {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun keyType(obj: SKStore.Key): this {
     obj match {
     | x @ MainKey _ -> x
-    | _ -> invariant_violation("Must be UiTree.MainKey")
+    | _ -> SKStore.cast_violation("UiTree.MainKey", obj)
     }
   }
 
@@ -22,20 +22,13 @@ class MainKey() extends SKFS.BaseName {
   }
 }
 
-class ItemKey(path: Ui.Path, info: Int) extends SKFS.BaseName {
+class ItemKey(path: Ui.Path, info: Int) extends SKStore.Key {
   //
-  static fun fromFile(obj: SKFS.File): this {
-    obj match {
-    | x @ ItemKey _ -> x
-    | _ -> invariant_violation("Must be UiTree.ItemKey")
-    }
-  }
-
   fun toString(): String {
     `${this.info}:${this.path}`
   }
 
-  fun compare(other: SKFS.BaseName): Order {
+  fun compare(other: SKStore.Key): Order {
     other match {
     | oKey @ ItemKey _ -> (this.info, this.path).compare((oKey.info, oKey.path))
     | _ -> this.getClassName().compare(other.getClassName())
@@ -44,9 +37,9 @@ class ItemKey(path: Ui.Path, info: Int) extends SKFS.BaseName {
 }
 
 fun create(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
-  allItemsDirName: SKFS.DirName,
+  allItemsDirName: SKStore.DirName,
   controller: Controller,
   expansion: Ui.GetterOne<Bool, Ui.Path>,
 ): (
@@ -56,29 +49,32 @@ fun create(
   Ui.GetterOne<?Ui.Badge, Ui.Path>,
 ) {
   mainHdl = context.makeDir(
-    SKFS.IntFile::fromFile,
+    Ui.MainKey::keyType,
+    SKStore.IntFile::type,
     itemsDirName(path.makeChild("source")),
-    Array<(SKFS.BaseName, SKFS.File)>[(Ui.MainKey(), SKFS.IntFile(0))],
+    Array<(SKStore.Key, SKStore.File)>[(Ui.MainKey(), SKStore.IntFile(0))],
   );
-  itemsHdl = mainHdl.contextWriterKeyMap(
+  itemsHdl = mainHdl.map(
+    k ~> k,
     f ~> f,
     context,
     allItemsDirName,
-    (context, writer, _key, _file) ~> {
+    (context, writer, _key, _it) ~> {
       allItems = mutable Vector<ItemKey>[];
       fillItem(context, controller, expansion, allItems);
-      writer.write(SKFS.KKeys(), SKFS.Keys(allItems.toArray()));
-      writer.write(SKFS.KSize(), SKFS.IntFile(allItems.size()))
+      writer.set(SKStore.KKeys(), SKStore.Keys(allItems.toArray()));
+      writer.set(SKStore.KSize(), SKStore.IntFile(allItems.size()))
     },
   );
   visibleItemsHdl = itemsHdl
-    .contextWriterKeyMap(
-      SKFS.IntFile::fromFile,
+    .map(
+      ItemKey::keyType,
+      SKStore.IntFile::type,
       context,
       itemsDirName(path.makeChild("visible")),
-      (context, writer, key, file) ~> {
-        if (key == SKFS.KKeys()) {
-          keys = SKFS.Keys::fromFile(file).value;
+      (context, writer, key, it) ~> {
+        if (key == SKStore.KKeys()) {
+          keys = SKStore.Keys::type(it.first).value;
           if (FWKPipeline.hasNodeInfos(context)) {
             FWKPipeline.gNodeInfo.maybeGetValue(context, path).each(ni ->
               ni.info.optUserData
@@ -86,7 +82,7 @@ fun create(
                 .each(metrics ->
                   for (idx in metrics.axis.range) {
                     keys.maybeGet(idx).each(k ->
-                      writer.write(k, SKFS.IntFile(0))
+                      writer.set(ItemKey::keyType(k), SKStore.IntFile(0))
                     )
                   }
                 )
@@ -95,78 +91,86 @@ fun create(
         };
       },
     )
-    .contextWriterKeyMap(
-      ItemFile::fromFile,
+    .map(
+      Ui.Path::keyType,
+      ItemFile::type,
       context,
       itemsDirName(path),
       (context, writer, key, _) ~> {
-        itemKey = key as ItemKey _;
-        writer.write(
-          itemKey.path,
-          ItemFile(controller.getItem(context, itemKey.path), itemKey.info),
+        writer.set(
+          key.path,
+          ItemFile(controller.getItem(context, key.path), key.info),
         )
       },
     );
-  progressHdl = visibleItemsHdl.contextWriterKeyMap(
-    f ~> f as Ui.Progress _,
+  progressHdl = visibleItemsHdl.map(
+    Ui.Path::keyType,
+    Ui.Progress::btype,
     context,
     itemsDirName(path.makeChild("progress")),
-    (context, writer, key, _) ~> {
-      controller.getProgress(context, key as Ui.Path _).each(progress ->
-        writer.write(key, progress)
+    (context, writer, path, _) ~> {
+      controller.getProgress(context, path).each(progress ->
+        writer.set(path, progress)
       )
     },
   );
-  badgeHdl = visibleItemsHdl.contextWriterKeyMap(
-    Ui.Badge::fromFile,
+  badgeHdl = visibleItemsHdl.map(
+    Ui.Path::keyType,
+    Ui.Badge::type,
     context,
     itemsDirName(path.makeChild("badge")),
-    (context, writer, key, _) ~> {
-      controller.getBadge(context, key as Ui.Path _).each(text ->
-        writer.write(key, Ui.Badge(text, controller.getBadgeMaxChar(context)))
+    (context, writer, path, _) ~> {
+      controller.getBadge(context, path).each(text ->
+        writer.set(path, Ui.Badge(text, controller.getBadgeMaxChar(context)))
       )
     },
   );
   visibleItemsList = Ui.ListHandle(
     visibleItemsHdl
-      .contextWriterKeyMap(
+      .map(
+        k ~> k,
         f ~> f,
         context,
         itemsDirName(path.makeChild("grouped")),
-        (_, writer, key, file) ~> {
-          writer.write(SKFS.KKeys(), key);
-          writer.write(key, file);
+        (_, writer, key, it) ~> {
+          writer.set(SKStore.KKeys(), key);
+          writer.set(key, it.first);
         },
       )
-      .contextWriterKeyValues(
+      .map(
+        k ~> k,
         f ~> f,
         context,
         itemsDirName(path.makeChild("joined")),
-        (context, writer, key, files) ~> {
-          if (key == SKFS.KKeys()) {
-            items = SKFS.Keys::fromFile(itemsHdl.get(context, SKFS.KKeys()))
-              .value.map(ItemKey::fromFile)
+        (context, writer, key, it) ~> {
+          files = it.collect(Array);
+          if (key == SKStore.KKeys()) {
+            items = SKStore.Keys::type(itemsHdl.get(context, SKStore.KKeys()))
+              .value.map(ItemKey::keyType)
               .map(i -> i.path);
-            set = SortedSet::createFromItems(files.map(Ui.Path::fromFile));
-            writer.write(SKFS.KKeys(), SKFS.Keys(items.filter(set.contains)));
-            writer.write(SKFS.KSize(), SKFS.IntFile(files.size()))
+            set = SortedSet::createFromItems(files.map(Ui.Path::type));
+            writer.set(
+              SKStore.KKeys(),
+              SKStore.Keys(items.filter(set.contains)),
+            );
+            writer.set(SKStore.KSize(), SKStore.IntFile(files.size()))
           } else {
-            writer.writeArray(key, files);
+            writer.setArray(key, files);
           }
         },
       ),
-    ItemFile::fromFile,
+    ItemFile::type,
   );
   (
     visibleItemsList,
-    ctx ~> itemsHdl.getInt(ctx, SKFS.KSize()),
+    ctx ~> itemsHdl.getInt(ctx, SKStore.KSize()),
     (ctx, path) ~> progressHdl.maybeGetValue(ctx, path),
     (ctx, path) ~> badgeHdl.maybeGetValue(ctx, path),
   )
 }
 
 fun fillItem(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   controller: Controller,
   expansion: Ui.GetterOne<Bool, Ui.Path>,
   allItems: mutable Vector<ItemKey>,

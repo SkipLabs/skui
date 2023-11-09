@@ -17,10 +17,10 @@ class Wrap{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#layout#${static::identifier}#${name}`);
     widgets = toWidgetsCollection(context, this.optWidgets, root, prebuilt);
@@ -102,10 +102,10 @@ class Flex{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#layout#${static::identifier}#${name}`);
     widgets = toWidgetsCollection(context, this.optWidgets, root, prebuilt);
@@ -168,10 +168,10 @@ class AspectRatio{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#in#${static::identifier}#${name}`);
     widget = toWidgetGetter(context, this.optWidget, root, prebuilt);

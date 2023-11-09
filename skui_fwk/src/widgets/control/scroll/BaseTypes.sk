@@ -41,19 +41,19 @@ base class Policy uses Hashable, Equality {
 }
 
 base class Controller extends Ui.Parameters {
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget;
   fun getHScroll(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.IntProperty;
   fun getVScroll(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.IntProperty;
-  fun getVPolicy(context: mutable SKFS.Context): Policy;
-  fun getHPolicy(context: mutable SKFS.Context): Policy;
-  fun isNegative(context: mutable SKFS.Context): Bool;
-  fun getUnit(context: mutable SKFS.Context, isUntracked: Bool = false): Int;
+  fun getVPolicy(context: mutable SKStore.Context): Policy;
+  fun getHPolicy(context: mutable SKStore.Context): Policy;
+  fun isNegative(context: mutable SKStore.Context): Bool;
+  fun getUnit(context: mutable SKStore.Context, isUntracked: Bool = false): Int;
 }
 
 class DrawInfo private () extends Ui.DrawInfo {
@@ -62,7 +62,7 @@ class DrawInfo private () extends Ui.DrawInfo {
   }
 }
 
-class Sizes(viewport: Float, view: Float) extends SKFS.File {
+class Sizes(viewport: Float, view: Float) extends SKStore.File {
   fun isVisible(): Bool {
     this.view > this.viewport
   }
@@ -80,7 +80,7 @@ class Sizes(viewport: Float, view: Float) extends SKFS.File {
   }
 }
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/scroll/widget/")
 }
 

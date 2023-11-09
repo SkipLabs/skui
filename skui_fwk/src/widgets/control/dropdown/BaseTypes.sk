@@ -1,21 +1,21 @@
 module UiDropdown;
 
-fun widgetsDirName(path: Ui.Path): SKFS.DirName {
+fun widgetsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/dropdown/widgets/")
 }
 
-fun dataDirName(path: Ui.Path): SKFS.DirName {
+fun dataDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/dropdown/data/")
 }
 
 base class ItemsCollection {
   fun getNumberOfItems(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Int;
 
   fun getItem(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     index: Int,
     isUntracked: Bool = false,
   ): ItemBase;
@@ -23,20 +23,20 @@ base class ItemsCollection {
 
 base class Accessor{items: Ui.GetterOne<ItemsCollection, Bool>} {
   //
-  fun getTitle(context: mutable SKFS.Context): ?Text;
+  fun getTitle(context: mutable SKStore.Context): ?Text;
 }
 
 base class ItemBase{
   id: String,
-  text: mutable SKFS.Context ~> Text,
-  icon: mutable SKFS.Context ~> ?UiIcon.Description = _ctx ~> None(),
-  disabled: mutable SKFS.Context ~> Bool = _ctx ~> false,
-  separator: mutable SKFS.Context ~> Ui.Separator = _ctx ~> Ui.Nil(),
-} extends SKFS.File {
+  text: mutable SKStore.Context ~> Text,
+  icon: mutable SKStore.Context ~> ?UiIcon.Description = _ctx ~> None(),
+  disabled: mutable SKStore.Context ~> Bool = _ctx ~> false,
+  separator: mutable SKStore.Context ~> Ui.Separator = _ctx ~> Ui.Nil(),
+} extends SKStore.File {
   children =
   | Item{
-    shortcut: mutable SKFS.Context ~> ?Ui.Shortcut = _ ~> None(),
-    perform: (mutable SKFS.Context) ~> void,
+    shortcut: mutable SKStore.Context ~> ?Ui.Shortcut = _ ~> None(),
+    perform: (mutable SKStore.Context) ~> void,
   }
 
   fun isMenu(): Bool
@@ -46,21 +46,21 @@ base class ItemBase{
 
 class Menu extends ItemBase, Accessor {
   //
-  fun getTitle(context: mutable SKFS.Context): ?Text {
+  fun getTitle(context: mutable SKStore.Context): ?Text {
     Some(this.text(context))
   }
 }
 
 class ArrayCollection(items: Array<ItemBase>) extends ItemsCollection {
   fun getNumberOfItems(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _isUntracked: Bool = false,
   ): Int {
     this.items.size()
   }
 
   fun getItem(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     index: Int,
     _isUntracked: Bool = false,
   ): ItemBase {
@@ -73,14 +73,14 @@ class LamCollection(
   items: Ui.GetterTwo<ItemBase, Int, Bool>,
 ) extends ItemsCollection {
   fun getNumberOfItems(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Int {
     this.numberOfItems(context, isUntracked)
   }
 
   fun getItem(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     index: Int,
     isUntracked: Bool = false,
   ): ItemBase {
@@ -101,37 +101,37 @@ base class Target {
   | Idx(idx: Int)
 }
 
-base class Controller extends Accessor, SKFS.UserData {
-  fun onClose(context: mutable SKFS.Context): void;
+base class Controller extends Accessor, SKStore.UserData {
+  fun onClose(context: mutable SKStore.Context): void;
 
-  fun getTitle(_context: mutable SKFS.Context): ?Text {
+  fun getTitle(_context: mutable SKStore.Context): ?Text {
     None()
   }
 }
 
 base class State extends Ui.StateWithScroll {
-  fun isSelected(context: mutable SKFS.Context, index: Int): Bool;
+  fun isSelected(context: mutable SKStore.Context, index: Int): Bool;
   fun getSelected(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Int;
-  fun isRoot(context: mutable SKFS.Context): Bool;
-  fun getTitle(context: mutable SKFS.Context): ?Text;
-  fun getNumberOfItems(context: mutable SKFS.Context): Int;
-  fun getItem(context: mutable SKFS.Context, index: Int): ItemBase;
-  fun getHover(context: mutable SKFS.Context): ?Ui.Path;
-  fun getCurrent(context: mutable SKFS.Context): ?Ui.Path;
+  fun isRoot(context: mutable SKStore.Context): Bool;
+  fun getTitle(context: mutable SKStore.Context): ?Text;
+  fun getNumberOfItems(context: mutable SKStore.Context): Int;
+  fun getItem(context: mutable SKStore.Context, index: Int): ItemBase;
+  fun getHover(context: mutable SKStore.Context): ?Ui.Path;
+  fun getCurrent(context: mutable SKStore.Context): ?Ui.Path;
   fun getActive(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Active;
 
-  fun setHover(context: mutable SKFS.Context, optPath: ?Ui.Path): void;
-  fun setGoto(context: mutable SKFS.Context, value: Spot): void;
-  fun setClose(context: mutable SKFS.Context): void;
+  fun setHover(context: mutable SKStore.Context, optPath: ?Ui.Path): void;
+  fun setGoto(context: mutable SKStore.Context, value: Spot): void;
+  fun setClose(context: mutable SKStore.Context): void;
 
   fun emitSelect(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
@@ -141,7 +141,7 @@ base class Storage extends Ui.StorageWithScroll {
   fun getName(): String;
   fun getScope(): String;
 
-  fun setTodo(context: mutable SKFS.Context, cmd: Ui.Executable): void;
+  fun setTodo(context: mutable SKStore.Context, cmd: Ui.Executable): void;
 }
 
 class Parameters(controller: Controller, state: State) extends Ui.Parameters {}
@@ -150,7 +150,7 @@ class UserData(metrics: Ui.Metrics) extends Ui.UserData
 
 class DrawInfo private () extends Ui.DrawInfo {
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     dropdown: Ui.Dropdown,
     metrics: Ui.Metrics,
   ): this {

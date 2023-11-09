@@ -1,6 +1,6 @@
 module UiEngine;
 
-base class Serializable extends SKFS.File {
+base class Serializable extends SKStore.File {
   children =
   | SArray(value: Array<Serializable>)
   | SOption(value: ?Serializable)
@@ -9,7 +9,7 @@ base class Serializable extends SKFS.File {
   | SString(value: String)
   | SMap(value: Map<String, Serializable>)
 
-  static fun frFile(file: SKFS.File): Serializable {
+  static fun frFile(file: SKStore.File): Serializable {
     file match {
     | x @ Serializable _ -> x
     | _ -> invariant_violation("Must be UiEngine.Serializable")
@@ -245,7 +245,7 @@ const checkers: Array<Checker> = Array[
 
 class Deserializer(
   deserialize: Map<String, Serializable> ~> Serializable,
-) extends SKFS.File
+) extends SKStore.File
 
 fun fromJSON(json: JSON.Value): Serializable {
   json match {
@@ -268,9 +268,9 @@ fun fromJSON(json: JSON.Value): Serializable {
             break optChecked
           }
         } else {
-          SKFS.getWorkingContext()
+          SKStore.getWorkingContext()
             .flatMap(ctx -> ctx.getGlobal(`UiEngine.Deserializer.${type_}`))
-            .map(Deserializer::fromFile)
+            .map(Deserializer::type)
             .map(d -> d.deserialize(value));
         };
         return optResult match {

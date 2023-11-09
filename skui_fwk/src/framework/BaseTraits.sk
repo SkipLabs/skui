@@ -2,7 +2,7 @@ module FWK;
 
 trait NoFocusHandler {
   fun checkFocusHandlers(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -15,21 +15,21 @@ trait Shortcuts {
   fun getIdentifier(): Ui.Path;
 
   protected fun getShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Array<ShortcutAction>;
 
   protected fun beforeShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool;
 
   protected fun afterShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool;
 
   protected fun onKeys(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool {
     consumed = this.beforeShortcuts(context, keys);
@@ -62,7 +62,7 @@ trait Shortcuts {
   }
 
   private fun performAction(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _name: String,
     action: Action,
     optRepeat: ?FWK.Repeat,
@@ -81,14 +81,14 @@ trait Shortcuts {
 
 trait OnlyShortcuts extends Shortcuts {
   protected fun beforeShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false
   }
 
   protected fun afterShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false
@@ -99,22 +99,22 @@ trait LeafFH {
   fun getIdentifier(): Ui.Path;
 
   protected fun checkGotoNext(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool;
 
   protected fun checkGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool;
 
   protected fun onKeys(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool;
 
   fun isGotoNext(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -126,7 +126,7 @@ trait LeafFH {
   }
 
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -138,7 +138,7 @@ trait LeafFH {
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): Bool {

@@ -1,22 +1,23 @@
 module FWKPipeline;
 
-const mouseStateBeforePath: SKFS.DirName = SKFS.DirName::create(
+const mouseStateBeforePath: SKStore.DirName = SKStore.DirName::create(
   "/ui/fwk/state/mouse/before/",
 );
 
-const mouseHoverPath: SKFS.DirName = SKFS.DirName::create(
+const mouseHoverPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/fwk/state/mouse/hover/",
 );
 
-const preMouseStatePath: SKFS.DirName = FWK.mouseStatePath.pre();
+const preMouseStatePath: SKStore.DirName = FWK.mouseStatePath.pre();
 
-const gMouseHover: SKFS.EHandle<SKFS.BoolFile> = SKFS.EHandle(
-  SKFS.BoolFile::fromFile,
+const gMouseHover: SKStore.EHandle<Ui.Path, SKStore.BoolFile> = SKStore.EHandle(
+  Ui.Path::keyType,
+  SKStore.BoolFile::type,
   mouseHoverPath,
 );
 
 fun isMouseHover(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   isUntracked: Bool = false,
 ): Bool {
@@ -27,50 +28,51 @@ fun isMouseHover(
   }
 }
 
-fun prepareMouse(context: mutable SKFS.Context): SKFS.EHValue<FWK.MouseState> {
-  previousMouseState: Array<(SKFS.BaseName, FWK.MouseState)> = Array[
-    (Ui.MainKey(), FWK.MouseState{}),
-  ];
+fun prepareMouse(
+  context: mutable SKStore.Context,
+): SKStore.EHValue<Ui.MainKey, FWK.MouseState> {
   previousMouseStateHdl = context.makePreDir(
-    FWK.MouseState::fromFile,
+    Ui.MainKey::keyType,
+    FWK.MouseState::type,
     FWK.mouseStatePath,
-    previousMouseState,
+    Array[(Ui.MainKey(), FWK.MouseState{})],
   );
   FWKEnv.declare(context, preMouseStatePath);
-  SKFS.EHValue(previousMouseStateHdl, Ui.MainKey())
+  SKStore.EHValue(previousMouseStateHdl, Ui.MainKey())
 }
 
 fun mouseState(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   isUntracked: Bool = false,
 ): FWK.MouseState {
-  SKFS.EHandle(FWK.MouseState::fromFile, preMouseStatePath).getValue(
-    context,
-    Ui.MainKey(),
-    isUntracked,
-  )
+  SKStore.EHandle(
+    Ui.MainKey::keyType,
+    FWK.MouseState::type,
+    preMouseStatePath,
+  ).getValue(context, Ui.MainKey(), isUntracked)
 }
 
-fun hasMouseState(context: mutable SKFS.Context): Bool {
+fun hasMouseState(context: mutable SKStore.Context): Bool {
   FWKEnv.exists(context, FWK.mouseStatePath.pre())
 }
 
 fun initMouse(
-  context: mutable SKFS.Context,
-  widgetHdl: SKFS.EHValue<Ui.WidgetFile>,
+  context: mutable SKStore.Context,
+  widgetHdl: SKStore.EHValue<Ui.MainKey, Ui.WidgetFile>,
   nodeInfoGetter: Ui.NodeInfoGetter,
   nodeGetter: Ui.NodeGetter,
   viewportGetter: Ui.ViewportGetter,
   root: UiRoot.Storage,
 ): void {
   msu = MouseStateUtils(nodeInfoGetter, nodeGetter, viewportGetter);
-  previousMouseStateHdl = SKFS.EHandle(
-    FWK.MouseState::fromFile,
+  previousMouseStateHdl = SKStore.EHandle(
+    Ui.MainKey::keyType,
+    FWK.MouseState::type,
     FWK.mouseStatePath.pre(),
   );
   _ = widgetHdl
     .mapContext(
-      FWK.MouseState::fromFile,
+      FWK.MouseState::type,
       context,
       mouseStateBeforePath,
       (context, wf) ~> {
@@ -248,7 +250,7 @@ fun initMouse(
       },
     )
     .mapContext(
-      FWK.MouseState::fromFile,
+      FWK.MouseState::type,
       context,
       FWK.mouseStatePath,
       (context, mouseState) ~> {
@@ -261,13 +263,14 @@ fun initMouse(
         mouseState
       },
     )
-    .hdl.contextWriterMap(
-      SKFS.BoolFile::fromFile,
+    .hdl.map(
+      Ui.Path::keyType,
+      SKStore.BoolFile::type,
       context,
       mouseHoverPath,
-      (_context, writer, state) ~> {
-        state.optHoverHandler.each(hh ->
-          hh.browse(id -> writer.write(id, SKFS.BoolFile(true)))
+      (_context, writer, _, it) ~> {
+        it.first.optHoverHandler.each(hh ->
+          hh.browse(id -> writer.set(id, SKStore.BoolFile(true)))
         )
       },
     );
@@ -281,7 +284,7 @@ class MouseStateUtils(
 ) {
   //
   fun getDragHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     node: Ui.Node,
   ): ?FWK.DragHandler {
@@ -295,7 +298,7 @@ class MouseStateUtils(
   }
 
   fun getChildDragHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     node: Ui.Node,
   ): ?FWK.DragHandler {
@@ -322,7 +325,7 @@ class MouseStateUtils(
   }
 
   fun getDropHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     node: Ui.Node,
   ): ?FWK.DropHandler {
@@ -336,7 +339,7 @@ class MouseStateUtils(
   }
 
   fun getChildDropHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     node: Ui.Node,
   ): ?FWK.DropHandler {
@@ -363,7 +366,7 @@ class MouseStateUtils(
   }
 
   fun getLockHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     node: Ui.Node,
   ): ?FWK.LockHandler {
@@ -377,7 +380,7 @@ class MouseStateUtils(
   }
 
   fun getChildLockHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     node: Ui.Node,
   ): ?FWK.LockHandler {
@@ -405,7 +408,7 @@ class MouseStateUtils(
   }
 
   fun getHoverHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     node: Ui.Node,
   ): ?FWK.HoverHandler {
@@ -419,7 +422,7 @@ class MouseStateUtils(
   }
 
   fun getChildHoverHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     node: Ui.Node,
   ): ?FWK.HoverHandler {
@@ -447,7 +450,7 @@ class MouseStateUtils(
   }
 
   fun getCenter(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
   ): ?Geometry.Offset {
     ni = this.nodeInfoGetter(context, path, true);

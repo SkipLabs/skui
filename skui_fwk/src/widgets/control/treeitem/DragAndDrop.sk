@@ -1,22 +1,22 @@
 module UiTreeItem;
 
 class DragHandler(treeItem: Ui.TreeItem) extends FWK.DragHandler {
-  fun getTransfer(_context: mutable SKFS.Context): FWK.Transfer {
+  fun getTransfer(_context: mutable SKStore.Context): FWK.Transfer {
     FWK.TrMove()
   }
 
   fun getClipboardContent(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
   ): ?FWKClipboard.Content {
     Some(FWKClipboard.Content::plain(this.treeItem.id.toString()))
   }
 
-  fun getDragInfo(_context: mutable SKFS.Context): ?FWK.DragInfo {
+  fun getDragInfo(_context: mutable SKStore.Context): ?FWK.DragInfo {
     None()
   }
 
   fun dropped(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _optInfo: ?(FWK.DropHandler, FWK.TransferMode),
   ): void {
     void
@@ -31,12 +31,12 @@ class DropHandler(
     this.treeItem.path.makeChild(this.drop.toString()).toString()
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     this.treeItem.state.emitTargeted(context, None());
   }
 
   fun over(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
     dragHandler: FWK.DragHandler,
     transfer: FWK.TransferMode,
@@ -56,7 +56,7 @@ class DropHandler(
   }
 
   fun dropped(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     dragHandler: FWK.DragHandler,
     transfer: FWK.TransferMode,
   ): void {

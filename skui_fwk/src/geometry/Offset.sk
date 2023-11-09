@@ -1,11 +1,11 @@
 module Geometry;
 
-extension class Offset extends SKFS.File uses Show {
+extension class Offset extends SKStore.File uses Show {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Offset _ -> x
-    | _ -> SKFS.cast_violation("Geometry.Offset", obj)
+    | _ -> SKStore.cast_violation("Geometry.Offset", obj)
     }
   }
 

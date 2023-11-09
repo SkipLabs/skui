@@ -3,11 +3,11 @@ module alias H = UiEngineHandle;
 module UiEngine;
 
 base class TabsCloser {
-  fun close(context: mutable SKFS.Context, tabs: Array<String>): void;
+  fun close(context: mutable SKStore.Context, tabs: Array<String>): void;
 }
 
 base class Performer {
-  fun perform(context: mutable SKFS.Context): void;
+  fun perform(context: mutable SKStore.Context): void;
 }
 
 class Tab{
@@ -22,16 +22,16 @@ class Tab{
   optProgress: ?Serializable = None(),
   optDisabled: ?Serializable = None(),
   optClosable: ?Serializable = None(),
-} extends SKFS.File {
+} extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Tab _ -> x
     | _ -> invariant_violation("Must be UiEngine.Tab")
     }
   }
 
-  fun toGetters(context: mutable SKFS.Context): TabGetter {
+  fun toGetters(context: mutable SKStore.Context): TabGetter {
     TabGetter(
       toTextOptGetter(context, this.optText),
       toIconOptGetter(context, this.optIcon),
@@ -54,16 +54,16 @@ class TabGetter(
   progress: Ui.GetterOne<?Int, Bool>,
   disabled: Ui.GetterOne<?Bool, Bool>,
   closable: Ui.GetterOne<?Bool, Bool>,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ TabGetter _ -> x
     | _ -> invariant_violation("Must be UiEngine.TabGetter")
     }
   }
 
-  fun toTab(context: mutable SKFS.Context): UiTabPane.Tab {
+  fun toTab(context: mutable SKStore.Context): UiTabPane.Tab {
     UiTabPane.Tab{
       optText => this.text(context, false),
       optDiscriminant => this.discriminant(context, false),
@@ -80,16 +80,16 @@ class Action{
   optTooltip: ?Serializable = None(),
   optDisabled: ?Serializable = None(),
   optAction: ?Serializable = None(),
-} extends SKFS.File {
+} extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Action _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Action", obj)
+    | _ -> SKStore.cast_violation("UiEngine.Action", obj)
     }
   }
 
-  fun toGetters(context: mutable SKFS.Context): ActionGetter {
+  fun toGetters(context: mutable SKStore.Context): ActionGetter {
     ActionGetter(
       this.id,
       toIconOptGetter(context, this.optIcon),
@@ -106,16 +106,16 @@ class ActionGetter(
   tooltip: Ui.GetterOne<?Text, Bool>,
   disabled: Ui.GetterOne<?Bool, Bool>,
   optAction: ?Function,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ ActionGetter _ -> x
     | _ -> invariant_violation("Must be UiEngine.ActionGetter")
     }
   }
 
-  fun toAction(context: mutable SKFS.Context): UiTabs.Action {
+  fun toAction(context: mutable SKStore.Context): UiTabs.Action {
     optAction = this.optAction.map(f ~> H.Performer(f));
     UiTabs.Action(
       this.id,
@@ -155,10 +155,10 @@ class Tabs{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#in#${static::identifier}#${name}`);
     tabsNeeded = isPropertyNeeded(this.optTabs);
@@ -170,9 +170,9 @@ class Tabs{
         context,
         Some(ppsPath),
         Array[
-          (SKFS.StrID("tabs"), if (tabsNeeded) this.optTabs else None()),
+          (SKStore.StrID("tabs"), if (tabsNeeded) this.optTabs else None()),
           (
-            SKFS.StrID("actions"),
+            SKStore.StrID("actions"),
             if (actionsNeeded) this.optActions else None(),
           ),
         ],
@@ -184,11 +184,7 @@ class Tabs{
       toSerializableProperty(context, this.optTabs)
     };
     verifiedTabsHdl = tabsProperty.valueHdl.mapChild(
-      file ~>
-        file match {
-        | x @ SArray _ -> x
-        | _ -> invariant_violation("Must be UiEngine.SArray")
-        },
+      SArray::type,
       context,
       "verifiedTabs/",
       sf ~> {
@@ -197,7 +193,7 @@ class Tabs{
           | Tab _ -> true
           | _ -> false
           };
-        sf match {
+        sf.value match {
         | arr @ SArray _ -> SArray(arr.value.filter(isTab))
         | s if (isTab(s)) -> SArray(Array[s])
         | _ -> SArray(Array[])
@@ -205,47 +201,50 @@ class Tabs{
       },
     );
     tabsIdsHdl = verifiedTabsHdl.mapChild(
-      SKFS.Strings::fromFile,
+      SKStore.Strings::type,
       context,
       "tabsIds/",
       sa ~> {
         ids = sa.value.map(Tab::fromSerializable).map(t -> t.id);
-        SKFS.Strings(ids)
+        SKStore.Strings(ids)
       },
     );
     splitedTabsHdl = verifiedTabsHdl.mapWriterChild(
-      Tab::fromFile,
+      Tab::type,
       context,
       "splitted/",
       (writer, sa) ~>
         sa.value.each(var -> {
           tab = Tab::fromSerializable(var);
-          writer.write(SKFS.StrID(tab.id), tab)
+          writer.set(SKStore.StrID(tab.id), tab)
         })
       ,
     );
     refDir = splitedTabsHdl.getDirName();
-    tabsWidgetsHdl = splitedTabsHdl.contextWriterKeyMap(
-      WidgetHandle::fromFile,
+    tabsWidgetsHdl = splitedTabsHdl.map(
+      SKStore.StrID::keyType,
+      WidgetHandle::type,
       context,
-      SKFS.DirName::make(refDir, "widgets/"),
-      (context, writer, key, tab) ~> {
-        property = toSerializableProperty(context, tab.optWidget);
+      SKStore.DirName::make(refDir, "widgets/"),
+      (context, writer, key, it) ~> {
+        property = toSerializableProperty(context, it.first.optWidget);
         hdl = WidgetHandle(widgetPipeline(context, property, root, prebuilt));
-        writer.write(key, hdl);
+        writer.set(key, hdl);
       },
     );
-    tabGettersHdl = splitedTabsHdl.contextMap(
-      TabGetter::fromFile,
+    tabGettersHdl = splitedTabsHdl.map(
+      SKStore.StrID::keyType,
+      TabGetter::type,
       context,
-      SKFS.DirName::make(refDir, "getters/"),
-      (ctx, tab) ~> tab.toGetters(ctx),
+      SKStore.DirName::make(refDir, "getters/"),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toGetters(ctx)),
     );
-    uiTabsHdl = tabGettersHdl.contextMap(
-      UiTabPane.Tab::fromFile,
+    uiTabsHdl = tabGettersHdl.map(
+      SKStore.StrID::keyType,
+      UiTabPane.Tab::type,
       context,
-      SKFS.DirName::make(refDir, "uitabs/"),
-      (ctx, g) ~> g.toTab(ctx),
+      SKStore.DirName::make(refDir, "uitabs/"),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toTab(ctx)),
     );
     actionsProperty = if (actionsNeeded) {
       UiSerializableProp.Property::forName(context, Some(ppsPath), "actions")
@@ -253,11 +252,7 @@ class Tabs{
       toSerializableProperty(context, this.optActions)
     };
     verifiedActionsHdl = actionsProperty.valueHdl.mapChild(
-      file ~>
-        file match {
-        | x @ SArray _ -> x
-        | _ -> invariant_violation("Must be UiEngine.SArray")
-        },
+      SArray::type,
       context,
       "verifiedActions/",
       sf ~> {
@@ -266,7 +261,7 @@ class Tabs{
           | Action _ -> true
           | _ -> false
           };
-        sf match {
+        sf.value match {
         | arr @ SArray _ -> SArray(arr.value.filter(isAction))
         | s if (isAction(s)) -> SArray(Array[s])
         | _ -> SArray(Array[])
@@ -274,33 +269,37 @@ class Tabs{
       },
     );
     actionsIdsHdl = verifiedActionsHdl.mapChild(
-      SKFS.Strings::fromFile,
+      SKStore.Strings::type,
       context,
       "actionsIds/",
-      sa ~> SKFS.Strings(sa.value.map(Action::fromSerializable).map(t -> t.id)),
+      sa ~>
+        SKStore.Strings(sa.value.map(Action::fromSerializable).map(t -> t.id))
+      ,
     );
     splitedActionsHdl = verifiedActionsHdl.mapWriterChild(
-      Action::fromFile,
+      Action::type,
       context,
       "splitted/",
       (writer, vars) ~>
         vars.value.each(var -> {
           action = Action::fromSerializable(var);
-          writer.write(SKFS.StrID(action.id), action)
+          writer.set(SKStore.StrID(action.id), action)
         })
       ,
     );
-    actionGettersHdl = splitedActionsHdl.contextMap(
-      ActionGetter::fromFile,
+    actionGettersHdl = splitedActionsHdl.map(
+      SKStore.StrID::keyType,
+      ActionGetter::type,
       context,
-      SKFS.DirName::make(splitedActionsHdl.getDirName(), "getters/"),
-      (ctx, action) ~> action.toGetters(ctx),
+      SKStore.DirName::make(splitedActionsHdl.getDirName(), "getters/"),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toGetters(ctx)),
     );
-    uiActionsHdl = actionGettersHdl.contextMap(
-      UiTabs.Action::fromFile,
+    uiActionsHdl = actionGettersHdl.map(
+      SKStore.StrID::keyType,
+      UiTabs.Action::type,
       context,
-      SKFS.DirName::make(refDir, "uiactions/"),
-      (ctx, g) ~> g.toAction(ctx),
+      SKStore.DirName::make(refDir, "uiactions/"),
+      (ctx, writer, key, it) ~> writer.set(key, it.first.toAction(ctx)),
     );
     kindGetter = toIntOptGetter(context, this.optKind);
     modeGetter = toIntOptGetter(context, this.optMode);
@@ -320,10 +319,10 @@ class Tabs{
         active => ctx ~> active(ctx, false),
         tabs => ctx ~>
           tabsIdsHdl.maybeGet(ctx).map(v -> v.value).default(Array[]),
-        tab => (ctx, tab) ~> uiTabsHdl.get(ctx, SKFS.StrID(tab)),
+        tab => (ctx, tab) ~> uiTabsHdl.get(ctx, SKStore.StrID(tab)),
         actions => ctx ~>
           actionsIdsHdl.maybeGet(ctx).map(v -> v.value).default(Array[]),
-        action => (ctx, action) ~> uiActionsHdl.get(ctx, SKFS.StrID(action)),
+        action => (ctx, action) ~> uiActionsHdl.get(ctx, SKStore.StrID(action)),
         mode => ctx ~>
           modeGetter(ctx, false)
             .map(UiTab.Mode::fromCode)
@@ -336,7 +335,7 @@ class Tabs{
           sideGetter(ctx, false).map(.UiSide::fromCode).default(UiSide.Top()),
         disabled => (ctx, tab) ~>
           tabGettersHdl
-            .maybeGet(ctx, SKFS.StrID(tab))
+            .maybeGet(ctx, SKStore.StrID(tab))
             .flatMap(g -> g.disabled(ctx, false))
             .default(false),
         closable => (ctx, tab) ~>
@@ -344,16 +343,16 @@ class Tabs{
           | None() -> false
           | _ ->
             tabGettersHdl
-              .maybeGet(ctx, SKFS.StrID(tab))
+              .maybeGet(ctx, SKStore.StrID(tab))
               .flatMap(g -> g.closable(ctx, false))
               .default(false)
           },
         progress => (ctx, tab) ~>
-          tabGettersHdl.maybeGet(ctx, SKFS.StrID(tab)).flatMap(g ->
+          tabGettersHdl.maybeGet(ctx, SKStore.StrID(tab)).flatMap(g ->
             g.progress(ctx, false).map(Ui.Progress::fromInt)
           ),
         badge => (ctx, tab) ~>
-          tabGettersHdl.maybeGet(ctx, SKFS.StrID(tab)).flatMap(g ->
+          tabGettersHdl.maybeGet(ctx, SKStore.StrID(tab)).flatMap(g ->
             g.badge(ctx, false).map(bt -> Ui.Badge(bt))
           ),
         placeHolder => ctx ~>
@@ -363,7 +362,7 @@ class Tabs{
         maxWidth => ctx ~> maxWidthGetter(ctx, false),
         widget => (ctx, tab) ~>
           tabsWidgetsHdl
-            .maybeGet(ctx, SKFS.StrID(tab))
+            .maybeGet(ctx, SKStore.StrID(tab))
             .flatMap(hdl -> hdl.hdl.maybeGet(ctx))
             .map(wf -> wf.widget),
         onClose_ => (ctx, tabs) ~>

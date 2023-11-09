@@ -26,7 +26,7 @@ class FocusHandler{
   }
 
   fun isGotoNext(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -38,7 +38,7 @@ class FocusHandler{
   }
 
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -50,7 +50,7 @@ class FocusHandler{
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): Bool {
@@ -61,7 +61,7 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     if (!this.button.controller.isDisabled(context)) {
       shortcuts = mutable Vector<FWK.ShortcutAction>[];

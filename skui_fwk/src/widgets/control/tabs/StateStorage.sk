@@ -1,63 +1,63 @@
 module UiTabs;
 
 const statePath: String = "ui/tabs/state";
-const numberOfPinnedProp: SKFS.StrID = SKFS.StrID("numberOfPinned");
-const numberOfTabsProp: SKFS.StrID = SKFS.StrID("numberOfTabs");
+const numberOfPinnedProp: SKStore.StrID = SKStore.StrID("numberOfPinned");
+const numberOfTabsProp: SKStore.StrID = SKStore.StrID("numberOfTabs");
 
-class TabsKey() extends SKFS.BaseName {
+class TabsKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class HistoryKey() extends SKFS.BaseName {
+class HistoryKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class ModifiedKey() extends SKFS.BaseName {
+class ModifiedKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-class PinnedKey() extends SKFS.BaseName {
+class PinnedKey() extends SKStore.Key {
   fun toString(): String {
     this.getClassName()
   }
 }
 
-fun pinnedProp(tab: String): SKFS.StrID {
-  SKFS.StrID(`pinned[${tab}]`)
+fun pinnedProp(tab: String): SKStore.StrID {
+  SKStore.StrID(`pinned[${tab}]`)
 }
 
-fun pinnedIndexProp(idx: Int): SKFS.StrID {
-  SKFS.StrID(`pinned[${idx}]`)
+fun pinnedIndexProp(idx: Int): SKStore.StrID {
+  SKStore.StrID(`pinned[${idx}]`)
 }
 
-fun tabIndexProp(idx: Int): SKFS.StrID {
-  SKFS.StrID(`tab[${idx}]`)
+fun tabIndexProp(idx: Int): SKStore.StrID {
+  SKStore.StrID(`tab[${idx}]`)
 }
 
-fun activeProp(tab: String): SKFS.StrID {
-  SKFS.StrID(`active[${tab}]`)
+fun activeProp(tab: String): SKStore.StrID {
+  SKStore.StrID(`active[${tab}]`)
 }
 
-fun selectedProp(tab: String): SKFS.StrID {
-  SKFS.StrID(`selected[${tab}]`)
+fun selectedProp(tab: String): SKStore.StrID {
+  SKStore.StrID(`selected[${tab}]`)
 }
 
-class KIdx(value: String) extends SKFS.BaseName {
+class KIdx(value: String) extends SKStore.Key {
   //
   fun toString(): String {
     this.value
   }
 }
 
-class Indexed(idx: Int, value: String) extends SKFS.File uses Orderable {
+class Indexed(idx: Int, value: String) extends SKStore.File uses Orderable {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Indexed _ -> x
     | _ -> invariant_violation("Must be UiTabs.Indexed")
@@ -66,41 +66,41 @@ class Indexed(idx: Int, value: String) extends SKFS.File uses Orderable {
 }
 
 class HState(
-  handle: SKFS.IHandle<SKFS.File>,
-  computed: SKFS.Handle<SKFS.File>,
-  verified: SKFS.Handle<SKFS.File>,
-  closableInfos: SKFS.Handle<ClosableInfo>,
+  handle: SKStore.INotTyped,
+  computed: SKStore.NotTyped,
+  verified: SKStore.NotTyped,
+  closableInfos: SKStore.Handle<SKStore.Key, ClosableInfo>,
 ) extends State {
   //
-  fun getNumberOfPinned(context: mutable SKFS.Context): Int {
+  fun getNumberOfPinned(context: mutable SKStore.Context): Int {
     this.computed.getInt(context, numberOfPinnedProp)
   }
 
-  fun getActive(context: mutable SKFS.Context): ?String {
+  fun getActive(context: mutable SKStore.Context): ?String {
     this.verified.maybeGetString(context, Ui.activeProp)
   }
 
-  fun getPinned(context: mutable SKFS.Context, index: Int): Identified {
+  fun getPinned(context: mutable SKStore.Context, index: Int): Identified {
     this.computed.maybeGetProp(
       context,
       pinnedIndexProp(index),
-      Identified::fromFile,
+      Identified::type,
     ).fromSome()
   }
 
-  fun getNumberOfTabs(context: mutable SKFS.Context): Int {
+  fun getNumberOfTabs(context: mutable SKStore.Context): Int {
     this.computed.getInt(context, numberOfTabsProp)
   }
 
-  fun getTab(context: mutable SKFS.Context, index: Int): Identified {
+  fun getTab(context: mutable SKStore.Context, index: Int): Identified {
     this.computed.maybeGetProp(
       context,
       tabIndexProp(index),
-      Identified::fromFile,
+      Identified::type,
     ).fromSome()
   }
 
-  fun pin(context: mutable SKFS.Context, tab: String, value: Bool): void {
+  fun pin(context: mutable SKStore.Context, tab: String, value: Bool): void {
     this.handle.write(
       context,
       Ui.todoProp,
@@ -108,26 +108,28 @@ class HState(
     );
   }
 
-  fun select(context: mutable SKFS.Context, optTab: ?String): void {
+  fun select(context: mutable SKStore.Context, optTab: ?String): void {
     this.handle.writeOrRemove(
       context,
       Ui.selectedProp,
-      optTab.map(v -> SKFS.StringFile(v)),
+      optTab.map(v -> SKStore.StringFile(v)),
     )
   }
 
   fun getClosableInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optTab: ?String,
   ): ClosableInfo {
     this.closableInfos.get(
       context,
-      optTab.map(tab -> SKFS.StrID(tab)).default(SKFS.IID(0)),
+      optTab
+        .map(tab -> SKStore.Key::unTyped(SKStore.StrID(tab)))
+        .default(SKStore.IID(0)),
     )
   }
 
   fun move(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     toMove: String,
     dstTab: String,
     before: Bool,
@@ -137,49 +139,49 @@ class HState(
 }
 
 fun init(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   controller: Controller,
 ): Parameters {
   source = context.timeStamp().value;
   dirName = Ui.controllerDirName(path);
   initHdl = context.makeDir(
-    SKFS.IntFile::fromFile,
-    SKFS.DirName::make(dirName, "init/"),
-    Array[(SKFS.IID(0), SKFS.IntFile(0))],
+    SKStore.IID::keyType,
+    SKStore.IntFile::type,
+    SKStore.DirName::make(dirName, "init/"),
+    Array[(SKStore.IID(0), SKStore.IntFile(0))],
   );
-  stateHdl = context.makeDir(
-    f ~> f,
+  stateHdl = context.makeNotTyped(
     dirName,
-    Array<(SKFS.BaseName, SKFS.File)>[
+    Array<(SKStore.Key, SKStore.File)>[
       (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
     ],
   );
-  storage = SKFS.toIHandle(stateHdl);
-  managedDirName = SKFS.DirName::make(dirName, "managed/");
-  preManagedHdl = context.makePreDir(
-    f ~> f,
+  storage = SKStore.toIHandle(stateHdl);
+  managedDirName = SKStore.DirName::make(dirName, "managed/");
+  preManagedHdl = context.makeNotTypedPre(
     managedDirName,
-    Array<(SKFS.BaseName, SKFS.File)>[
-      (TabsKey(), SKFS.Strings(Array[])),
-      (HistoryKey(), SKFS.Strings(Array[])),
-      (ModifiedKey(), SKFS.IntFile(0)),
-      (PinnedKey(), SKFS.StringSet(Set[])),
+    Array<(SKStore.Key, SKStore.File)>[
+      (TabsKey(), SKStore.Strings(Array[])),
+      (HistoryKey(), SKStore.Strings(Array[])),
+      (ModifiedKey(), SKStore.IntFile(0)),
+      (PinnedKey(), SKStore.StringSet(Set[])),
     ],
   );
   initKeys = Array[Ui.activeProp, TabsKey(), HistoryKey(), PinnedKey()];
-  verifiedHdl = initHdl.contextWriterKeyMap(
+  verifiedHdl = initHdl.map(
+    k ~> k,
     f ~> f,
     context,
-    SKFS.DirName::make(dirName, "verified/"),
-    (context, writer, _key, _file) ~> {
-      writer.write(SKFS.KKeys(), SKFS.Keys(initKeys));
-      previousTabs = SKFS.Strings::fromFile(
+    SKStore.DirName::make(dirName, "verified/"),
+    (context, writer, _key, _it) ~> {
+      writer.set(SKStore.KKeys(), SKStore.Keys(initKeys));
+      previousTabs = SKStore.Strings::type(
         preManagedHdl.getValue(context, TabsKey()),
       ).value;
       previousOptActive = preManagedHdl
         .maybeGetValue(context, Ui.activeProp, true)
-        .map(f ~> SKFS.StringFile::fromFile(f).value);
+        .map(f ~> SKStore.StringFile::type(f).value);
       pinned = preManagedHdl.getValue(context, PinnedKey());
       tabs = controller.getTabs(context);
       aSet = Set::createFromItems(previousTabs);
@@ -204,7 +206,7 @@ fun init(
           !optPrevious = Some(tab);
         }
       );
-      history = SKFS.Strings::fromFile(
+      history = SKStore.Strings::type(
         preManagedHdl.getValue(context, HistoryKey(), true),
       ).value;
       if (previousTabs.size() != tabs.size() || optFirstAdded.isSome()) {
@@ -216,7 +218,7 @@ fun init(
             added.maybeGet(Some(tab)).each(v -> v.each(newTabs.push));
           }
         });
-        writer.write(TabsKey(), SKFS.Strings(newTabs.toArray()));
+        writer.set(TabsKey(), SKStore.Strings(newTabs.toArray()));
         optActive = optFirstAdded match {
         | Some(firstAdded) -> Some(firstAdded)
         | _ ->
@@ -238,26 +240,27 @@ fun init(
           if (optActive != previousOptActive) {
             !history = Arrays.add(history.filter(f -> f != active), active)
           };
-          writer.write(Ui.activeProp, SKFS.StringFile(active));
+          writer.set(Ui.activeProp, SKStore.StringFile(active));
         });
       } else {
-        writer.write(TabsKey(), SKFS.Strings(previousTabs));
+        writer.set(TabsKey(), SKStore.Strings(previousTabs));
         previousOptActive.each(active ->
-          writer.write(Ui.activeProp, SKFS.StringFile(active))
+          writer.set(Ui.activeProp, SKStore.StringFile(active))
         );
       };
-      writer.write(HistoryKey(), SKFS.Strings(history));
-      writer.write(ModifiedKey(), SKFS.IntFile(context.tick.value));
-      writer.write(PinnedKey(), pinned);
+      writer.set(HistoryKey(), SKStore.Strings(history));
+      writer.set(ModifiedKey(), SKStore.IntFile(context.tick.value));
+      writer.set(PinnedKey(), pinned);
     },
   );
-  toReallyDoHdl = stateHdl.contextWriterKeyMap(
-    Ui.Todo::fromFile,
+  toReallyDoHdl = stateHdl.map(
+    k ~> k,
+    Ui.Todo::type,
     context,
-    SKFS.DirName::make(dirName, "todo/"),
-    (context, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "todo/"),
+    (context, writer, key, it) ~> {
       if (key == Ui.todoProp) {
-        todo = Ui.Todo::fromFile(file);
+        todo = Ui.Todo::type(it.first);
         controller
           .getActive(context)
           .map(av -> av.getTimed(context))
@@ -266,18 +269,18 @@ fun init(
               !todo = Ui.Todo(ManageActive(info.i0.toString()), info.i1)
             }
           );
-        modification = SKFS.IntFile::fromFile(
+        modification = SKStore.IntFile::type(
           verifiedHdl.get(context, ModifiedKey()),
         );
         if (modification.value > todo.tick.value) {
-          writer.write(key, Ui.Todo(Ui.Init(), context.tick))
+          writer.set(key, Ui.Todo(Ui.Init(), context.tick))
         } else {
-          writer.write(key, file)
+          writer.set(key, todo)
         }
       }
     },
   );
-  managedHdl = SKFS.derive(
+  managedHdl = SKStore.derive(
     context,
     dirName.toString(),
     managedDirName,
@@ -288,105 +291,112 @@ fun init(
     None(),
     Some(verifiedHdl),
   );
-  pinnedHdl = managedHdl.contextWriterKeyMap(
-    f ~> f,
+  pinnedHdl = managedHdl.map(
+    SKStore.StrID::keyType,
+    SKStore.BoolFile::type,
     context,
-    SKFS.DirName::make(dirName, "pinned/"),
-    (context, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "pinned/"),
+    (context, writer, key, it) ~> {
       if (key == PinnedKey()) {
-        tabs = SKFS.Strings::fromFile(
+        tabs = SKStore.Strings::type(
           managedHdl.getValue(context, TabsKey(), true),
         ).value;
-        pinned = SKFS.StringSet::fromFile(file).value;
+        pinned = SKStore.StringSet::type(it.first).value;
         tabs.each(tab ->
-          writer.write(pinnedProp(tab), SKFS.BoolFile(pinned.contains(tab)))
+          writer.set(pinnedProp(tab), SKStore.BoolFile(pinned.contains(tab)))
         )
       }
     },
   );
-  activeHdl = managedHdl.contextWriterKeyMap(
-    f ~> f,
+  activeHdl = managedHdl.map(
+    SKStore.StrID::keyType,
+    SKStore.BoolFile::type,
     context,
-    SKFS.DirName::make(dirName, "active/"),
-    (_, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "active/"),
+    (_, writer, key, it) ~> {
       if (key == Ui.activeProp) {
-        writer.write(
-          activeProp(SKFS.StringFile::fromFile(file).value),
-          SKFS.BoolFile(true),
+        writer.set(
+          activeProp(SKStore.StringFile::type(it.first).value),
+          SKStore.BoolFile(true),
         );
       }
     },
   );
-  separatedHdl = stateHdl.contextWriterKeyMap(
-    f ~> f,
+  separatedHdl = stateHdl.map(
+    SKStore.StrID::keyType,
+    SKStore.BoolFile::type,
     context,
-    SKFS.DirName::make(dirName, "separated/"),
-    (_, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "separated/"),
+    (_, writer, key, it) ~> {
       if (key == Ui.selectedProp) {
-        writer.write(
-          selectedProp(SKFS.StringFile::fromFile(file).value),
-          SKFS.BoolFile(true),
+        writer.set(
+          selectedProp(SKStore.StringFile::type(it.first).value),
+          SKStore.BoolFile(true),
         );
       } else if (key == Ui.activeProp) {
-        writer.write(
-          activeProp(SKFS.StringFile::fromFile(file).value),
-          SKFS.BoolFile(true),
+        writer.set(
+          activeProp(SKStore.StringFile::type(it.first).value),
+          SKStore.BoolFile(true),
         );
       }
     },
   );
-  tabsHdl = initHdl.contextWriterKeyMap(
-    SKFS.StringFile::fromFile,
+  tabsHdl = initHdl.map(
+    SKStore.IID::keyType,
+    SKStore.StringFile::type,
     context,
-    SKFS.DirName::make(dirName, "tabs/"),
+    SKStore.DirName::make(dirName, "tabs/"),
     (context, writer, _key, _file) ~> {
       tabs = verifiedHdl.getProp(
         context,
         TabsKey(),
-        SKFS.Strings::fromFile,
-        SKFS.Strings(Array[]),
+        SKStore.Strings::type,
+        SKStore.Strings(Array[]),
       ).value;
       for (idx in Range(0, tabs.size())) {
-        writer.write(SKFS.IID(idx), SKFS.StringFile(tabs[idx]))
+        writer.set(SKStore.IID(idx), SKStore.StringFile(tabs[idx]))
       }
     },
   );
   isActive = (ctx, tab) ~> activeHdl.getBool(ctx, activeProp(tab));
   isSelected = (ctx, tab) ~> separatedHdl.getBool(ctx, selectedProp(tab));
   isPinned = (ctx, tab) ~> pinnedHdl.getBool(ctx, pinnedProp(tab));
-  extractedPath = SKFS.DirName::make(dirName, "extracted/");
-  extractedHdl = tabsHdl.contextWriterKeyMap(
+  extractedPath = SKStore.DirName::make(dirName, "extracted/");
+  extractedHdl = tabsHdl.map(
+    k ~> k,
     f ~> f,
     context,
     extractedPath,
-    (context, writer, key, file) ~> {
+    (context, writer, key, it) ~> {
+      file = it.first;
       tab = controller.getTab(context, file.value);
-      writer.write(SKFS.StrID(file.value), tab);
-      writer.write(KIdx(file.value), SKFS.IntFile((key as SKFS.IID _).value));
+      writer.set(SKStore.StrID(file.value), tab);
+      writer.set(KIdx(file.value), SKStore.IntFile(key.value));
     },
   );
-  closableInfosHdl = managedHdl.contextWriterKeyMap(
-    ClosableInfo::fromFile,
+  closableInfosHdl = managedHdl.map(
+    k ~> k,
+    ClosableInfo::type,
     context,
-    SKFS.DirName::make(dirName, "closableInfo/"),
-    (context, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "closableInfo/"),
+    (context, writer, key, it) ~> {
       if (key == TabsKey()) {
-        tabs = SKFS.Strings::fromFile(file).value;
+        tabs = SKStore.Strings::type(it.first).value;
         withInfo = tabs.map(tab -> {
-          tabObj = Tab::fromFile(extractedHdl.get(context, SKFS.StrID(tab)));
+          tabObj = Tab::type(extractedHdl.get(context, SKStore.StrID(tab)));
           (tab, tabObj.closable(context));
         });
         collect = table ~> table.filter(i ~> i.i1).map(i ~> i.i0);
         closables = collect(withInfo);
-        writer.write(SKFS.IID(0), ClosableInfo(closables, Array[], Array[]));
+        writer.set(SKStore.IID(0), ClosableInfo(closables, Array[], Array[]));
         // Could be to heavy
         vector = Vector::mcreateFromItems(withInfo);
         left = mutable Vector<String>[];
         while (!vector.isEmpty()) {
           last = vector.get(0);
           vector.delete(0);
-          writer.write(
-            SKFS.StrID(last.i0),
+          writer.set(
+            SKStore.StrID(last.i0),
             ClosableInfo(closables, left.toArray(), collect(vector.toArray())),
           );
           if (last.i1) {
@@ -397,44 +407,49 @@ fun init(
     },
   );
   withDiscriminantHdl = extractedHdl
-    .contextWriterKeyMap(
-      SKFS.StringFile::fromFile,
+    .map(
+      SKStore.StrID::keyType,
+      SKStore.StringFile::type,
       context,
-      SKFS.DirName::make(dirName, "texts/"),
-      (context, writer, key, file) ~> {
+      SKStore.DirName::make(dirName, "texts/"),
+      (context, writer, key, it) ~> {
         key match {
-        | SKFS.StrID(id) ->
-          tab = Tab::fromFile(file);
+        | SKStore.StrID(id) ->
+          tab = Tab::type(it.first);
           optDiscriminant = tab.discriminant(context);
           if (optDiscriminant.isSome()) {
             tab.text(context).each(txt -> {
-              str = SKFS.StrID(context.translate(txt));
-              writer.write(str, SKFS.StringFile(id))
+              str = SKStore.StrID(context.translate(txt));
+              writer.set(str, SKStore.StringFile(id))
             })
           }
         | _ -> void
         }
       },
     )
-    .contextWriterKeyValues(
-      SKFS.BoolFile::fromFile,
+    .map(
+      SKStore.StrID::keyType,
+      SKStore.BoolFile::type,
       context,
-      SKFS.DirName::make(dirName, "withDiscriminant/"),
-      (_, writer, _key, files) ~> {
-        withDiscriminant = SKFS.BoolFile(files.size() > 1);
-        files.each(sf -> writer.write(SKFS.StrID(sf.value), withDiscriminant))
+      SKStore.DirName::make(dirName, "withDiscriminant/"),
+      (_, writer, _key, it) ~> {
+        count = 0;
+        it.each(_ -> !count = count + 1);
+        withDiscriminant = SKStore.BoolFile(count > 1);
+        it.each(sf -> writer.set(SKStore.StrID(sf.value), withDiscriminant))
       },
     );
-  controllersHdl = extractedHdl.contextWriterKeyMap(
-    Identified::fromFile,
+  controllersHdl = extractedHdl.map(
+    SKStore.StrID::keyType,
+    Identified::type,
     context,
-    SKFS.DirName::make(dirName, "controllers/"),
-    (_, writer, key, file) ~> {
+    SKStore.DirName::make(dirName, "controllers/"),
+    (_, writer, key, it) ~> {
       key match {
-      | SKFS.StrID(id) ->
-        tab = Tab::fromFile(file);
-        writer.write(
-          key,
+      | sid @ SKStore.StrID(id) ->
+        tab = Tab::type(it.first);
+        writer.set(
+          sid,
           Identified(
             id,
             UiTab.LamController{
@@ -445,7 +460,7 @@ fun init(
               discriminant => ctx ~> {
                 if (
                   withDiscriminantHdl
-                    .maybeGet(ctx, key)
+                    .maybeGet(ctx, sid)
                     .map(f ~> f.value)
                     .default(false)
                 ) {
@@ -480,48 +495,50 @@ fun init(
       }
     },
   );
-  splittedHdl = extractedHdl.contextWriterKeyMap(
-    Indexed::fromFile,
+  splittedHdl = extractedHdl.map(
+    SKStore.IID::keyType,
+    Indexed::type,
     context,
-    SKFS.DirName::make(dirName, "splitted/"),
+    SKStore.DirName::make(dirName, "splitted/"),
     (context, writer, key, _) ~> {
       key match {
-      | id @ SKFS.StrID _ ->
+      | id @ SKStore.StrID _ ->
         tab = id.value;
-        index = SKFS.IntFile::fromFile(
+        index = SKStore.IntFile::type(
           extractedHdl.get(context, KIdx(tab)),
         ).value;
         if (isPinned(context, key.toString())) {
-          writer.write(SKFS.IID(0), Indexed(index, tab));
+          writer.set(SKStore.IID(0), Indexed(index, tab));
         } else {
-          writer.write(SKFS.IID(1), Indexed(index, tab));
+          writer.set(SKStore.IID(1), Indexed(index, tab));
         }
       | _ -> void
       }
     },
   );
-  computedHdl = splittedHdl.contextWriterKeyValues(
+  computedHdl = splittedHdl.map(
+    k ~> k,
     f ~> f,
     context,
-    SKFS.DirName::make(dirName, "computed/"),
-    (context, writer, key, files) ~> {
-      sorted = files.sorted();
-      if (key == SKFS.IID(0)) {
+    SKStore.DirName::make(dirName, "computed/"),
+    (context, writer, key, it) ~> {
+      sorted = it.collect(Array).sorted();
+      if (key == SKStore.IID(0)) {
         sorted.eachWithIndex((idx, v) -> {
-          writer.write(
+          writer.set(
             pinnedIndexProp(idx),
-            controllersHdl.get(context, SKFS.StrID(v.value)),
+            controllersHdl.get(context, SKStore.StrID(v.value)),
           )
         });
-        writer.write(numberOfPinnedProp, SKFS.IntFile(sorted.size()))
-      } else if (key == SKFS.IID(1)) {
+        writer.set(numberOfPinnedProp, SKStore.IntFile(sorted.size()))
+      } else if (key == SKStore.IID(1)) {
         sorted.eachWithIndex((idx, v) -> {
-          writer.write(
+          writer.set(
             tabIndexProp(idx),
-            controllersHdl.get(context, SKFS.StrID(v.value)),
+            controllersHdl.get(context, SKStore.StrID(v.value)),
           )
         });
-        writer.write(numberOfTabsProp, SKFS.IntFile(sorted.size()))
+        writer.set(numberOfTabsProp, SKStore.IntFile(sorted.size()))
       }
     },
   );
@@ -533,20 +550,20 @@ fun init(
 
 @debug
 fun update(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   _scope: String,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   todo: Ui.Todo,
-  _optUserData: ?SKFS.UserData,
+  _optUserData: ?SKStore.UserData,
 ): void {
   execute(context, todo.command, values);
 }
 
 @debug
 fun execute(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   executable: Ui.Executable,
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
 ): void {
   executable match {
   | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
@@ -554,26 +571,26 @@ fun execute(
   | ManageActive(tab) ->
     previousTabs = values
       .get(TabsKey())
-      .map(SKFS.Strings::fromFile)
+      .map(SKStore.Strings::type)
       .fromSome().value;
     previousOptActive = values.get(Ui.activeProp).map(f ~>
-      SKFS.StringFile::fromFile(f).value
+      SKStore.StringFile::type(f).value
     );
     if (previousTabs.indexOf(tab).isSome()) {
       history = values
         .get(HistoryKey())
-        .map(SKFS.Strings::fromFile)
+        .map(SKStore.Strings::type)
         .fromSome().value;
       if (Some(tab) != previousOptActive) {
         !history = Arrays.add(history.filter(f -> f != tab), tab)
       };
-      values.set(Ui.activeProp, Some(SKFS.StringFile(tab)));
-      values.set(HistoryKey(), Some(SKFS.Strings(history)));
+      values.set(Ui.activeProp, Some(SKStore.StringFile(tab)));
+      values.set(HistoryKey(), Some(SKStore.Strings(history)));
     }
   | ManageMove(toMove, dstTab, before) ->
     previousTabs = values
       .get(TabsKey())
-      .map(SKFS.Strings::fromFile)
+      .map(SKStore.Strings::type)
       .fromSome().value;
     previousTabs.indexOf(toMove).each(_ -> {
       tabs = previousTabs.filter(v -> v != toMove);
@@ -581,14 +598,14 @@ fun execute(
         values.set(
           TabsKey(),
           Some(
-            SKFS.Strings(
+            SKStore.Strings(
               Arrays.insert(tabs, if (before) dIdx else dIdx + 1, toMove),
             ),
           ),
         );
         previous = values
           .get(PinnedKey())
-          .map(SKFS.StringSet::fromFile)
+          .map(SKStore.StringSet::type)
           .fromSome().value;
         pinned = previous.contains(dstTab);
         set = if (pinned) {
@@ -596,21 +613,21 @@ fun execute(
         } else {
           Sets.remove(previous, toMove)
         };
-        values.set(PinnedKey(), Some(SKFS.StringSet(set)))
+        values.set(PinnedKey(), Some(SKStore.StringSet(set)))
       });
     })
   | ManagePinned(tab, pinned) ->
     previous = values
       .get(PinnedKey())
-      .map(SKFS.StringSet::fromFile)
+      .map(SKStore.StringSet::type)
       .fromSome().value;
     set = if (pinned) {
       Sets.insert(previous, tab)
     } else {
       Sets.remove(previous, tab)
     };
-    values.set(PinnedKey(), Some(SKFS.StringSet(set)))
-  | _ -> SKFS.cast_violation("UiTabs.Executable", executable)
+    values.set(PinnedKey(), Some(SKStore.StringSet(set)))
+  | _ -> SKStore.cast_violation("UiTabs.Executable", executable)
   }
 }
 

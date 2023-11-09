@@ -1,35 +1,35 @@
 module UiDialog;
 
-base class Builder extends SKFS.File {
+base class Builder extends SKStore.File {
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     id: Int,
-    close: mutable SKFS.Context ~> void,
+    close: mutable SKStore.Context ~> void,
   ): Ui.Dialog;
 
-  static fun forFile(file: SKFS.File): Builder {
+  static fun btype(file: SKStore.File): Builder {
     file match {
     | x @ Builder _ -> x
-    | _ -> SKFS.cast_violation("UiDialog.Builder file.", file)
+    | _ -> SKStore.cast_violation("UiDialog.Builder file.", file)
     }
   }
 }
 
 class DummyBuilder() extends Builder {
   fun build(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _id: Int,
-    _close: mutable SKFS.Context ~> void,
+    _close: mutable SKStore.Context ~> void,
   ): Ui.Dialog {
     dummy()
   }
 }
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/dialog/widget/")
 }
 
-fun widgetsDirName(path: Ui.Path): SKFS.DirName {
+fun widgetsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/dialog/widgets/")
 }
 
@@ -55,13 +55,13 @@ base class Role {
 class Action(
   id: String,
   text: Text,
-  perform: mutable SKFS.Context ~> void = _ctx ~> void,
+  perform: mutable SKStore.Context ~> void = _ctx ~> void,
   optRole: ?Role = None(),
   disabled: Ui.GetterOne<Bool, Bool> = Ui.defaultOne(false),
 )
 
 class Fireable(
-  perform: mutable SKFS.Context ~> void = _ctx ~> void,
+  perform: mutable SKStore.Context ~> void = _ctx ~> void,
   disabled: Ui.GetterOne<Bool, Bool> = Ui.defaultOne(false),
 )
 
@@ -72,7 +72,7 @@ base class Kind {
   | Stacked(value: Array<Action>)
   | LeftRight(left: Array<Action> = Array[], right: Array<Action> = Array[])
   | Rows(value: Array<Action>)
-  | FullScreen(close: mutable SKFS.Context ~> void, value: Array<Action>)
+  | FullScreen(close: mutable SKStore.Context ~> void, value: Array<Action>)
 
   fun getSubmitExit(): Utils
   | Stacked(value) -> this.extractSubmitExit(value)
@@ -138,32 +138,32 @@ base class Kind {
 }
 
 base class Controller extends Ui.Parameters {
-  fun getTitle(context: mutable SKFS.Context): ?Text;
-  fun getContent(context: mutable SKFS.Context): Ui.Widget;
-  fun getKind(context: mutable SKFS.Context): Kind;
-  fun getMainFocusable(context: mutable SKFS.Context): ?Ui.Path;
+  fun getTitle(context: mutable SKStore.Context): ?Text;
+  fun getContent(context: mutable SKStore.Context): Ui.Widget;
+  fun getKind(context: mutable SKStore.Context): Kind;
+  fun getMainFocusable(context: mutable SKStore.Context): ?Ui.Path;
 }
 
 class LamController{
-  kind: mutable SKFS.Context ~> Kind,
-  content: mutable SKFS.Context ~> Ui.Widget,
-  title: mutable SKFS.Context ~> ?Text = _ctx ~> None(),
-  mainFocusable: mutable SKFS.Context ~> ?Ui.Path,
+  kind: mutable SKStore.Context ~> Kind,
+  content: mutable SKStore.Context ~> Ui.Widget,
+  title: mutable SKStore.Context ~> ?Text = _ctx ~> None(),
+  mainFocusable: mutable SKStore.Context ~> ?Ui.Path,
 } extends Controller {
   //
-  fun getTitle(context: mutable SKFS.Context): ?Text {
+  fun getTitle(context: mutable SKStore.Context): ?Text {
     this.title(context)
   }
 
-  fun getContent(context: mutable SKFS.Context): Ui.Widget {
+  fun getContent(context: mutable SKStore.Context): Ui.Widget {
     this.content(context)
   }
 
-  fun getKind(context: mutable SKFS.Context): Kind {
+  fun getKind(context: mutable SKStore.Context): Kind {
     this.kind(context)
   }
 
-  fun getMainFocusable(context: mutable SKFS.Context): ?Ui.Path {
+  fun getMainFocusable(context: mutable SKStore.Context): ?Ui.Path {
     this.mainFocusable(context)
   }
 }

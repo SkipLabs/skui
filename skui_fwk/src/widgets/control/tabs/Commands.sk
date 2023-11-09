@@ -55,7 +55,7 @@ base class Command extends SKUIMessage.Command {
     | "UiTabs.SetSelected" -> SetSelected(jso.maybeGetString("value"))
     | "UiTabs.ManagePinned" ->
       ManagePinned(jso.getString("tab"), jso.getBool("value"))
-    | _ -> SKFS.cast_violation("UiTab.Command", cl)
+    | _ -> SKStore.cast_violation("UiTab.Command", cl)
     }
   }
 }

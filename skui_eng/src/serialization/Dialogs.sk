@@ -9,7 +9,7 @@ extension class Confirm {
       Map[
         "text" => this.text,
         "action" => UiEngine.SOption(this.optAction),
-        "type" => this.type,
+        "type" => this.type_,
         "title" => UiEngine.SOption(this.optTitle),
       ],
     )
@@ -21,7 +21,7 @@ extension class Confirm {
         .map(Text::fromSerializable)
         .default(!"No text defined."),
       optAction => maybeGet(value, "action").flatMap(optFunction),
-      type => maybeGet(value, "type")
+      type_ => maybeGet(value, "type")
         .map(UiDialogs.QType::fromSerializable)
         .default(UiDialogs.YesNo()),
       optTitle => maybeGet(value, "title").map(Text::fromSerializable),
@@ -31,7 +31,7 @@ extension class Confirm {
   static fun fromSerializable(s: UiEngine.Serializable): Confirm {
     s match {
     | t @ Confirm _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.Confirm", s)
+    | _ -> SKStore.cast_violation("UiEngine.Confirm", s)
     }
   }
 }
@@ -111,7 +111,7 @@ extension class InputDialog {
   static fun fromSerializable(s: UiEngine.Serializable): InputDialog {
     s match {
     | t @ InputDialog _ -> t
-    | _ -> SKFS.cast_violation("UiEngine.InputDialog", s)
+    | _ -> SKStore.cast_violation("UiEngine.InputDialog", s)
     }
   }
 }

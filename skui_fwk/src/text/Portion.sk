@@ -1,13 +1,13 @@
 module Text;
 
-base class Portion extends SKFS.File uses Hashable, Orderable {
+base class Portion extends SKStore.File uses Hashable, Orderable {
   children =
   | Full()
 
-  static fun forFile(obj: SKFS.File): Portion {
+  static fun btype(obj: SKStore.File): Portion {
     obj match {
     | x @ Portion _ -> x
-    | _ -> SKFS.cast_violation("Text.Portion", obj)
+    | _ -> SKStore.cast_violation("Text.Portion", obj)
     }
   }
 

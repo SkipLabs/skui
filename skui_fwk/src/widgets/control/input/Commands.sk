@@ -15,10 +15,10 @@ base class Command extends SKUIMessage.Command {
   | SetShowing(value: Bool)
   | SetMoveSelection(moveSelection: Bool)
   | SetScroll(optScroll: ?Scroll)
-  | CancelScrolling(tick: SKFS.Tick)
+  | CancelScrolling(tick: SKStore.Tick)
   | Reset()
   | SetBlinking(value: Bool)
-  | ToggleHidden(tick: SKFS.Tick)
+  | ToggleHidden(tick: SKStore.Tick)
   | Multiples(commands: Array<Command>)
 }
 
@@ -26,7 +26,7 @@ base class ExecCommand extends Command, Executable {
   children =
   | ManageDiacritic(char: Char)
   | ManageUnicode(optUnicode: ?Int)
-  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | ManageScrolling(value: Int, tick: SKStore.Tick)
   | Copy()
   | Cut()
   | Paste(content: FWKClipboard.Content)

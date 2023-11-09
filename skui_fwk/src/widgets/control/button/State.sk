@@ -2,21 +2,21 @@ module UiButton;
 
 const statePath: String = "ui/button/state";
 
-class HState(handle: SKFS.IHandle<SKFS.File>) extends State {
+class HState(handle: SKStore.IHandle<SKStore.Key, SKStore.File>) extends State {
   //
-  fun isArmed(context: mutable SKFS.Context): Bool {
+  fun isArmed(context: mutable SKStore.Context): Bool {
     this.handle.getBool(context, Ui.armedProp)
   }
 
-  fun emitArmed(context: mutable SKFS.Context, value: Bool): void {
-    this.handle.write(context, Ui.armedProp, SKFS.BoolFile(value))
+  fun emitArmed(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.armedProp, SKStore.BoolFile(value))
   }
 }
 
-fun init(context: mutable SKFS.Context, path: Ui.Path): State {
+fun init(context: mutable SKStore.Context, path: Ui.Path): State {
   dirName = Ui.controllerDirName(path);
-  stateHdl = context.makeDir(f ~> f, dirName, Array[]);
-  HState(SKFS.toIHandle(stateHdl))
+  stateHdl = context.makeNotTyped(dirName, Array[]);
+  HState(SKStore.toIHandle(stateHdl))
 }
 
 module end;

@@ -1,7 +1,7 @@
 module UiMonospace;
 
 mutable class Updater(
-  values: mutable FWK.SMap<SKFS.BaseName, ?SKFS.File>,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
   redo: mutable Vector<Vector<Step>>,
   undo: mutable Vector<Vector<Step>>,
   bracketsChecker: BracketsBuilder,
@@ -11,7 +11,7 @@ mutable class Updater(
   idSupplier: () -> Int,
   pagesCount: (Int, Int),
   optRange: ?Range,
-  saver: (mutable SKFS.Context, String) ~> void,
+  saver: (mutable SKStore.Context, String) ~> void,
   hasStorePolicies: Ui.GetterOne<Bool, StorePolicy>,
 ) {
   //
@@ -69,32 +69,30 @@ mutable class Updater(
   }
 
   readonly fun getUnicode(): ?Int {
-    this.values.get(Ui.unicodeProp).map(SKFS.IntFile::fromFile).map(f ->
-      f.value
-    )
+    this.values.get(Ui.unicodeProp).map(SKStore.IntFile::type).map(f -> f.value)
   }
 
   readonly fun getDiacritic(): ?Char {
-    this.values.get(Ui.diacriticProp).map(SKFS.CharFile::fromFile).map(f ->
+    this.values.get(Ui.diacriticProp).map(SKStore.CharFile::type).map(f ->
       f.value
     )
   }
 
   mutable fun setUnicode(optValue: ?Int): void {
-    this.values.set(Ui.unicodeProp, optValue.map(v -> SKFS.IntFile(v)));
+    this.values.set(Ui.unicodeProp, optValue.map(v -> SKStore.IntFile(v)));
   }
 
   mutable fun setDiacritic(optDiacritic: ?Char): void {
     this.values.set(
       Ui.diacriticProp,
-      optDiacritic.map(char -> SKFS.CharFile(char)),
+      optDiacritic.map(char -> SKStore.CharFile(char)),
     );
   }
 
   readonly fun getSelection(): ?Ui.Portion {
-    this.values.get(Ui.selectionProp)
-      .map(Ui.Portion::fromFile)
-      .flatMap(portion -> if (portion.isEmpty()) None() else Some(portion));
+    this.values.get(Ui.selectionProp).map(Ui.Portion::type).flatMap(portion ->
+      if (portion.isEmpty()) None() else Some(portion)
+    );
   }
 
   mutable fun setSelection(optPortion: ?Ui.Portion): void {
@@ -108,7 +106,7 @@ mutable class Updater(
 
   readonly fun getPosition(): Ui.Position {
     this.values.get(Ui.positionProp)
-      .map(Ui.Position::fromFile)
+      .map(Ui.Position::type)
       .default(Ui.Position(0, 0))
   }
 
@@ -117,7 +115,7 @@ mutable class Updater(
   }
 
   readonly fun getDisplayPosition(): ?Ui.Position {
-    this.values.get(displayPositionProp).map(Ui.Position::fromFile)
+    this.values.get(displayPositionProp).map(Ui.Position::type)
   }
 
   mutable fun setDisplayPosition(optPosition: ?Ui.Position): void {
@@ -126,7 +124,7 @@ mutable class Updater(
 
   mutable fun getLines(): Vector<Line> {
     this.values.get(linesProp)
-      .map(Lines::fromFile)
+      .map(Lines::type)
       .map(f -> f.value)
       .default(Lines::empty(this.idSupplier).value);
   }
@@ -343,7 +341,7 @@ mutable class Updater(
   }
 
   mutable fun ensureVisible(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optPosition: ?Ui.Position = None(),
   ): void {
     position = optPosition.default(this.getPosition());
@@ -443,7 +441,7 @@ mutable class Updater(
     }
   }
 
-  mutable fun copy(context: mutable SKFS.Context): ?Ui.Portion {
+  mutable fun copy(context: mutable SKStore.Context): ?Ui.Portion {
     (toCopy, optSelection, _) = this.toCopy();
     if (!toCopy.isEmpty()) {
       FWKClipboard.copy(
@@ -454,7 +452,7 @@ mutable class Updater(
     optSelection
   }
 
-  mutable fun save(context: mutable SKFS.Context): void {
+  mutable fun save(context: mutable SKStore.Context): void {
     lines = this.getLines();
     endLine = this.endLine.toChars();
     index = 0;
@@ -470,7 +468,7 @@ mutable class Updater(
     this.saver(context, String::fromChars(Arrays.mergeAll(withEndLines)))
   }
 
-  mutable fun cut(context: mutable SKFS.Context): void {
+  mutable fun cut(context: mutable SKStore.Context): void {
     this.copy(context) match {
     | Some(portion) -> this.delete(portion)
     | _ ->
@@ -553,7 +551,10 @@ mutable class Updater(
     }
   }
 
-  mutable fun goToLine(context: mutable SKFS.Context, lineNumber: Int): void {
+  mutable fun goToLine(
+    context: mutable SKStore.Context,
+    lineNumber: Int,
+  ): void {
     lines = this.getLines();
     lineIdx = Math.clamp(lineNumber - 1, 0, lines.size() - 1);
     optEnsureVisible = this.optRange match {
@@ -741,10 +742,13 @@ mutable class Updater(
   }
 
   mutable fun undoRedo(
-    context: mutable SKFS.Context,
-    selector: History ~> (mutable Updater, tick: SKFS.Tick) ~> (History, Bool),
+    context: mutable SKStore.Context,
+    selector: History ~> (mutable Updater, tick: SKStore.Tick) ~> (
+      History,
+      Bool,
+    ),
   ): void {
-    this.values.get(Ui.historyProp).map(History::fromFile).each(history -> {
+    this.values.get(Ui.historyProp).map(History::type).each(history -> {
       action = selector(history);
       (!history, _) = action(this, context.tick);
       this.values.set(Ui.historyProp, Some(history))

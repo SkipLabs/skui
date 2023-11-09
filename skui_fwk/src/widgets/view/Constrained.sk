@@ -1,26 +1,26 @@
 module UiConstrained;
 
 base class Controller extends Ui.Parameters {
-  fun getConstraints(context: mutable SKFS.Context): Ui.BoxConstraints;
-  fun getWidget(context: mutable SKFS.Context): ?Ui.Widget;
-  fun isEnforced(context: mutable SKFS.Context): Bool;
+  fun getConstraints(context: mutable SKStore.Context): Ui.BoxConstraints;
+  fun getWidget(context: mutable SKStore.Context): ?Ui.Widget;
+  fun isEnforced(context: mutable SKStore.Context): Bool;
 }
 
 class LamController{
-  constraints: mutable SKFS.Context ~> Ui.BoxConstraints,
-  widget: mutable SKFS.Context ~> ?Ui.Widget = _ctx ~> None(),
-  enforced: mutable SKFS.Context ~> Bool = _ctx ~> false,
+  constraints: mutable SKStore.Context ~> Ui.BoxConstraints,
+  widget: mutable SKStore.Context ~> ?Ui.Widget = _ctx ~> None(),
+  enforced: mutable SKStore.Context ~> Bool = _ctx ~> false,
 } extends Controller {
   //
-  fun getConstraints(context: mutable SKFS.Context): Ui.BoxConstraints {
+  fun getConstraints(context: mutable SKStore.Context): Ui.BoxConstraints {
     this.constraints(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context): ?Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context): ?Ui.Widget {
     this.widget(context)
   }
 
-  fun isEnforced(context: mutable SKFS.Context): Bool {
+  fun isEnforced(context: mutable SKStore.Context): Bool {
     this.enforced(context)
   }
 }
@@ -37,7 +37,7 @@ class Constrained{
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiConstrained.Controller,
     cache: NodeCache,
@@ -46,7 +46,7 @@ class Constrained{
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }
 
-  fun layout(context: mutable SKFS.Context, constr: BoxConstraints): Node {
+  fun layout(context: mutable SKStore.Context, constr: BoxConstraints): Node {
     constraints = this.controller.getConstraints(context);
     cConstraints = if (this.controller.isEnforced(context)) {
       constr.enforce(constraints);
@@ -65,7 +65,7 @@ class Constrained{
     }
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.controller.getWidget(context).flatMap(w ->
       w.getViewportDefinition(context)
     )

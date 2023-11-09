@@ -78,7 +78,7 @@ base class VerticalDirection() extends AxisDirection {
 }
 
 base class HorizontalDirection()
-  extends AxisDirection, SKFS.File
+  extends AxisDirection, SKStore.File
   uses HasClassName {
   children =
   /**
@@ -98,10 +98,10 @@ base class HorizontalDirection()
    */
   | ToLeft()
 
-  static fun forFile(obj: SKFS.File): HorizontalDirection {
+  static fun btype(obj: SKStore.File): HorizontalDirection {
     obj match {
     | x @ HorizontalDirection _ -> x
-    | _ -> SKFS.cast_violation("Ui.HorizontalDirection", obj)
+    | _ -> SKStore.cast_violation("Ui.HorizontalDirection", obj)
     }
   }
 }

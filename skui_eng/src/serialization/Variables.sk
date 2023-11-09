@@ -47,7 +47,7 @@ extension class Prop extends SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Prop {
     s match {
     | x @ Prop _ -> x
-    | _ -> SKFS.cast_violation("UiEngine.Prop", s)
+    | _ -> SKStore.cast_violation("UiEngine.Prop", s)
     }
   }
 }
@@ -89,7 +89,7 @@ extension class Const extends UiEngine.SObject {
   static fun fromSerializable(s: UiEngine.Serializable): Const {
     s match {
     | x @ Const _ -> x
-    | _ -> SKFS.cast_violation("UiSerializableProp.Const", s)
+    | _ -> SKStore.cast_violation("UiSerializableProp.Const", s)
     }
   }
 }

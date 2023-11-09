@@ -8,15 +8,15 @@ class FocusHandler{
     this.monospace.path;
   }
 
-  protected fun isEditable(context: mutable SKFS.Context): Bool {
+  protected fun isEditable(context: mutable SKStore.Context): Bool {
     this.monospace.controller.isEditable(context, true)
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     this.monospace.state.emitBlinking(context, true)
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     this.monospace.state.emitBlinking(context, false);
     if (
       this.monospace.controller.getStorePolicies(context, true).contains(
@@ -28,20 +28,20 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     getShortcuts(context, this.monospace.state, this.monospace.controller)
   }
 
   protected fun beforeShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false
   }
 
   protected fun afterShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool {
     if (this.monospace.controller.isEditable(context, true)) {
@@ -77,7 +77,7 @@ class FocusHandler{
 }
 
 fun getShortcuts(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   state: State,
   controller: Controller,
 ): Array<FWK.ShortcutAction> {

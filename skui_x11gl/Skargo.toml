@@ -1,12 +1,13 @@
 [package]
 name = "skui_x11gl"
 version = "0.1.0"
-format-on-check = true
-auto-remove-state = true
 
 [dependencies]
-skui_opengl = {}
-cli = {}
+skui_opengl = { "path" = "../skui_opengl" }
+cli = "*"
+
+[build-dependencies]
+skbuild = "*"
 
 [[bin]]
 name = "skuix11gl"

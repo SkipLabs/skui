@@ -1,14 +1,14 @@
 module UiEngine;
 
 base class ColumnPerformer {
-  fun perform(context: mutable SKFS.Context, row: String): void;
+  fun perform(context: mutable SKStore.Context, row: String): void;
 }
 
 class Sort(column: String, optOrder: ?UiTable.Order)
 
 base class RowsRequirer {
   fun requireRows(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Int,
     size: Int,
     sort: Array<Sort>,
@@ -65,10 +65,10 @@ class Table{
   }
 
   fun build(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     todo("UiEngine.Table.build")
   }
@@ -77,14 +77,14 @@ class Table{
 // DUMMY
 
 class DummyColumnPerformer() extends ColumnPerformer {
-  fun perform(_context: mutable SKFS.Context, _row: String): void {
+  fun perform(_context: mutable SKStore.Context, _row: String): void {
     dummy()
   }
 }
 
 class DummyRowsRequirer() extends RowsRequirer {
   fun requireRows(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _offset: Int,
     _size: Int,
     _sort: Array<Sort>,

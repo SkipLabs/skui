@@ -9,37 +9,37 @@ class Action(
   icon: Ui.IconBuilder,
   messages: Array<SKUIMessage.Message>,
   tooltip: ?Text = None(),
-) extends SKFS.File {}
+) extends SKStore.File {}
 
 base class Controller {
-  fun getText(context: mutable SKFS.Context): ?Text;
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon;
-  fun getTooltip(context: mutable SKFS.Context): ?Text;
-  fun getAlignment(context: mutable SKFS.Context): Text.FixedAlign;
-  fun getFont(context: mutable SKFS.Context): Font.FaceID;
-  fun getFill(context: mutable SKFS.Context): .Color;
+  fun getText(context: mutable SKStore.Context): ?Text;
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon;
+  fun getTooltip(context: mutable SKStore.Context): ?Text;
+  fun getAlignment(context: mutable SKStore.Context): Text.FixedAlign;
+  fun getFont(context: mutable SKStore.Context): Font.FaceID;
+  fun getFill(context: mutable SKStore.Context): .Color;
   fun getAction(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Action;
 }
 
 base class State {
-  fun isArmed(context: mutable SKFS.Context): Bool;
-  fun isHover(context: mutable SKFS.Context): Bool;
+  fun isArmed(context: mutable SKStore.Context): Bool;
+  fun isHover(context: mutable SKStore.Context): Bool;
 
-  fun emitArmed(context: mutable SKFS.Context, value: Bool): void;
-  fun emitHover(context: mutable SKFS.Context, value: Bool): void;
+  fun emitArmed(context: mutable SKStore.Context, value: Bool): void;
+  fun emitHover(context: mutable SKStore.Context, value: Bool): void;
 
-  fun emitAll(context: mutable SKFS.Context, armed: Bool, hover: Bool): void;
+  fun emitAll(context: mutable SKStore.Context, armed: Bool, hover: Bool): void;
 }
 
 base class Storage {
   fun getName(): String;
   fun getScope(): String;
 
-  fun setArmed(context: mutable SKFS.Context, value: Bool): void;
-  fun setHover(context: mutable SKFS.Context, value: Bool): void;
+  fun setArmed(context: mutable SKStore.Context, value: Bool): void;
+  fun setHover(context: mutable SKStore.Context, value: Bool): void;
 }
 
 class Parameters(controller: Controller, state: State) extends Ui.Parameters {}

@@ -1,4 +1,4 @@
-import {int, Environment, Links, Utils, ToWasmManager} from "#skui_base/skui_types";
+import {int, Environment, Links, Utils, ToWasmManager} from "#std/sk_types";
 
 interface ToWasm {
   SKIP_FWK_applyCursor: (wId: int, cursor: int) => void;
@@ -66,7 +66,6 @@ class LinksImpl implements Links, ToWasm {
         console.log("Update")
       }
     };
-    return null;
   }
 }
 

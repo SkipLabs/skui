@@ -1,4 +1,4 @@
-module SKFS;
+module SKStore;
 
 base class Future<T: frozen> {
   fun isLoading(): Bool;
@@ -7,8 +7,8 @@ base class Future<T: frozen> {
   fun progression(): ?Int;
   fun error(): ?LoadFailed;
   fun load<F: File>(
-    context: mutable SKFS.Context,
-    conv: (mutable SKFS.Context, T) ~> F,
+    context: mutable Context,
+    conv: (mutable Context, T) ~> F,
   ): Loadable;
   fun asLoadable(): Loadable;
 
@@ -45,19 +45,19 @@ class FutureSuccess<T: frozen>(
   }
 
   fun load<F: File>(
-    context: mutable SKFS.Context,
-    conv: (mutable SKFS.Context, T) ~> F,
+    context: mutable Context,
+    conv: (mutable Context, T) ~> F,
   ): Loadable {
     res = conv(context, this.value);
     res match {
     | loadable @ Loadable _ -> loadable
-    | _ -> SKFS.Loaded(res)
+    | _ -> Loaded(res)
     }
   }
 
   fun asLoadable(): Loadable {
     toFile = this.optToFile.fromSome();
-    SKFS.Loaded(toFile(this.value))
+    Loaded(toFile(this.value))
   }
 }
 
@@ -79,8 +79,8 @@ class FutureLoading<T: frozen>(optProgress: ?Int) extends Future<T> {
   }
 
   fun load<F: File>(
-    _context: mutable SKFS.Context,
-    _conv: (mutable SKFS.Context, T) ~> F,
+    _context: mutable Context,
+    _conv: (mutable Context, T) ~> F,
   ): Loadable {
     this.asLoadable();
   }
@@ -108,8 +108,8 @@ class FutureFailure<T: frozen>(optError: ?Text) extends Future<T> {
   }
 
   fun load<F: File>(
-    _context: mutable SKFS.Context,
-    _conv: (mutable SKFS.Context, T) ~> F,
+    _context: mutable Context,
+    _conv: (mutable Context, T) ~> F,
   ): Loadable {
     this.asLoadable();
   }
@@ -124,15 +124,15 @@ class LoadableFuture<T: frozen>(
   loadable: Loadable,
 ) extends Future<T> {
   static fun bool(loadable: Loadable): Future<Bool> {
-    LoadableFuture(f ~> BoolFile::fromFile(f).value, loadable)
+    LoadableFuture(f ~> BoolFile::type(f).value, loadable)
   }
 
   static fun string(loadable: Loadable): Future<String> {
-    LoadableFuture(f ~> StringFile::fromFile(f).value, loadable)
+    LoadableFuture(f ~> StringFile::type(f).value, loadable)
   }
 
   static fun bytes(loadable: Loadable): Future<Array<UInt8>> {
-    LoadableFuture(f ~> Bytes::fromFile(f).bytes, loadable)
+    LoadableFuture(f ~> Bytes::type(f).bytes, loadable)
   }
 
   fun isLoading(): Bool {
@@ -168,19 +168,19 @@ class LoadableFuture<T: frozen>(
   }
 
   fun load<F: File>(
-    context: mutable SKFS.Context,
-    conv: (mutable SKFS.Context, T) ~> F,
+    context: mutable Context,
+    conv: (mutable Context, T) ~> F,
   ): Loadable {
     this.loadable match {
-    | SKFS.ToLoad _
-    | SKFS.Loading _
-    | SKFS.LoadFailed _ ->
+    | ToLoad _
+    | Loading _
+    | LoadFailed _ ->
       this.loadable
-    | SKFS.Loaded(file) ->
+    | Loaded(file) ->
       res = conv(context, this.conv(file));
       res match {
       | loadable @ Loadable _ -> loadable
-      | _ -> SKFS.Loaded(res)
+      | _ -> Loaded(res)
       }
     }
   }

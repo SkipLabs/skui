@@ -27,15 +27,12 @@ class Bytecode() {
   //
   fun run(): void {
     for (i in Range(0, 24)) {
-      vtry<void>(
-        () -> this.test(i),
-        exn ->
-          exn match {
-          | SKTest.ExpectationError _ -> throw exn
-          | _ -> SKTest.expectEq(i, i + 1, exn.getMessage())
-          }
-        ,
-      )
+      try {
+        this.test(i)
+      } catch {
+      | exn @ SKTest.ExpectationError _ -> throw exn
+      | exn -> SKTest.expectEq(i, i + 1, exn.getMessage())
+      }
     }
   }
 

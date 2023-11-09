@@ -2,12 +2,15 @@ module Ui;
 
 const kCompensate: Bool = false;
 
-class LinePortion(start: Int, optEnd: ?Int) extends SKFS.File uses Orderable {
+class LinePortion(
+  start: Int,
+  optEnd: ?Int,
+) extends SKStore.File uses Orderable {
   fun contains(column: Int): Bool {
     column >= this.start && this.optEnd.map(end -> column < end).default(true)
   }
 
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ LinePortion _ -> x
     | _ -> invariant_violation("Must be Ui.LinePortion")
@@ -15,8 +18,8 @@ class LinePortion(start: Int, optEnd: ?Int) extends SKFS.File uses Orderable {
   }
 }
 
-class LinePortions(value: Array<LinePortion>) extends SKFS.File {
-  static fun fromFile(obj: SKFS.File): this {
+class LinePortions(value: Array<LinePortion>) extends SKStore.File {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ LinePortions _ -> x
     | _ -> invariant_violation("Must be Ui.LinePortions")
@@ -34,7 +37,7 @@ class Position(
   line: Int,
   column: Int,
   display: Bool = false,
-) extends Location, SKFS.File uses Orderable, Show {
+) extends Location, SKStore.File uses Orderable, Show {
   //
   const zero: Position = Position(0, 0);
   const one: Position = Position(1, 1);
@@ -118,7 +121,7 @@ class Position(
 class Portion(
   start: Position,
   end: Position,
-) extends SKFS.File uses HasClassName, Orderable, Show {
+) extends SKStore.File uses HasClassName, Orderable, Show {
   //
   const empty: Portion = Portion(Position::zero, Position::zero);
 
@@ -178,7 +181,7 @@ class Portion(
     `{${this.start}->${this.end}}`
   }
 
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Portion _ -> x
     | _ -> invariant_violation("Must be Ui.Portion")
@@ -188,20 +191,20 @@ class Portion(
 
 base class Indentation(
   size: Int,
-) extends SKFS.File uses Equality, HasClassName {
+) extends SKStore.File uses Equality, HasClassName {
   children =
   | Space()
   | Tabulation()
 
-  static fun forFile(obj: SKFS.File): Indentation {
+  static fun btype(obj: SKStore.File): Indentation {
     obj match {
     | x @ Indentation _ -> x
-    | _ -> SKFS.cast_violation("Indentation", obj)
+    | _ -> SKStore.cast_violation("Indentation", obj)
     }
   }
 }
 
-base class EndLine extends SKFS.File uses Orderable, Show {
+base class EndLine extends SKStore.File uses Orderable, Show {
   children =
   | CR()
   | LF()
@@ -229,17 +232,17 @@ base class EndLine extends SKFS.File uses Orderable, Show {
       toCheck == Array['\r', '\n']
   }
 
-  static fun forFile(obj: SKFS.File): EndLine {
+  static fun btype(obj: SKStore.File): EndLine {
     obj match {
     | x @ EndLine _ -> x
-    | _ -> SKFS.cast_violation("UiDocument.EndLine", obj)
+    | _ -> SKStore.cast_violation("UiDocument.EndLine", obj)
     }
   }
 }
 
 base class Separation(
   value: Int,
-) extends SKFS.File extends JSONValue uses HasClassName {
+) extends SKStore.File extends JSONValue uses HasClassName {
   children =
   | FromStart()
   | FromEnd()
@@ -256,10 +259,10 @@ base class Separation(
   | Percent(_) ->
     Percent(if (width > 0.0) (value.toFloat() * 100.0 / width).toInt() else 0)
 
-  static fun forFile(obj: SKFS.File): Separation {
+  static fun btype(obj: SKStore.File): Separation {
     obj match {
     | x @ Separation _ -> x
-    | _ -> SKFS.cast_violation("Ui.Separation", obj)
+    | _ -> SKStore.cast_violation("Ui.Separation", obj)
     }
   }
 }
@@ -268,12 +271,12 @@ class FontSize(
   width: Float,
   ascent: Float,
   descent: Float,
-) extends SKFS.File uses Orderable {
+) extends SKStore.File uses Orderable {
   fun height(): Float {
     this.ascent + this.descent
   }
 
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ FontSize _ -> x
     | _ -> invariant_violation("Must be Ui.FontSize")
@@ -526,8 +529,8 @@ class Size(width: Dim, height: Dim, keepRatio: Bool) {
   }
 }
 
-class Frame(optDrawables: ?Array<Drawable>) extends SKFS.File {
-  static fun fromFile(obj: SKFS.File): this {
+class Frame(optDrawables: ?Array<Drawable>) extends SKStore.File {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Frame _ -> x
     | _ -> invariant_violation("Must be Ui.Frame")
@@ -536,27 +539,27 @@ class Frame(optDrawables: ?Array<Drawable>) extends SKFS.File {
 }
 
 class FontSupport(
-  faceProps: Ui.GetterOne<SKFS.Future<Font.TypeFace>, Font.FaceID>,
+  faceProps: Ui.GetterOne<SKStore.Future<Font.TypeFace>, Font.FaceID>,
   glyphProps: Ui.GetterOne<Font.GlyphFile, Font.GlyphID>,
   msdfProps: Ui.GetterOne<?Font.Msdf, Font.GlyphID>,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ FontSupport _ -> x
     | _ -> invariant_violation("Must be Ui.FontSupport")
     }
   }
 
-  fun isLoading(context: mutable SKFS.Context, faceId: Font.FaceID): Bool {
+  fun isLoading(context: mutable SKStore.Context, faceId: Font.FaceID): Bool {
     this.faceProps(context, faceId).isLoading();
   }
 
-  fun hasError(context: mutable SKFS.Context, faceId: Font.FaceID): Bool {
+  fun hasError(context: mutable SKStore.Context, faceId: Font.FaceID): Bool {
     this.faceProps(context, faceId).error().isSome();
   }
 
-  fun isStrict(context: mutable SKFS.Context, faceId: Font.FaceID): Bool {
+  fun isStrict(context: mutable SKStore.Context, faceId: Font.FaceID): Bool {
     futur = this.faceProps(context, faceId);
     futur.maybeGet() match {
     | Some(typeface) -> typeface.typeface == faceId.typeface
@@ -564,7 +567,10 @@ class FontSupport(
     };
   }
 
-  fun getLineHeight(context: mutable SKFS.Context, faceId: Font.FaceID): Float {
+  fun getLineHeight(
+    context: mutable SKStore.Context,
+    faceId: Font.FaceID,
+  ): Float {
     futur = this.faceProps(context, faceId);
     futur
       .maybeGet()
@@ -573,7 +579,7 @@ class FontSupport(
   }
 
   fun getOffset(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     char: Char,
     faceId: Font.FaceID,
     optPrevious: ?Char = None(),
@@ -583,7 +589,7 @@ class FontSupport(
   }
 
   fun getMetrics(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     faceId: Font.FaceID,
   ): (Float, Float) {
     this.faceProps(context, faceId)
@@ -593,7 +599,7 @@ class FontSupport(
   }
 
   fun getGlyph(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     char: Char,
     faceId: Font.FaceID,
   ): Font.GlyphFile {
@@ -601,14 +607,14 @@ class FontSupport(
   }
 
   fun getGlyphForId(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     gId: Font.GlyphID,
   ): Font.GlyphFile {
     this.glyphProps(context, gId);
   }
 
   fun getKern(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     char: Char,
     faceId: Font.FaceID,
     optPrevious: ?Char = None(),
@@ -618,7 +624,7 @@ class FontSupport(
   }
 
   fun getWidth(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     char: Char,
     faceId: Font.FaceID,
   ): Float {
@@ -627,7 +633,7 @@ class FontSupport(
   }
 
   fun getSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     char: Char,
     faceId: Font.FaceID,
     optPrevious: ?Char = None(),
@@ -640,7 +646,7 @@ class FontSupport(
   }
 
   fun getTextSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     chars: Vector<Char>,
     range: Text.Range,
     faceId: Font.FaceID,
@@ -658,7 +664,7 @@ class FontSupport(
   }
 
   fun getMonospaceSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     count: Int,
     faceId: Font.FaceID,
   ): Geometry.Size {
@@ -668,14 +674,14 @@ class FontSupport(
   }
 
   fun getMonospaceWidth(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     faceId: Font.FaceID,
   ): Float {
     glyph = this.glyphProps(context, Font.GlyphID::create(faceId, ' '));
     Math.ceil(glyph.width());
   }
 
-  fun getMSDF(context: mutable SKFS.Context, gId: Font.GlyphID): ?Font.Msdf {
+  fun getMSDF(context: mutable SKStore.Context, gId: Font.GlyphID): ?Font.Msdf {
     this.msdfProps(context, gId);
   }
 }
@@ -713,9 +719,9 @@ base class Constraints() {
 }
 
 base class Designer {
-  fun size(context: mutable SKFS.Context): Geometry.Size;
+  fun size(context: mutable SKStore.Context): Geometry.Size;
   fun design(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     size: Geometry.Size,
     paint: Ui.Paint,
@@ -723,11 +729,11 @@ base class Designer {
 }
 
 base class Icon(optSize: ?Geometry.Size = None(), keepRatio: Bool = false) {
-  protected fun computedSize(context: mutable SKFS.Context): Geometry.Size;
+  protected fun computedSize(context: mutable SKStore.Context): Geometry.Size;
 
   fun update(optSize: ?Geometry.Size, keepRatio: Bool): this;
 
-  fun size(context: mutable SKFS.Context): Geometry.Size {
+  fun size(context: mutable SKStore.Context): Geometry.Size {
     this.optSize match {
     | Some(size) -> size
     | _ -> this.computedSize(context)
@@ -735,7 +741,7 @@ base class Icon(optSize: ?Geometry.Size = None(), keepRatio: Bool = false) {
   }
 
   fun fillDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,
@@ -747,9 +753,9 @@ base class Icon(optSize: ?Geometry.Size = None(), keepRatio: Bool = false) {
 class Pointer(
   cursor: Cursor = DefaultCursor(),
   optImage: ?Image = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Pointer _ -> x
     | _ -> invariant_violation("Must be Ui.Pointer")
@@ -767,7 +773,7 @@ class FontIcon(
   fontSize: Float,
 ) extends Icon {
   //
-  protected fun computedSize(context: mutable SKFS.Context): Geometry.Size {
+  protected fun computedSize(context: mutable SKStore.Context): Geometry.Size {
     iconSupport = context.getIconSupport();
     face = UiIcon.Face::create(this.collection, this.fontSize);
     size = iconSupport.getSize(context, face);
@@ -779,7 +785,7 @@ class FontIcon(
   }
 
   fun fillDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,
@@ -830,7 +836,11 @@ value class PixColor(blue: UInt8, green: UInt8, red: UInt8) {
 /**
  * A container of RGB pixels.
  */
-class Pixmap(data: Array<PixColor>, width: Int, height: Int) extends SKFS.File {
+class Pixmap(
+  data: Array<PixColor>,
+  width: Int,
+  height: Int,
+) extends SKStore.File {
   @always_inline
   static fun build(painter: Ui.Painter, width: Int, height: Int): Pixmap {
     Pixmap(
@@ -845,7 +855,7 @@ class Pixmap(data: Array<PixColor>, width: Int, height: Int) extends SKFS.File {
     )
   }
 
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Pixmap _ -> x
     | _ -> invariant_violation("Must be Ui.Pixmap")
@@ -903,12 +913,12 @@ mutable class ArrayUpdater(
   }
 }
 
-base class Decoration extends SKFS.File {
+base class Decoration extends SKStore.File {
   //
   fun getPadding(direction: Ui.HorizontalDirection): Geometry.Insets;
 
   fun fillDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,
@@ -916,10 +926,10 @@ base class Decoration extends SKFS.File {
     drawables: mutable Vector<Ui.Drawable>,
   ): void;
 
-  static fun forFile(obj: SKFS.File): Decoration {
+  static fun btype(obj: SKStore.File): Decoration {
     obj match {
     | x @ Decoration _ -> x
-    | _ -> SKFS.cast_violation("Decoration", obj)
+    | _ -> SKStore.cast_violation("Decoration", obj)
     }
   }
 }

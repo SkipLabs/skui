@@ -1,39 +1,39 @@
 module UiTabsSc;
 
 class LamController{
-  direction: mutable SKFS.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
-  visible: mutable SKFS.Context ~> ?Ui.Visible = _ctx ~> None(),
+  direction: mutable SKStore.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  visible: mutable SKStore.Context ~> ?Ui.Visible = _ctx ~> None(),
   widgets: Ui.WidgetsCollection,
-  dropMessages: (mutable SKFS.Context, String, Bool) ~> Array<
+  dropMessages: (mutable SKStore.Context, String, Bool) ~> Array<
     SKUIMessage.Message,
   > = (_ctx, _src, _iu) ~> Array[],
 } extends Controller {
   //
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis {
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis {
     this.direction(context)
   }
 
-  fun getVisibleSource(context: mutable SKFS.Context): ?Ui.Visible {
+  fun getVisibleSource(context: mutable SKStore.Context): ?Ui.Visible {
     this.visible(context)
   }
 
-  fun getSize(context: mutable SKFS.Context): Int {
+  fun getSize(context: mutable SKStore.Context): Int {
     this.widgets.getSize(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context, index: Int): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context, index: Int): Ui.Widget {
     this.widgets.getWidget(context, index)
   }
 
   fun getDropMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     source: String,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message> {
     this.dropMessages(context, source, isUntracked)
   }
 
-  fun all(context: mutable SKFS.Context): Array<Ui.Widget> {
+  fun all(context: mutable SKStore.Context): Array<Ui.Widget> {
     this.widgets.all(context)
   }
 }

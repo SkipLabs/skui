@@ -3,7 +3,7 @@ module UiTree;
 class LockHandler(tree: Ui.Tree) extends FWK.LockHandler {
   //
   fun update(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): ?FWK.LockHandler {
     if (!mouse.isPrimaryDown(context.tick)) {

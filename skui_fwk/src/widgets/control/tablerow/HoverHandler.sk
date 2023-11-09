@@ -11,7 +11,7 @@ class HoverHandler(path: Ui.Path) extends Ui.HoverHandlerWrapper {
   }
 
   protected fun onMouse(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
   ): FWK.Result {
     // TODO Select

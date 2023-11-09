@@ -8,7 +8,7 @@ class Layout protected {
   type Buffer = Ui.NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: LayoutParameters,
     cache: Ui.NodeCache,
@@ -23,16 +23,18 @@ class Layout protected {
     }
   }
 
-  fun getViewportDefinition(_context: mutable SKFS.Context): ?Ui.ViewportDef {
+  fun getViewportDefinition(
+    _context: mutable SKStore.Context,
+  ): ?Ui.ViewportDef {
     None()
   }
 
-  protected fun getWidgets(context: mutable SKFS.Context): Array<Ui.Widget> {
+  protected fun getWidgets(context: mutable SKStore.Context): Array<Ui.Widget> {
     this.widgets.all(context)
   }
 
   fun layout(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     width = 0.0;

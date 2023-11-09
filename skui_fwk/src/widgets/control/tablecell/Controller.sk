@@ -10,32 +10,32 @@ class LamController{
   action: Ui.GetterOne<?Action, Bool> = Ui.defaultOne(None()),
 } extends Controller {
   //
-  fun getText(context: mutable SKFS.Context): ?Text {
+  fun getText(context: mutable SKStore.Context): ?Text {
     this.text(context)
   }
 
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon {
     this.icon(context, fontSize)
   }
 
-  fun getTooltip(context: mutable SKFS.Context): ?Text {
+  fun getTooltip(context: mutable SKStore.Context): ?Text {
     this.tooltip(context)
   }
 
-  fun getAlignment(context: mutable SKFS.Context): Text.FixedAlign {
+  fun getAlignment(context: mutable SKStore.Context): Text.FixedAlign {
     this.alignment(context)
   }
 
-  fun getFont(context: mutable SKFS.Context): Font.FaceID {
+  fun getFont(context: mutable SKStore.Context): Font.FaceID {
     this.font(context)
   }
 
-  fun getFill(context: mutable SKFS.Context): .Color {
+  fun getFill(context: mutable SKStore.Context): .Color {
     this.fill(context)
   }
 
   fun getAction(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Action {
     this.action(context, isUntracked)

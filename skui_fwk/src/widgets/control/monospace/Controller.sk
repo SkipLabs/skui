@@ -1,6 +1,6 @@
 module UiMonospace;
 
-type BoolMessages = (mutable SKFS.Context, Bool, Bool) ~> Array<
+type BoolMessages = (mutable SKStore.Context, Bool, Bool) ~> Array<
   SKUIMessage.Message,
 >;
 const doNothing: BoolMessages = (_ctx, _v, _iu) ~> Array[];
@@ -23,77 +23,77 @@ class LamController{
   numberColor: Ui.Getter<?Color> = Ui.default(None()),
 } extends Controller {
   //
-  fun getNumberColor(context: mutable SKFS.Context): ?Color {
+  fun getNumberColor(context: mutable SKStore.Context): ?Color {
     this.numberColor(context)
   }
 
   fun getStorePolicies(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Set<StorePolicy> {
     this.storePolicies(context, isUntracked)
   }
 
-  fun getColorSupplier(context: mutable SKFS.Context): ?ColorSupplier {
+  fun getColorSupplier(context: mutable SKStore.Context): ?ColorSupplier {
     this.colorSupplier(context)
   }
 
-  fun getColumnsLimit(context: mutable SKFS.Context): ?Int {
+  fun getColumnsLimit(context: mutable SKStore.Context): ?Int {
     this.columnsLimit(context)
   }
 
-  fun isLineNumbersVisible(context: mutable SKFS.Context): Bool {
+  fun isLineNumbersVisible(context: mutable SKStore.Context): Bool {
     this.lineNumbersVisible(context)
   }
 
   fun isEditable(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool {
     this.editable(context, isUntracked)
   }
 
-  fun isSpacesVisible(context: mutable SKFS.Context): Bool {
+  fun isSpacesVisible(context: mutable SKStore.Context): Bool {
     this.spacesVisible(context)
   }
 
   fun getPosition(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.PositionProperty {
     this.position(context, isUntracked)
   }
 
   fun getSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.PortionProperty {
     this.selection(context, isUntracked)
   }
 
   fun getText(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.StringProperty {
     this.text(context, isUntracked)
   }
 
   fun getIndentation(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.IndentationProperty {
     this.indentation(context, isUntracked)
   }
 
   fun getEndLine(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.EndLineProperty {
     this.endLine(context, isUntracked)
   }
 
   fun getEditingMessage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: Bool,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message> {
@@ -101,14 +101,14 @@ class LamController{
   }
 
   fun getBracketsBuilder(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?BracketsBuilder {
     this.bracketsBuilder(context, isUntracked)
   }
 
   fun getBracketsChecker(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?BracketsChecker {
     this.bracketsChecker(context, isUntracked)
@@ -121,45 +121,45 @@ class LamNumbersController{
   fontSize: Ui.GetterOne<Ui.FontSize, Bool>,
   range: Ui.GetterOne<Range, Bool>,
   activeLine: Ui.GetterOne<Int, Bool>,
-  selectLine: (mutable SKFS.Context, Int) ~> void,
+  selectLine: (mutable SKStore.Context, Int) ~> void,
 } extends NumbersController {
   //
   fun getNumberOfLines(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Int {
     this.numberOfLines(context, isUntracked)
   }
 
   fun isFontLoading(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool {
     this.fontLoading(context, isUntracked)
   }
 
   fun getFontSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.FontSize {
     this.fontSize(context, isUntracked)
   }
 
   fun getRange(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Range {
     this.range(context, isUntracked)
   }
 
   fun getActiveLine(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Int {
     this.activeLine(context, isUntracked)
   }
 
-  fun emitSelectLine(context: mutable SKFS.Context, line: Int): void {
+  fun emitSelectLine(context: mutable SKStore.Context, line: Int): void {
     this.selectLine(context, line)
   }
 }

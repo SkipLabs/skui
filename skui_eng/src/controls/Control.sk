@@ -3,13 +3,13 @@ module alias H = UiEngineHandle;
 module UiEngine;
 
 base class ActionPerformer {
-  fun perform(context: mutable SKFS.Context, count: Int): void;
+  fun perform(context: mutable SKStore.Context, count: Int): void;
 }
 
 class LamActionPerformer(
-  perform_: (mutable SKFS.Context, Int) ~> void,
+  perform_: (mutable SKStore.Context, Int) ~> void,
 ) extends ActionPerformer {
-  fun perform(context: mutable SKFS.Context, count: Int): void {
+  fun perform(context: mutable SKStore.Context, count: Int): void {
     this.perform_(context, count)
   }
 }
@@ -31,10 +31,10 @@ class Button{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#control#${static::identifier}#${name}`);
     textGetter = toTextOptGetter(context, this.optText);
@@ -86,10 +86,10 @@ class Slider{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     id: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#control#${static::identifier}#${id}`);
     verticalGetter = toBoolOptGetter(context, this.optVertical);
@@ -150,10 +150,10 @@ class Split{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     id: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#control#${static::identifier}#${id}`);
     verticalGetter = toBoolOptGetter(context, this.optVertical);
@@ -196,10 +196,10 @@ class Toggle{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#control#${static::identifier}#${name}`);
     textGetter = toTextOptGetter(context, this.optText);
@@ -255,10 +255,10 @@ class Scroll{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#in#${static::identifier}#${name}`);
     hNeeded = isPropertyNeeded(this.optHScroll);
@@ -270,8 +270,8 @@ class Scroll{
         context,
         Some(ppsPath),
         Array[
-          (SKFS.StrID("hScroll"), if (hNeeded) this.optHScroll else None()),
-          (SKFS.StrID("vScroll"), if (vNeeded) this.optHScroll else None()),
+          (SKStore.StrID("hScroll"), if (hNeeded) this.optHScroll else None()),
+          (SKStore.StrID("vScroll"), if (vNeeded) this.optHScroll else None()),
         ],
       )
     };

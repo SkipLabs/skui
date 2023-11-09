@@ -4,9 +4,9 @@ const gap: Float = 24.0;
 
 base class Controller extends Ui.Parameters {
   //
-  fun getOffset(context: mutable SKFS.Context): Geometry.Offset;
+  fun getOffset(context: mutable SKStore.Context): Geometry.Offset;
 
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget;
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget;
 }
 
 class LamController{
@@ -14,11 +14,11 @@ class LamController{
   widget: Ui.Getter<Ui.Widget>,
 } extends Controller {
   //
-  fun getOffset(context: mutable SKFS.Context): Geometry.Offset {
+  fun getOffset(context: mutable SKStore.Context): Geometry.Offset {
     this.offset(context)
   }
 
-  fun getWidget(context: mutable SKFS.Context): Ui.Widget {
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget {
     this.widget(context)
   }
 }
@@ -35,7 +35,7 @@ class TooltipLayout protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiTooltipLayout.Controller,
     cache: NodeCache,
@@ -44,7 +44,10 @@ class TooltipLayout protected {
     static{path, controller, cache, optConfiguration, tick => context.tick}
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     offset = this.controller.getOffset(context);
     size = constraints.biggest();
     bottom = size.height - offset.dy;
@@ -66,7 +69,7 @@ class TooltipLayout protected {
     );
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.controller.getWidget(context).getViewportDefinition(context);
   }
 }

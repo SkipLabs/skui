@@ -1,15 +1,16 @@
 module FWKPointer;
-const systemPointerPath: SKFS.DirName = SKFS.DirName::create(
+const systemPointerPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/system/pointer/",
 );
 
-const iHandle: SKFS.IHandle<Pointer> = SKFS.IHandle(
-  SKFS.FileConverter(Pointer::fromFile),
+const iHandle: SKStore.IHandle<SKStore.StrID, Pointer> = SKStore.IHandle(
+  SKStore.StrID::keyType,
+  Pointer::type,
   systemPointerPath,
 );
 
-const storedId: SKFS.BaseName = SKFS.StrID("stored");
-const mainId: SKFS.BaseName = SKFS.StrID("main");
+const storedId: SKStore.StrID = SKStore.StrID("stored");
+const mainId: SKStore.StrID = SKStore.StrID("main");
 
 base class Command extends SKUIMessage.Command {
   children =
@@ -43,9 +44,9 @@ base class Command extends SKUIMessage.Command {
   }
 }
 
-class Pointer(pointer: Ui.Pointer = Ui.Pointer()) extends SKFS.File {
+class Pointer(pointer: Ui.Pointer = Ui.Pointer()) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Pointer _ -> x
     | _ -> invariant_violation("Must be FWKPointer.Pointer")
@@ -61,7 +62,7 @@ class Messages()
   extends SKUIMessage.Support
   uses SKUIMessage.WithUpdate<Command> {
   //
-  fun init(_context: mutable SKFS.Context): void {
+  fun init(_context: mutable SKStore.Context): void {
     void
   }
 
@@ -74,7 +75,7 @@ class Messages()
   }
 
   protected fun execute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _name: String,
     _scope: String,
     command: Command,
@@ -84,14 +85,14 @@ class Messages()
     | StoreCursor() ->
       iHandle.write(context, storedId, iHandle.get(context, mainId))
     | ResetCursor() ->
-      pointer = iHandle.maybeGet(context, storedId).default(Pointer());
+      pointer = iHandle.maybeGetValue(context, storedId).default(Pointer());
       this.setPointer(context, pointer);
       iHandle.remove(context, storedId)
     }
   }
 
   private fun setPointer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     pointer: Pointer,
   ): void {
     iHandle.write(context, mainId, pointer);
@@ -102,28 +103,29 @@ class Messages()
 }
 
 @skuiinitializer
-fun init(context: mutable SKFS.Context): void {
+fun init(context: mutable SKStore.Context): void {
   _ = context.makeDir(
-    Pointer::fromFile,
+    SKStore.StrID::keyType,
+    Pointer::type,
     systemPointerPath,
     Array[(mainId, Pointer())],
   );
   context.registerMessageSupport("system", "cursor", Messages());
 }
 
-fun emit(context: mutable SKFS.Context, command: Command): void {
+fun emit(context: mutable SKStore.Context, command: Command): void {
   SKUIMessage.emit(context, "system", "cursor", command);
 }
 
-fun setCursor(context: mutable SKFS.Context, cursor: Ui.Cursor): void {
+fun setCursor(context: mutable SKStore.Context, cursor: Ui.Cursor): void {
   emit(context, SetCursor(cursor))
 }
 
-fun resetCursor(context: mutable SKFS.Context): void {
+fun resetCursor(context: mutable SKStore.Context): void {
   emit(context, ResetCursor())
 }
 
-fun storeCursor(context: mutable SKFS.Context): void {
+fun storeCursor(context: mutable SKStore.Context): void {
   emit(context, StoreCursor())
 }
 

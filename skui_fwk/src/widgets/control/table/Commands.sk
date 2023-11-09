@@ -10,12 +10,12 @@ base class Command extends SKUIMessage.Command {
   children =
   | SetHScroll(optScroll: ?Ui.Scroll)
   | SetVScroll(optScroll: ?Ui.Scroll)
-  | CancelScrolling(tick: SKFS.Tick)
+  | CancelScrolling(tick: SKStore.Tick)
 }
 
 base class ExecCommand extends Command, Executable {
   children =
-  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | ManageScrolling(value: Int, tick: SKStore.Tick)
   | ManageVisible(visible: Int)
   | Fire(optRow: ?String)
 }

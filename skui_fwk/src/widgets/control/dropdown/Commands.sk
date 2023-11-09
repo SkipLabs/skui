@@ -9,12 +9,12 @@ base class Executable extends Ui.Executable {
 base class Command extends SKUIMessage.Command {
   children =
   | SetScroll(optScroll: ?Ui.Scroll)
-  | CancelScrolling(tick: SKFS.Tick)
+  | CancelScrolling(tick: SKStore.Tick)
 }
 
 base class ExecCommand extends Command, Executable {
   children =
-  | ManageScrolling(value: Int, tick: SKFS.Tick)
+  | ManageScrolling(value: Int, tick: SKStore.Tick)
   | Goto(stop: Spot)
 }
 

@@ -51,10 +51,10 @@ extension base class Command {
     cl = jso.getString("__class");
     cl match {
     | "UiTabsSc.ManageScrolling" ->
-      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+      ManageScrolling(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | "UiTabsSc.ManageVisible" -> ManageVisible(jso.getInt("value"))
     | "UiTabsSc.CancelScrolling" ->
-      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+      CancelScrolling(SKStore.Tick(jso.getInt("tick")))
     | "UiTabsSc.SetScroll" ->
       SetScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
     | "UiTabsSc.SetHover" ->

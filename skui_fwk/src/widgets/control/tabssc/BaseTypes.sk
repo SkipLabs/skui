@@ -1,20 +1,20 @@
 module UiTabsSc;
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/viewport/widget/")
 }
 
-fun verifiedMetricsDirName(path: Ui.Path): SKFS.DirName {
+fun verifiedMetricsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/scroll/metrics/verified/")
 }
 
-fun computedMetricsDirName(path: Ui.Path): SKFS.DirName {
+fun computedMetricsDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/tabs/scroll/metrics/computed/")
 }
 
 const space: Float = 16.0;
 
-base class Target extends SKFS.File uses Orderable, Show {
+base class Target extends SKStore.File uses Orderable, Show {
   children =
   | Index(value: Int)
 
@@ -36,21 +36,21 @@ base class Hover extends Target {
 }
 
 base class Controller extends Ui.WidgetsCollection {
-  fun getDirection(context: mutable SKFS.Context): Ui.Axis;
-  fun getVisibleSource(context: mutable SKFS.Context): ?Ui.Visible;
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis;
+  fun getVisibleSource(context: mutable SKStore.Context): ?Ui.Visible;
   fun getDropMessages(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     source: String,
     isUntracked: Bool = false,
   ): Array<SKUIMessage.Message>;
 }
 
 base class State extends Ui.StateWithScroll {
-  fun getHover(context: mutable SKFS.Context): ?Hover;
-  fun isScrolling(context: mutable SKFS.Context): Bool;
-  fun emitHover(context: mutable SKFS.Context, value: ?Hover): void;
+  fun getHover(context: mutable SKStore.Context): ?Hover;
+  fun isScrolling(context: mutable SKStore.Context): Bool;
+  fun emitHover(context: mutable SKStore.Context, value: ?Hover): void;
   fun emitGoTo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     value: Target,
     optRepeatOn: ?FWK.Repeat = None(),
   ): void;
@@ -66,8 +66,8 @@ base class Storage extends Ui.StorageWithScroll {
   fun getName(): String;
   fun getScope(): String;
 
-  fun setTodo(context: mutable SKFS.Context, cmd: Executable): void;
-  fun setHover(context: mutable SKFS.Context, optHover: ?Hover): void;
+  fun setTodo(context: mutable SKStore.Context, cmd: Executable): void;
+  fun setHover(context: mutable SKStore.Context, optHover: ?Hover): void;
 }
 
 module end;

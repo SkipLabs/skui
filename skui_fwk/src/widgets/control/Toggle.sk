@@ -9,7 +9,7 @@ class Toggle protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiToggle.Parameters,
     cache: NodeCache,
@@ -25,21 +25,24 @@ class Toggle protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     layout = UiToggle.Layout::create(context, this.controller);
     size = constraints.constrain(layout.computeSize());
     Node(this, size, Array[], constUserData(Some(layout)))
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((_, _, _) ~> Some(UiToggle.HoverHandler(this)))
   }
 
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -51,7 +54,7 @@ class Toggle protected {
   }
 
   fun computeDrawInfo(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
@@ -62,7 +65,7 @@ class Toggle protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -81,7 +84,7 @@ class Toggle protected {
   }
 
   fun computeMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     drawInfo: UiToggle.DrawInfo,
@@ -128,7 +131,7 @@ class Toggle protected {
   }
 
   fun computeBackground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -157,7 +160,7 @@ class Toggle protected {
   }
 
   fun computeForeground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,

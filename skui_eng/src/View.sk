@@ -12,10 +12,10 @@ class Label{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#view#${static::identifier}#${name}`);
     textGetter = toTextOptGetter(context, this.optText);
@@ -44,10 +44,10 @@ class Indicator{optProgress: ?Serializable = None()} extends Description {
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#in#${static::identifier}#${name}`);
     progress = toIntOptGetter(context, this.optProgress);
@@ -75,10 +75,10 @@ class Decorated{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#in#${static::identifier}#${name}`);
     decoration = toDecorationOptGetter(context, this.optDecoration);
@@ -107,10 +107,10 @@ class Image{optPicture: ?Serializable = None()} extends Description {
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#in#${static::identifier}#${name}`);
     texturable = toPictureOptGetter(context, this.optPicture);
@@ -133,10 +133,10 @@ class Constrained{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     root: UiRoot.Storage,
-    prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#in#${static::identifier}#${name}`);
     constraints = toConstraintsOptGetter(context, this.optConstraints);
@@ -166,10 +166,10 @@ class TextView{
   }
 
   fun build(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     name: String,
     _root: UiRoot.Storage,
-    _prebuilt: (mutable SKFS.Context, String) ~> ?Ui.Widget,
+    _prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget {
     path = Ui.Path::create(`#view#${static::identifier}#${name}`);
     textGetter = toTextOptGetter(context, this.optText);

@@ -15,8 +15,8 @@ fun view(): (
           context,
           Some(pPath),
           Array[
-            (SKFS.StrID("vertical"), Some(Ui.FromEnd(200))),
-            (SKFS.StrID("horizontal"), Some(Ui.FromStart(200))),
+            (SKStore.StrID("vertical"), Some(Ui.FromEnd(200))),
+            (SKStore.StrID("horizontal"), Some(Ui.FromStart(200))),
           ],
         );
         verticalProp = UiSeparationProp.Property::forName(

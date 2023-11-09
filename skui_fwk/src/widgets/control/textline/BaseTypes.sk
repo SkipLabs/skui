@@ -1,17 +1,17 @@
 module UiTextLine;
 
-fun widgetDirName(path: Ui.Path): SKFS.DirName {
+fun widgetDirName(path: Ui.Path): SKStore.DirName {
   path.toDirName("/ui/textline/widget/")
 }
 
-class Offset(index: Int, offset: Float) extends SKFS.File
+class Offset(index: Int, offset: Float) extends SKStore.File
 
 class Tokens(
   tokens: Ui.Tokens,
   displayToText: Vector<Int>,
   textToDisplay: Vector<Int>,
   t2dOffet: Int,
-) extends SKFS.File {
+) extends SKStore.File {
   //
   fun toDisplay(range: Ui.LinePortion): ?Range {
     tStart = range.start - this.t2dOffet;
@@ -57,37 +57,43 @@ class Tokens(
 }
 
 base class Controller {
-  fun getTokens(context: mutable SKFS.Context): Ui.Tokens;
-  fun getOffset(context: mutable SKFS.Context): Offset;
-  fun getCount(context: mutable SKFS.Context): Int;
+  fun getTokens(context: mutable SKStore.Context): Ui.Tokens;
+  fun getOffset(context: mutable SKStore.Context): Offset;
+  fun getCount(context: mutable SKStore.Context): Int;
   fun getFontSize(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.FontSize;
   fun getSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntraked: Bool = false,
   ): ?Ui.LinePortion;
-  fun getPosition(context: mutable SKFS.Context): ?Int;
-  fun getTarget(context: mutable SKFS.Context, isUntracked: Bool = false): ?Int;
-  fun isEditable(context: mutable SKFS.Context): Bool;
-  fun isCaretVisible(context: mutable SKFS.Context): Bool;
-  fun isSpacesVisible(context: mutable SKFS.Context): Bool;
-  fun isScrolling(context: mutable SKFS.Context): Bool;
-  fun getLine(context: mutable SKFS.Context, isUntracked: Bool = false): Int;
-  fun isArmed(context: mutable SKFS.Context, isUntracked: Bool = false): Bool;
+  fun getPosition(context: mutable SKStore.Context): ?Int;
+  fun getTarget(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?Int;
+  fun isEditable(context: mutable SKStore.Context): Bool;
+  fun isCaretVisible(context: mutable SKStore.Context): Bool;
+  fun isSpacesVisible(context: mutable SKStore.Context): Bool;
+  fun isScrolling(context: mutable SKStore.Context): Bool;
+  fun getLine(context: mutable SKStore.Context, isUntracked: Bool = false): Int;
+  fun isArmed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Bool;
   fun isMoveSelection(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool;
 
   fun getTextCommandsManager(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.TextCommandsManager;
 
   fun computeClipboardContent(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?FWKClipboard.Content;
 }

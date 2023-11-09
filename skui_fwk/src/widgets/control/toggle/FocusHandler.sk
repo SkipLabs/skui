@@ -8,7 +8,7 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     if (!this.toggle.controller.isDisabled(context, true)) {
       shortcuts = mutable Vector<FWK.ShortcutAction>[];

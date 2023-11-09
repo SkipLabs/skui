@@ -17,7 +17,7 @@ fun manageMouseEvent(
   _altKey: Bool,
   _metaKey: Bool,
 ): void {
-  pos = SKFS.newObstack();
+  pos = SKStore.newObstack();
   fn = context ~> {
     // button 0: Main button pressed, usually the left button or the un-initialized state
     // button 1: Auxiliary button pressed, usually the wheel button or the middle button (if present)
@@ -52,8 +52,8 @@ fun manageMouseEvent(
     };
     context.updateIfRoot();
   };
-  SKFS.Context::withoutGc(fn);
-  SKFS.destroyObstack(pos);
+  SKStore.Context::withoutGc(fn);
+  SKStore.destroyObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_manageWheelEvent")
@@ -67,7 +67,7 @@ fun manageWheelEvent(
   _altKey: Bool,
   _metaKey: Bool,
 ): void {
-  pos = SKFS.newObstack();
+  pos = SKStore.newObstack();
   fn = context ~> {
     FWKMouse.execute(
       context,
@@ -75,8 +75,8 @@ fun manageWheelEvent(
     );
     context.updateIfRoot();
   };
-  SKFS.Context::withoutGc(fn);
-  SKFS.destroyObstack(pos);
+  SKStore.Context::withoutGc(fn);
+  SKStore.destroyObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_manageResize")
@@ -86,9 +86,9 @@ fun manageResize(
   height: UInt32,
   ratio: UInt32,
 ): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> {
-    context.getGlobal("FWK.Window.Size").map(FWK.Sizer::fromFile).each(sizer ->
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    context.getGlobal("FWK.Window.Size").map(FWK.Sizer::type).each(sizer ->
       sizer.value(
         context,
         wId.toInt(),
@@ -99,12 +99,12 @@ fun manageResize(
     );
     context.updateIfRoot();
   });
-  SKFS.destroyObstack(pos);
+  SKStore.destroyObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_clearKeyboardEvent")
 fun clearKeyboardEvent(_wId: UInt32): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     FWKKeys.execute(
       context,
       FWKKeys.Clear(System.TimeStamp(0, 0), context.tick),
@@ -128,7 +128,7 @@ fun manageKeyboardEvent(
   _altKey: Bool,
   _metaKey: Bool,
 ): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     /*
       evtType 0 : keydown
       evtType 1 : keypress
@@ -164,8 +164,8 @@ fun manageKeyboardEvent(
 
 @wasm_export("SKIP_SKUIJS_windowInitialized")
 fun windowInitialized(wId: UInt32): void {
-  pos = SKFS.newObstack();
-  SKFS.Context::withoutGc(context ~> {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
     context.setGlobal(
       "SKUIMessage.Sender",
       SKUIMessage.Sender((_ctx, message, asyncMode, delay) ~> {
@@ -176,12 +176,12 @@ fun windowInitialized(wId: UInt32): void {
     context.checkPendingMessages();
     context.updateIfRoot();
   });
-  SKFS.destroyObstack(pos);
+  SKStore.destroyObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_performPaste")
 fun performPaste(wid: Int, mimeType: String, data: String): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     type = FWKClipboard.Type::fromMime(mimeType);
     content = FWKClipboard.Content(Map[type => IO.Text(data)]);
     debug(("TODO: Manage on paste event", wid, type, content));

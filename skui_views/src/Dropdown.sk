@@ -20,7 +20,7 @@ fun view(): (
 }
 
 fun dropdown(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   path: Ui.Path,
   optNumber: ?Int,
   optConfiguration: ?Ui.Configuration = None(),

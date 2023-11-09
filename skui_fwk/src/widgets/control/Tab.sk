@@ -10,7 +10,7 @@ class Tab protected {
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiTab.Parameters,
     cache: NodeCache,
@@ -27,7 +27,10 @@ class Tab protected {
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     ts = context.getTextSupport();
     fil = context.getThemeFont(UiTheme.Action());
     optLabel = this.controller.getText(context).map(t ->
@@ -80,7 +83,7 @@ class Tab protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: Ui.NodeSum,
@@ -98,7 +101,7 @@ class Tab protected {
   }
 
   fun getHoverHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     if (this.controller.isDisabled(context)) {
@@ -122,7 +125,7 @@ class Tab protected {
   }
 
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -161,7 +164,7 @@ class Tab protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -187,14 +190,14 @@ class Tab protected {
   }
 
   fun getDragHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DragHandler>,
   ): ?DragHandlerGetter {
     Some((_ctx, _o, _ni) ~> Some(UiTab.DragHandler(this)))
   }
 
   fun getDropHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DropHandler>,
   ): ?DropHandlerGetter {
     Some((ctx, o, ni) ~> {
@@ -218,7 +221,7 @@ class Tab protected {
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     di: UiTab.DrawInfo,
@@ -316,7 +319,7 @@ class Tab protected {
   }
 
   private fun fillBackground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -351,7 +354,7 @@ class Tab protected {
   }
 
   private fun fillForeground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -524,7 +527,7 @@ class Tab protected {
   }
 
   private fun getForegroundColor(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mode: UiTab.Mode,
     active: Bool,
     text: Bool,

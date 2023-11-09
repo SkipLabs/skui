@@ -59,9 +59,9 @@ extension base class Command {
         jso.getInt("count"),
       )
     | "UiDropdown.ManageScrolling" ->
-      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
+      ManageScrolling(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
     | "UiDropdown.CancelScrolling" ->
-      CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+      CancelScrolling(SKStore.Tick(jso.getInt("tick")))
     | _ ->
       invariant_violation(`Invalid json object ${cl} for UiDropdown.Command`)
     }

@@ -1,22 +1,22 @@
 module Ui;
 
-const nodesPath: SKFS.DirName = SKFS.DirName::create(
+const nodesPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/widgets/support/nodes/",
 );
 
-const nNodesPath: SKFS.DirName = SKFS.DirName::create(
+const nNodesPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/widgets/support/nnodes/",
 );
 
-const widgetsPath: SKFS.DirName = SKFS.DirName::create(
+const widgetsPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/widgets/support/widgets/",
 );
 
-const childrensPath: SKFS.DirName = SKFS.DirName::create(
+const childrensPath: SKStore.DirName = SKStore.DirName::create(
   "/ui/widgets/support/childrens/",
 );
 
-class KConstraints(constraints: BoxConstraints) extends SKFS.BaseName {
+class KConstraints(constraints: BoxConstraints) extends SKStore.Key {
   //
   fun toString(): String {
     width = this.intervalToString(this.constraints.width);
@@ -46,42 +46,50 @@ class KConstraints(constraints: BoxConstraints) extends SKFS.BaseName {
   }
 }
 
-fun nodesBufferPath(path: Ui.Path): SKFS.DirName {
+fun nodesBufferPath(path: Ui.Path): SKStore.DirName {
   path.toDirName(nodesPath.toString())
 }
 
-fun widgetsBufferPath(path: Ui.Path): SKFS.DirName {
+fun widgetsBufferPath(path: Ui.Path): SKStore.DirName {
   path.toDirName(widgetsPath.toString())
 }
 
-fun childrensBufferPath(path: Ui.Path): SKFS.DirName {
+fun childrensBufferPath(path: Ui.Path): SKStore.DirName {
   path.toDirName(childrensPath.toString())
 }
 
 fun nNodesBuffer(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   widget: ParameterizedWidget,
-  dirName: SKFS.DirName,
-): SKFS.LHandle<Node> {
-  SKFS.LHandle::lazy(Node::fromFile, context, dirName, (context, _self, key) ~> {
-    key match {
-    | k @ KConstraints _ -> widget.layout(context, k.constraints)
-    | _ -> invariant_violation(`Invalid Ui.KConstraints key ${key}`)
-    }
-  })
+  dirName: SKStore.DirName,
+): SKStore.LHandle<KConstraints, Node> {
+  SKStore.LHandle::lazy(
+    KConstraints::keyType,
+    Node::type,
+    context,
+    dirName,
+    (context, _self, key) ~> widget.layout(context, key.constraints),
+  )
 }
 
-class NodeCache(nodesHdl: SKFS.LHandle<Node>) extends NodeBuffer {
+class NodeCache(
+  nodesHdl: SKStore.LHandle<KConstraints, Node>,
+) extends NodeBuffer {
   static fun create(path: Ui.Path): this {
-    NodeCache(SKFS.LHandle(Node::fromFile, nodesBufferPath(path)))
+    NodeCache(
+      SKStore.LHandle(KConstraints::keyType, Node::type, nodesBufferPath(path)),
+    )
   }
 
-  fun init(context: mutable SKFS.Context, widget: ParameterizedWidget): void {
+  fun init(
+    context: mutable SKStore.Context,
+    widget: ParameterizedWidget,
+  ): void {
     _ = nNodesBuffer(context, widget, this.nodesHdl.getDirName())
   }
 
   fun getNode(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: BoxConstraints,
   ): Node {
     this.nodesHdl.get(context, KConstraints(constraints))

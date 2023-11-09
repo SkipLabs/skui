@@ -18,7 +18,7 @@ class DummyFH{} extends FocusHandler {
   }
 
   fun manage(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
     _source: Ui.Path,
   ): Bool {
@@ -26,7 +26,7 @@ class DummyFH{} extends FocusHandler {
   }
 
   fun isGotoNext(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
     _source: Ui.Path,
   ): ?Bool {
@@ -34,7 +34,7 @@ class DummyFH{} extends FocusHandler {
   }
 
   fun isGotoPrevious(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
     _source: Ui.Path,
   ): ?Bool {
@@ -43,22 +43,22 @@ class DummyFH{} extends FocusHandler {
 }
 
 class DummyDH{} extends DragHandler {
-  fun getTransfer(_context: mutable SKFS.Context): Transfer {
+  fun getTransfer(_context: mutable SKStore.Context): Transfer {
     dummy()
   }
 
-  fun getDragInfo(_context: mutable SKFS.Context): ?DragInfo {
+  fun getDragInfo(_context: mutable SKStore.Context): ?DragInfo {
     dummy()
   }
 
   fun getClipboardContent(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
   ): ?FWKClipboard.Content {
     dummy()
   }
 
   fun dropped(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _optTarget: ?(DropHandler, TransferMode),
   ): void {
     dummy()
@@ -67,7 +67,7 @@ class DummyDH{} extends DragHandler {
 
 class DummyDPH{} extends DropHandler {
   fun over(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
     _dragHandler: DragHandler,
     _transfer: TransferMode,
@@ -79,12 +79,12 @@ class DummyDPH{} extends DropHandler {
     dummy()
   }
 
-  fun exit(_context: mutable SKFS.Context): void {
+  fun exit(_context: mutable SKStore.Context): void {
     dummy()
   }
 
   fun dropped(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _dragHandler: DragHandler,
     _transfer: TransferMode,
   ): void {
@@ -94,7 +94,7 @@ class DummyDPH{} extends DropHandler {
 
 class DummyLH{} extends LockHandler {
   fun update(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
   ): ?LockHandler {
     dummy()

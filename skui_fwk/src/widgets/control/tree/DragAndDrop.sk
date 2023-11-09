@@ -11,13 +11,13 @@ class DropHandler(
     )
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     this.optDropHandler.each(dh -> dh.exit(context));
     this.tree.state.emitAsking(context, None());
   }
 
   fun over(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     dragHandler: FWK.DragHandler,
     transfer: FWK.TransferMode,
@@ -57,7 +57,7 @@ class DropHandler(
   }
 
   fun dropped(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     dragHandler: FWK.DragHandler,
     transfer: FWK.TransferMode,
   ): void {

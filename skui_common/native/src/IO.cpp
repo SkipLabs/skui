@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <map>
 #include "IO.h"
-
+#include <string.h>
 
 namespace skui
 {
@@ -52,7 +52,6 @@ extern "C"
   uint32_t SKIP_String_byteSize(char *str);
   char *sk_string_create(const char *buffer, uint32_t size);
   char *SKIP_createByteArray(int32_t);
-  void SKIP_setByte(char *, int32_t, uint8_t);
   char *SKIP_chillByteArray(char *);
 
   bool SKIP_IO_isExternalBinary(uint32_t id)
@@ -96,10 +95,7 @@ extern "C"
     auto bytes = it->second.bytes;
     auto size = it->second.size;
     auto skBytes = SKIP_createByteArray(size);
-    for (int i = 0; i < size; i++)
-    {
-      SKIP_setByte(skBytes, i, bytes[i]);
-    }
-    return SKIP_chillByteArray(skBytes);
+    memcpy(skBytes, (const char *)bytes, size);
+    return skBytes;
   }
 }

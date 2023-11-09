@@ -96,8 +96,9 @@ extension base class Command {
     | "UiTree.Fire" -> Fire(jso.maybeGet("value").map(Ui.Path::fromJSON))
     | "UiTree.ToggleCurrentExpansion" -> ToggleCurrentExpansion()
     | "UiTree.ManageScrolling" ->
-      ManageScrolling(jso.getInt("value"), SKFS.Tick(jso.getInt("tick")))
-    | "UiTree.CancelScrolling" -> CancelScrolling(SKFS.Tick(jso.getInt("tick")))
+      ManageScrolling(jso.getInt("value"), SKStore.Tick(jso.getInt("tick")))
+    | "UiTree.CancelScrolling" ->
+      CancelScrolling(SKStore.Tick(jso.getInt("tick")))
     | "UiTree.SetScroll" ->
       SetScroll(jso.maybeGet("value").map(Ui.Scroll::fromJSON))
     | "UiTree.ManageExpansion" ->

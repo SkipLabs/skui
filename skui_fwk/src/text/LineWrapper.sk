@@ -12,7 +12,7 @@ class LineWrapper(
   optRange: ?Text.Range = None(),
 ) {
   static fun charsWrapper(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     chars: Vector<Char>,
     faceId: Font.FaceID,
     optRange: ?Text.Range = None(),
@@ -35,7 +35,7 @@ class LineWrapper(
   }
 
   static fun wordsWrapper(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     chars: Vector<Char>,
     faceId: Font.FaceID,
     optRange: ?Text.Range = None(),

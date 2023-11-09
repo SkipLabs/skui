@@ -9,7 +9,7 @@ class Input protected {
   type Buffer = UiInput.MetricsCache;
 
   static fun new(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiInput.Controller,
     supplier: UiInput.Supplier,
@@ -22,7 +22,7 @@ class Input protected {
   }
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Ui.Path,
     params: UiInput.Parameters,
     cache: UiInput.MetricsCache,
@@ -43,17 +43,23 @@ class Input protected {
   }
 
   fun getNode(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: BoxConstraints,
   ): Node {
     this.cache.getNode(context, constraints)
   }
 
-  fun getMetrics(context: mutable SKFS.Context, width: Float): UiInput.Metrics {
+  fun getMetrics(
+    context: mutable SKStore.Context,
+    width: Float,
+  ): UiInput.Metrics {
     this.cache.getMetrics(context, width)
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     fontSupport = context.getFontSupport();
     textSupport = context.getTextSupport();
     height = UiInput.hSpace.toFloat();
@@ -183,7 +189,7 @@ class Input protected {
   }
 
   fun getHoverHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     if (this.controller.isDisabled(context)) {
@@ -194,7 +200,7 @@ class Input protected {
   }
 
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -206,7 +212,7 @@ class Input protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: NodeSum,
@@ -225,7 +231,7 @@ class Input protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     layer: Ui.LayerId,
@@ -259,7 +265,7 @@ class Input protected {
     drawables.toArray()
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     Some(
       ViewportDef(
         Some(
@@ -277,7 +283,7 @@ class Input protected {
   }
 
   fun getDragHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DragHandler>,
   ): ?DragHandlerGetter {
     if (this.state.isMoveSelection(context, true)) {
@@ -316,7 +322,7 @@ class Input protected {
   }
 
   fun getDropHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DropHandler>,
   ): ?DropHandlerGetter {
     Some((_, _o, nodeInfo) ~>
@@ -325,7 +331,7 @@ class Input protected {
   }
 
   fun computeViewportBounds(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     nodeInfo: Ui.NodeInfo,
     iconTextGap: Float,
   ): Geometry.Rectangle {
@@ -340,7 +346,7 @@ class Input protected {
   }
 
   fun getMousePosition(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     offset: Geometry.Offset,
     nodeInfo: Ui.NodeInfo,
     relative: Bool,
@@ -392,7 +398,7 @@ class Input protected {
   }
 
   fun getStatus(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Status {
     this.state.getStatus(context, isUntracked);
@@ -444,7 +450,7 @@ class Input protected {
   }
 
   private fun fillMain(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     ol: UiInput.OffsetLengths,
     drawables: mutable Vector<Ui.Drawable>,
@@ -567,7 +573,7 @@ class Input protected {
   }
 
   private fun fillBackground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,
@@ -596,7 +602,7 @@ class Input protected {
   }
 
   private fun fillForeground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     absolute: Geometry.Offset,
     size: Geometry.Size,

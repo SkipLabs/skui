@@ -1,7 +1,7 @@
 module UiEngine;
 
 fun getJSON(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   optPath: ?String,
   name: String,
 ): ?JSON.Value {
@@ -10,7 +10,7 @@ fun getJSON(
 }
 
 fun setJSON(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   optPath: ?String,
   name: String,
   optValue: ?JSON.Value,
@@ -21,19 +21,19 @@ fun setJSON(
 
 @wasm_export("SKIP_UiEngineJS_getValue")
 fun getValue(optPath: ?String, name: String): ?JSON.Value {
-  SKFS.Context::withoutGc(context ~> getJSON(context, optPath, name))
+  SKStore.Context::withoutGc(context ~> getJSON(context, optPath, name))
 }
 
 @wasm_export("SKIP_UiEngineJS_setValue")
 fun setValue(optPath: ?String, name: String, optValue: ?JSON.Value): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     setJSON(context, optPath, name, optValue);
     context.updateIfRoot();
   })
 }
 @wasm_export("SKIP_UiEngineJS_create")
 fun create(optPath: ?String, optValue: ?JSON.Value): String {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     prop = UiSerializableProp.Property::create(
       context,
       optPath,
@@ -49,7 +49,7 @@ fun combine(
   jsCombine: JSON.Value,
   optJsWrite: ?JSON.Value,
 ): String {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     combineFn = fromJSON(jsCombine) as Function _;
     optWriteFn = optJsWrite.map(fromJSON).map(f ~> f as Function _);
     combine = UiEngineHandle.ECombine(combineFn, optWriteFn);
@@ -61,18 +61,18 @@ fun combine(
 
 @wasm_export("SKIP_UiEngineJS_alert")
 fun alert(text: Text, optTitle: ?Text): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     context.openAlert(text, optTitle);
   })
 }
 
 @wasm_export("SKIP_UiEngineJS_dialog")
 fun dialog(dialog: JSON.Value): void {
-  SKFS.Context::withoutGc(context ~> {
+  SKStore.Context::withoutGc(context ~> {
     ser = UiEngine.fromJSON(dialog);
     ser match {
     | d @ UiEngine.Dialog _ -> d.open(context)
-    | _ -> SKFS.cast_violation("UiEngine.Dialog", ser)
+    | _ -> SKStore.cast_violation("UiEngine.Dialog", ser)
     }
   })
 }

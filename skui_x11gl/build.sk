@@ -1,0 +1,33 @@
+module SkuiX11glBuild;
+
+@skbuild_source_dirs
+fun source_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) Array["native/src"] else Array[]
+}
+
+@skbuild_include_dirs
+fun include_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array[
+      "native/src/includes",
+      "../skui_opengl/native/src/includes",
+      "../skui_base/native/src/includes",
+    ]
+  } else {
+    Array[]
+  }
+}
+
+@skbuild_links
+fun links(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array["-lX11", "-lXcursor", "-lXext", "-lXrandr"]
+  } else {
+    Array[]
+  }
+}
+
+@debug
+fun main(): void {
+  _ = Skbuild.build();
+}

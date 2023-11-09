@@ -3,9 +3,9 @@ module Text;
 class Display(
   faceId: Font.FaceID,
   fill: Ui.Paint = Colors.black(),
-) extends SKFS.File uses Orderable {
+) extends SKStore.File uses Orderable {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Display _ -> x
     | _ -> invariant_violation("Must be Text.Display")
@@ -22,11 +22,11 @@ base class StyleBase{faceId: Font.FaceID, fill: Ui.Paint = Colors.black()} {
 class GlyphStyle{} extends StyleBase {}
 
 base class LineSpacingSupplier uses Hashable, Orderable, Show {
-  fun getLineSpace(context: mutable SKFS.Context, height: Float): Float;
+  fun getLineSpace(context: mutable SKStore.Context, height: Float): Float;
 }
 
 class ScaledLineSpacing(scale: Float) extends LineSpacingSupplier {
-  fun getLineSpace(_context: mutable SKFS.Context, height: Float): Float {
+  fun getLineSpace(_context: mutable SKStore.Context, height: Float): Float {
     this.scale * height;
   }
 
@@ -36,7 +36,7 @@ class ScaledLineSpacing(scale: Float) extends LineSpacingSupplier {
 }
 
 class ConstLineSpacing(space: Float) extends LineSpacingSupplier {
-  fun getLineSpace(_context: mutable SKFS.Context, _height: Float): Float {
+  fun getLineSpace(_context: mutable SKStore.Context, _height: Float): Float {
     this.space;
   }
   fun toString(): String {

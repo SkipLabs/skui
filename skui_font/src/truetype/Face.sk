@@ -36,34 +36,33 @@ class Face{
   }
 
   fun getGlyphBounds(c: Char): ?Font.Bounds {
-    this.font.getIndex(c).flatMap(index -> {
-      vtry<?Font.Bounds>(
-        () -> {
-          glyphBuf = mutable GlyphBuf{};
-          !glyphBuf = glyphBuf.load(
-            this.font,
-            this.scale,
-            index.toInt(),
-            this.hinting,
-          );
-          xmin = glyphBuf.bounds.min.x;
-          ymin = glyphBuf.bounds.max.y.neg();
-          xmax = glyphBuf.bounds.max.x;
-          ymax = glyphBuf.bounds.min.y.neg();
-          invariant(xmin <= xmax && ymin <= ymax, "Invalid glyph bounds");
-          Some(
-            Font.Bounds{
-              bounds => Fixed.Rectangle26_6(
-                Fixed.Point26_6(xmin, ymin),
-                Fixed.Point26_6(xmax, ymax),
-              ),
-              advance => glyphBuf.advanceWidth,
-            },
-          );
-        },
-        _e -> None(),
-      )
-    });
+    this.font.getIndex(c).flatMap(index ->
+      try {
+        glyphBuf = mutable GlyphBuf{};
+        !glyphBuf = glyphBuf.load(
+          this.font,
+          this.scale,
+          index.toInt(),
+          this.hinting,
+        );
+        xmin = glyphBuf.bounds.min.x;
+        ymin = glyphBuf.bounds.max.y.neg();
+        xmax = glyphBuf.bounds.max.x;
+        ymax = glyphBuf.bounds.min.y.neg();
+        invariant(xmin <= xmax && ymin <= ymax, "Invalid glyph bounds");
+        Some(
+          Font.Bounds{
+            bounds => Fixed.Rectangle26_6(
+              Fixed.Point26_6(xmin, ymin),
+              Fixed.Point26_6(xmax, ymax),
+            ),
+            advance => glyphBuf.advanceWidth,
+          },
+        );
+      } catch {
+      | _ -> None()
+      }
+    );
   }
 
   fun getKern(c0: Char, i1: Int): Fixed.Int26_6 {
@@ -79,21 +78,20 @@ class Face{
   }
 
   fun getGlyphAdvance(c: Char): ?Fixed.Int26_6 {
-    this.font.getIndex(c).flatMap(index -> {
-      vtry<?Fixed.Int26_6>(
-        () -> {
-          glyphBuf = mutable GlyphBuf{};
-          !glyphBuf = glyphBuf.load(
-            this.font,
-            this.scale,
-            index.toInt(),
-            this.hinting,
-          );
-          Some(glyphBuf.advanceWidth)
-        },
-        _e -> None(),
-      )
-    });
+    this.font.getIndex(c).flatMap(index ->
+      try {
+        glyphBuf = mutable GlyphBuf{};
+        !glyphBuf = glyphBuf.load(
+          this.font,
+          this.scale,
+          index.toInt(),
+          this.hinting,
+        );
+        Some(glyphBuf.advanceWidth)
+      } catch {
+      | _ -> None()
+      }
+    )
   }
 
   /**
@@ -110,20 +108,19 @@ class Face{
       // Split the coordinates into their integer and fractional parts.
       (ix, fx) = (dotX.floor(), dotX.fractional());
       (iy, fy) = (dotY.floor(), dotY.fractional());
-      vtry<?Font.Glyph>(
-        () -> {
-          (optPath, offset, width, height, bounds) = this.draw(
-            index.toInt(),
-            Fixed.Point26_6(fx, fy),
-          );
-          dr = Geometry.Rectangle(
-            Geometry.Point(ix + offset.x, iy + offset.y),
-            Geometry.Point(ix + offset.x + width, iy + offset.y + height),
-          );
-          Some(Font.Glyph{index => index.toInt(), bounds, optPath, dr})
-        },
-        _e -> None(),
-      )
+      try {
+        (optPath, offset, width, height, bounds) = this.draw(
+          index.toInt(),
+          Fixed.Point26_6(fx, fy),
+        );
+        dr = Geometry.Rectangle(
+          Geometry.Point(ix + offset.x, iy + offset.y),
+          Geometry.Point(ix + offset.x + width, iy + offset.y + height),
+        );
+        Some(Font.Glyph{index => index.toInt(), bounds, optPath, dr})
+      } catch {
+      | _ -> None()
+      }
     });
   }
 

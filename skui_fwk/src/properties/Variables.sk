@@ -19,7 +19,7 @@ fun combinedPath(optPath: ?String): ?String {
 /*
 class JSONProp extends Prop {
   //
-  fun toProperty(context: readonly SKFS.Context): UiJSONProp.Property {
+  fun toProperty(context: readonly SKStore.Context): UiJSONProp.Property {
     this.kind match {
     | Ui.PProp() ->
       UiSerializableProp.Property::forName(context, this.optPath, this.name)

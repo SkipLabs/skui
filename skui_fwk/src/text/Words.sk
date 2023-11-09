@@ -94,9 +94,9 @@ class Tokens(
   size: Int,
   start: Int = 0,
   shift: Int = 0,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Tokens _ -> x
     | _ -> invariant_violation("Must be Text.Tokens")
@@ -201,7 +201,7 @@ fun tabSizeAt(chars: Array<Char>, tabSize: Int, index: Int): Int {
   }
 }
 
-class Words(value: Vector<Word>, size: Int) extends SKFS.File {
+class Words(value: Vector<Word>, size: Int) extends SKStore.File {
   static fun fromString(text: String): this {
     toWords(text)
   }

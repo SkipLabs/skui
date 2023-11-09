@@ -1,7 +1,7 @@
 module UiIcon;
 
 class LeftRight(left: Ui.Icon, right: Ui.Icon, gap: Float) extends Ui.Icon {
-  protected fun computedSize(context: mutable SKFS.Context): Geometry.Size {
+  protected fun computedSize(context: mutable SKStore.Context): Geometry.Size {
     leftSize = this.left.size(context);
     rightSize = this.right.size(context);
     Geometry.Size(
@@ -15,7 +15,7 @@ class LeftRight(left: Ui.Icon, right: Ui.Icon, gap: Float) extends Ui.Icon {
   }
 
   fun fillDrawables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: Ui.DrawableSupport,
     offset: Geometry.Offset,
     size: Geometry.Size,

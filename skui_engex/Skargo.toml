@@ -3,7 +3,7 @@ name = "skui_engex"
 version = "0.1.0"
 
 [dependencies]
-skui_eng = {}
+skui_eng = { "path" = "../skui_eng" }
 
 [[bin]]
 name = "skuiengex"

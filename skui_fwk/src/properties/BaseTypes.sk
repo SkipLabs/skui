@@ -1,30 +1,30 @@
 module Ui;
 
-const rootPath: SKFS.DirName = SKFS.DirName::create("/");
+const rootPath: SKStore.DirName = SKStore.DirName::create("/");
 
 base class Property<T: frozen> uses HasClassName {
   fun getName(): String;
   fun getPath(): ?String;
 
-  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T;
-  fun set(context: mutable SKFS.Context, optValue: ?T, source: Int): void;
+  fun maybeGet(context: mutable SKStore.Context, isUntracked: Bool = false): ?T;
+  fun set(context: mutable SKStore.Context, optValue: ?T, source: Int): void;
 
   fun maybeGetTimed(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
-  ): ?(?T, SKFS.Tick, Int);
+  ): ?(?T, SKStore.Tick, Int);
 
   overridable fun get(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): T {
     this.maybeGet(context, isUntracked).fromSome()
   }
 
   overridable fun getTimed(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
-  ): (T, SKFS.Tick, Int) {
+  ): (T, SKStore.Tick, Int) {
     this.maybeGetTimed(context, isUntracked)
       .map(v -> (v.i0.fromSome(), v.i1, v.i2))
       .fromSome()
@@ -32,7 +32,7 @@ base class Property<T: frozen> uses HasClassName {
 }
 
 base class BoolProperty extends Property<Bool> {
-  fun toggle(context: mutable SKFS.Context, source: Int): void;
+  fun toggle(context: mutable SKStore.Context, source: Int): void;
 }
 
 base class StringProperty extends Property<String>
@@ -52,63 +52,69 @@ base class DecorationProperty extends Property<Ui.Decoration>
 
 base class TimedFile<T: frozen>(
   optValue: ?T,
-  tick: SKFS.Tick,
+  tick: SKStore.Tick,
   source: Int,
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  overridable static fun fromFile(_file: SKFS.File): this {
+  overridable static fun type(_file: SKStore.File): this {
     useless()
   }
 
-  fun toTuple(): (?T, SKFS.Tick, Int) {
+  fun toTuple(): (?T, SKStore.Tick, Int) {
     (this.optValue, this.tick, this.source)
   }
 }
 
-fun toDirName(context: readonly SKFS.Context, optPath: ?String): SKFS.DirName {
+fun toDirName(
+  context: readonly SKStore.Context,
+  optPath: ?String,
+): SKStore.DirName {
   root = context
     .getGlobal("Ui.Properties.Root")
-    .map(SKFS.DirName::fromFile)
+    .map(SKStore.DirNameFile::type)
+    .map(f ~> f.value)
     .default(Ui.rootPath);
   optPath
-    .map(p -> SKFS.DirName::make(root, `${SKFS.normalize(p, true)}/`))
+    .map(p -> SKStore.DirName::make(root, `${SKStore.normalize(p, true)}/`))
     .default(root)
 }
 
 base class PropertyFile<
   T: frozen,
   TT: TimedFile<T>,
-  FT: SKFS.File,
+  FT: SKStore.File,
 > private final (
-  timedHdl: SKFS.EHValue<TT>,
-  valueHdl: SKFS.EHValue<T>,
+  timedHdl: SKStore.EHValue<SKStore.StrID, TT>,
+  valueHdl: SKStore.EHValue<SKStore.StrID, FT>,
   optPath: ?String,
 ) extends Ui.Property<T> {
-  protected static fun timedFromFile(file: SKFS.File): TT;
-  protected static fun valueFromFile(file: SKFS.File): T;
-  protected static fun valueToFile(value: T): SKFS.File;
-  protected static fun timed(optV: ?T, tick: SKFS.Tick, source: Int): TT;
+  protected static fun timedFromFile(file: SKStore.File): TT;
+  protected static fun valueFromFile(file: SKStore.File): T;
+  protected static fun valueToFile(value: T): FT;
+  protected static fun timed(optV: ?T, tick: SKStore.Tick, source: Int): TT;
   protected static fun getDefaultValue(): T;
-  static fun toIHandle(hdl: SKFS.EHandle<TT>): SKFS.IHandle<TT>;
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, TT>,
+  ): SKStore.IHandle<SKStore.StrID, TT>;
 
-  deferred protected static fun fileValueFromFile(file: SKFS.File): FT;
+  deferred protected static fun fileValueFromFile(file: SKStore.File): FT;
 
   macro static fun sClassName(): String {
     #thisClassName
   }
 
   overridable deferred static fun init(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optPath: ?String,
-    values: Array<(SKFS.StrID, TT)> = Array[],
+    values: Array<(SKStore.StrID, TT)> = Array[],
   ): void {
     _ = static::internalInit(context, optPath, values)
   }
 
   deferred static fun initValues(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optPath: ?String,
-    values: Array<(SKFS.StrID, ?T)> = Array[],
+    values: Array<(SKStore.StrID, ?T)> = Array[],
   ): void {
     static::init(
       context,
@@ -118,41 +124,55 @@ base class PropertyFile<
   }
 
   deferred protected static fun internalInit(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optPath: ?String,
-    values: Array<(SKFS.StrID, TT)> = Array[],
-  ): SKFS.EHandle<FT> {
+    values: Array<(SKStore.StrID, TT)> = Array[],
+  ): SKStore.EHandle<SKStore.StrID, FT> {
     dirName = toDirName(context, optPath);
-    className = SKFS.normalize(static::sClassName().lowercase());
-    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
-    valueDirName = SKFS.DirName::make(timedDirName, "value/");
+    className = SKStore.normalize(static::sClassName().lowercase());
+    timedDirName = SKStore.DirName::make(dirName, `${className}/`);
+    valueDirName = SKStore.DirName::make(timedDirName, "value/");
     context
-      .makeDir(static::timedFromFile, timedDirName, values)
-      .contextWriterKeyMap(
+      .makeDir(
+        SKStore.StrID::keyType,
+        static::timedFromFile,
+        timedDirName,
+        values,
+      )
+      .map(
+        SKStore.StrID::keyType,
         static::fileValueFromFile,
         context,
         valueDirName,
-        (_ctx, writer, key, timed) ~>
-          timed.optValue.each(v -> writer.write(key, static::valueToFile(v)))
+        (_ctx, writer, key, it) ~>
+          it.first.optValue.each(v -> writer.set(key, static::valueToFile(v)))
         ,
       );
   }
 
   deferred static fun create(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optPath: ?String,
     optValue: ?T = None(),
   ): this {
     dirName = toDirName(context, optPath);
-    className = SKFS.normalize(static::sClassName().lowercase());
-    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
-    valueDirName = SKFS.DirName::make(timedDirName, "value/");
-    timedHdl = SKFS.EHandle(static::timedFromFile, timedDirName);
-    valueHdl = SKFS.EHandle(static::valueFromFile, valueDirName);
-    key = SKFS.StrID(`prop${context.timeStamp().value}`);
+    className = SKStore.normalize(static::sClassName().lowercase());
+    timedDirName = SKStore.DirName::make(dirName, `${className}/`);
+    valueDirName = SKStore.DirName::make(timedDirName, "value/");
+    timedHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::timedFromFile,
+      timedDirName,
+    );
+    valueHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::fileValueFromFile,
+      valueDirName,
+    );
+    key = SKStore.StrID(`prop${context.timeStamp().value}`);
     res = static(
-      SKFS.EHValue(timedHdl, key),
-      SKFS.EHValue(valueHdl, key),
+      SKStore.EHValue(timedHdl, key),
+      SKStore.EHValue(valueHdl, key),
       optPath,
     );
     optValue.each(_ -> res.set(context, optValue, 0));
@@ -160,61 +180,73 @@ base class PropertyFile<
   }
 
   fun subscribe(
-    context: mutable SKFS.Context,
-    f: (mutable SKFS.Context, optValue: ?T, source: Int) ~> void,
+    context: mutable SKStore.Context,
+    f: (mutable SKStore.Context, optValue: ?T, source: Int) ~> void,
   ): void {
     _ = this.timedHdl.mapContext(
-      SKFS.IntFile::fromFile,
+      SKStore.IntFile::type,
       context,
-      SKFS.DirName::make(
+      SKStore.DirName::make(
         this.timedHdl.getDirName(),
         `subscribed_${context.timeStamp()}/`,
       ),
       (ctx, timed) ~> {
         f(ctx, timed.optValue, timed.source);
-        SKFS.IntFile(timed.tick.value)
+        SKStore.IntFile(timed.tick.value)
       },
     );
   }
 
   deferred static fun forStrID(
-    context: readonly SKFS.Context,
+    context: readonly SKStore.Context,
     optPath: ?String,
-    key: SKFS.StrID,
+    key: SKStore.StrID,
   ): this {
     dirName = toDirName(context, optPath);
-    className = SKFS.normalize(static::sClassName().lowercase());
-    timedDirName = SKFS.DirName::make(dirName, `${className}/`);
-    valueDirName = SKFS.DirName::make(timedDirName, "value/");
-    timedHdl = SKFS.EHandle(static::timedFromFile, timedDirName);
-    valueHdl = SKFS.EHandle(static::valueFromFile, valueDirName);
-    static(SKFS.EHValue(timedHdl, key), SKFS.EHValue(valueHdl, key), optPath);
+    className = SKStore.normalize(static::sClassName().lowercase());
+    timedDirName = SKStore.DirName::make(dirName, `${className}/`);
+    valueDirName = SKStore.DirName::make(timedDirName, "value/");
+    timedHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::timedFromFile,
+      timedDirName,
+    );
+    valueHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::fileValueFromFile,
+      valueDirName,
+    );
+    static(
+      SKStore.EHValue(timedHdl, key),
+      SKStore.EHValue(valueHdl, key),
+      optPath,
+    );
   }
 
   deferred static fun forName(
-    context: readonly SKFS.Context,
+    context: readonly SKStore.Context,
     optPath: ?String,
     name: String,
   ): this {
-    static::forStrID(context, optPath, SKFS.StrID(name))
+    static::forStrID(context, optPath, SKStore.StrID(name))
   }
 
   fun getName(): String {
-    this.valueHdl.key match {
-    | sid @ SKFS.StrID _ -> sid.value
-    | obj -> SKFS.cast_violation("SKFS.StrID", obj)
-    };
+    this.valueHdl.key.value
   }
 
   fun getPath(): ?String {
     this.optPath
   }
 
-  fun maybeGet(context: mutable SKFS.Context, isUntracked: Bool = false): ?T {
-    this.valueHdl.maybeGet(context, isUntracked)
+  fun maybeGet(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?T {
+    this.valueHdl.maybeGet(context, isUntracked).map(static::valueFromFile)
   }
 
-  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+  fun get(context: mutable SKStore.Context, isUntracked: Bool = false): T {
     this.maybeGet(context, isUntracked) match {
     | Some(v) -> v
     | _ -> static::getDefaultValue()
@@ -222,24 +254,24 @@ base class PropertyFile<
   }
 
   fun maybeGetTimed(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
-  ): ?(?T, SKFS.Tick, Int) {
+  ): ?(?T, SKStore.Tick, Int) {
     this.timedHdl.maybeGet(context, isUntracked).map(v -> v.toTuple())
   }
 
   fun getTimed(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
-  ): (T, SKFS.Tick, Int) {
+  ): (T, SKStore.Tick, Int) {
     this.maybeGetTimed(context, isUntracked) match {
     | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
-    | _ -> (static::getDefaultValue(), SKFS.Tick(0), 0)
+    | _ -> (static::getDefaultValue(), SKStore.Tick(0), 0)
     }
   }
 
   overridable fun set(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optValue: ?T,
     source: Int,
   ): void {
@@ -253,11 +285,15 @@ base class PropertyFile<
   }
 }
 
-base class FPropertyFile<T: SKFS.File, TT: TimedFile<T>> extends
+base class FPropertyFile<T: SKStore.File, TT: TimedFile<T>> extends
   PropertyFile<T, TT, T>,
 {
-  deferred protected static fun fileValueFromFile(file: SKFS.File): T {
+  deferred protected static fun fileValueFromFile(file: SKStore.File): T {
     static::valueFromFile(file)
+  }
+
+  protected static fun valueToFile(value: T): T {
+    value
   }
 }
 
@@ -265,11 +301,11 @@ base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
   value: TT,
 ) extends Ui.Property<T> {
   //
-  protected static fun timed(optV: ?T, tick: SKFS.Tick): TT;
+  protected static fun timed(optV: ?T, tick: SKStore.Tick): TT;
   protected static fun getDefaultValue(): T;
 
   deferred static fun create(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     optValue: ?T = None(),
   ): this {
     static(static::timed(optValue, context.tick))
@@ -283,11 +319,14 @@ base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
     this.value.tick.toString()
   }
 
-  fun maybeGet(_context: mutable SKFS.Context, _isUntracked: Bool = false): ?T {
+  fun maybeGet(
+    _context: mutable SKStore.Context,
+    _isUntracked: Bool = false,
+  ): ?T {
     this.value.optValue
   }
 
-  fun get(context: mutable SKFS.Context, isUntracked: Bool = false): T {
+  fun get(context: mutable SKStore.Context, isUntracked: Bool = false): T {
     this.maybeGet(context, isUntracked) match {
     | Some(v) -> v
     | _ -> static::getDefaultValue()
@@ -295,31 +334,35 @@ base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
   }
 
   fun maybeGetTimed(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _isUntracked: Bool = false,
-  ): ?(?T, SKFS.Tick, Int) {
+  ): ?(?T, SKStore.Tick, Int) {
     Some(this.value.toTuple())
   }
 
   fun getTimed(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
-  ): (T, SKFS.Tick, Int) {
+  ): (T, SKStore.Tick, Int) {
     this.maybeGetTimed(context, isUntracked) match {
     | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
-    | _ -> (static::getDefaultValue(), SKFS.Tick(0), 0)
+    | _ -> (static::getDefaultValue(), SKStore.Tick(0), 0)
     }
   }
 
   fun emitSet(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _optValue: ?T,
     _source: Int,
   ): void {
     void
   }
 
-  fun set(_context: mutable SKFS.Context, _optValue: ?T, _source: Int): void {
+  fun set(
+    _context: mutable SKStore.Context,
+    _optValue: ?T,
+    _source: Int,
+  ): void {
     void
   }
 }

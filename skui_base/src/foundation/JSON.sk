@@ -1,11 +1,11 @@
 module JSON;
 
-class File(value: Value) extends SKFS.File {
+class File(value: Value) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ File _ -> x
-    | _ -> SKFS.cast_violation("JSON.File", obj)
+    | _ -> SKStore.cast_violation("JSON.File", obj)
     }
   }
 }

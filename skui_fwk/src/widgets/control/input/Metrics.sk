@@ -12,9 +12,9 @@ class Metrics(
   space: Float,
   faceId: Font.FaceID,
   optScroll: ?Scroll = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Metrics _ -> x
     | _ -> invariant_violation("Must be UiInput.Metrics")
@@ -22,7 +22,7 @@ class Metrics(
   }
 
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     input: Ui.Input,
     nodeWidth: Float,
   ): this {
@@ -195,46 +195,44 @@ class Metrics(
 }
 
 class MetricsCache(
-  metricsHdl: SKFS.LHandle<Metrics>,
-  nodesHdl: SKFS.LHandle<Ui.Node>,
+  metricsHdl: SKStore.LHandle<SKStore.IID, Metrics>,
+  nodesHdl: SKStore.LHandle<Ui.KConstraints, Ui.Node>,
 ) extends Ui.NodeBuffer {
   //
   static fun create(path: Ui.Path): this {
     metricsPath = path.toDirName("/ui/verified/inputs/metrics/");
     nodesPath = Ui.nodesBufferPath(path);
     MetricsCache(
-      SKFS.LHandle(Metrics::fromFile, metricsPath),
-      SKFS.LHandle(Ui.Node::fromFile, nodesPath),
+      SKStore.LHandle(SKStore.IID::keyType, Metrics::type, metricsPath),
+      SKStore.LHandle(Ui.KConstraints::keyType, Ui.Node::type, nodesPath),
     );
   }
 
-  fun getMetrics(context: mutable SKFS.Context, width: Float): Metrics {
-    this.metricsHdl.get(context, SKFS.IID((width * 8.0).toInt()))
+  fun getMetrics(context: mutable SKStore.Context, width: Float): Metrics {
+    this.metricsHdl.get(context, SKStore.IID((width * 8.0).toInt()))
   }
 
   fun getNode(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     this.nodesHdl.get(context, Ui.KConstraints(constraints))
   }
 
-  fun init(context: mutable SKFS.Context, widget: Ui.Widget): void {
+  fun init(context: mutable SKStore.Context, widget: Ui.Widget): void {
     input = widget as Ui.Input _;
-    computedHdl = SKFS.LHandle::lazy(
-      Metrics::fromFile,
+    computedHdl = SKStore.LHandle::lazy(
+      SKStore.IID::keyType,
+      Metrics::type,
       context,
       input.path.toDirName("/ui/computed/inputs/metrics/"),
       (context, _self, key) ~>
-        key match {
-        | SKFS.IID(value) ->
-          Metrics::compute(context, input, value.toFloat() / 8.0)
-        | _ -> invariant_violation(`Invalid metrix key ${key}`)
-        }
+        Metrics::compute(context, input, key.value.toFloat() / 8.0)
       ,
     );
-    _ = SKFS.LHandle::lazy(
-      Metrics::fromFile,
+    _ = SKStore.LHandle::lazy(
+      SKStore.IID::keyType,
+      Metrics::type,
       context,
       this.metricsHdl.getDirName(),
       (context, _self, key) ~>
@@ -262,7 +260,7 @@ class OffsetLengths(
 ) extends Ui.DrawInfo {
   //
   static fun compute(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     input: Ui.Input,
     absolute: Geometry.Offset,
     size: Geometry.Size,

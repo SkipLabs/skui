@@ -1,6 +1,16 @@
-module SKFS;
+module SKStore;
 
 class DrawableSupportFile(value: Ui.DrawableSupport) extends File
+
+class HandlePathFile(handle: Handle<Ui.Path, File>) extends File {
+  //
+  static fun type(obj: SKStore.File): this {
+    obj match {
+    | x @ HandlePathFile _ -> x
+    | _ -> cast_violation("SKStore.HandlePathFile", obj)
+    }
+  }
+}
 
 extension class Context {
   mutable fun initFontSupport(): void {
@@ -8,7 +18,7 @@ extension class Context {
   }
 
   readonly fun getFontSupport(): Ui.FontSupport {
-    Ui.FontSupport::fromFile(this.getGlobal("Ui.FontSupport").fromSome());
+    Ui.FontSupport::type(this.getGlobal("Ui.FontSupport").fromSome());
   }
 
   mutable fun setDialogsState(state: UiDialogs.State): void {
@@ -24,7 +34,7 @@ extension class Context {
 
   mutable fun openConfirmDialog(
     text: Text,
-    onConfirm: (mutable SKFS.Context, Bool, Int) ~> void,
+    onConfirm: (mutable SKStore.Context, Bool, Int) ~> void,
     autoClose: Bool = true,
     type_: UiDialogs.QType = UiDialogs.YesNo(),
     optTitle: ?Text = None(),
@@ -37,7 +47,7 @@ extension class Context {
 
   mutable fun openInputDialog(
     message: Text,
-    onInput: (mutable SKFS.Context, String, Int) ~> void,
+    onInput: (mutable SKStore.Context, String, Int) ~> void,
     autoClose: Bool = true,
     optTitle: ?Text = None(),
     settings: UiDialogs.Settings = UiDialogs.Settings{},
@@ -60,7 +70,7 @@ extension class Context {
   }
 
   readonly fun getTextSupport(): Ui.TextSupport {
-    Ui.TextSupport::fromFile(this.getGlobal("Ui.TextSupport").fromSome());
+    Ui.TextSupport::type(this.getGlobal("Ui.TextSupport").fromSome());
   }
 
   mutable fun initIconSupport(): void {
@@ -68,10 +78,10 @@ extension class Context {
   }
 
   readonly fun getIconSupport(): UiIcon.Support {
-    UiIcon.Support::fromFile(this.getGlobal("UiIcon.Support").fromSome());
+    UiIcon.Support::type(this.getGlobal("UiIcon.Support").fromSome());
   }
 
-  readonly fun get<T: frozen>(path: Path, conv: SKFS.File ~> T): ?T {
+  readonly fun get<T: frozen>(path: Path, conv: SKStore.File ~> T): ?T {
     this.unsafeMaybeGetDir(path.dirName) match {
     | None() -> None()
     | Some(d) ->
@@ -85,33 +95,30 @@ extension class Context {
   }
 
   mutable fun initFocused(): void {
-    dirName = SKFS.DirName::create("/system/focused/");
-    handle = SKFS.LHandle::lazy(
+    dirName = SKStore.DirName::create("/system/focused/");
+    handle = SKStore.LHandle::lazy(
+      Ui.Path::keyType,
       f ~> f,
       this,
       dirName,
-      (context, _self, key) ~> {
-        key match {
-        | uid @ Ui.Path _ ->
-          focusState = FWK.getFocusState(context);
-          SKFS.BoolFile(
-            focusState.optFocused match {
-            | Some(focused) ->
-              native_eq<Ui.Path>(uid, focused.getIdentifier()) == 0
-            | _ -> false
-            },
-          )
-        | _ -> SKFS.cast_violation("SKFS.DirName", key)
-        }
+      (context, _self, path) ~> {
+        focusState = FWK.getFocusState(context);
+        SKStore.BoolFile(
+          focusState.optFocused match {
+          | Some(focused) ->
+            native_eq<Ui.Path>(path, focused.getIdentifier()) == 0
+          | _ -> false
+          },
+        )
       },
     );
-    this.setGlobal("FWK.Focused", SKFS.HandleFile(handle));
+    this.setGlobal("FWK.Focused", SKStore.HandlePathFile(handle));
   }
 
   mutable fun isFocused(path: Ui.Path): Bool {
     this.getGlobal("FWK.Focused") match {
     | Some(fm) ->
-      BoolFile::fromFile(HandleFile::fromFile(fm).handle.get(this, path)).value
+      BoolFile::type(HandlePathFile::type(fm).handle.get(this, path)).value
     | _ -> false
     }
   }
@@ -126,7 +133,7 @@ extension class Context {
 
   mutable fun getTheme(): Ui.Theme {
     this.getGlobal("Ui.Theme") match {
-    | Some(file) -> Ui.Theme::forFile(file)
+    | Some(file) -> Ui.Theme::btype(file)
     | _ ->
       theme = UiTheme.Default();
       this.setGlobal("Ui.Theme", theme);
@@ -154,12 +161,12 @@ extension class Context {
 class IdSupplier(
   next: UInt32 = UInt32::truncate(0),
   supplied: Map<String, UInt32> = Map[],
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ IdSupplier _ -> x
-    | _ -> invariant_violation("Must be SKFS.IdSupplier")
+    | _ -> invariant_violation("Must be SKStore.IdSupplier")
     }
   }
 

@@ -6,7 +6,7 @@ class Bars{
 } extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
   //
   fun getNode(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {

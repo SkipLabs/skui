@@ -17,23 +17,23 @@ fun main(): void {
   perform(available);
 }
 
-const rootPath: SKFS.DirName = SKFS.DirName::create("/ui/views/");
+const rootPath: SKStore.DirName = SKStore.DirName::create("/ui/views/");
 
 fun initUi(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   wId: Int,
-  builder: (mutable SKFS.Context, UiRoot.Storage) ~> Ui.GetterOne<
+  builder: (mutable SKStore.Context, UiRoot.Storage) ~> Ui.GetterOne<
     Ui.Widget,
     UiRoot.Storage,
   >,
   support: Ui.DrawableSupport,
-  inits: Array<mutable SKFS.Context ~> void> = Array[],
+  inits: Array<mutable SKStore.Context ~> void> = Array[],
 ): void {
   FWKEnv.init(context, wId);
   context.initFontSupport();
   context.initIconSupport();
   context.initTextSupport(support);
-  root = UiRoot.HStorage::create(context, SKFS.DirName::create("/ui/root/"));
+  root = UiRoot.HStorage::create(context, SKStore.DirName::create("/ui/root/"));
   context.setGlobal("FWK.Root", root);
   (windowHdl, _ratioHdl) = initSizeManager(context);
   SystemProperties.init(context);
@@ -43,14 +43,14 @@ fun initUi(
 
   FWKPipeline.initPipeline(context, getter, windowHdl, root, support, wId);
   context.setGlobal(
-    "SKFS.Updater",
-    SKFS.Updater(_ctx ~> FWK.update(uint32(wId))),
+    "SKStore.Updater",
+    SKStore.Updater(_ctx ~> FWK.update(uint32(wId))),
   );
   context.clearProfile();
 }
 
 fun initUiWidget(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   wId: Int,
   getter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
 ): void {
@@ -70,29 +70,37 @@ fun pictureToTexturable(
 }
 
 fun initSizeManager(
-  context: mutable SKFS.Context,
-): (SKFS.EHandle<UiEvent.Size>, SKFS.EHandle<SKFS.FloatFile>) {
+  context: mutable SKStore.Context,
+): (
+  SKStore.EHandle<SKStore.IID, UiEvent.Size>,
+  SKStore.EHandle<SKStore.IID, SKStore.FloatFile>,
+) {
   windowHdl = context.makeDir(
-    UiEvent.Size::fromFile,
-    SKFS.DirName::create("/ui/window/"),
+    SKStore.IID::keyType,
+    UiEvent.Size::type,
+    SKStore.DirName::create("/ui/window/"),
   );
   ratioHdl = context.makeDir(
-    SKFS.FloatFile::fromFile,
-    SKFS.DirName::create("/ui/window/ratio/"),
+    SKStore.IID::keyType,
+    SKStore.FloatFile::type,
+    SKStore.DirName::create("/ui/window/ratio/"),
   );
-  iWindowHdl = SKFS.toIHandle(windowHdl);
-  iRatioHdl = SKFS.toIHandle(ratioHdl);
+  iWindowHdl = SKStore.toIHandle(windowHdl);
+  iRatioHdl = SKStore.toIHandle(ratioHdl);
   context.setGlobal(
     "FWK.Window.Size",
     FWK.Sizer((ctx, wId, w, h, r) ~> {
-      iWindowHdl.write(ctx, SKFS.IID(wId), UiEvent.Size(w, h));
-      iRatioHdl.write(ctx, SKFS.IID(wId), SKFS.FloatFile(r));
+      iWindowHdl.write(ctx, SKStore.IID(wId), UiEvent.Size(w, h));
+      iRatioHdl.write(ctx, SKStore.IID(wId), SKStore.FloatFile(r));
     }),
   );
   context.setGlobal(
     "FWK.Ratio",
     FWK.Ratio((ctx, wId) ~>
-      iRatioHdl.maybeGet(ctx, SKFS.IID(wId)).map(v -> v.value).default(1.0)
+      iRatioHdl
+        .maybeGetValue(ctx, SKStore.IID(wId))
+        .map(v -> v.value)
+        .default(1.0)
     ),
   );
   (windowHdl, ratioHdl);
@@ -111,7 +119,7 @@ fun perform(
         .long("version")
         .about("Print version info and exit"),
     );
-  if (!SkargoVersion.kWasm) {
+  if (!SkargoVersion.kWasm32) {
     !command = command
       .arg(
         Cli.StringArg("screen")
@@ -170,12 +178,12 @@ fun perform(
             | Some(t) -> t
             | _ -> command._about.fromSome()
             };
-            _ = SKFS.initMainContext(SKFS.Context{});
-            SKFS.Context::withGc(context ~> {
+            _ = SKStore.initMainContext(SKStore.Context{});
+            SKStore.Context::withGc(context ~> {
               initUiWidget(context, wId, fn(args));
               context.initPre();
             });
-            if (SkargoVersion.kWasm) {
+            if (SkargoVersion.kWasm32) {
               SKUIJS.init(uint32(wId), title);
             } else {
               screen = args.getString("screen").toIntOption().default(0);
@@ -195,7 +203,7 @@ fun perform(
 @cpp_export("SKIP_SkuiViews_update")
 fun update(): void {
   pos = checkObstack();
-  SKFS.Context::withoutGc(context ~> context.updateIfRoot());
+  SKStore.Context::withoutGc(context ~> context.updateIfRoot());
   cleanObstack(pos);
 }
 
@@ -204,7 +212,7 @@ fun display(
   optError: ?String = None(),
   html: Bool = false,
 ): void {
-  if (SkargoVersion.kWasm) {
+  if (SkargoVersion.kWasm32) {
     SKUIJS.display(optOutput, optError, html)
   } else {
     optError.each(print_error);

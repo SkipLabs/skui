@@ -13,39 +13,42 @@ class LamController{
 } extends Controller {
   //
   fun getSelectedProp(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Ui.BoolProperty {
     this.selectedProp(context, isUntracked)
   }
 
   fun getIndeterminateProp(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): ?Ui.BoolProperty {
     this.indeterminateProp(context, isUntracked)
   }
 
-  fun getKind(context: mutable SKFS.Context, isUntracked: Bool = false): Kind {
+  fun getKind(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Kind {
     this.kind(context, isUntracked)
   }
 
   fun isDisabled(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Bool {
     this.disabled(context, isUntracked)
   }
 
-  fun getText(context: mutable SKFS.Context): ?Text {
+  fun getText(context: mutable SKStore.Context): ?Text {
     this.text(context)
   }
 
-  fun getIcon(context: mutable SKFS.Context, fontSize: Float): ?Ui.Icon {
+  fun getIcon(context: mutable SKStore.Context, fontSize: Float): ?Ui.Icon {
     this.icon(context, fontSize)
   }
 
-  fun getTooltip(context: mutable SKFS.Context): ?Text {
+  fun getTooltip(context: mutable SKStore.Context): ?Text {
     this.tooltip(context)
   }
 }

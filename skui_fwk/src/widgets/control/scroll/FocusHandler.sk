@@ -3,7 +3,7 @@ module UiScroll;
 class FocusHandler{
   path: Ui.Path,
   controller: Controller,
-  sizesHdl: SKFS.Handle<UiScroll.Sizes>,
+  sizesHdl: SKStore.Handle<SKStore.IID, UiScroll.Sizes>,
 } extends Ui.FocusHandlerWrapper uses FWK.Shortcuts {
   //
   protected fun getMainIdentifier(): Ui.Path {
@@ -11,7 +11,7 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     Array[
       FWK.ShortcutAction(
@@ -26,7 +26,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(0), true).each(
                 hSizes -> {
                   hScroll = this.controller.getHScroll(ctx, true);
                   hScrollValue = hScroll.get(ctx, true);
@@ -52,7 +52,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(0), true).each(
                 hSizes -> {
                   hScroll = this.controller.getHScroll(ctx, true);
                   hScrollValue = hScroll.get(ctx, true);
@@ -78,7 +78,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(1), true).each(
                 vSizes -> {
                   vScroll = this.controller.getVScroll(ctx, true);
                   vScrollValue = vScroll.get(ctx, true);
@@ -104,7 +104,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(1), true).each(
                 vSizes -> {
                   vScroll = this.controller.getVScroll(ctx, true);
                   vScrollValue = vScroll.get(ctx, true);
@@ -125,7 +125,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(0), true).each(
                 hSizes -> {
                   hScroll = this.controller.getHScroll(ctx, true);
                   hScrollValue = hScroll.get(ctx, true);
@@ -149,7 +149,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(0), true).each(
                 hSizes -> {
                   hScroll = this.controller.getHScroll(ctx, true);
                   hScrollValue = hScroll.get(ctx, true);
@@ -173,7 +173,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(1), true).each(
                 vSizes -> {
                   vScroll = this.controller.getVScroll(ctx, true);
                   vScrollValue = vScroll.get(ctx, true);
@@ -197,7 +197,7 @@ class FocusHandler{
           SystemProperties.repeat(
             ctx,
             ctx ~>
-              this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(
+              this.sizesHdl.maybeGetValue(ctx, SKStore.IID(1), true).each(
                 vSizes -> {
                   vScroll = this.controller.getVScroll(ctx, true);
                   vScrollValue = vScroll.get(ctx, true);
@@ -225,7 +225,7 @@ class FocusHandler{
         "hEnd",
         FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::end)]),
         FWK.Standard(ctx ~>
-          this.sizesHdl.maybeGetValue(ctx, SKFS.IID(0), true).each(hSizes ->
+          this.sizesHdl.maybeGetValue(ctx, SKStore.IID(0), true).each(hSizes ->
             this.controller.getHScroll(ctx, true).set(
               ctx,
               Some(hSizes.max()),
@@ -245,7 +245,7 @@ class FocusHandler{
         "vEnd",
         FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::end)]),
         FWK.Standard(ctx ~>
-          this.sizesHdl.maybeGetValue(ctx, SKFS.IID(1), true).each(vSizes ->
+          this.sizesHdl.maybeGetValue(ctx, SKStore.IID(1), true).each(vSizes ->
             this.controller.getVScroll(ctx, true).set(
               ctx,
               Some(vSizes.max()),
@@ -258,14 +258,14 @@ class FocusHandler{
   }
 
   protected fun beforeShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false
   }
 
   protected fun afterShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false

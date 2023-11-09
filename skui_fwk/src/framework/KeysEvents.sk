@@ -1,37 +1,38 @@
 module FWKPipeline;
 
-const keysStateBeforePath: SKFS.DirName = SKFS.DirName::create(
+const keysStateBeforePath: SKStore.DirName = SKStore.DirName::create(
   "/ui/fwk/state/keys/before/",
 );
 
-fun prepareKeys(context: mutable SKFS.Context): SKFS.EHValue<FWK.FocusState> {
-  previousKeysState: Array<(SKFS.BaseName, FWK.FocusState)> = Array[
-    (Ui.MainKey(), FWK.FocusState()),
-  ];
+fun prepareKeys(
+  context: mutable SKStore.Context,
+): SKStore.EHValue<Ui.MainKey, FWK.FocusState> {
   previousKeysStateHdl = context.makePreDir(
-    FWK.FocusState::fromFile,
+    Ui.MainKey::keyType,
+    FWK.FocusState::type,
     FWK.keysStatePath,
-    previousKeysState,
+    Array[(Ui.MainKey(), FWK.FocusState())],
   );
-  SKFS.EHValue(previousKeysStateHdl, Ui.MainKey())
+  SKStore.EHValue(previousKeysStateHdl, Ui.MainKey())
 }
 
 fun initKeys(
-  context: mutable SKFS.Context,
-  widgetHdl: SKFS.EHValue<Ui.WidgetFile>,
+  context: mutable SKStore.Context,
+  widgetHdl: SKStore.EHValue<Ui.MainKey, Ui.WidgetFile>,
   nodeInfoGetter: Ui.NodeInfoGetter,
   nodeGetter: Ui.NodeGetter,
   root: UiRoot.Storage,
 ): void {
   fsu = FocusStateUtils(nodeInfoGetter, nodeGetter);
   ksKey = Ui.MainKey();
-  previousKeysStateHdl = SKFS.EHandle(
-    FWK.FocusState::fromFile,
+  previousKeysStateHdl = SKStore.EHandle(
+    Ui.MainKey::keyType,
+    FWK.FocusState::type,
     FWK.keysStatePath.pre(),
   );
   context.initFocused();
   focusablesHdl = widgetHdl.mapContext(
-    FWK.Focusables::fromFile,
+    FWK.Focusables::type,
     context,
     FWK.focusablesPath,
     (context, wf) ~> {
@@ -46,7 +47,7 @@ fun initKeys(
   );
   _ = focusablesHdl
     .mapContext(
-      FWK.FocusState::fromFile,
+      FWK.FocusState::type,
       context,
       keysStateBeforePath,
       (context, focusables) ~> {
@@ -168,7 +169,7 @@ fun initKeys(
       },
     )
     .mapContext(
-      FWK.FocusState::fromFile,
+      FWK.FocusState::type,
       context,
       FWK.keysStatePath,
       (context, focusState) ~> {
@@ -188,7 +189,7 @@ class FocusStateUtils(
   nodeGetter: Ui.NodeGetter,
 ) {
   fun fillFocusables(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     node: Ui.Node,
     focusables: mutable Vector<FWK.FocusHandler>,
   ): void {

@@ -17,7 +17,7 @@ class Face(
   size: Float,
   dpi: Float,
   hinting: Font.Hinting,
-) extends SKFS.BaseName {
+) extends SKStore.Key {
   //
   static fun create(
     collection: String,
@@ -33,9 +33,9 @@ class Face(
   }
 }
 
-class Glyph(face: Face, char: Char, pxRange: Int = 8) extends SKFS.BaseName {
+class Glyph(face: Face, char: Char, pxRange: Int = 8) extends SKStore.Key {
   //
-  fun compare(y: SKFS.BaseName): Order {
+  fun compare(y: SKStore.Key): Order {
     y match {
     | other @ Glyph _ ->
       cComp = this.char.compare(other.char);
@@ -399,13 +399,13 @@ base class Icon uses Hashable, Equality, HasClassName {
   }
 }
 
-base class Codes extends SKFS.File {
+base class Codes extends SKStore.File {
   fun getChar(Icon): ?Char;
 
-  static fun forFile(obj: SKFS.File): Codes {
+  static fun btype(obj: SKStore.File): Codes {
     obj match {
     | x @ Codes _ -> x
-    | _ -> SKFS.cast_violation("UiIcon.Codes", obj)
+    | _ -> SKStore.cast_violation("UiIcon.Codes", obj)
     }
   }
 }
@@ -441,9 +441,9 @@ class Description(
   kind: Kind,
   name: String,
   optSize: ?Ui.Size = None(),
-) extends SKFS.File {
+) extends SKStore.File {
   //
-  static fun fromFile(obj: SKFS.File): this {
+  static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Description _ -> x
     | _ -> invariant_violation("Must be UiIcon.Description")
@@ -582,10 +582,10 @@ class Description(
     }
   }
 
-  static fun forFile(obj: SKFS.File): Description {
+  static fun btype(obj: SKStore.File): Description {
     obj match {
     | x @ Description _ -> x
-    | _ -> SKFS.cast_violation("UiIcon.Description", obj)
+    | _ -> SKStore.cast_violation("UiIcon.Description", obj)
     }
   }
 }

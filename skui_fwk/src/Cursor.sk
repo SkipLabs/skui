@@ -1,6 +1,6 @@
 module Ui;
 
-base class Cursor() extends SKFS.File uses Hashable, Equality {
+base class Cursor() extends SKStore.File uses Hashable, Equality {
   children =
   | NoneCursor()
   | DefaultCursor()
@@ -98,10 +98,10 @@ base class Cursor() extends SKFS.File uses Hashable, Equality {
     }
   }
 
-  static fun forFile(obj: SKFS.File): Cursor {
+  static fun btype(obj: SKStore.File): Cursor {
     obj match {
     | x @ Cursor _ -> x
-    | _ -> SKFS.cast_violation("Ui.Cursor", obj)
+    | _ -> SKStore.cast_violation("Ui.Cursor", obj)
     }
   }
 }

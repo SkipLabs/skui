@@ -1,11 +1,9 @@
 [package]
 name = "skui_mtsdf"
 version = "0.1.0"
-format-on-check = false
-auto-remove-state = true
 
 [dependencies]
-skui_font = {}
+skui_font = { "path" = "../skui_font" }
 
 #[[bin]]
 #name = "skuimtsdf"

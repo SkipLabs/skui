@@ -1,7 +1,7 @@
 module Icon;
 
 class Check(width: Int = 16, optPaint: ?Ui.Paint = None()) extends PathIcon {
-  protected fun computedSize(_context: mutable SKFS.Context): Geometry.Size {
+  protected fun computedSize(_context: mutable SKStore.Context): Geometry.Size {
     Geometry.Size::square(this.width.toFloat());
   }
 

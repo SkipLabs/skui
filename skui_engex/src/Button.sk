@@ -11,7 +11,7 @@ fun example(): SkuiEngex.Example {
 
 class ActionPerformer() extends UiEngine.ActionPerformer uses HasClassName {
   //
-  fun perform(context: mutable SKFS.Context, count: Int): void {
+  fun perform(context: mutable SKStore.Context, count: Int): void {
     debug(`Button clicked[${context.tick}]: count ${count}`)
   }
 
@@ -29,7 +29,7 @@ class Renderable() extends UiEngine.Renderable uses HasClassName {
     this.getClassName()
   }
 
-  fun render(_context: mutable SKFS.Context): ?UiEngine.Description {
+  fun render(_context: mutable SKStore.Context): ?UiEngine.Description {
     button = UiEngine.Button{
       //
       optOnFire => Some(ActionPerformer()),

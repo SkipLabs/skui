@@ -1,11 +1,14 @@
 base class Text uses Hashable, Orderable, Show {}
 
-type Dictionary = (mutable SKFS.Context, String) ~> ?String;
+type Dictionary = (mutable SKStore.Context, String) ~> ?String;
 
 base class LocaleBase extends Text {
   fun toLocalized(i18n: I18N): String;
 
-  fun translate(context: mutable SKFS.Context, dictionary: Dictionary): String;
+  fun translate(
+    context: mutable SKStore.Context,
+    dictionary: Dictionary,
+  ): String;
 }
 
 class Raw(text: String) extends Text {
@@ -23,7 +26,10 @@ class LocaleText(
     i18n.getText(this.text, this.optCategory);
   }
 
-  fun translate(context: mutable SKFS.Context, dictionary: Dictionary): String {
+  fun translate(
+    context: mutable SKStore.Context,
+    dictionary: Dictionary,
+  ): String {
     I18N.localized(context, dictionary, this.text, this.optCategory);
   }
 
@@ -53,7 +59,10 @@ class Format(
     format
   }
 
-  fun translate(context: mutable SKFS.Context, dictionary: Dictionary): String {
+  fun translate(
+    context: mutable SKStore.Context,
+    dictionary: Dictionary,
+  ): String {
     format = I18N.translate(context, dictionary, this.format);
     this.parameters.eachWithIndex((index, parameter) ->
       !format = format.replace(
@@ -134,7 +143,7 @@ extension class String {
   }
 }
 
-module SKFS;
+module SKStore;
 
 fun normalize(text: String, allowSlash: Bool = false): String {
   if (text.isEmpty()) {
@@ -191,17 +200,17 @@ fun pushText(v: mutable Vector<Text>, text: Text): void {
 }
 
 fun localized(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   dictionary: Dictionary,
   text: String,
   optCategory: ?String = None(),
 ): String {
   entry = optCategory.map(category -> `${category}:${text}`).default(text);
-  dictionary(context, SKFS.normalize(entry)).default(text)
+  dictionary(context, SKStore.normalize(entry)).default(text)
 }
 
 fun translate(
-  context: mutable SKFS.Context,
+  context: mutable SKStore.Context,
   dictionary: Dictionary,
   text: Text,
 ): String {

@@ -4,31 +4,33 @@ class TabsSc protected {
   reference: Path,
   controller: UiTabsSc.Controller,
   state: UiTabsSc.State,
-  widget: mutable SKFS.Context ~> Widget,
+  widget: mutable SKStore.Context ~> Widget,
 } extends StrictWidget uses WithNodeCache {
   //
   type Params = UiTabsSc.Parameters;
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     params: UiTabsSc.Parameters,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiTabsSc.widgetDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
-    widgetHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    widgetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       UiTabsSc.widgetDirName(path),
       (context, writer, key, _) ~> {
         subPath = path.makeChild("viewport");
-        writer.write(
+        writer.set(
           key,
           WidgetFile(
             Flex::createForController(
@@ -51,12 +53,15 @@ class TabsSc protected {
       reference => params.reference,
       optConfiguration,
       cache,
-      widget => ctx ~> widgetHdl.get(ctx, SKFS.IID(0)).widget,
+      widget => ctx ~> widgetHdl.get(ctx, SKStore.IID(0)).widget,
       tick => context.tick,
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     direction = this.controller.getDirection(context);
     child = this.viewportChild(context, constraints, Some(direction));
     spaces = UiTabsSc.space * 2.0;
@@ -92,7 +97,7 @@ class TabsSc protected {
   }
 
   fun computeDrawInfo(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _support: Ui.DrawableSupport,
     _relative: Geometry.Offset,
     nodeSum: NodeSum,
@@ -104,7 +109,7 @@ class TabsSc protected {
   }
 
   fun viewportChild(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     constraints: BoxConstraints,
     optDirection: ?Axis = None(),
   ): CNode {
@@ -121,7 +126,7 @@ class TabsSc protected {
     CNode(node, Geometry.Offset::zero, cConstraints)
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     viewport = this.path.makeChild("vp");
     Some(
       ViewportDef(
@@ -140,7 +145,7 @@ class TabsSc protected {
   }
 
   fun getHoverHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     Some((ctx, offset, ni) ~> {
@@ -165,7 +170,7 @@ class TabsSc protected {
   }
 
   fun getDropHandler(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     childGetter: Getter<?FWK.DropHandler>,
   ): ?DropHandlerGetter {
     Some((ctx, _o, ni) ~>
@@ -174,7 +179,7 @@ class TabsSc protected {
   }
 
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     nodeInfo: Getter<NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -201,7 +206,7 @@ class TabsSc protected {
   }
 
   fun computeLayer(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: DrawableSupport,
     absolute: Geometry.Offset,
     layer: LayerId,
@@ -222,7 +227,7 @@ class TabsSc protected {
   }
 
   private fun computeUserData(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     node: Node,
     size: Geometry.Size,
     direction: Axis,
@@ -238,7 +243,7 @@ class TabsSc protected {
   }
 
   private fun fillForeground(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     support: DrawableSupport,
     absolute: Geometry.Offset,
     drawInfo: UiTabsSc.DrawInfo,

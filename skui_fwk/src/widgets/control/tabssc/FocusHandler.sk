@@ -10,12 +10,12 @@ class FocusHandler{
   }
 
   protected fun getShortcuts(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     Array[]
   }
 
-  protected fun onEnter(context: mutable SKFS.Context): Bool {
+  protected fun onEnter(context: mutable SKStore.Context): Bool {
     this.scroll.state.emitGoTo(context, Index(this.index));
     true
   }

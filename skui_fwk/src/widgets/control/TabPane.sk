@@ -2,80 +2,85 @@ module Ui;
 
 class TabPane protected {
   controller: UiTabPane.Controller,
-  widgetHdl: SKFS.EHValue<WidgetFile>,
+  widgetHdl: SKStore.EHValue<SKStore.IID, WidgetFile>,
 } extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
   //
   type Params = UiTabPane.Controller;
   type Buffer = NodeCache;
 
   protected static fun make(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     path: Path,
     controller: UiTabPane.Controller,
     cache: NodeCache,
     optConfiguration: ?Configuration = None(),
   ): this {
     mainHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
       UiTabPane.itemsDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[(SKFS.IID(0), SKFS.IntFile(0))],
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
     );
-    tabsKey = SKFS.StrID("k0_tabs");
-    contentKey = SKFS.StrID("k2_content");
-    placeHolderKey = SKFS.StrID("k1_placeholder");
+    tabsKey = SKStore.StrID("k0_tabs");
+    contentKey = SKStore.StrID("k2_content");
+    placeHolderKey = SKStore.StrID("k1_placeholder");
     childrenHdl = context.makeDir(
-      SKFS.IntFile::fromFile,
+      SKStore.StrID::keyType,
+      SKStore.IntFile::type,
       UiTabPane.widgetsDirName(path.makeChild("source")),
-      Array<(SKFS.BaseName, SKFS.File)>[
-        (tabsKey, SKFS.IntFile(0)),
-        (contentKey, SKFS.IntFile(0)),
-        (placeHolderKey, SKFS.IntFile(0)),
+      Array[
+        (tabsKey, SKStore.IntFile(0)),
+        (contentKey, SKStore.IntFile(0)),
+        (placeHolderKey, SKStore.IntFile(0)),
       ],
     );
     builtHdl = mainHdl
-      .contextWriterKeyMap(
+      .map(
+        SKStore.KIndexed::bKeyType,
         f ~> f,
         context,
         UiTabPane.itemsDirName(path),
-        (context, writer, _key, _file) ~> {
+        (context, writer, _key, _it) ~> {
           tabs = controller.getTabs(context);
-          keys = mutable Vector<SKFS.StrID>[];
+          keys = mutable Vector<SKStore.StrID>[];
           for (tab in tabs) {
-            id = SKFS.StrID(tab);
-            writer.write(id, SKFS.StringFile(tab));
+            id = SKStore.StrID(tab);
+            writer.set(SKStore.KIdx(id), SKStore.StringFile(tab));
             keys.push(id);
           };
-          writer.write(SKFS.KKeys(), SKFS.Keys(keys.toArray()));
-          writer.write(SKFS.KSize(), SKFS.IntFile(keys.size()));
+          writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
+          writer.set(SKStore.KSize(), SKStore.IntFile(keys.size()));
         },
       )
-      .contextWriterKeyMap(
+      .map(
+        SKStore.KIndexed::bKeyType,
         f ~> f,
         context,
         UiTabPane.itemsDirName(path.makeChild("built")),
-        (context, writer, key, file) ~> {
+        (context, writer, key, it) ~> {
           key match {
-          | SKFS.KKeys()
-          | SKFS.KSize() ->
-            writer.write(key, file)
+          | SKStore.KKeys()
+          | SKStore.KSize() ->
+            writer.set(key, it.first)
           | _ ->
-            tab = SKFS.StringFile::fromFile(file).value;
-            writer.write(key, controller.getTab(context, tab))
+            tab = SKStore.StringFile::type(it.first).value;
+            writer.set(key, controller.getTab(context, tab))
           };
         },
       )
-      .contextWriterKeyMap(
+      .map(
+        SKStore.KIndexed::bKeyType,
         f ~> f,
         context,
         UiTabPane.itemsDirName(path.makeChild("tabs")),
-        (_context, writer, key, file) ~> {
+        (_context, writer, key, it) ~> {
           key match {
-          | SKFS.KKeys()
-          | SKFS.KSize() ->
-            writer.write(key, file)
+          | SKStore.KKeys()
+          | SKStore.KSize() ->
+            writer.set(key, it.first)
           | _ ->
             id = key.toString();
-            tabInfo = UiTabPane.Tab::fromFile(file);
+            tabInfo = UiTabPane.Tab::type(it.first);
             // TODO intermediate tables to break dependencies
             tab = UiTabs.Tab{
               disabled => ctx ~> controller.isDisabled(ctx, id),
@@ -88,22 +93,23 @@ class TabPane protected {
               badge => ctx ~> controller.getBadge(ctx, id),
               progress => ctx ~> controller.getProgress(ctx, id),
             };
-            writer.write(key, tab)
+            writer.set(key, tab)
           };
         },
       );
-    beforeHdl = childrenHdl.contextWriterKeyMap(
+    beforeHdl = childrenHdl.map(
+      SKStore.StrID::keyType,
       f ~> f,
       context,
       UiTabPane.widgetsDirName(path.makeChild("before")),
-      (context, writer, key, file) ~> {
+      (context, writer, key, it) ~> {
         subPath = path.makeChild("widgets").makeChild(key.toString());
         if (key == tabsKey) {
           tabsController = UiTabs.LamController{
             tabs => controller.getTabs,
             tab => (ctx, id) ~> {
-              tkey = SKFS.StrID(id);
-              UiTabs.Tab::fromFile(builtHdl.get(ctx, tkey));
+              tkey = SKStore.StrID(id);
+              UiTabs.Tab::type(builtHdl.get(ctx, SKStore.KIdx(tkey)));
             },
             numberOfActions => ctx ~> controller.getActions(ctx).size(),
             actions => (ctx, idx) ~> {
@@ -118,9 +124,9 @@ class TabPane protected {
             onChange_ => controller.onChange,
             onClose_ => controller.onClose,
           };
-          writer.write(key, UiTabs.init(context, subPath, tabsController))
+          writer.set(key, UiTabs.init(context, subPath, tabsController))
         } else if (key == placeHolderKey) {
-          writer.write(
+          writer.set(
             key,
             WidgetFile(
               Label::create(
@@ -134,25 +140,26 @@ class TabPane protected {
             ),
           )
         } else {
-          writer.write(key, file)
+          writer.set(key, it.first)
         }
       },
     );
-    widgetsHdl = beforeHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    widgetsHdl = beforeHdl.map(
+      SKStore.StrID::keyType,
+      WidgetFile::type,
       context,
       UiTabPane.widgetsDirName(path),
-      (context, writer, key, file) ~> {
+      (context, writer, key, it) ~> {
         subPath = path.makeChild("widgets").makeChild(key.toString());
         if (key == tabsKey) {
-          tabsParams = UiTabs.Parameters::fromFile(file);
-          writer.write(
+          tabsParams = UiTabs.Parameters::type(it.first);
+          writer.set(
             key,
             WidgetFile(Tabs::create(context, subPath, tabsParams)),
           )
         } else if (key == contentKey) {
           optWidget = beforeHdl
-            .maybeGetProp(context, tabsKey, UiTabs.Parameters::fromFile)
+            .maybeGetProp(context, tabsKey, UiTabs.Parameters::type)
             .flatMap(tabsParams -> {
               tabsParams.state.getActive(context) match {
               | Some(active) ->
@@ -162,7 +169,7 @@ class TabPane protected {
                 }
               | _ ->
                 beforeHdl.maybeGetProp(context, placeHolderKey, f ~>
-                  WidgetFile::fromFile(f).widget
+                  WidgetFile::type(f).widget
                 )
               }
             });
@@ -180,7 +187,7 @@ class TabPane protected {
               ),
             )
           };
-          writer.write(
+          writer.set(
             key,
             WidgetFile(
               Configured::create(
@@ -194,8 +201,9 @@ class TabPane protected {
         }
       },
     );
-    widgetHdl = mainHdl.contextWriterKeyMap(
-      WidgetFile::fromFile,
+    widgetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
       context,
       UiTabPane.widgetDirName(path),
       (context, writer, key, _) ~> {
@@ -206,7 +214,7 @@ class TabPane protected {
         | UiSide.Right() -> (HorizontalAxis(), Array[contentKey, tabsKey])
         | UiSide.Bottom() -> (VerticalAxis(), Array[contentKey, tabsKey])
         };
-        writer.write(
+        writer.set(
           key,
           WidgetFile(
             Flex::createForController(
@@ -227,12 +235,15 @@ class TabPane protected {
       controller,
       optConfiguration,
       cache,
-      widgetHdl => SKFS.EHValue(widgetHdl, SKFS.IID(0)),
+      widgetHdl => SKStore.EHValue(widgetHdl, SKStore.IID(0)),
       tick => context.tick,
     }
   }
 
-  fun layout(context: mutable SKFS.Context, constraints: BoxConstraints): Node {
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
     widget = this.widgetHdl.get(context).widget;
     node = widget.getNode(context, constraints);
     Node(
@@ -242,7 +253,7 @@ class TabPane protected {
     );
   }
 
-  fun getViewportDefinition(context: mutable SKFS.Context): ?ViewportDef {
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
     this.widgetHdl.get(context).widget.getViewportDefinition(context);
   }
 }

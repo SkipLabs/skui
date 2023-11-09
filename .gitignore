@@ -16,3 +16,4 @@
 /.skargoreps
 .skargoconfig
 prepare.sh
+.tsconfig.json

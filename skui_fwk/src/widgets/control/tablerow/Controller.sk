@@ -11,36 +11,36 @@ class LamController{
 } extends Controller {
   //
   fun getWidths(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Array<Float> {
     this.widths(context, isUntracked)
   }
 
   fun getHeight(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     isUntracked: Bool = false,
   ): Float {
     this.height(context, isUntracked)
   }
 
-  fun getCells(context: mutable SKFS.Context): Array<Ui.TableCell> {
+  fun getCells(context: mutable SKStore.Context): Array<Ui.TableCell> {
     this.cells(context)
   }
 
-  fun isSelected(context: mutable SKFS.Context): Bool {
+  fun isSelected(context: mutable SKStore.Context): Bool {
     this.selected(context)
   }
 
-  fun isHover(context: mutable SKFS.Context): Bool {
+  fun isHover(context: mutable SKStore.Context): Bool {
     this.hover(context)
   }
 
-  fun isHighlighted(context: mutable SKFS.Context): Bool {
+  fun isHighlighted(context: mutable SKStore.Context): Bool {
     this.highlighted(context)
   }
 
-  fun hasSeparators(context: mutable SKFS.Context): Bool {
+  fun hasSeparators(context: mutable SKStore.Context): Bool {
     this.separators(context)
   }
 }

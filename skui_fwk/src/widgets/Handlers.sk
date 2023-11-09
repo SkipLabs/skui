@@ -2,16 +2,19 @@ module Ui;
 
 base class FocusManager {
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler>;
 }
 
 base class FocusController {
-  fun isGotoNext(context: mutable SKFS.Context, keys: UiEvent.KeysFile): Bool;
+  fun isGotoNext(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+  ): Bool;
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool;
 }
@@ -20,13 +23,16 @@ class KeyStrokeFC(
   gotoNext: Array<UiEvent.KeyStroke>,
   gotoPrevious: Array<UiEvent.KeyStroke>,
 ) extends FocusController {
-  fun isGotoNext(context: mutable SKFS.Context, keys: UiEvent.KeysFile): Bool {
+  fun isGotoNext(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+  ): Bool {
     tick = context.tick;
     this.gotoNext.any(stroke -> stroke.test(keys, tick));
   }
 
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool {
     this.gotoPrevious.any(stroke -> stroke.test(keys, context.tick));
@@ -35,13 +41,13 @@ class KeyStrokeFC(
 
 class NoFocusController() extends FocusController {
   fun isGotoNext(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false
   }
   fun isGotoPrevious(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _keys: UiEvent.KeysFile,
   ): Bool {
     false
@@ -51,7 +57,7 @@ class NoFocusController() extends FocusController {
 base class TabFocusHandler extends FWK.FocusHandler {
   //
   protected fun onKeys(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keyFile: UiEvent.KeysFile,
   ): Bool;
 
@@ -73,7 +79,7 @@ base class TabFocusHandler extends FWK.FocusHandler {
   }
 
   fun isGotoNext(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -85,7 +91,7 @@ base class TabFocusHandler extends FWK.FocusHandler {
   }
 
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -97,7 +103,7 @@ base class TabFocusHandler extends FWK.FocusHandler {
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): Bool {
@@ -110,10 +116,10 @@ base class TabFocusHandler extends FWK.FocusHandler {
 
 base class F2FocusHandler extends FWK.FocusHandler {
   //
-  protected fun isEditable(context: mutable SKFS.Context): Bool;
+  protected fun isEditable(context: mutable SKStore.Context): Bool;
 
   protected fun onKeys(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keyFile: UiEvent.KeysFile,
   ): Bool;
 
@@ -135,7 +141,7 @@ base class F2FocusHandler extends FWK.FocusHandler {
   }
 
   fun isGotoNext(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -151,7 +157,7 @@ base class F2FocusHandler extends FWK.FocusHandler {
   }
 
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -167,7 +173,7 @@ base class F2FocusHandler extends FWK.FocusHandler {
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): Bool {
@@ -195,19 +201,19 @@ base class FocusHandlerWrapper{
     )
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     if (this.onEnter(context)) {
       this.optFocusHandler.each(fh -> fh.enter(context))
     }
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     if (this.onExit(context)) {
       this.optFocusHandler.each(fh -> fh.exit(context));
     }
   }
 
-  overridable fun noMore(context: mutable SKFS.Context): void {
+  overridable fun noMore(context: mutable SKStore.Context): void {
     this.optFocusHandler.each(fh -> fh.noMore(context))
   }
 
@@ -235,7 +241,7 @@ base class FocusHandlerWrapper{
   }
 
   fun isGotoNext(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -256,7 +262,7 @@ base class FocusHandlerWrapper{
   }
 
   fun isGotoPrevious(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): ?Bool {
@@ -277,7 +283,7 @@ base class FocusHandlerWrapper{
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
     source: Ui.Path,
   ): Bool {
@@ -306,15 +312,15 @@ base class FocusHandlerWrapper{
   }
 
   protected fun onKeys(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     keyFile: UiEvent.KeysFile,
   ): Bool;
 
-  protected overridable fun onEnter(_context: mutable SKFS.Context): Bool {
+  protected overridable fun onEnter(_context: mutable SKStore.Context): Bool {
     true
   }
 
-  protected overridable fun onExit(_context: mutable SKFS.Context): Bool {
+  protected overridable fun onExit(_context: mutable SKStore.Context): Bool {
     true
   }
 }
@@ -352,14 +358,14 @@ fun wrappedFocusHandlersWithIndex(
 
 class FocusHandlerWithShortcuts{
   identifier: Ui.Path,
-  shortcuts: mutable SKFS.Context ~> Array<FWK.ShortcutAction>,
+  shortcuts: mutable SKStore.Context ~> Array<FWK.ShortcutAction>,
 } extends FocusHandlerWrapper uses FWK.OnlyShortcuts {
   protected fun getMainIdentifier(): Ui.Path {
     this.identifier;
   }
 
   protected fun getShortcuts(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): Array<FWK.ShortcutAction> {
     this.shortcuts(context)
   }
@@ -371,7 +377,7 @@ base class HoverHandlerWrapper(
 ) extends FWK.HoverHandler {
   //
   protected fun onMouse(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result;
 
@@ -379,28 +385,28 @@ base class HoverHandlerWrapper(
     true
   }
 
-  overridable protected fun onEnter(_context: mutable SKFS.Context): void {
+  overridable protected fun onEnter(_context: mutable SKStore.Context): void {
     void
   }
 
-  overridable protected fun onExit(_context: mutable SKFS.Context): void {
+  overridable protected fun onExit(_context: mutable SKStore.Context): void {
     void
   }
 
   overridable protected fun onCheckMouse(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
   ): void {
     void
   }
 
-  fun enter(context: mutable SKFS.Context): void {
+  fun enter(context: mutable SKStore.Context): void {
     this.onEnter(context);
     this.optHoverHandler.each(hh -> hh.enter(context));
   }
 
   fun manage(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
@@ -419,13 +425,13 @@ base class HoverHandlerWrapper(
     result
   }
 
-  fun exit(context: mutable SKFS.Context): void {
+  fun exit(context: mutable SKStore.Context): void {
     this.optHoverHandler.each(hh -> hh.exit(context));
     this.onExit(context);
   }
 
   protected fun check(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
     optPrevious: ?FWK.HoverHandler,
     result: FWK.Result,
@@ -464,7 +470,7 @@ base class HoverHandlerWrapper(
   }
 
   overridable fun getTooltip(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
   ): ?FWK.SourcedWidget {
     this.optTooltip match {
     | Some(getTooltip) ->
@@ -500,7 +506,7 @@ class DummyHHW extends HoverHandlerWrapper {
   }
 
   protected fun onMouse(
-    _context: mutable SKFS.Context,
+    _context: mutable SKStore.Context,
     _mouse: UiEvent.MouseFile,
   ): FWK.Result {
     dummy()
@@ -511,7 +517,7 @@ base class WithFocusManager protected {
   optFocusManager: ?FocusManager = None(),
 } {
   fun checkFocusHandlers(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     nodeInfo: Ui.Getter<Ui.NodeInfo>,
     handlers: readonly Vector<FWK.FocusHandler>,
   ): Vector<FWK.FocusHandler> {
@@ -525,12 +531,12 @@ base class WithFocusManager protected {
 
 base class WithHoverHandler protected {
   optHoverHandler: ?(
-    mutable SKFS.Context,
+    mutable SKStore.Context,
     Getter<?FWK.HoverHandler>,
   ) ~> ?HoverHandlerGetter = None(),
 } {
   fun getHoverHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     childGetter: Getter<?FWK.HoverHandler>,
   ): ?HoverHandlerGetter {
     this.optHoverHandler.flatMap(hhs -> hhs(context, childGetter))
@@ -538,10 +544,10 @@ base class WithHoverHandler protected {
 }
 
 base class WithDragHandler protected {
-  optDragHandler: ?(mutable SKFS.Context) ~> ?DragHandlerGetter = None(),
+  optDragHandler: ?(mutable SKStore.Context) ~> ?DragHandlerGetter = None(),
 } {
   fun getDragHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DragHandler>,
   ): ?DragHandlerGetter {
     this.optDragHandler.flatMap(dhs -> dhs(context))
@@ -549,10 +555,10 @@ base class WithDragHandler protected {
 }
 
 base class WithDropHandler protected {
-  optDropHandler: ?(mutable SKFS.Context) ~> ?DropHandlerGetter = None(),
+  optDropHandler: ?(mutable SKStore.Context) ~> ?DropHandlerGetter = None(),
 } {
   fun getDropHandler(
-    context: mutable SKFS.Context,
+    context: mutable SKStore.Context,
     _childGetter: Getter<?FWK.DropHandler>,
   ): ?DropHandlerGetter {
     this.optDropHandler.flatMap(dhs -> dhs(context))

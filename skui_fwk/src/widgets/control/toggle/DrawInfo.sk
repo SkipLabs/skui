@@ -1,7 +1,7 @@
 module UiToggle;
 
 type Filler = (
-  mutable SKFS.Context,
+  mutable SKStore.Context,
   Ui.DrawableSupport,
   Geometry.Offset,
   Color,

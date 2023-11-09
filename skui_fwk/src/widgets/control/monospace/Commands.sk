@@ -9,9 +9,9 @@ base class Command extends SKUIMessage.Command {
   | SetMoveSelection(moveSelection: Bool)
   | SetHScroll(optScroll: ?Ui.Scroll)
   | SetVScroll(optScroll: ?Ui.Scroll)
-  | CancelScrolling(tick: SKFS.Tick)
+  | CancelScrolling(tick: SKStore.Tick)
   | SetBlinking(value: Bool)
-  | ToggleHidden(tick: SKFS.Tick)
+  | ToggleHidden(tick: SKStore.Tick)
   | All(commands: Array<Command>)
 }
 
@@ -19,8 +19,8 @@ base class ExecCommand extends Command, Executable {
   children =
   | ManageDiacritic(char: Char)
   | ManageUnicode(optUnicode: ?Int)
-  | ManageHScrolling(value: Int, tick: SKFS.Tick)
-  | ManageVScrolling(value: Int, tick: SKFS.Tick)
+  | ManageHScrolling(value: Int, tick: SKStore.Tick)
+  | ManageVScrolling(value: Int, tick: SKStore.Tick)
   | ManageHVisible(value: Int)
   | ManageVVisible(value: Int)
   | Copy()
