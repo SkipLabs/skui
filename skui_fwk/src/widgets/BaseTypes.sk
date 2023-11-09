@@ -616,26 +616,38 @@ class HandledCollection(
   }
 }
 
+base class WInfo extends SKStore.File {
+  children =
+  | WSize(value: Int)
+  | WKeys(value: Array<SKStore.Key>)
+  | WElem(value: Widget)
+
+  static fun btype(obj: SKStore.File): WInfo {
+    obj match {
+    | x @ WInfo _ -> x
+    | _ -> SKStore.cast_violation("Ui.WInfo", obj)
+    }
+  }
+}
+
 class KIndexedCollection(
-  handle: SKStore.Handle<SKStore.KIndexed, SKStore.File>,
+  handle: SKStore.Handle<SKStore.KIndexed, WInfo>,
 ) extends WidgetsCollection {
   //
   fun getSize(context: mutable SKStore.Context): Int {
-    this.handle.getInt(context, SKStore.KSize())
+    WSize::type(this.handle.get(context, SKStore.KSize())).value
   }
 
   fun getWidget(context: mutable SKStore.Context, index: Int): Widget {
-    key = (this.handle.get(context, SKStore.KKeys()) as SKStore.Keys _).value[
-      index,
-    ];
-    WidgetFile::type(this.handle.get(context, SKStore.KIdx(key))).widget
+    key = WKeys::type(this.handle.get(context, SKStore.KKeys())).value[index];
+    WElem::type(this.handle.get(context, SKStore.KIdx(key))).value
   }
 
   fun all(context: mutable SKStore.Context): Array<Widget> {
-    this.handle.maybeGetProp(context, SKStore.KKeys(), SKStore.Keys::type)
+    this.handle.maybeGetProp(context, SKStore.KKeys(), WKeys::type)
       .map(keys ->
         keys.value.map(key ->
-          WidgetFile::type(this.handle.get(context, SKStore.KIdx(key))).widget
+          WElem::type(this.handle.get(context, SKStore.KIdx(key))).value
         )
       )
       .default(Array[])

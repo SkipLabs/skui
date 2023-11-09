@@ -267,7 +267,7 @@ class HStorage private (
                 | _ -> void
                 }
               };
-              writer.set(SKStore.KIdx(key), Ui.WidgetFile(widget));
+              writer.set(SKStore.KIdx(key), Ui.WElem(widget));
               writer.set(SKStore.KKeys(), SKStore.KeyFile(key));
             })
           })
@@ -275,7 +275,7 @@ class HStorage private (
       )
       .map(
         SKStore.KIndexed::bKeyType,
-        f ~> f,
+        Ui.WInfo::btype,
         context,
         SKStore.DirName::make(dirName, "widgets/"),
         (_, writer, key, it) ~>
@@ -285,10 +285,10 @@ class HStorage private (
               Layer::bKeyType(v.value)
             );
             layers = values.sorted();
-            keys = SKStore.Keys(layers);
+            keys = Ui.WKeys(layers);
             writer.set(key, keys);
-            writer.set(SKStore.KSize(), SKStore.IntFile(values.size()))
-          | _ -> writer.set(key, it.first)
+            writer.set(SKStore.KSize(), Ui.WSize(values.size()))
+          | _ -> writer.set(key, Ui.WElem::type(it.first))
           }
         ,
       );

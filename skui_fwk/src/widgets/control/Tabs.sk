@@ -50,24 +50,23 @@ class Tabs protected {
           writer.set(SKStore.KIdx(SKStore.StrID(action.id)), action);
           keys.push(SKStore.StrID(action.id))
         };
-        writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
-        writer.set(SKStore.KSize(), SKStore.IntFile(count));
+        writer.set(SKStore.KKeys(), WKeys(keys.toArray()));
+        writer.set(SKStore.KSize(), WSize(count));
       },
     );
     actionsWidgetsHdl = actionsHdl.map(
       SKStore.KIndexed::bKeyType,
-      f ~> f,
+      WInfo::btype,
       context,
       UiTabs.actionsWidgetsDirName(path),
       (context, writer, key, it) ~> {
         key match {
-        | SKStore.KKeys()
-        | SKStore.KSize() ->
-          writer.set(key, it.first)
+        | SKStore.KKeys() -> writer.set(key, WKeys::type(it.first))
+        | SKStore.KSize() -> writer.set(key, WSize::type(it.first))
         | _ ->
           writer.set(
             key,
-            WidgetFile((it.first as UiTabs.Action _).build(context, path)),
+            WElem((it.first as UiTabs.Action _).build(context, path)),
           )
         };
       },
@@ -100,9 +99,8 @@ class Tabs protected {
     );
     buildTab = (context, writer, key, file, pinned) ~> {
       key match {
-      | SKStore.KKeys()
-      | SKStore.KSize() ->
-        writer.set(key, file)
+      | SKStore.KKeys() -> writer.set(key, WKeys::type(file))
+      | SKStore.KSize() -> writer.set(key, WSize::type(file))
       | _ ->
         controller = (file as UiTab.Controller _);
         tabPath = path
@@ -122,7 +120,7 @@ class Tabs protected {
             }
           },
         );
-        writer.set(key, WidgetFile(widget))
+        writer.set(key, WElem(widget))
       };
     };
     buildPinned = (context, writer, key, it) ~>
@@ -132,7 +130,7 @@ class Tabs protected {
 
     tabsWidgetsHdl = tabsHdl.map(
       SKStore.KIndexed::bKeyType,
-      f ~> f,
+      WInfo::btype,
       context,
       UiTabs.tabsWidgetsDirName(path),
       buildNotPinned,
@@ -153,7 +151,7 @@ class Tabs protected {
     );
     pinnedTabsWidgetsHdl = pinnedTabsHdl.map(
       SKStore.KIndexed::bKeyType,
-      f ~> f,
+      WInfo::btype,
       context,
       UiTabs.pinnedTabsWidgetsDirName(path),
       buildPinned,

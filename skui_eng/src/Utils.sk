@@ -636,13 +636,13 @@ fun toWidgetsCollection(
     dirname("splittedwidgets/"),
     (_context, writer, _key, it) ~> {
       keys = mutable Vector<SKStore.Key>[];
-      it.each(s -> {
+      it.first.value.each(s -> {
         sk = SKStore.IID(hash(s));
         keys.push(sk);
         writer.set(SKStore.KIdx(sk), s)
       });
-      writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
-      writer.set(SKStore.KSize(), SKStore.IntFile(keys.size()));
+      writer.set(SKStore.KKeys(), Ui.WKeys(keys.toArray()));
+      writer.set(SKStore.KSize(), Ui.WSize(keys.size()));
     },
   );
   renderablesHdl = widgetVarsHdl.map(
@@ -650,19 +650,23 @@ fun toWidgetsCollection(
     RenderableFile::type,
     context,
     dirname("renderables/"),
-    (_context, writer, _key, it) ~> {
-      collector: Renderable -> void = r -> {
-        writer.set(SKStore.StrID(r.getId()), RenderableFile(r));
-      };
-      it.first match {
-      | r @ Renderable _ -> collector(r)
-      | d @ Description _ -> d.collect(collector)
+    (_context, writer, key, it) ~> {
+      key match {
+      | SKStore.KIdx _ ->
+        collector: Renderable -> void = r -> {
+          writer.set(SKStore.StrID(r.getId()), RenderableFile(r));
+        };
+        it.first match {
+        | r @ Renderable _ -> collector(r)
+        | d @ Description _ -> d.collect(collector)
+        | o -> SKStore.cast_violation("Ui.Widgetable", o)
+        }
       | _ -> void
       }
     },
   );
   propertiesHdl = widgetVarsHdl.map(
-    SKStore.StrID::keyType,
+    SKStore.IID::keyType,
     WidgetHandle::type,
     context,
     dirname("properties/"),
@@ -672,7 +676,7 @@ fun toWidgetsCollection(
         it.first match {
         | prop @ UiEngine.Prop _ ->
           writer.set(
-            SKStore.StrID::keyType(sid),
+            SKStore.IID::keyType(sid),
             toWidgetHandle(context, prop, root),
           )
         | _ -> void
@@ -712,28 +716,33 @@ fun toWidgetsCollection(
     };
   widgetsHdl = widgetVarsHdl.map(
     SKStore.KIndexed::bKeyType,
-    f ~> f,
+    Ui.WInfo::btype,
     context,
     dirname("built/"),
     (context, writer, key, it) ~> {
-      toWrite = key match {
+      key match {
       | SKStore.KIdx(sid) ->
-        it.first match {
+        toWrite = it.first match {
         | r @ Renderable _ ->
-          renderedsHdl.get(context, SKStore.StrID(r.getId()))
+          Ui.WElem(renderedsHdl.get(context, SKStore.StrID(r.getId())).widget)
         | d @ Description _ ->
-          Ui.WidgetFile(
+          Ui.WElem(
             d.build(context, `${key}#${context.timeStamp()}`, root, cPrebuilt),
           )
         | UiEngine.Prop _ ->
-          propertiesHdl
-            .get(context, SKStore.StrID::keyType(sid))
-            .hdl.get(context)
-        | _ -> it.first
-        }
-      | _ -> it.first
-      };
-      writer.set(key, toWrite)
+          Ui.WElem(
+            propertiesHdl
+            .get(context, SKStore.IID::keyType(sid))
+            .hdl.get(context).widget
+          )
+        | _ -> 
+          invariant_violation(`Not managed ${sid} ${Utils.toString(it.first)}`)
+        };
+        writer.set(key, toWrite)
+      | SKStore.KSize() -> writer.set(key, Ui.WSize::type(it.first))
+      | SKStore.KKeys() ->
+          writer.set(key, Ui.WKeys::type(it.first))
+      }
     },
   );
   Ui.KIndexedCollection(widgetsHdl)
