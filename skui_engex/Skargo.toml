@@ -8,9 +8,3 @@ skui_eng = { "path" = "../skui_eng" }
 [[bin]]
 name = "skuiengex"
 main = "SkuiEngex.main"
-
-[[bin]]
-name = "skuiengex"
-main = "SkuiEngex.main"
-target = "wasm32"
-performer = {"name" = "html", "target" = "mjs"}
