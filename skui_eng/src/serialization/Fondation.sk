@@ -7,16 +7,20 @@ extension base class Text extends UiEngine.SObject {
 
   static fun fromString(str: String): Text {
     RegExp.strMatchAll(str, "^\\[\\[([^\\]]*)\\]\\](.*)$") match {
-    | Some(elements) if (elements.size() == 1 && elements[0].size() == 3) ->
-      cat = elements[0][1];
-      txt = elements[0][2];
-      LocaleText(
-        str.sub(str.getIter().drop(txt.start), txt.size()),
-        str.sub(str.getIter().drop(cat.start), cat.size()).trim() match {
-        | "" -> None()
-        | c -> Some(c)
-        },
-      )
+    | Some(elements) ->
+      if (elements.size() == 1 && elements[0].size() == 3) {
+        cat = elements[0][1];
+        txt = elements[0][2];
+        LocaleText(
+          str.sub(str.getIter().drop(txt.start), txt.size()),
+          str.sub(str.getIter().drop(cat.start), cat.size()).trim() match {
+          | "" -> None()
+          | c -> Some(c)
+          },
+        )
+      } else {
+        Raw(str)
+      }
     | _ -> Raw(str)
     }
   }

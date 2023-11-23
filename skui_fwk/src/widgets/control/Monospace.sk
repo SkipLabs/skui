@@ -174,9 +174,7 @@ class Monospace protected {
         pIdx = 0;
         optPortion: ?UiMonospace.LinePortion = None();
         getColor: (Int, ?Color) -> ?Color = (index, optDefault) -> {
-          optPortion match {
-          | Some(portion) if (portion.contains(index)) -> Some(portion.color)
-          | _ ->
+          otherwise = () -> {
             if (
               pIdx < blockColors.size() &&
               blockColors[pIdx].contains(index)
@@ -189,6 +187,11 @@ class Monospace protected {
               !optPortion = None();
               optDefault
             }
+          };
+          optPortion match {
+          | Some(portion) ->
+            if (portion.contains(index)) Some(portion.color) else otherwise()
+          | _ -> otherwise()
           }
         };
         tIndex = 0;
@@ -597,13 +600,15 @@ class Monospace protected {
         drawInfo = ni.optDrawInfo
           .map(di ~> di as UiMonospace.DrawInfo _)
           .fromSome();
-        optHBar = drawInfo.optHBar match {
-        | Some(bar) if (bar.i1.contains(offset)) -> Some(true)
-        | _ ->
+        other = () -> {
           drawInfo.optVBar match {
-          | Some(bar) if (bar.i1.contains(offset)) -> Some(false)
+          | Some(bar) -> if (bar.i1.contains(offset)) Some(false) else None()
           | _ -> None()
           }
+        };
+        optHBar = drawInfo.optHBar match {
+        | Some(bar) -> if (bar.i1.contains(offset)) Some(true) else other()
+        | _ -> other()
         };
         Some(UiMonospace.HoverHandler(this, optHBar, childGetter(ctx)))
       })
@@ -620,13 +625,16 @@ class Monospace protected {
         drawInfo = ni.optDrawInfo
           .map(di ~> di as UiMonospace.DrawInfo _)
           .fromSome();
-        drawInfo.optHBar match {
-        | Some(bar) if (bar.i1.contains(offset)) -> (true, false)
-        | _ ->
+        other = () -> {
           drawInfo.optVBar match {
-          | Some(bar) if (bar.i1.contains(offset)) -> (false, true)
+          | Some(bar) ->
+            if (bar.i1.contains(offset)) (false, true) else (false, false)
           | _ -> (false, false)
           }
+        };
+        drawInfo.optHBar match {
+        | Some(bar) -> if (bar.i1.contains(offset)) (true, false) else other()
+        | _ -> other()
         };
       } else {
         (false, false)

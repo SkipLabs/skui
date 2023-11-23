@@ -731,7 +731,8 @@ fun init(
               optVisibility match {
               | Some(visiblity) ->
                 optCaretVisible match {
-                | Some(tick) if (visiblity.tick == tick) -> visiblity.visible
+                | Some(tick) ->
+                  if (visiblity.tick == tick) visiblity.visible else true
                 | _ -> true
                 }
               | _ -> optCaretVisible.isSome()
@@ -845,18 +846,17 @@ fun init(
                   !optPosition = Some(Ui.Position(idx, bracket.index));
                   !optCurrent = Some(bracket)
                 | (Some(current), None()) -> update(idx, current, optBracket)
-                | (
-                  Some(current),
-                  Some(bracket),
-                ) if (
-                  optCurrent.map(b -> b.value) != optNew.map(b -> b.value)
-                ) ->
-                  update(idx, current, optBracket);
-                  !optPosition = Some(Ui.Position(idx, bracket.index));
-                  !optCurrent = Some(bracket)
-                | (None(), None())
-                | (Some _, Some _) ->
-                  !optCurrent = optNew
+                | (Some(current), Some(bracket)) ->
+                  if (
+                    optCurrent.map(b -> b.value) != optNew.map(b -> b.value)
+                  ) {
+                    update(idx, current, optBracket);
+                    !optPosition = Some(Ui.Position(idx, bracket.index));
+                    !optCurrent = Some(bracket)
+                  } else {
+                    !optCurrent = optNew
+                  }
+                | (None(), None()) -> !optCurrent = optNew
                 }
               };
               lines.eachWithIndex((idx, line) -> {

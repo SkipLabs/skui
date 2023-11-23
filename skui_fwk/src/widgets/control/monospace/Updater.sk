@@ -314,13 +314,17 @@ mutable class Updater(
     optPosition: ?Ui.Position = None(),
   ): void {
     !toInsert = this.getDiacritic() match {
-    | Some(diacritic) if (toInsert.size() == 1) ->
-      char = toInsert[0];
-      checked = UiEvent.checkDiacritical(diacritic);
-      (Unicode.combine(char, checked) match {
-      | Some(combined) -> Array[combined]
-      | _ -> Array[diacritic, char]
-      }).filter(Unicode.isGraphic)
+    | Some(diacritic) ->
+      if (toInsert.size() == 1) {
+        char = toInsert[0];
+        checked = UiEvent.checkDiacritical(diacritic);
+        (Unicode.combine(char, checked) match {
+        | Some(combined) -> Array[combined]
+        | _ -> Array[diacritic, char]
+        }).filter(Unicode.isGraphic)
+      } else {
+        toInsert
+      }
     | _ -> toInsert
     };
     position = optPosition.default(this.getPosition());
@@ -838,13 +842,13 @@ mutable class Updater(
       end_ = loop {
         !pos = pos + 1;
         chars.maybeGet(pos) match {
-        | Some(c1) if (this.kind(c1) == k) -> void
+        | Some(c1) -> if (this.kind(c1) != k) break pos
         | _ -> break pos
         }
       };
       start = loop {
         chars.maybeGet(pos - 1) match {
-        | Some(c1) if (this.kind(c1) == k) -> void
+        | Some(c1) -> if (this.kind(c1) == k) break pos
         | _ -> break pos
         };
         !pos = pos - 1;

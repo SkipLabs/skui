@@ -49,10 +49,14 @@ class TreeItem protected {
         ts,
         fib,
         b.optMaxCharCount match {
-        | Some(count) if (count > 0) ->
-          chars = str.chars();
-          if (chars.size() > count) {
-            String::fromChars(chars.slice(0, count - 1).toArray()) + "+"
+        | Some(count) ->
+          if (count > 0) {
+            chars = str.chars();
+            if (chars.size() > count) {
+              String::fromChars(chars.slice(0, count - 1).toArray()) + "+"
+            } else {
+              str
+            }
           } else {
             str
           }

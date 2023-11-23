@@ -75,8 +75,10 @@ class Viewport{
     } else {
       status = this.input.state.getStatus(context);
       status match {
-      | KO(_, level) if (level == Error()) ->
-        context.getThemeColor(UiTheme.Error(level))
+      | KO(_, level) ->
+        if (level == Error()) context.getThemeColor(UiTheme.Error(level)) else {
+          context.getThemeColor(UiTheme.Regular())
+        }
       | _ -> context.getThemeColor(UiTheme.Regular())
       }
     };

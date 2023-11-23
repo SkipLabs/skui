@@ -97,11 +97,13 @@ mutable class ReorderBuffer{
     | Some(char) ->
       this.decomposeHangul(char);
       None()
-    | _ if (info.hasDecomposition()) ->
-      this.insertDecomposed(info.decomposition())
     | _ ->
-      this.insertSingle(src, i, info);
-      None()
+      if (info.hasDecomposition()) {
+        this.insertDecomposed(info.decomposition())
+      } else {
+        this.insertSingle(src, i, info);
+        None()
+      }
     }
   }
 
@@ -142,10 +144,13 @@ mutable class ReorderBuffer{
   mutable fun insertUnsafe(src: Array<UInt8>, i: Int, info: Properties): void {
     hangul(src, i) match {
     | Some(char) -> _ = this.decomposeHangul(char)
-    | _ if (info.hasDecomposition()) ->
-      optDecomposed = info.decomposition();
-      _ = this.insertDecomposed(optDecomposed)
-    | _ -> _ = this.insertSingle(src, i, info)
+    | _ ->
+      if (info.hasDecomposition()) {
+        optDecomposed = info.decomposition();
+        _ = this.insertDecomposed(optDecomposed)
+      } else {
+        _ = this.insertSingle(src, i, info)
+      }
     }
   }
 

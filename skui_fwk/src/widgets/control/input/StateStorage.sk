@@ -133,7 +133,7 @@ class HState(
     optVisibility match {
     | Some(visiblity) ->
       optCaretVisible match {
-      | Some(tick) if (visiblity.tick == tick) -> visiblity.visible
+      | Some(tick) -> if (visiblity.tick == tick) visiblity.visible else true
       | _ -> true
       }
     | _ -> optCaretVisible.isSome()
@@ -445,9 +445,11 @@ fun init(
           .each(timed -> {
             (optText, ttick, src) = timed;
             optText match {
-            | Some(text) if (src != source && ttick > tick) ->
-              executables.push((ttick, SetText(text.toString(), src)));
-              !max = Math.max(max, ttick)
+            | Some(text) ->
+              if (src != source && ttick > tick) {
+                executables.push((ttick, SetText(text.toString(), src)));
+                !max = Math.max(max, ttick)
+              }
             | _ -> void
             }
           });
@@ -457,9 +459,11 @@ fun init(
           .each(timed -> {
             (optPos, ttick, src) = timed;
             optPos match {
-            | Some(pos) if (src != source && ttick > tick) ->
-              executables.push((ttick, SetPosition(pos, src)));
-              !max = Math.max(max, ttick)
+            | Some(pos) ->
+              if (src != source && ttick > tick) {
+                executables.push((ttick, SetPosition(pos, src)));
+                !max = Math.max(max, ttick)
+              }
             | _ -> void
             }
           });
@@ -481,9 +485,11 @@ fun init(
           .each(timed -> {
             (optStatus, ttick, src) = timed;
             optStatus match {
-            | Some(status) if (src != source && ttick > tick) ->
-              executables.push((ttick, SetStatus(status, src)));
-              !max = Math.max(max, ttick)
+            | Some(status) ->
+              if (src != source && ttick > tick) {
+                executables.push((ttick, SetStatus(status, src)));
+                !max = Math.max(max, ttick)
+              }
             | _ -> void
             }
           });
@@ -570,9 +576,13 @@ fun init(
         count = sourced.text.chars().size();
         showing = stateHdl.getBool(context, Ui.showingProp);
         toSplit = controller.getKind(context) match {
-        | Password() if (!showing) ->
-          // Optimise with unicity manager
-          String::fromChars(Array::fill(count, UiTheme.passChar))
+        | Password() ->
+          if (!showing) {
+            // Optimise with unicity manager
+            String::fromChars(Array::fill(count, UiTheme.passChar))
+          } else {
+            sourced.text
+          }
         | _ -> sourced.text
         };
         writer.set(Ui.partsProp, Parts(split(toSplit)));
@@ -600,14 +610,18 @@ fun init(
         size = visibilityHdl.getInt(context, Ui.lengthProp);
         sourced = SourcedSel::type(it.first);
         sourced.optRange match {
-        | Some(r) if (r.start < size) ->
-          writer.set(
-            key,
-            SourcedSel(
-              Some(.Range(r.start, Math.min(r.end, size))),
-              sourced.source,
-            ),
-          )
+        | Some(r) ->
+          if (r.start < size) {
+            writer.set(
+              key,
+              SourcedSel(
+                Some(.Range(r.start, Math.min(r.end, size))),
+                sourced.source,
+              ),
+            )
+          } else {
+            writer.set(key, SourcedSel(None(), sourced.source))
+          }
         | _ -> writer.set(key, SourcedSel(None(), sourced.source))
         }
       } else if (key == Ui.targetProp) {
@@ -723,29 +737,32 @@ fun update(
   newText = getText(values);
   if (check && editable) {
     history = optOldHistory match {
-    | Some(history) if (oldText != newText) ->
-      newPosition = getPosition(values);
-      newSelection = getSelection(values);
-      setUserStatus(values, OK(), userData.source);
-      history.add(
-        LamUndoable(
-          (v, tick) ~> {
-            v.writeText(oldText);
-            v.writePosition(oldPosition);
-            v.writeSelection(oldSelection);
-            v.writeEnsureVisible(Pos(oldPosition, tick));
-            v.writeUserStatus(oldUserStatus);
-          },
-          (v, tick) ~> {
-            v.writeText(newText);
-            v.writePosition(newPosition);
-            v.writeSelection(newSelection);
-            v.writeEnsureVisible(Pos(newPosition, tick));
-            v.writeUserStatus(OK());
-          },
-        ),
-      )
-    | Some(history) -> history
+    | Some(history) ->
+      if (oldText != newText) {
+        newPosition = getPosition(values);
+        newSelection = getSelection(values);
+        setUserStatus(values, OK(), userData.source);
+        history.add(
+          LamUndoable(
+            (v, tick) ~> {
+              v.writeText(oldText);
+              v.writePosition(oldPosition);
+              v.writeSelection(oldSelection);
+              v.writeEnsureVisible(Pos(oldPosition, tick));
+              v.writeUserStatus(oldUserStatus);
+            },
+            (v, tick) ~> {
+              v.writeText(newText);
+              v.writePosition(newPosition);
+              v.writeSelection(newSelection);
+              v.writeEnsureVisible(Pos(newPosition, tick));
+              v.writeUserStatus(OK());
+            },
+          ),
+        )
+      } else {
+        history
+      }
     | None() -> History()
     };
     values.set(Ui.historyProp, Some(history))

@@ -147,8 +147,7 @@ fun toTreeItemChildren(
         };
       sf.value match {
       | arr @ SArray _ -> SArray(arr.value.filter(isItem))
-      | s if (isItem(s)) -> SArray(Array[s])
-      | _ -> SArray(Array[])
+      | s -> if (isItem(s)) SArray(Array[s]) else SArray(Array[])
       }
     },
   );

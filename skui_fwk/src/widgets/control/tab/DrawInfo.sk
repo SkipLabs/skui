@@ -57,52 +57,7 @@ class DrawInfo private (
           ),
         );
       });
-      layout.optIcon match {
-      | Some((icon, iSize, onTop)) if (!minimized || onTop) ->
-        if (onTop) {
-          iOffset = Geometry.Point(
-            Math.round(
-              absolute.dx + padding + (width - iSize.width) / 2.0,
-            ).toInt(),
-            Math.round(absolute.dy + UiTab.padding).toInt(),
-          );
-          !optIcon = Some((icon, iOffset.toOffset(), iSize));
-          topLeft = Geometry.Offset(
-            absolute.dx + padding,
-            absolute.dy + UiTab.padding + iSize.height + iconTextGap,
-          );
-          lSize = Geometry.Size(width, tSize.height.toFloat());
-          !optLabel = Some(
-            (
-              txt,
-              Geometry.Rect::fromOffsetSize(topLeft, lSize),
-              tfid,
-              Text.Center(),
-            ),
-          );
-        } else {
-          lHeight = Math.max(tHeight, iSize.height);
-          left = absolute.dx + padding;
-          top = absolute.dy + UiTab.padding;
-          iOffset = Geometry.Point(
-            Math.round(left).toInt(),
-            Math.round(top + (lHeight - iSize.height) / 2.0).toInt(),
-          );
-          !optIcon = Some((icon, iOffset.toOffset(), iSize));
-          !width = width - iSize.width - iconTextGap;
-          !left = left + iSize.width + iconTextGap;
-          topLeft = Geometry.Offset(left, top + (lHeight - tHeight) / 2.0);
-          lSize = Geometry.Size(width, tSize.height.toFloat());
-          !optLabel = Some(
-            (
-              txt,
-              Geometry.Rect::fromOffsetSize(topLeft, lSize),
-              tfid,
-              Text.Left(),
-            ),
-          );
-        }
-      | _ ->
+      otherwise = () -> {
         left = absolute.dx + padding;
         top = absolute.dy + UiTab.padding;
         topLeft = Geometry.Offset(left, top);
@@ -115,6 +70,57 @@ class DrawInfo private (
             Text.Left(),
           ),
         )
+      };
+      layout.optIcon match {
+      | Some((icon, iSize, onTop)) ->
+        if (!minimized || onTop) {
+          if (onTop) {
+            iOffset = Geometry.Point(
+              Math.round(
+                absolute.dx + padding + (width - iSize.width) / 2.0,
+              ).toInt(),
+              Math.round(absolute.dy + UiTab.padding).toInt(),
+            );
+            !optIcon = Some((icon, iOffset.toOffset(), iSize));
+            topLeft = Geometry.Offset(
+              absolute.dx + padding,
+              absolute.dy + UiTab.padding + iSize.height + iconTextGap,
+            );
+            lSize = Geometry.Size(width, tSize.height.toFloat());
+            !optLabel = Some(
+              (
+                txt,
+                Geometry.Rect::fromOffsetSize(topLeft, lSize),
+                tfid,
+                Text.Center(),
+              ),
+            );
+          } else {
+            lHeight = Math.max(tHeight, iSize.height);
+            left = absolute.dx + padding;
+            top = absolute.dy + UiTab.padding;
+            iOffset = Geometry.Point(
+              Math.round(left).toInt(),
+              Math.round(top + (lHeight - iSize.height) / 2.0).toInt(),
+            );
+            !optIcon = Some((icon, iOffset.toOffset(), iSize));
+            !width = width - iSize.width - iconTextGap;
+            !left = left + iSize.width + iconTextGap;
+            topLeft = Geometry.Offset(left, top + (lHeight - tHeight) / 2.0);
+            lSize = Geometry.Size(width, tSize.height.toFloat());
+            !optLabel = Some(
+              (
+                txt,
+                Geometry.Rect::fromOffsetSize(topLeft, lSize),
+                tfid,
+                Text.Left(),
+              ),
+            );
+          }
+        } else {
+          otherwise()
+        }
+      | _ -> otherwise()
       }
     | _ ->
       layout.optIcon match {

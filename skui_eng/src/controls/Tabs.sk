@@ -195,8 +195,7 @@ class Tabs{
           };
         sf.value match {
         | arr @ SArray _ -> SArray(arr.value.filter(isTab))
-        | s if (isTab(s)) -> SArray(Array[s])
-        | _ -> SArray(Array[])
+        | s -> if (isTab(s)) SArray(Array[s]) else SArray(Array[])
         }
       },
     );
@@ -263,8 +262,7 @@ class Tabs{
           };
         sf.value match {
         | arr @ SArray _ -> SArray(arr.value.filter(isAction))
-        | s if (isAction(s)) -> SArray(Array[s])
-        | _ -> SArray(Array[])
+        | s -> if (isAction(s)) SArray(Array[s]) else SArray(Array[])
         }
       },
     );

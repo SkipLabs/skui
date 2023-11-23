@@ -97,8 +97,7 @@ class Content(
     this.values.maybeGet(Plain()).flatMap(data ->
       data match {
       | IO.Text(text) -> Some(text)
-      | ext @ IO.External _ if (!ext.isBinary()) -> ext.getText()
-      | IO.External _
+      | ext @ IO.External _ -> if (!ext.isBinary()) ext.getText() else None()
       | IO.Binary _
       | IO.Base64 _ ->
         None()
@@ -110,8 +109,7 @@ class Content(
     this.values.maybeGet(Type::fromMime(mimeType)).flatMap(data ->
       data match {
       | IO.Text(text) -> Some(text)
-      | ext @ IO.External _ if (!ext.isBinary()) -> ext.getText()
-      | IO.External _
+      | ext @ IO.External _ -> if (!ext.isBinary()) ext.getText() else None()
       | IO.Binary _
       | IO.Base64 _ ->
         None()
@@ -124,10 +122,8 @@ class Content(
       data match {
       | IO.Binary(bin) -> Some(bin)
       | IO.Base64(base64) -> Some(Base64.decodeString(base64))
-      | ext @ IO.External _ if (ext.isBinary()) -> ext.getBytes()
-      | IO.External _
-      | IO.Text _ ->
-        None()
+      | ext @ IO.External _ -> if (ext.isBinary()) ext.getBytes() else None()
+      | IO.Text _ -> None()
       }
     )
   }

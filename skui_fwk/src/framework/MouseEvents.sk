@@ -85,38 +85,20 @@ fun initMouse(
           node = nodeGetter(context, widget.path, true);
           wheel = mouse.getWheelValue(context.tick);
           current.optDragHandler match {
-          | Some(dragHandler) if (wheel == 0) ->
-            optDropHandler = msu.getDropHandler(context, mouse.offset(), node);
-            current.optDropHandler.each(oDph ->
-              optDropHandler match {
-              | Some(cdph) if (!cdph.isSame(oDph)) -> oDph.exit(context)
-              | None() -> oDph.exit(context)
-              | _ -> void
-              }
-            );
-            if (!mouse.isPrimaryDown(context.tick)) {
-              proposed = if (FWK.isControlDown(context)) {
-                FWK.TrCopy()
-              } else if (FWK.isShiftDown(context)) {
-                FWK.TrLink()
-              } else {
-                FWK.TrMove()
-              };
-              optTarget = optDropHandler.flatMap(dropHandler -> {
-                dropHandler.over(context, mouse, dragHandler, proposed) match {
-                | Some(transfer) ->
-                  dropHandler.dropped(context, dragHandler, transfer);
-                  Some((dropHandler, transfer))
-                | _ -> None()
+          | Some(dragHandler) ->
+            if (wheel == 0) {
+              optDropHandler = msu.getDropHandler(
+                context,
+                mouse.offset(),
+                node,
+              );
+              current.optDropHandler.each(oDph ->
+                optDropHandler match {
+                | Some(cdph) -> if (!cdph.isSame(oDph)) oDph.exit(context)
+                | None() -> oDph.exit(context)
                 }
-              });
-              dragHandler.dropped(context, optTarget);
-              !current.optDragHandler = None();
-              !current.optDropHandler = None();
-              FWKPointer.resetCursor(context);
-            } else {
-              optDropHandler match {
-              | Some(dropHandler) ->
+              );
+              if (!mouse.isPrimaryDown(context.tick)) {
                 proposed = if (FWK.isControlDown(context)) {
                   FWK.TrCopy()
                 } else if (FWK.isShiftDown(context)) {
@@ -124,27 +106,60 @@ fun initMouse(
                 } else {
                   FWK.TrMove()
                 };
-                dropHandler.over(context, mouse, dragHandler, proposed) match {
-                | Some(transfer) ->
-                  FWKPointer.setCursor(
+                optTarget = optDropHandler.flatMap(dropHandler -> {
+                  dropHandler.over(
                     context,
-                    transfer match {
-                    | FWK.TrCopy() -> Ui.DnDCopyCursor()
-                    | FWK.TrLink() -> Ui.DnDLinkCursor()
-                    | FWK.TrMove() -> Ui.DnDMoveCursor()
-                    },
-                  )
+                    mouse,
+                    dragHandler,
+                    proposed,
+                  ) match {
+                  | Some(transfer) ->
+                    dropHandler.dropped(context, dragHandler, transfer);
+                    Some((dropHandler, transfer))
+                  | _ -> None()
+                  }
+                });
+                dragHandler.dropped(context, optTarget);
+                !current.optDragHandler = None();
+                !current.optDropHandler = None();
+                FWKPointer.resetCursor(context);
+              } else {
+                optDropHandler match {
+                | Some(dropHandler) ->
+                  proposed = if (FWK.isControlDown(context)) {
+                    FWK.TrCopy()
+                  } else if (FWK.isShiftDown(context)) {
+                    FWK.TrLink()
+                  } else {
+                    FWK.TrMove()
+                  };
+                  dropHandler.over(
+                    context,
+                    mouse,
+                    dragHandler,
+                    proposed,
+                  ) match {
+                  | Some(transfer) ->
+                    FWKPointer.setCursor(
+                      context,
+                      transfer match {
+                      | FWK.TrCopy() -> Ui.DnDCopyCursor()
+                      | FWK.TrLink() -> Ui.DnDLinkCursor()
+                      | FWK.TrMove() -> Ui.DnDMoveCursor()
+                      },
+                    )
+                  | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
+                  }
                 | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
-                }
-              | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
-              };
-              !current.optDropHandler = optDropHandler;
-            }
-          | Some(_dragHandler) if (wheel != 0) ->
-            msu.getHoverHandler(context, mouse.offset(), node) match {
-            | Some(hoverHandler) ->
-              !result = hoverHandler.manage(context, mouse, None())
-            | _ -> void
+                };
+                !current.optDropHandler = optDropHandler;
+              }
+            } else {
+              msu.getHoverHandler(context, mouse.offset(), node) match {
+              | Some(hoverHandler) ->
+                !result = hoverHandler.manage(context, mouse, None())
+              | _ -> void
+              }
             }
           | _ ->
             current.optLockHandler match {

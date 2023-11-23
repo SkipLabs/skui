@@ -300,9 +300,7 @@ class OffsetLengths(
     count = input.state.getSize(context);
     top = UiInput.hSpace.toFloat();
     if (withAnnexes && input.controller.isWithLabel(context)) {
-      (input.controller.getLabel(context).map(context.translate) match {
-      | Some(label) if (!label.isBlank()) -> Some(label)
-      | _ ->
+      otherwise = () -> {
         if (
           input.controller.isPlaceholderAsLabel(context) &&
           focused &&
@@ -312,6 +310,10 @@ class OffsetLengths(
         } else {
           None()
         }
+      };
+      (input.controller.getLabel(context).map(context.translate) match {
+      | Some(label) -> if (!label.isBlank()) Some(label) else otherwise()
+      | _ -> otherwise()
       }).each(label -> {
         !optLabel = Some((label, absolute.translate(left, top)));
       });

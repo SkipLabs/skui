@@ -150,20 +150,35 @@ class TabsSc protected {
   ): ?HoverHandlerGetter {
     Some((ctx, offset, ni) ~> {
       drawInfo = ni.optDrawInfo.map(di ~> di as UiTabsSc.DrawInfo _).fromSome();
-      Some(
-        drawInfo.optScrollBefore match {
-        | Some(scrollBefore) if (scrollBefore.contains(offset)) ->
-          UiTabsSc.HoverHandler(this, Some(UiTabsSc.Before()), childGetter(ctx))
-        | _ ->
-          drawInfo.optScrollAfter match {
-          | Some(scrollAfter) if (scrollAfter.contains(offset)) ->
+      otherwise = () -> {
+        drawInfo.optScrollAfter match {
+        | Some(scrollAfter) ->
+          if (scrollAfter.contains(offset)) {
             UiTabsSc.HoverHandler(
               this,
               Some(UiTabsSc.After()),
               childGetter(ctx),
             )
-          | _ -> UiTabsSc.HoverHandler(this, None(), childGetter(ctx))
+          } else {
+            UiTabsSc.HoverHandler(this, None(), childGetter(ctx))
           }
+        | _ -> UiTabsSc.HoverHandler(this, None(), childGetter(ctx))
+        }
+      };
+
+      Some(
+        drawInfo.optScrollBefore match {
+        | Some(scrollBefore) ->
+          if (scrollBefore.contains(offset)) {
+            UiTabsSc.HoverHandler(
+              this,
+              Some(UiTabsSc.Before()),
+              childGetter(ctx),
+            )
+          } else {
+            otherwise()
+          }
+        | _ -> otherwise()
         },
       )
     })

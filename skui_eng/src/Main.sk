@@ -14,6 +14,8 @@ class Renderer(name: String, optDescription: ?String) uses Show {
 }
 
 fun main(): void {
+  // todo manage execption
+  pos = SKStore.newObstack();
   renderers = jsExamples()
     .map(jsa ->
       jsa.value.map(jsv -> {
@@ -26,6 +28,7 @@ fun main(): void {
     unsafe_chill_trust_me(renderers),
     Environ.args().drop(1).collect(Vector),
   );
+  SKStore.destroyObstack(pos);
 }
 
 fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
@@ -52,7 +55,7 @@ fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
           wId = 0;
           title = example.optDescription.default("SKUI's JS Engine");
           _ = SKStore.initMainContext(SKStore.Context{});
-          SKStore.Context::withGc(context ~> {
+          SKStore.Context::withoutGc(context ~> {
             initEngineWidget(context, wId, example.name);
             context.initPre()
           });

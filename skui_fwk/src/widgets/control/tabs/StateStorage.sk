@@ -223,8 +223,10 @@ fun init(
         | Some(firstAdded) -> Some(firstAdded)
         | _ ->
           previousOptActive match {
-          | Some(previousActive) if (tabs.indexOf(previousActive).isSome()) ->
-            previousOptActive
+          | Some(previousActive) ->
+            if (tabs.indexOf(previousActive).isSome()) previousOptActive else {
+              None()
+            }
           | _ -> None()
           }
         };

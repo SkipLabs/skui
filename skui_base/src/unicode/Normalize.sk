@@ -344,11 +344,13 @@ fun decomposeSegment(
     return 0
   };
   reorderBuffer.nextStreamSafe(info) match {
-  | Starter() if (!reorderBuffer.properties.isEmpty()) ->
-    if (!reorderBuffer.doFlush()) {
-      return -1;
-    };
-    return sp
+  | Starter() ->
+    if (!reorderBuffer.properties.isEmpty()) {
+      if (!reorderBuffer.doFlush()) {
+        return -1;
+      };
+      return sp
+    }
   | Overflow() ->
     reorderBuffer.insertCGJ();
     if (!reorderBuffer.doFlush()) {
@@ -428,8 +430,7 @@ fun decomposeToLastBoundary(
     !p = p - info.size.toInt();
     state match {
     | Starter() -> break void
-    | _ if (p < 0) -> break void
-    | _ -> void
+    | _ -> if (p < 0) break void
     };
     (!info, !i) = lastCharStart(
       reorderBuffer.norm,
