@@ -43,14 +43,18 @@ class DropHandler(
   ): ?FWK.TransferMode {
     mode = FWK.TrMove().choose(transfer);
     dragHandler match {
-    | tdh @ DragHandler _ if (
-      tdh.treeItem.reference == this.treeItem.reference &&
-      tdh.treeItem.path.id != this.treeItem.path.id &&
-      !tdh.treeItem.id.isChildOf(this.treeItem.id) &&
-      mode == FWK.TrMove()
-    ) ->
-      this.treeItem.state.emitTargeted(context, Some(this.drop));
-      Some(mode)
+    | tdh @ DragHandler _ ->
+      if (
+        tdh.treeItem.reference == this.treeItem.reference &&
+        tdh.treeItem.path.id != this.treeItem.path.id &&
+        !tdh.treeItem.id.isChildOf(this.treeItem.id) &&
+        mode == FWK.TrMove()
+      ) {
+        this.treeItem.state.emitTargeted(context, Some(this.drop));
+        Some(mode)
+      } else {
+        None()
+      }
     | _ -> None()
     }
   }
@@ -61,18 +65,20 @@ class DropHandler(
     transfer: FWK.TransferMode,
   ): void {
     dragHandler match {
-    | tdh @ DragHandler _ if (
-      tdh.treeItem.reference == this.treeItem.reference &&
-      tdh.treeItem.id != this.treeItem.id &&
-      !this.treeItem.id.isChildOf(tdh.treeItem.id) &&
-      transfer == FWK.TrMove()
-    ) ->
-      this.treeItem.controller.onDrop(
-        context,
-        tdh.treeItem.id,
-        this.treeItem.id,
-        this.drop,
-      )
+    | tdh @ DragHandler _ ->
+      if (
+        tdh.treeItem.reference == this.treeItem.reference &&
+        tdh.treeItem.id != this.treeItem.id &&
+        !this.treeItem.id.isChildOf(tdh.treeItem.id) &&
+        transfer == FWK.TrMove()
+      ) {
+        this.treeItem.controller.onDrop(
+          context,
+          tdh.treeItem.id,
+          this.treeItem.id,
+          this.drop,
+        )
+      }
     | _ -> void
     };
     this.treeItem.state.emitTargeted(context, None());

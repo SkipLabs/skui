@@ -825,15 +825,19 @@ private fun nextHexInt(
   } else {
     toCheck = i.next();
     toCheck match {
-    | Some(ch) if (ch >= '0' && ch <= '9') ->
-      v = ch.code() - '0'.code();
-      nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
-    | Some(ch) if (ch >= 'a' && ch <= 'f') ->
-      v = ch.code() - 'a'.code() + 10;
-      nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
-    | Some(ch) if (ch >= 'A' && ch <= 'F') ->
-      v = ch.code() - 'A'.code() + 10;
-      nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
+    | Some(ch) ->
+      if (ch >= '0' && ch <= '9') {
+        v = ch.code() - '0'.code();
+        nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
+      } else if (ch >= 'a' && ch <= 'f') {
+        v = ch.code() - 'a'.code() + 10;
+        nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
+      } else if (ch >= 'A' && ch <= 'F') {
+        v = ch.code() - 'A'.code() + 10;
+        nextHexInt(i, cur.shl(4).or(v.and(0xF)), size - 1)
+      } else {
+        nextHexInt(i, cur, size - 1)
+      }
     | _ -> nextHexInt(i, cur, size - 1)
     };
   }

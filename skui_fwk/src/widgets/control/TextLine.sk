@@ -417,17 +417,19 @@ class TextLine protected {
         position = this.getTextPostionFor(context, offset, true, ni, true);
         optSelection = this.controller.getSelection(context, true);
         optSelection match {
-        | Some(
-          selection,
-        ) if (
-          selection.contains(position.column) ||
-          selection.optEnd == Some(position.column)
-        ) ->
-          optClipboardContent = this.controller.computeClipboardContent(
-            context,
-            true,
-          );
-          Some(UiTextLine.DragHandler{textline => this, optClipboardContent})
+        | Some(selection) ->
+          if (
+            selection.contains(position.column) ||
+            selection.optEnd == Some(position.column)
+          ) {
+            optClipboardContent = this.controller.computeClipboardContent(
+              context,
+              true,
+            );
+            Some(UiTextLine.DragHandler{textline => this, optClipboardContent})
+          } else {
+            None()
+          }
         | _ -> None()
         }
       })

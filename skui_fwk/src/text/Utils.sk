@@ -23,10 +23,13 @@ private fun nextValue(
         | "turn" ->
           !idx = idx + 1;
           break (idx, Some(max * number))
-        | v if (v.startsWith("%")) ->
-          !idx = idx + 1;
-          break (idx, Some(max * number / 100.0))
-        | _ -> break (idx, Some(number))
+        | v ->
+          if (v.startsWith("%")) {
+            !idx = idx + 1;
+            break (idx, Some(max * number / 100.0))
+          } else {
+            break (idx, Some(number))
+          }
         }
       }
     };

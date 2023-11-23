@@ -340,8 +340,7 @@ fun isSpace(char: Char): Bool {
   if (code <= maxLatin1.code()) {
     return char match {
     | '\t' | '\n' | '\v' | '\f' | '\r' | ' ' -> true
-    | _ if (code == 0x85 || code == 0xA0) -> true
-    | _ -> false
+    | _ -> code == 0x85 || code == 0xA0
     }
   };
   tWhite_Space.isExcludingLatin(char)

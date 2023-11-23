@@ -80,7 +80,7 @@ fun emitMessage(
   | OK _
   | Valid _ ->
     send()
-  | KO(_, level) if (level != Error()) -> send()
+  | KO(_, level) -> if (level != Error()) send() else false
   | _ -> false
   };
 }

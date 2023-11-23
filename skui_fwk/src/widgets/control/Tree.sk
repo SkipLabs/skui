@@ -214,7 +214,7 @@ class Tree protected {
     Some((ctx, offset, ni) ~> {
       drawInfo = ni.optDrawInfo.map(di ~> di as UiTree.DrawInfo _).fromSome();
       bar = drawInfo.optBar match {
-      | Some(bar) if (bar.i1.contains(offset)) -> true
+      | Some(bar) -> bar.i1.contains(offset)
       | _ -> false
       };
       Some(UiTree.HoverHandler(this, bar, childGetter(ctx)))
@@ -230,7 +230,7 @@ class Tree protected {
       inBar = if (mouse.isPrimaryPressed(ctx.tick)) {
         drawInfo = ni.optDrawInfo.map(di ~> di as UiTree.DrawInfo _).fromSome();
         drawInfo.optBar match {
-        | Some(bar) if (bar.i1.contains(offset)) -> true
+        | Some(bar) -> bar.i1.contains(offset)
         | _ -> false
         };
       } else {

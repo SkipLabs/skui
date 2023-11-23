@@ -134,11 +134,7 @@ class DummyBaseName() extends Key {
 }
 
 fun destroyObstackKeep<T>(pos: Obstack, value: T): T {
-  copied = destroyObstackWithValue(pos, List.Cons(value, List.Nil()));
-  copied match {
-  | List.Cons(v, _) -> v
-  | _ -> cast_violation("List.Cons", "List.Nil")
-  }
+  destroyObstackWithValue(pos, List.Cons(value, List.Nil())).getHead()
 }
 
 module end;

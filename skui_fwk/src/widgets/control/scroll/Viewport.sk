@@ -41,13 +41,21 @@ class Viewport{
       width = iNode.size.width;
       height = iNode.size.height;
       optWidth = hPolicy match {
-      | UiScroll.Never() if (constraints.hasBoundedWidth()) ->
-        Some(constraints.constrainWidth(width))
+      | UiScroll.Never() ->
+        if (constraints.hasBoundedWidth()) {
+          Some(constraints.constrainWidth(width))
+        } else {
+          None()
+        }
       | _ -> None()
       };
       optHeight = vPolicy match {
-      | UiScroll.Never() if (constraints.hasBoundedHeight()) ->
-        Some(constraints.constrainHeight(height))
+      | UiScroll.Never() ->
+        if (constraints.hasBoundedHeight()) {
+          Some(constraints.constrainHeight(height))
+        } else {
+          None()
+        }
       | _ -> None()
       };
       if (

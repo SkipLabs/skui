@@ -85,8 +85,8 @@ class DropHandler(
     res = if (!isScrolling) {
       commands.push(tcm.getTargetCommand(Some(position)));
       this.textline.controller.getSelection(context, true) match {
-      | Some(selection) if (same && selection.contains(position.column)) ->
-        None()
+      | Some(selection) ->
+        if (same && selection.contains(position.column)) None() else Some(mode)
       | _ -> Some(mode)
       }
     } else {

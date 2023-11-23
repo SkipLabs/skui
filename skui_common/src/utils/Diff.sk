@@ -178,8 +178,10 @@ fun fillData(
         if (separator != char) {
           // Two char separator ignore
           !optEndLine = optEndLine match {
-          | Some(newLine) if (newLine.size() == 1) ->
-            Some(Array[separator, char])
+          | Some(newLine) ->
+            if (newLine.size() == 1) Some(Array[separator, char]) else {
+              optEndLine
+            }
           | _ -> optEndLine
           };
           !optSeparator = None();
@@ -242,8 +244,10 @@ fun toLines(chars: Array<Char>): (Array<Char>, Vector<Array<Char>>) {
         if (separator != char) {
           // Two char separator ignore
           !optEndLine = optEndLine match {
-          | Some(newLine) if (newLine.size() == 1) ->
-            Some(Array[separator, char])
+          | Some(newLine) ->
+            if (newLine.size() == 1) Some(Array[separator, char]) else {
+              optEndLine
+            }
           | _ -> optEndLine
           };
           !optSeparator = None();

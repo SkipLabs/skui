@@ -95,13 +95,17 @@ fun insert(
 ): void {
   array = text.chars().filter(charFilter).toArray();
   !array = getDiacritic(values) match {
-  | Some(diacritic) if (array.size() == 1) ->
-    char = array[0];
-    checked = UiEvent.checkDiacritical(diacritic);
-    (Unicode.combine(char, checked) match {
-    | Some(combined) -> Array[combined]
-    | _ -> Array[diacritic, char]
-    }).filter(Unicode.isGraphic)
+  | Some(diacritic) ->
+    if (array.size() == 1) {
+      char = array[0];
+      checked = UiEvent.checkDiacritical(diacritic);
+      (Unicode.combine(char, checked) match {
+      | Some(combined) -> Array[combined]
+      | _ -> Array[diacritic, char]
+      }).filter(Unicode.isGraphic)
+    } else {
+      array
+    }
   | _ -> array
   };
   setDiacritic(values, None());
@@ -447,13 +451,13 @@ fun groupRange(chars: Vector<Char>, pos: Int): ?.Range {
     end_ = loop {
       !pos = pos + 1;
       chars.maybeGet(pos) match {
-      | Some(c1) if (kind(c1) == k) -> void
+      | Some(c1) -> if (kind(c1) != k) break pos
       | _ -> break pos
       }
     };
     start = loop {
       chars.maybeGet(pos - 1) match {
-      | Some(c1) if (kind(c1) == k) -> void
+      | Some(c1) -> if (kind(c1) != k) break pos
       | _ -> break pos
       };
       !pos = pos - 1;

@@ -434,8 +434,8 @@ fun buildActions(
           kind => _ctx ~>
             optKind.default(
               action.optRole match {
-              | Some(role) if (role.isSubmit()) -> UiButton.Primary()
-              | Some(role) if (role.isExit()) -> UiButton.Warn()
+              | Some(role) ->
+                if (role.isSubmit()) UiButton.Primary() else UiButton.Warn()
               | _ -> UiButton.Regular()
               },
             ),

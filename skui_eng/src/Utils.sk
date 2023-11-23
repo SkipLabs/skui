@@ -624,8 +624,7 @@ fun toWidgetsCollection(
     sf ~>
       sf.value match {
       | arr @ SArray _ -> SArray(arr.value.filter(isWidgetable))
-      | s if (isWidgetable(s)) -> SArray(Array[s])
-      | _ -> SArray(Array[])
+      | s -> if (isWidgetable(s)) SArray(Array[s]) else SArray(Array[])
       }
     ,
   );
@@ -732,16 +731,15 @@ fun toWidgetsCollection(
         | UiEngine.Prop _ ->
           Ui.WElem(
             propertiesHdl
-            .get(context, SKStore.IID::keyType(sid))
-            .hdl.get(context).widget
+              .get(context, SKStore.IID::keyType(sid))
+              .hdl.get(context).widget,
           )
-        | _ -> 
+        | _ ->
           invariant_violation(`Not managed ${sid} ${Utils.toString(it.first)}`)
         };
         writer.set(key, toWrite)
       | SKStore.KSize() -> writer.set(key, Ui.WSize::type(it.first))
-      | SKStore.KKeys() ->
-          writer.set(key, Ui.WKeys::type(it.first))
+      | SKStore.KKeys() -> writer.set(key, Ui.WKeys::type(it.first))
       }
     },
   );

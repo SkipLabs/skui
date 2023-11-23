@@ -82,7 +82,8 @@ class DropHandler{
     if (isIn || !isScrolling) {
       this.input.state.emitTarget(context, Some(position), !isIn);
       this.input.state.getSelection(context, true) match {
-      | Some(selection) if (UiInput.contains(selection, position)) -> None()
+      | Some(selection) ->
+        if (UiInput.contains(selection, position)) None() else Some(mode)
       | _ -> Some(mode)
       }
     } else {

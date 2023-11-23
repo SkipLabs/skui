@@ -5,17 +5,28 @@ fun validateInteger(chars: Vector<Char>, optMin: ?Int, optMax: ?Int): Validity {
     return OK()
   };
   str = String::fromChars(chars.toArray());
+
   str.toIntOption() match {
   | Some(value) ->
-    optMin match {
-    | Some(min) if (value < min) ->
-      KO(Some(Format(!"Lower than {1}", Array[Raw(min.toString())])))
-    | _ ->
+    otherwise = () -> {
       optMax match {
-      | Some(max) if (value > max) ->
-        KO(Some(Format(!"Greater than {1}", Array[Raw(max.toString())])))
+      | Some(max) ->
+        if (value > max) {
+          KO(Some(Format(!"Greater than {1}", Array[Raw(max.toString())])))
+        } else {
+          Valid()
+        }
       | _ -> Valid()
       }
+    };
+    optMin match {
+    | Some(min) ->
+      if (value < min) {
+        KO(Some(Format(!"Lower than {1}", Array[Raw(min.toString())])))
+      } else {
+        otherwise()
+      }
+    | _ -> otherwise()
     }
   | _ -> KO(Some(!"Not a valid integer"))
   }

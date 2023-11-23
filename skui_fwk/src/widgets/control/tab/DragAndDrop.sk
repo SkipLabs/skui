@@ -40,13 +40,17 @@ class DropHandler(tab: Ui.Tab, drop: Ui.Drop) extends FWK.DropHandler {
   ): ?FWK.TransferMode {
     mode = FWK.TrMove().choose(transfer);
     dragHandler match {
-    | tdh @ DragHandler _ if (
-      tdh.tab.reference == this.tab.reference &&
-      tdh.tab.path.id != this.tab.path.id &&
-      mode == FWK.TrMove()
-    ) ->
-      this.tab.state.setTargeted(context, Some(this.drop));
-      Some(mode)
+    | tdh @ DragHandler _ ->
+      if (
+        tdh.tab.reference == this.tab.reference &&
+        tdh.tab.path.id != this.tab.path.id &&
+        mode == FWK.TrMove()
+      ) {
+        this.tab.state.setTargeted(context, Some(this.drop));
+        Some(mode)
+      } else {
+        None()
+      }
     | _ -> None()
     }
   }
@@ -57,17 +61,19 @@ class DropHandler(tab: Ui.Tab, drop: Ui.Drop) extends FWK.DropHandler {
     transfer: FWK.TransferMode,
   ): void {
     dragHandler match {
-    | tdh @ DragHandler _ if (
-      tdh.tab.reference == this.tab.reference &&
-      tdh.tab.path.id != this.tab.path.id &&
-      transfer == FWK.TrMove()
-    ) ->
-      this.tab.controller.onDrop(
-        context,
-        tdh.tab.path.id,
-        this.tab.path.id,
-        this.drop == Ui.DropBefore(),
-      )
+    | tdh @ DragHandler _ ->
+      if (
+        tdh.tab.reference == this.tab.reference &&
+        tdh.tab.path.id != this.tab.path.id &&
+        transfer == FWK.TrMove()
+      ) {
+        this.tab.controller.onDrop(
+          context,
+          tdh.tab.path.id,
+          this.tab.path.id,
+          this.drop == Ui.DropBefore(),
+        )
+      }
     | _ -> void
     };
     this.tab.state.setTargeted(context, None());

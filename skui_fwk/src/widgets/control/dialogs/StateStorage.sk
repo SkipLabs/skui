@@ -137,9 +137,11 @@ fun init(context: mutable SKStore.Context, path: Ui.Path): State {
         count = 0;
         for (info in keys.value) {
           afterHdl.maybeGet(context, SKStore.IID(info.id)) match {
-          | Some(f) if (info.visible) ->
-            writer.set(SKStore.IID(count), f);
-            !count = count + 1
+          | Some(f) ->
+            if (info.visible) {
+              writer.set(SKStore.IID(count), f);
+              !count = count + 1
+            }
           | _ -> void
           }
         };

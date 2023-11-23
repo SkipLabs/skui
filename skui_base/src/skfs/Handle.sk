@@ -532,9 +532,9 @@ class IHandle<K: Key, T: File>(
       context.maybeGetEagerDir(this.dirName) match {
       | None() ->
         invariant_violation(`Could not find input directory: ${this.dirName}`)
-      | Some(dir) if (!dir.isInput()) ->
-        invariant_violation(`Not an input Dir: ${this.dirName}`)
-      | Some(dir) -> dir.writeArray(context, key, value)
+      | Some(dir) ->
+        invariant(dir.isInput(), `Not an input Dir: ${this.dirName}`);
+        dir.writeArray(context, key, value)
       }
     }
   }
@@ -551,9 +551,9 @@ class IHandle<K: Key, T: File>(
       context.maybeGetEagerDir(this.dirName) match {
       | None() ->
         invariant_violation(`Could not find input directory: ${this.dirName}`)
-      | Some(dir) if (!dir.isInput()) ->
-        invariant_violation(`Not an input Dir: ${this.dirName}`)
-      | Some(dir) -> dir.writeArray(context, key, valuesGetter(context))
+      | Some(dir) ->
+        invariant(dir.isInput(), `Not an input Dir: ${this.dirName}`);
+        dir.writeArray(context, key, valuesGetter(context))
       }
     }
   }
