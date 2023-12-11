@@ -28,7 +28,7 @@ extension class Context {
       | _ -> fn(context)
       }
     | _ ->
-      fromContext = getMainContext();
+      fromContext = gUnsafeContextGet();
       fromTick = fromContext.tick;
       context = Context::fromSaved(fromContext);
       doDo = () -> context.perform(fn, fromContext, fromTick);
@@ -49,6 +49,28 @@ extension class Context {
     }
   }
 
+  mutable fun loopWithGC(
+    fn: mutable Context -> Bool,
+    needGC: () -> Bool,
+  ): ?SKStore.Obstack {
+    optPos = Some(SKStore.newObstack());
+    loop {
+      pos = optPos.fromSome();
+      if (fn(this)) {
+        break void
+      };
+      if (needGC()) {
+        icontext = SKStore.destroyObstackWithValue(
+          pos,
+          List[this.clone()],
+        ).getHead();
+        this.replaceFromSaved(icontext);
+        !optPos = Some(SKStore.newObstack());
+      }
+    };
+    optPos
+  }
+
   @debug
   private mutable fun perform<T>(
     fn: mutable Context ~> T,
@@ -56,22 +78,29 @@ extension class Context {
     fromTick: Tick,
   ): T {
     setWorkingContext(Some(this));
-    res = fn(this);
-    setWorkingContext(None());
-    invariant(
-      this.currentArrow().isNone(),
-      "gContextSync cannot be done durring update",
-    );
-    sContext = gContextSync(
-      fromTick,
-      fromContext,
-      this.clone(),
-      None(),
-      UInt32::truncate(0),
-      None(),
-    );
-    setMainContext(sContext);
-    res;
+    try {
+      res = fn(this);
+      setWorkingContext(None());
+      invariant(
+        this.currentArrow().isNone(),
+        "gContextSync cannot be done durring update",
+      );
+      sContext = gContextSync(
+        fromTick,
+        fromContext,
+        this.clone(),
+        None(),
+        UInt32::truncate(0),
+        None(),
+      );
+      gUnsafeFree(sContext);
+      res;
+    } catch {
+    | ex ->
+      setWorkingContext(None());
+      gUnsafeFree(fromContext);
+      throw ex
+    };
   }
 
   static fun withGc<T>(fn: mutable Context ~> T): T {
@@ -341,25 +370,12 @@ fun profileCall<T>(
 }
 
 @debug
-@cpp_extern("SKIP_SKStore_setMainContext")
-native fun setMainContext(context: Context): void;
-
-@debug
-@cpp_extern("SKIP_SKStore_getMainContext")
-native fun getMainContext(): Context;
-
-@debug
 @cpp_extern("SKIP_SKStore_setWorkingContext")
 native fun setWorkingContext(optContext: ?mutable Context): void;
 
 @debug
 @cpp_extern("SKIP_SKStore_getWorkingContext")
 native fun getWorkingContext(): ?mutable Context;
-
-fun initMainContext(context: Context): void {
-  gContextInit(context);
-  setMainContext(context);
-}
 
 class RunSequence(id: Int) extends JSONValue, File {
   //
