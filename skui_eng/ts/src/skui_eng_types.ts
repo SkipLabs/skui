@@ -1,4 +1,4 @@
-import {int, float, ptr, Text, Opt, Utils, Shared} from "#std/sk_types";
+import { int, float, ptr, Text, Opt, Utils, Shared } from "#std/sk_types";
 
 export interface Readable {
   get: () => any;
@@ -8,8 +8,7 @@ export interface Writable {
   set: (value: any) => void;
 }
 
-export interface Property extends Writable, Readable {
-}
+export interface Property extends Writable, Readable {}
 
 export enum Alignment {
   Start,
@@ -17,20 +16,20 @@ export enum Alignment {
   Center,
   SpaceBetween,
   SpaceAround,
-  SpaceEvenly
+  SpaceEvenly,
 }
 
 export enum FlCrossAlign {
   Start,
   End,
   Center,
-  Stretch
+  Stretch,
 }
 
 export enum WrCrossAlign {
   Start,
   End,
-  Center
+  Center,
 }
 
 export enum Fit {
@@ -43,7 +42,7 @@ export enum ButtonKind {
   Regular,
   Primary,
   Accent,
-  Warm
+  Warm,
 }
 
 export enum ButtonMode {
@@ -54,7 +53,7 @@ export enum ButtonMode {
   Icon,
   MiniIcon,
   Fab,
-  MiniFab
+  MiniFab,
 }
 
 export enum IconType {
@@ -72,7 +71,7 @@ export enum InputType {
   Hex,
   Binary,
   Octal,
-  Pattern
+  Pattern,
 }
 
 export enum Level {
@@ -85,13 +84,13 @@ export enum StatusType {
   OK,
   VALID,
   RUNNING,
-  KO
+  KO,
 }
 
 export enum SepType {
   FromStart,
   FromEnd,
-  Percent
+  Percent,
 }
 
 export enum ToggleKind {
@@ -104,14 +103,14 @@ export enum Policy {
   Always,
   AsNeeded,
   Never,
-  Hidden
+  Hidden,
 }
 
 export enum HAlignment {
   Center,
   Justify,
   Left,
-  Right
+  Right,
 }
 
 export enum VAlignment {
@@ -131,7 +130,7 @@ export enum Transform {
   Uppercase,
   Lowercase,
   UppercaseFirst,
-  Capitalize
+  Capitalize,
 }
 
 export enum Overflow {
@@ -140,7 +139,7 @@ export enum Overflow {
   EndingChar,
   LeadingWord,
   CenterWord,
-  EndingWord
+  EndingWord,
 }
 
 export enum Slant {
@@ -163,7 +162,7 @@ export enum Weight {
   SemiBold = 600,
   Bold = 700,
   ExtraBold = 800,
-  Black = 900
+  Black = 900,
 }
 
 export enum TabsKind {
@@ -189,14 +188,12 @@ export enum Order {
   None,
 }
 
-
 export enum Separator {
   None,
   Before,
   After,
-  Both
+  Both,
 }
-
 
 export type IconKind = string | IconType;
 
@@ -206,10 +203,7 @@ export class JSObject {
   type: string;
   fields: object;
 
-  constructor(
-    type: string,
-    fields: object
-  ) {
+  constructor(type: string, fields: object) {
     this.type = type;
     this.fields = fields;
   }
@@ -218,8 +212,8 @@ export class JSObject {
     return {
       type: this.type,
       fields: this.fields,
-    }
-  }
+    };
+  };
 }
 
 export class WidgetElement extends JSObject {}
@@ -241,7 +235,7 @@ export class ShorcutElement extends JSObject {}
 export class DialogElement extends JSObject {}
 
 export class RenderableElement {
-  renderable: Renderable
+  renderable: Renderable;
   constructor(renderable: Renderable) {
     this.renderable = renderable;
   }
@@ -249,42 +243,46 @@ export class RenderableElement {
 
 export type Widget = WidgetElement | RenderableElement;
 
-export type FlexConf = {flex?: int, fitLoose?: boolean, ignoreCross?: boolean};
+export type FlexConf = {
+  flex?: int;
+  fitLoose?: boolean;
+  ignoreCross?: boolean;
+};
 
 export type Flex = {
-  widgets: Value<Array<Value<Widget>>>, 
-  vertical?: Value<boolean>, 
-  rigthToLeft?: Value<boolean>, 
-  mainAlignment?: Value<Alignment>, 
-  crossAlignment?: Value<FlCrossAlign>, 
-  maxSize?: Value<boolean>,
-  configuration?: Value<Configuration>,
+  widgets: Value<Array<Value<Widget>>>;
+  vertical?: Value<boolean>;
+  rigthToLeft?: Value<boolean>;
+  mainAlignment?: Value<Alignment>;
+  crossAlignment?: Value<FlCrossAlign>;
+  maxSize?: Value<boolean>;
+  configuration?: Value<Configuration>;
 };
 
 export type Wrap = {
-  widgets: Value<Array<Value<Widget>>>,
-  vertical?: Value<boolean>, 
-  rigthToLeft?: Value<boolean>, 
-  mainAlignment?: Value<Alignment>, 
-  crossAlignment?: Value<WrCrossAlign>, 
-  runAlignment?: Value<Alignment>, 
-  spacing?: Value<int>,
-  runSpacing?: Value<int>,
-  configuration?: Value<Configuration>,
+  widgets: Value<Array<Value<Widget>>>;
+  vertical?: Value<boolean>;
+  rigthToLeft?: Value<boolean>;
+  mainAlignment?: Value<Alignment>;
+  crossAlignment?: Value<WrCrossAlign>;
+  runAlignment?: Value<Alignment>;
+  spacing?: Value<int>;
+  runSpacing?: Value<int>;
+  configuration?: Value<Configuration>;
 };
 
-export type StackConf = {fit?: Fit, opaque?: boolean};
+export type StackConf = { fit?: Fit; opaque?: boolean };
 
 export type Stack = {
-  widgets: Value<Array<Value<Widget>>>,
-  configuration?: Value<Configuration>,
+  widgets: Value<Array<Value<Widget>>>;
+  configuration?: Value<Configuration>;
 };
 
 export type AspectRatio = {
-  widgets: Value<Array<Value<Widget>>>,
-  ratio?: Value<float>,
-  centered?: Value<boolean>,
-  configuration?: Value<Configuration>,
+  widgets: Value<Array<Value<Widget>>>;
+  ratio?: Value<float>;
+  centered?: Value<boolean>;
+  configuration?: Value<Configuration>;
 };
 
 export type Icon = {
@@ -293,227 +291,227 @@ export type Icon = {
 };
 
 export type Button = {
-  onFire: (count: int) => void,
-  kind?: ButtonKind,
-  mode?: ButtonMode,
-  text?: Value<string | Text>,
-  icon?: Value<IconElement>,
-  tooltip?: Value<string | Text>,
-  disabled?: Value<boolean>,
-  configuration?: Value<Configuration>,
+  onFire: (count: int) => void;
+  kind?: ButtonKind;
+  mode?: ButtonMode;
+  text?: Value<string | Text>;
+  icon?: Value<IconElement>;
+  tooltip?: Value<string | Text>;
+  disabled?: Value<boolean>;
+  configuration?: Value<Configuration>;
 };
 
 export type Slider = {
-  value: Property,
-  bounds: Value<RangeElement>,
-  range?: Value<boolean>,
-  vertical?: Value<boolean>,
-  step?: Value<int>,
-  disabled?: Value<boolean>,
-  small?: Value<boolean>,
-  labeled?: Value<boolean>,
-  ticks?: Value<int>,
-  configuration?: Value<Configuration>,
-}
+  value: Property;
+  bounds: Value<RangeElement>;
+  range?: Value<boolean>;
+  vertical?: Value<boolean>;
+  step?: Value<int>;
+  disabled?: Value<boolean>;
+  small?: Value<boolean>;
+  labeled?: Value<boolean>;
+  ticks?: Value<int>;
+  configuration?: Value<Configuration>;
+};
 
 export type InputKind = {
-  type: InputType,
-  min?: number,
-  max?: number,
-  pattern?: string,
-}
+  type: InputType;
+  min?: number;
+  max?: number;
+  pattern?: string;
+};
 
 export type Status = {
-  type: StatusType,
-  error?: string,
-  level?: Level,
-  progress?: int
-}
+  type: StatusType;
+  error?: string;
+  level?: Level;
+  progress?: int;
+};
 
-export type Input =  {
+export type Input = {
   kind?: InputKindElement;
-  maxChars?: int,
-  visibleChars?: int,
-  onAction?: (text: string) => void,
-  onFocusLost?: (text: string) => void,
-  label?: Value<string | Text>,
-  icon?: Value<IconElement>,
-  prefix?: Value<string | Text>,
-  suffix?: Value<string | Text>,
-  placeHolder?: Value<string | Text>,
-  tooltip?: Value<string | Text>,
-  actionIcon?: Value<IconElement>,
-  disabled?: Value<boolean>,
-  editable?: Value<boolean>,
-  withCounter?: Value<boolean>,
-  withStatus?: Value<boolean>,
-  withLabel?: Value<boolean>,
-  withClear?: Value<boolean>,
-  alignRight?: Value<boolean>,
-  placeholderAsLabel?: Value<boolean>,
+  maxChars?: int;
+  visibleChars?: int;
+  onAction?: (text: string) => void;
+  onFocusLost?: (text: string) => void;
+  label?: Value<string | Text>;
+  icon?: Value<IconElement>;
+  prefix?: Value<string | Text>;
+  suffix?: Value<string | Text>;
+  placeHolder?: Value<string | Text>;
+  tooltip?: Value<string | Text>;
+  actionIcon?: Value<IconElement>;
+  disabled?: Value<boolean>;
+  editable?: Value<boolean>;
+  withCounter?: Value<boolean>;
+  withStatus?: Value<boolean>;
+  withLabel?: Value<boolean>;
+  withClear?: Value<boolean>;
+  alignRight?: Value<boolean>;
+  placeholderAsLabel?: Value<boolean>;
   //
-  text?: Value<string | Text>,
-  position?: Value<int>,
-  selection?: Value<RangeElement>,
-  status?: Value<StatusElement>,
-  configuration?: Value<Configuration>,
-}
+  text?: Value<string | Text>;
+  position?: Value<int>;
+  selection?: Value<RangeElement>;
+  status?: Value<StatusElement>;
+  configuration?: Value<Configuration>;
+};
 
 export type Separation = {
-  value: int, 
-  type?: SepType
-}
+  value: int;
+  type?: SepType;
+};
 
-export type Split =  {
-  first: Value<Widget>,
-  second: Value<Widget>,
-  separation: Value<SeparationElement>,
-  vertical?: Value<boolean>,
-  configuration?: Value<Configuration>,
-}
+export type Split = {
+  first: Value<Widget>;
+  second: Value<Widget>;
+  separation: Value<SeparationElement>;
+  vertical?: Value<boolean>;
+  configuration?: Value<Configuration>;
+};
 
-export type Toggle =  {
-  selected : Readable,
-  kind?: Value<ToggleKind>,
-  text?: Value<string | Text>,
-  icon?: Value<IconElement>,
-  tooltip?: Value<string | Text>,
-  disabled?: Value<boolean>,
-  indeterminate?: Readable,
-  configuration?: Value<Configuration>,
-}
+export type Toggle = {
+  selected: Readable;
+  kind?: Value<ToggleKind>;
+  text?: Value<string | Text>;
+  icon?: Value<IconElement>;
+  tooltip?: Value<string | Text>;
+  disabled?: Value<boolean>;
+  indeterminate?: Readable;
+  configuration?: Value<Configuration>;
+};
 
-export type Scroll =  {
-  widget: Value<Widget>,
-  hScroll?: Value<int>,
-  vScroll?: Value<int>,
-  hPolicy?: Value<Policy>,
-  vPolicy?: Value<Policy>,
-  unit?: Value<int>,
-  negative?: Value<boolean>,
-  configuration?: Value<Configuration>,
-}
+export type Scroll = {
+  widget: Value<Widget>;
+  hScroll?: Value<int>;
+  vScroll?: Value<int>;
+  hPolicy?: Value<Policy>;
+  vPolicy?: Value<Policy>;
+  unit?: Value<int>;
+  negative?: Value<boolean>;
+  configuration?: Value<Configuration>;
+};
 
-export type Insets =  {
-  start?: string,
-  left?: string,
-  top?: string,
-  end?: string
-  right?: string,
-  bottom?: string
-}
+export type Insets = {
+  start?: string;
+  left?: string;
+  top?: string;
+  end?: string;
+  right?: string;
+  bottom?: string;
+};
 
-export type Background =  {
+export type Background = {
   color: string;
-  padding?: InsetsElement,
-  radius?: string
-}
+  padding?: InsetsElement;
+  radius?: string;
+};
 
-export type Padding =  {
-  padding?: InsetsElement,
-}
+export type Padding = {
+  padding?: InsetsElement;
+};
 
-export type BorderLine =  {
+export type BorderLine = {
   color: string;
-  padding?: InsetsElement,
-}
+  padding?: InsetsElement;
+};
 
-export type Nested =  {
-  decorations: Array<Decoration>
-}
+export type Nested = {
+  decorations: Array<Decoration>;
+};
 
 export type Constraints = {
-  minWidth?: string,
-  maxWidth?: string,
-  minHeight?: string,
-  maxHeight?: string,
-}
+  minWidth?: string;
+  maxWidth?: string;
+  minHeight?: string;
+  maxHeight?: string;
+};
 
 export type Label = {
-  text?: Value<string | Text>,
-  icon?: Value<IconElement>,
-  tooltip?: Value<string | Text>,
-  configuration?: Value<Configuration>,
-}
+  text?: Value<string | Text>;
+  icon?: Value<IconElement>;
+  tooltip?: Value<string | Text>;
+  configuration?: Value<Configuration>;
+};
 
 export type Indicator = {
-  progress?: Value<int>,
-  configuration?: Value<Configuration>,
-}
+  progress?: Value<int>;
+  configuration?: Value<Configuration>;
+};
 
 export type Decorated = {
-  decoration: Value<Decoration>,
-  widget?: Value<Widget>,
-  rigthToLeft?: Value<boolean>,
-  configuration?: Value<Configuration>,
-}
+  decoration: Value<Decoration>;
+  widget?: Value<Widget>;
+  rigthToLeft?: Value<boolean>;
+  configuration?: Value<Configuration>;
+};
 
 export type Constrained = {
-  constraints: Value<ConstraintsElement>,
-  widget?: Value<Widget>,
-  enforced?: Value<boolean>,
-  configuration?: Value<Configuration>,
-}
+  constraints: Value<ConstraintsElement>;
+  widget?: Value<Widget>;
+  enforced?: Value<boolean>;
+  configuration?: Value<Configuration>;
+};
 
 export type TextStyle = {
-  color?: string,
-  size?: string,
-  slant?: Slant,
-  weight?: Weight,
-  hAlignment?: HAlignment,
-  vAlignment?: VAlignment,
-  lineSpacing?: string,
-  wrapping?: Wrapping,
-  overflow?: Overflow,
-  transform?: Transform,
-}
+  color?: string;
+  size?: string;
+  slant?: Slant;
+  weight?: Weight;
+  hAlignment?: HAlignment;
+  vAlignment?: VAlignment;
+  lineSpacing?: string;
+  wrapping?: Wrapping;
+  overflow?: Overflow;
+  transform?: Transform;
+};
 
 export type TextView = {
-  text: Value<string | Text>,
-  style: Value<TextStyleElement>,
-}
+  text: Value<string | Text>;
+  style: Value<TextStyleElement>;
+};
 export type IconedAction = {
-  id: string,
-  icon: Value<IconElement>,
-  onFire: () => void,
-  tooltip?: Value<string | Text>,
-  disabled?: Value<boolean>,
-}
+  id: string;
+  icon: Value<IconElement>;
+  onFire: () => void;
+  tooltip?: Value<string | Text>;
+  disabled?: Value<boolean>;
+};
 
 export type Tab = {
-  id: string,
-  widget: Value<Widget>,
-  icon?: Value<IconElement>
-  text?: Value<string | Text>,
-  discriminant?: Value<string | Text>,
-  tooltip?: Value<string | Text>,
-  disabled?: Value<boolean>,
-  badge?: Value<string | Text>,
-  progress?: Value<int>,
-  closable?: Value<boolean>,
-}
+  id: string;
+  widget: Value<Widget>;
+  icon?: Value<IconElement>;
+  text?: Value<string | Text>;
+  discriminant?: Value<string | Text>;
+  tooltip?: Value<string | Text>;
+  disabled?: Value<boolean>;
+  badge?: Value<string | Text>;
+  progress?: Value<int>;
+  closable?: Value<boolean>;
+};
 
 export type Tabs = {
-  tabs?: Value<Array<TabElement>>,
-  actions?: Value<Array<IconedActionElement>>,
-  active?: Value<string>,
-  kind?: Value<TabsKind>,
-  mode?: Value<TabsMode>,
-  side?: Value<Side>,
-  placeHolder?: Value<string | Text>,
-  iconOnTop?: Value<boolean>,
-  minWidth?: Value<int> | int,
-  maxWidth?: Value<int> | int,
-  configuration?: Value<Configuration>,
-}
+  tabs?: Value<Array<TabElement>>;
+  actions?: Value<Array<IconedActionElement>>;
+  active?: Value<string>;
+  kind?: Value<TabsKind>;
+  mode?: Value<TabsMode>;
+  side?: Value<Side>;
+  placeHolder?: Value<string | Text>;
+  iconOnTop?: Value<boolean>;
+  minWidth?: Value<int> | int;
+  maxWidth?: Value<int> | int;
+  configuration?: Value<Configuration>;
+};
 
 export type TreeItem = {
-  text: string, 
-  icon?: IconElement, 
-  tooltip?: string, 
-  id?: string, 
-  items?: Value<Array<TreeItemElement>>
-}
+  text: string;
+  icon?: IconElement;
+  tooltip?: string;
+  id?: string;
+  items?: Value<Array<TreeItemElement>>;
+};
 
 export type Shortcut = {
   key: string;
@@ -521,69 +519,87 @@ export type Shortcut = {
   shift: boolean;
   alt: boolean;
   meta: boolean;
-}
+};
 
 export type DropdownItem = {
-  id: string, 
-  text: string, 
-  icon?: IconElement, 
-  tooltip?: string,
+  id: string;
+  text: string;
+  icon?: IconElement;
+  tooltip?: string;
   disabled: boolean;
   separator: Separator;
   shortcut?: ShorcutElement;
   perform: () => void;
-}
+};
 
 export type DropdownSupplier = () => Array<DropdownElement>;
 
 export type DropdownMenu = {
-  id: string, 
-  text: string, 
-  icon?: IconElement, 
-  tooltip?: string,
+  id: string;
+  text: string;
+  icon?: IconElement;
+  tooltip?: string;
   disabled: boolean;
   separator: Separator;
   items: Array<DropdownElement> | DropdownSupplier;
-}
+};
 
 export type Tree = {
-  items: Value<Array<TreeItemElement>>,
-  onExpansionChange?: (path: Array<string>, value: boolean) => void,
-  onSelectionChange?: (selection: Array<Array<string>>) => void,
-  onTreePerform?: (current: Array<string>, selection: Array<Array<string>>) => void,
-  onTreeDrop?: (from: Array<string>, to: Array<string>, drop: Drop) => void,
-  getContextMenu?: (current: Array<string>, selection: Array<Array<string>>) => Array<DropdownElement>,
-  allowMultipleSelection?: Value<boolean>,
-  badgeMaxChar?: Value<int>,
-  configuration?: Value<Configuration>,
-}
+  items: Value<Array<TreeItemElement>>;
+  onExpansionChange?: (path: Array<string>, value: boolean) => void;
+  onSelectionChange?: (selection: Array<Array<string>>) => void;
+  onTreePerform?: (
+    current: Array<string>,
+    selection: Array<Array<string>>,
+  ) => void;
+  onTreeDrop?: (from: Array<string>, to: Array<string>, drop: Drop) => void;
+  getContextMenu?: (
+    current: Array<string>,
+    selection: Array<Array<string>>,
+  ) => Array<DropdownElement>;
+  allowMultipleSelection?: Value<boolean>;
+  badgeMaxChar?: Value<int>;
+  configuration?: Value<Configuration>;
+};
 
 export type Renderable = (scope: Scope) => Widget;
 
-
 export var flexConf = (conf: FlexConf) => new Configuration("flexConf", conf);
-export var stackConf = (conf: StackConf) => new Configuration("stackConf", conf);
+export var stackConf = (conf: StackConf) =>
+  new Configuration("stackConf", conf);
 //
 export var icon = (setting: Icon) => new IconElement("icon", setting);
-export var range = (start: int, end: int) => new RangeElement("range", {start: start, end: end});
-export var inputKind = (setting: InputKind) => new InputKindElement("inputKind", setting);
+export var range = (start: int, end: int) =>
+  new RangeElement("range", { start: start, end: end });
+export var inputKind = (setting: InputKind) =>
+  new InputKindElement("inputKind", setting);
 export var status = (setting: Status) => new StatusElement("status", setting);
-export var separation = (setting: Separation) => new SeparationElement("separation", setting);
+export var separation = (setting: Separation) =>
+  new SeparationElement("separation", setting);
 export var insets = (setting: Insets) => new InsetsElement("insets", setting);
-export var constraints = (setting: Constraints) => new ConstraintsElement("constraints", setting);
-export var textStyle = (setting: TextStyle) => new TextStyleElement("textStyle", setting);
-export var shortcut = (setting: Shortcut) => new ShorcutElement("shortcut", setting);
+export var constraints = (setting: Constraints) =>
+  new ConstraintsElement("constraints", setting);
+export var textStyle = (setting: TextStyle) =>
+  new TextStyleElement("textStyle", setting);
+export var shortcut = (setting: Shortcut) =>
+  new ShorcutElement("shortcut", setting);
 //
-export var background = (setting: Background) => new Decoration("background", setting);
+export var background = (setting: Background) =>
+  new Decoration("background", setting);
 export var padding = (setting: Padding) => new Decoration("padding", setting);
-export var borderLine = (setting: BorderLine) => new Decoration("borderLine", setting);
+export var borderLine = (setting: BorderLine) =>
+  new Decoration("borderLine", setting);
 export var nested = (setting: Nested) => new Decoration("nested", setting);
 //
-export var iconedAction = (setting: IconedAction) => new IconedActionElement("iconedAction", setting);
+export var iconedAction = (setting: IconedAction) =>
+  new IconedActionElement("iconedAction", setting);
 export var tab = (setting: Tab) => new TabElement("tab", setting);
-export var treeItem = (setting: TreeItem) => new TreeItemElement("treeItem", setting);
-export var dropdownitem = (setting: DropdownItem) => new DropdownElement("dropdownitem", setting);
-export var dropdownmenu = (setting: DropdownMenu) => new DropdownElement("dropdownmenu", setting);
+export var treeItem = (setting: TreeItem) =>
+  new TreeItemElement("treeItem", setting);
+export var dropdownitem = (setting: DropdownItem) =>
+  new DropdownElement("dropdownitem", setting);
+export var dropdownmenu = (setting: DropdownMenu) =>
+  new DropdownElement("dropdownmenu", setting);
 //
 export var flex = (setting: Flex) => new WidgetElement("flex", setting);
 export var wrap = (setting: Wrap) => new WidgetElement("wrap", setting);
@@ -595,34 +611,40 @@ export var split = (setting: Split) => new WidgetElement("split", setting);
 export var toggle = (setting: Toggle) => new WidgetElement("toggle", setting);
 export var scroll = (setting: Scroll) => new WidgetElement("scroll", setting);
 export var label = (setting: Label) => new WidgetElement("label", setting);
-export var indicator = (setting: Indicator) => new WidgetElement("indicator", setting);
-export var decorated = (setting: Decorated) => new WidgetElement("decorated", setting);
-export var constrained = (setting: Constrained) => new WidgetElement("constrained", setting);
-export var textView = (setting: TextView) => new WidgetElement("textview", setting);
+export var indicator = (setting: Indicator) =>
+  new WidgetElement("indicator", setting);
+export var decorated = (setting: Decorated) =>
+  new WidgetElement("decorated", setting);
+export var constrained = (setting: Constrained) =>
+  new WidgetElement("constrained", setting);
+export var textView = (setting: TextView) =>
+  new WidgetElement("textview", setting);
 export var tabs = (setting: Tabs) => new WidgetElement("tabs", setting);
 export var tree = (setting: Tree) => new WidgetElement("tree", setting);
-// 
-export var insetsAll = (thickness: string) => insets({
-  left: thickness,
-  top: thickness,
-  right: thickness,
-  bottom: thickness
-});
-export var paddingAll = (thickness: string) => padding({padding: insetsAll(thickness)});
 //
-export var renderable = (renderable: Renderable) => new RenderableElement(renderable);
+export var insetsAll = (thickness: string) =>
+  insets({
+    left: thickness,
+    top: thickness,
+    right: thickness,
+    bottom: thickness,
+  });
+export var paddingAll = (thickness: string) =>
+  padding({ padding: insetsAll(thickness) });
+//
+export var renderable = (renderable: Renderable) =>
+  new RenderableElement(renderable);
 
 export interface Scope {
   alert: (text: string | Text, title: Opt<string | Text>) => void;
-  dialog: (dialog: JSObject)  => void;
+  dialog: (dialog: JSObject) => void;
   create: (value?: any) => Property;
   combine: (
-    combine: (values: Array<any>) => any, 
-    combinables: Array<Readable>, 
-    onWrite?: (value: any) => void
+    combine: (values: Array<any>) => any,
+    combinables: Array<Readable>,
+    onWrite?: (value: any) => void,
   ) => Property;
 }
-
 
 interface Exports {
   SKIP_UiEngineJS_register: (id: int, path: Opt<ptr>, type_: ptr) => void;
@@ -642,7 +664,7 @@ interface Exports {
 
 export class State {
   valueId = 0;
-  values = new Map<int,any>();
+  values = new Map<int, any>();
 
   register = (value: any) => {
     let id = ++this.valueId;
@@ -650,17 +672,17 @@ export class State {
       this.values.set(id, value);
     }
     return id;
-  }
+  };
 
-  delete = (id : int) => {
+  delete = (id: int) => {
     let value = this.values.get(id);
     this.values.delete(id);
     return value;
-  }
+  };
 
-  get = (id : int) => {
+  get = (id: int) => {
     return this.values.get(id);
-  }
+  };
 
   apply = (id: int, paremeter: Array<any>) => {
     let fn = this.values.get(id);
@@ -668,7 +690,7 @@ export class State {
       return fn.apply(null, paremeter);
     }
     return null;
-  }
+  };
 }
 
 export class EngShared implements Shared {
@@ -689,7 +711,7 @@ export class SkuiEngUtils {
     utils: Utils,
     exports: any,
     createScope: (name: string) => Scope,
-    state?: State
+    state?: State,
   ) {
     this.state = state ?? new State();
     this.utils = utils;
@@ -697,31 +719,40 @@ export class SkuiEngUtils {
     this.createScope = createScope;
   }
 
-
-
   importValue(value: ptr) {
     return this.state.delete(this.exports.SKIP_UiEngineJS_toJS(value));
   }
 
   register(skPath: Opt<ptr>, value: (...args: any[]) => any) {
     let id = this.state.register(value);
-    this.exports.SKIP_UiEngineJS_register(id, skPath, this.utils.exportString(typeof value));
+    this.exports.SKIP_UiEngineJS_register(
+      id,
+      skPath,
+      this.utils.exportString(typeof value),
+    );
     return id;
-  };
-  
+  }
+
   exportValue(path: Opt<string>, skPath: Opt<ptr>, value: any) {
     let type = typeof value;
     if (value == null || value == undefined) {
-      return this.exports.SKIP_JSON_createNull(); 
+      return this.exports.SKIP_JSON_createNull();
     } else if (type == "number") {
       return this.exports.SKIP_JSON_createFloatNumber(value);
     } else if (type == "boolean") {
       return this.exports.SKIP_JSON_createBool(value);
     } else if (type == "string") {
-      return this.exports.SKIP_JSON_createString(this.utils.exportString(value));
+      return this.exports.SKIP_JSON_createString(
+        this.utils.exportString(value),
+      );
     } else if (Array.isArray(value)) {
       let arr = this.exports.SKIP_JSON_startArray();
-      value.forEach(v => this.exports.SKIP_JSON_addToArray(arr, this.exportValue(path, skPath, v)))
+      value.forEach((v) =>
+        this.exports.SKIP_JSON_addToArray(
+          arr,
+          this.exportValue(path, skPath, v),
+        ),
+      );
       return this.exports.SKIP_JSON_endArray(arr);
     } else if (value instanceof RenderableElement) {
       let render = (strScope: string) => {
@@ -732,8 +763,8 @@ export class SkuiEngUtils {
         type: "renderable",
         fields: {
           id: id,
-          scope: path
-        }
+          scope: path,
+        },
       });
     } else if (type == "object") {
       let jso = value;
@@ -742,7 +773,11 @@ export class SkuiEngUtils {
       }
       let obj = this.exports.SKIP_JSON_startObject();
       for (let key in jso) {
-        this.exports.SKIP_JSON_addToObject(obj, this.utils.exportString(key), this.exportValue(path, skPath, jso[key]))
+        this.exports.SKIP_JSON_addToObject(
+          obj,
+          this.utils.exportString(key),
+          this.exportValue(path, skPath, jso[key]),
+        );
       }
       return this.exports.SKIP_JSON_endObject(obj);
     } else if (type == "function") {
@@ -751,11 +786,11 @@ export class SkuiEngUtils {
         type: "function",
         fields: {
           id: id,
-          scope: path
-        }
+          scope: path,
+        },
       });
     } else {
-      throw new Error("'" + type + "' cannot be exported to engine.")
+      throw new Error("'" + type + "' cannot be exported to engine.");
     }
   }
 }

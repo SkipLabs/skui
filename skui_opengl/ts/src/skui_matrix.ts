@@ -1,4 +1,3 @@
-
 export class Matrix {
   data: Float32Array;
 
@@ -27,7 +26,7 @@ export class Matrix {
     this.data[13] = 0;
     this.data[14] = 0;
     this.data[15] = 1;
-  }
+  };
 
   /**
    * Initialize a 4-by-4 orthographic projection matrix
@@ -38,7 +37,14 @@ export class Matrix {
    * @param {number} near The negative z coordinate of the near depth of the box.
    * @param {number} far The negative z coordinate of the far depth of the box.
    */
-  setAsOrthographic = (left: number, right: number, bottom: number, top: number, near: number, far: number) => {
+  setAsOrthographic = (
+    left: number,
+    right: number,
+    bottom: number,
+    top: number,
+    near: number,
+    far: number,
+  ) => {
     this.data[0] = 2 / (right - left);
     this.data[1] = 0;
     this.data[2] = 0;
@@ -55,7 +61,7 @@ export class Matrix {
     this.data[13] = (bottom + top) / (bottom - top);
     this.data[14] = (near + far) / (near - far);
     this.data[15] = 1;
-  }
+  };
 
   /**
    * Translate according parameters.
@@ -87,7 +93,7 @@ export class Matrix {
     this.data[13] = x01 * tx + y01 * ty + z01 * tz + c01;
     this.data[14] = x02 * tx + y02 * ty + z02 * tz + c02;
     this.data[15] = x03 * tx + y03 * ty + z03 * tz + c03;
-  }
+  };
   /**
    * Multiply according parameters.
    * @param {number} sx x scale.
@@ -109,5 +115,5 @@ export class Matrix {
     this.data[9] = sz * this.data[9];
     this.data[10] = sz * this.data[10];
     this.data[11] = sz * this.data[11];
-  }
+  };
 }

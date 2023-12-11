@@ -1,11 +1,9 @@
 
-ifndef SKFS
-$(error SKFS must be defined.)
-endif
-
-
 .PHONY: conf
 conf:
+	@if [ "$(SKFS)" = "" ]; then\
+        $(error SKFS must be defined.);\
+  fi
 	@echo '{' > .tsconfig.json
 	@echo '  "compilerOptions": {' >> .tsconfig.json
 	@echo '    "target": "ES2021",' >> .tsconfig.json
@@ -21,3 +19,16 @@ conf:
 	@echo '    }' >> .tsconfig.json
 	@echo '  }' >> .tsconfig.json
 	@echo '}' >> .tsconfig.json
+
+.PHONY: fmt
+fmt:
+	cd skui_base; skargo fmt
+	cd skui_eng; skargo fmt
+	cd skui_engex; skargo fmt
+	cd skui_font; skargo fmt
+	cd skui_fwk; skargo fmt
+	cd skui_mtsdf; skargo fmt
+	cd skui_opengl; skargo fmt
+	cd skui_views; skargo fmt
+	cd skui_x11gl; skargo fmt
+	npx prettier . --write

@@ -1,4 +1,4 @@
-import { float, Environment, Links, ToWasmManager, Utils} from "#std/sk_types";
+import { float, Environment, Links, ToWasmManager, Utils } from "#std/sk_types";
 
 interface ToWasm {
   SKIP_JS_timeStamp: () => float;
@@ -8,11 +8,10 @@ class LinksImpl implements Links, ToWasm {
   SKIP_JS_timeStamp: () => float;
 
   constructor(env: Environment) {
-    this.SKIP_JS_timeStamp = () => env ? env.timestamp() : 0.0;
+    this.SKIP_JS_timeStamp = () => (env ? env.timestamp() : 0.0);
   }
 
-  complete = (utils: Utils, exports: object) => {
-  }
+  complete = (utils: Utils, exports: object) => {};
 }
 
 class Manager implements ToWasmManager {
@@ -27,7 +26,7 @@ class Manager implements ToWasmManager {
     let links = new LinksImpl(this.environment);
     toWasm.SKIP_JS_timeStamp = () => links.SKIP_JS_timeStamp();
     return links;
-  }
+  };
 }
 
 /** @sk init */

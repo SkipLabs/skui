@@ -11,31 +11,27 @@
       "kind": "Library",
       "sources": ["src/**"],
       "references": [
-        { "path": ".", "name": "prelude"},
-        { "path": ".", "name": "skfs"},
-        { "path": ".", "name": "base"}
+        { "path": ".", "name": "prelude" },
+        { "path": ".", "name": "skfs" },
+        { "path": ".", "name": "base" }
       ]
     },
     "test": {
       "kind": "Library",
       "sources": ["tests/**"],
       "references": [
-        { "path": ".", "name": "skui_common"},
-        { "path": ".", "name": "sktest"}
+        { "path": ".", "name": "skui_common" },
+        { "path": ".", "name": "sktest" }
       ]
     },
     "base": {
       "kind": "Library",
-      "sources": [
-        "../skui_base/src/**"
-      ],
+      "sources": ["../skui_base/src/**"],
       "references": []
     },
     "skfs": {
       "kind": "Library",
-      "sources": [
-        "../../skfs_new/skfs/src/**"
-      ],
+      "sources": ["../../skfs_new/skfs/src/**"],
       "references": []
     },
     "prelude": {
@@ -47,33 +43,27 @@
       ],
       "parameters": {
         "backend": {
-            "native": {"sources": ["../../skfs_new/prelude/src/native"]}
+          "native": { "sources": ["../../skfs_new/prelude/src/native"] }
         }
       },
       "references": []
     },
     "sktest": {
       "kind": "Library",
-      "sources": [
-        "../../skfs_new/sktest/src/**"
-      ],
+      "sources": ["../../skfs_new/sktest/src/**"],
       "references": [
-        { "path": ".", "name": "termcolor"},
-        { "path": ".", "name": "cli"}
+        { "path": ".", "name": "termcolor" },
+        { "path": ".", "name": "cli" }
       ]
     },
     "termcolor": {
       "kind": "Library",
-      "sources": [
-        "../../skfs_new/termcolor/src/**"
-      ],
+      "sources": ["../../skfs_new/termcolor/src/**"],
       "references": []
     },
     "cli": {
       "kind": "Library",
-      "sources": [
-        "../../skfs_new/cli/src/**"
-      ],
+      "sources": ["../../skfs_new/cli/src/**"],
       "references": []
     }
   },
