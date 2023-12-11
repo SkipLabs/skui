@@ -54,7 +54,7 @@ fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
         .each(example -> {
           wId = 0;
           title = example.optDescription.default("SKUI's JS Engine");
-          _ = SKStore.initMainContext(SKStore.Context{});
+          _ = SKStore.gContextInit(SKStore.Context{});
           SKStore.Context::withoutGc(context ~> {
             initEngineWidget(context, wId, example.name);
             context.initPre()

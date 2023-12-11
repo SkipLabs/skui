@@ -94,7 +94,7 @@ fun perform(available: readonly Vector<Example>): void {
             | Some(t) -> t
             | _ -> command._about.fromSome()
             };
-            _ = SKStore.initMainContext(SKStore.Context{});
+            _ = SKStore.gContextInit(SKStore.Context{});
             SKStore.Context::withGc(context ~> {
               initEngineWidget(context, args, wId, example);
               context.initPre();

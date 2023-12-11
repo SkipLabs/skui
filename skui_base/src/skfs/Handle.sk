@@ -533,7 +533,9 @@ class IHandle<K: Key, T: File>(
       | None() ->
         invariant_violation(`Could not find input directory: ${this.dirName}`)
       | Some(dir) ->
-        invariant(dir.isInput(), `Not an input Dir: ${this.dirName}`);
+        if (!dir.isInput()) {
+          invariant_violation(`Not an input Dir: ${this.dirName}`)
+        };
         dir.writeArray(context, key, value)
       }
     }
