@@ -7,6 +7,6 @@
       "#skui_base/*": ["../../../skui_base/ts/src/*"],
       "#skui_opengl/*": ["./*"]
     },
-    "strictNullChecks":true
+    "strictNullChecks": true
   }
 }

@@ -1,5 +1,4 @@
-
-import {Environment} from "#std/sk_types";
+import { Environment } from "#std/sk_types";
 
 export interface GLEnv extends Environment {
   clipboard: () => Clipboard | null | undefined;
@@ -13,12 +12,13 @@ export interface GLEnv extends Environment {
 /** @sk env browser */
 export function complete(env: Environment) {
   let glenv = env as GLEnv;
-  let global = (typeof window == "undefined") ? self : window;
+  let global = typeof window == "undefined" ? self : window;
   glenv.clipboard = () => navigator.clipboard;
-  if ('location' in global) {
+  if ("location" in global) {
     let win = global as Window;
     glenv.window = () => win;
-    glenv.requestAnimationFrame = (callback) => win.requestAnimationFrame(callback);
+    glenv.requestAnimationFrame = (callback) =>
+      win.requestAnimationFrame(callback);
     glenv.cancelAnimationFrame = (handle) => win.cancelAnimationFrame(handle);
     let window = glenv.window();
     let document = glenv.window().document;
@@ -47,6 +47,5 @@ export function complete(env: Environment) {
     canvas.style.width = width + "px";
     canvas.style.height = height + "px";
     glenv.canvas = () => canvas;
-  };
+  }
 }
-

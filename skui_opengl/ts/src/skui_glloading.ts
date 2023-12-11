@@ -1,5 +1,4 @@
-
-import {int} from "#std/sk_types";
+import { int } from "#std/sk_types";
 import { Matrix } from "#skui_opengl/skui_matrix";
 
 export class Loading {
@@ -16,27 +15,46 @@ export class Loading {
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
   interval: int | null;
-  setInterval: (handler: TimerHandler, timeout: int) => int
+  setInterval: (handler: TimerHandler, timeout: int) => int;
 
-  constructor(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext, setInterval: (handler: TimerHandler, timeout: int) => int) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    gl: WebGL2RenderingContext,
+    setInterval: (handler: TimerHandler, timeout: int) => int,
+  ) {
     this.setInterval = setInterval;
     this.positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0]), gl.STATIC_DRAW);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+        0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+      ]),
+      gl.STATIC_DRAW,
+    );
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     this.step = 0;
     this.gl = gl;
     this.canvas = canvas;
     this.program = loadindProgram(gl)!;
 
-    this.positionLocation = gl.getAttribLocation(this.program, 'a_position');
+    this.positionLocation = gl.getAttribLocation(this.program, "a_position");
     this.matrixLocation = gl.getUniformLocation(this.program, "u_matrix")!;
-    this.color1Location = gl.getUniformLocation(this.program, 'u_color1')!;
-    this.color2Location = gl.getUniformLocation(this.program, 'u_color2')!;
-    this.stepLocation = gl.getUniformLocation(this.program, 'u_step')!;
-    this.smoothLocation = gl.getUniformLocation(this.program, 'u_smooth')!;
+    this.color1Location = gl.getUniformLocation(this.program, "u_color1")!;
+    this.color2Location = gl.getUniformLocation(this.program, "u_color2")!;
+    this.stepLocation = gl.getUniformLocation(this.program, "u_step")!;
+    this.smoothLocation = gl.getUniformLocation(this.program, "u_smooth")!;
   }
-  draw = (x: number, y: number, width: number, height: number, color1: Iterable<GLfloat>, color2: Iterable<GLfloat>, cWidth: number, cHeight: number) => {
+  draw = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color1: Iterable<GLfloat>,
+    color2: Iterable<GLfloat>,
+    cWidth: number,
+    cHeight: number,
+  ) => {
     let gl = this.gl;
     gl.useProgram(this.program);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -68,7 +86,7 @@ export class Loading {
       }
       clearInterval(this.interval);
       this.interval = null;
-    };
+    }
   };
   loading = () => {
     if (this.interval == null) {
@@ -88,7 +106,7 @@ export class Loading {
       [0.4, 1, 0.8, 1],
       [0.2, 0.6, 1.0, 1],
       this.canvas.width,
-      this.canvas.height
+      this.canvas.height,
     );
     requestAnimationFrame(this.loading);
   };
@@ -98,7 +116,12 @@ export class Loading {
   start = () => {
     this.gl.enable(this.gl.BLEND);
     this.gl.disable(this.gl.DEPTH_TEST);
-    this.gl.blendFuncSeparate(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA, this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA)
+    this.gl.blendFuncSeparate(
+      this.gl.SRC_ALPHA,
+      this.gl.ONE_MINUS_SRC_ALPHA,
+      this.gl.ONE,
+      this.gl.ONE_MINUS_SRC_ALPHA,
+    );
     this.interval = this.setInterval(this.update, 100);
     requestAnimationFrame(this.loading);
   };
@@ -106,7 +129,6 @@ export class Loading {
     return this.interval != null && !this.gl.isContextLost();
   };
 }
-
 
 const makeShader = (gl: WebGLRenderingContext, src: string, type: GLenum) => {
   var shader = gl.createShader(type)!;
@@ -121,7 +143,11 @@ const makeShader = (gl: WebGLRenderingContext, src: string, type: GLenum) => {
 const loadindProgram = (gl: WebGLRenderingContext) => {
   // Compile shaders
   var vertexShader = makeShader(gl, progressVertexShader, gl.VERTEX_SHADER)!;
-  var fragmentShader = makeShader(gl, progressFragmentShader, gl.FRAGMENT_SHADER)!;
+  var fragmentShader = makeShader(
+    gl,
+    progressFragmentShader,
+    gl.FRAGMENT_SHADER,
+  )!;
 
   // Create program
   var glProgram = gl.createProgram()!;
@@ -145,7 +171,7 @@ void main() {\n\
   vec4 position = u_matrix * a_position;\n\
   v_position = a_position.xy;\n\
   gl_Position = position;\n\
-}"
+}";
 
 const progressFragmentShader =
   "precision mediump float;\n\
@@ -184,4 +210,4 @@ void main() {\n\
     draw_circle(coord - center8, 0.125, 7);\n\
   gl_FragColor = circle.y * u_color2 + (1.0 - circle.y) * u_color1;\n\
   gl_FragColor.a = circle.x;\n\
-}"
+}";

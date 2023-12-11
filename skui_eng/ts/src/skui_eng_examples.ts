@@ -1,9 +1,17 @@
-import { ptr, Opt, Utils, Links, ToWasmManager, Environment } from "#std/sk_types";
+import {
+  ptr,
+  Opt,
+  Utils,
+  Links,
+  ToWasmManager,
+  Environment,
+} from "#std/sk_types";
 import * as eng from "#skui_eng/skui_eng_types";
 import * as icons from "#skui_eng/skui_eng_icons";
 
 function setText(text: eng.Property, strName: string, count: number) {
-  let newText = "The '" + strName + "' button was fired with a click count of " + count;
+  let newText =
+    "The '" + strName + "' button was fired with a click count of " + count;
   text.set(newText);
 }
 
@@ -11,14 +19,19 @@ var button = (scope: eng.Scope) => {
   return eng.flex({
     widgets: [
       eng.button({
-        onFire: (count: number) => { console.log("Click: " + count) },
-        mode: eng.ButtonMode.Basic, kind: eng.ButtonKind.Regular, text: "My button", icon: icons.Heart,
-      })
+        onFire: (count: number) => {
+          console.log("Click: " + count);
+        },
+        mode: eng.ButtonMode.Basic,
+        kind: eng.ButtonKind.Regular,
+        text: "My button",
+        icon: icons.Heart,
+      }),
     ],
     vertical: true,
     mainAlignment: eng.Alignment.Center,
     crossAlignment: eng.FlCrossAlign.Center,
-  })
+  });
 };
 
 var button2 = (scope: eng.Scope) => {
@@ -28,39 +41,56 @@ var button2 = (scope: eng.Scope) => {
     decoration: eng.nested({
       decorations: [
         eng.paddingAll("6px"),
-        eng.background({ color: "aliceblue", radius: "50%h", padding: eng.insetsAll("6px") })
-      ]
+        eng.background({
+          color: "aliceblue",
+          radius: "50%h",
+          padding: eng.insetsAll("6px"),
+        }),
+      ],
     }),
-    widget: labelElement
-  }
-  );
+    widget: labelElement,
+  });
   let name = "My button";
   return eng.flex({
     widgets: [
       labelDecoration,
       eng.button({
-        onFire: (count: number) => { setText(text, name, count) },
-        mode: eng.ButtonMode.Basic, kind: eng.ButtonKind.Regular, text: name, icon: icons.Heart,
-      })
+        onFire: (count: number) => {
+          setText(text, name, count);
+        },
+        mode: eng.ButtonMode.Basic,
+        kind: eng.ButtonKind.Regular,
+        text: name,
+        icon: icons.Heart,
+      }),
     ],
     vertical: true,
     mainAlignment: eng.Alignment.Center,
     crossAlignment: eng.FlCrossAlign.Center,
-  })
+  });
 };
 
-function buildButton(mode: eng.ButtonMode, strKind: string, text: eng.Property) {
+function buildButton(
+  mode: eng.ButtonMode,
+  strKind: string,
+  text: eng.Property,
+) {
   const kind = eng.ButtonKind[strKind];
   return eng.button({
-    onFire: (count: number) => { setText(text, eng.ButtonMode[mode] + " " + strKind, count) },
-    mode: mode, kind: kind, text: strKind, icon: icons.Heart,
+    onFire: (count: number) => {
+      setText(text, eng.ButtonMode[mode] + " " + strKind, count);
+    },
+    mode: mode,
+    kind: kind,
+    text: strKind,
+    icon: icons.Heart,
   });
 }
 
 function buildLine(strMode: string, text: eng.Property) {
   const mode = eng.ButtonMode[strMode];
   const line: Array<eng.Widget> = [
-    eng.label({ text: strMode, icon: icons.Bookmark })
+    eng.label({ text: strMode, icon: icons.Bookmark }),
   ];
   for (const strKind in eng.ButtonKind) {
     if (isNaN(Number(strKind))) {
@@ -69,9 +99,14 @@ function buildLine(strMode: string, text: eng.Property) {
   }
   line.push(
     eng.button({
-      onFire: (count: number) => { setText(text, eng.ButtonMode[mode] + " " + "Disabled", count) },
-      mode: mode, text: "Disabled", icon: icons.Heart, disabled: true,
-    })
+      onFire: (count: number) => {
+        setText(text, eng.ButtonMode[mode] + " " + "Disabled", count);
+      },
+      mode: mode,
+      text: "Disabled",
+      icon: icons.Heart,
+      disabled: true,
+    }),
   );
   return line;
 }
@@ -83,8 +118,16 @@ var buttons = (scope: eng.Scope) => {
   for (const strMode in eng.ButtonMode) {
     if (isNaN(Number(strMode))) {
       let widgets = buildLine(strMode, text);
-      let wrap = eng.wrap({ widgets: widgets, spacing: 20, runSpacing: 10, crossAlignment: eng.WrCrossAlign.Center });
-      let decorated = eng.decorated({ decoration: eng.paddingAll("6px"), widget: wrap });
+      let wrap = eng.wrap({
+        widgets: widgets,
+        spacing: 20,
+        runSpacing: 10,
+        crossAlignment: eng.WrCrossAlign.Center,
+      });
+      let decorated = eng.decorated({
+        decoration: eng.paddingAll("6px"),
+        widget: wrap,
+      });
       column.push(decorated);
     }
   }
@@ -94,25 +137,28 @@ var buttons = (scope: eng.Scope) => {
     vertical: true,
     mainAlignment: eng.Alignment.Center,
     maxSize: true,
-    configuration: eng.flexConf({ flex: 1 })
+    configuration: eng.flexConf({ flex: 1 }),
   });
   const labelDecoration = eng.decorated({
     decoration: eng.nested({
       decorations: [
         eng.paddingAll("6px"),
-        eng.background({ color: "aliceblue", radius: "50%h", padding: eng.insetsAll("6px") })
-      ]
+        eng.background({
+          color: "aliceblue",
+          radius: "50%h",
+          padding: eng.insetsAll("6px"),
+        }),
+      ],
     }),
-    widget: labelElement
-  }
-  );
+    widget: labelElement,
+  });
   const widgets: Array<eng.Widget> = [labelDecoration, flex];
   return eng.flex({
     widgets: widgets,
     vertical: true,
     mainAlignment: eng.Alignment.Center,
     crossAlignment: eng.FlCrossAlign.Center,
-  })
+  });
 };
 
 interface ToWasm {
@@ -149,34 +195,48 @@ class LinksImpl implements Links, ToWasm {
         default: {
           break;
         }
-      };
+      }
       let shared = this.env.shared.get("skuieng") as eng.EngShared;
       if (renderable != null && shared) {
         let state = utils.getState("skuieng", () => new eng.State());
-        let engUtils = new eng.SkuiEngUtils(utils, exports, shared.createScope, state);
-        return engUtils.exportValue(null, null, new eng.RenderableElement(renderable))
+        let engUtils = new eng.SkuiEngUtils(
+          utils,
+          exports,
+          shared.createScope,
+          state,
+        );
+        return engUtils.exportValue(
+          null,
+          null,
+          new eng.RenderableElement(renderable),
+        );
       }
-    }
+    };
     this.SKUI_UiEngineJS_examples = () => {
       let shared = this.env.shared.get("skuieng") as eng.EngShared;
       if (shared) {
         let state = utils.getState("skuieng", () => new eng.State());
-        let engUtils = new eng.SkuiEngUtils(utils, exports, shared.createScope, state);
+        let engUtils = new eng.SkuiEngUtils(
+          utils,
+          exports,
+          shared.createScope,
+          state,
+        );
         return engUtils.exportValue(null, null, [
-          {name: "button", description: "Button example"},
-          {name: "button2", description: "Button that change label example"},
-          {name: "buttons", description: "Buttons example"},
-        ])
+          { name: "button", description: "Button example" },
+          { name: "button2", description: "Button that change label example" },
+          { name: "buttons", description: "Buttons example" },
+        ]);
       }
       return null;
-    }
-  }
+    };
+  };
 }
 
 class Manager implements ToWasmManager {
-  env:  Environment;
+  env: Environment;
 
-  constructor(env:  Environment) {
+  constructor(env: Environment) {
     this.env = env;
   }
 
@@ -184,9 +244,10 @@ class Manager implements ToWasmManager {
     let toWasm = wasm as ToWasm;
     let links = new LinksImpl(this.env);
     toWasm.SKUI_UiEngineJS_examples = () => links.SKUI_UiEngineJS_examples();
-    toWasm.SKUI_UiEngineJS_getExample = (skName: ptr) => links.SKUI_UiEngineJS_getExample(skName);
+    toWasm.SKUI_UiEngineJS_getExample = (skName: ptr) =>
+      links.SKUI_UiEngineJS_getExample(skName);
     return links;
-  }
+  };
 }
 
 /** @sk init */
