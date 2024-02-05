@@ -7,7 +7,7 @@ commands:
       - run:
           name: Install used libraries
           command: |
-            apt-get update & apt-get -y install libpcre3 libpcre3-dev
+            apt-get update & apt-get -y install libpcre3 libpcre3-dev libnss3
   skdbsetup:
     description: "Setup skip toolchain"
     steps:
