@@ -59,14 +59,6 @@ jobs:
       - cloneskfs
       - skfssetup
       - cloneskui
-      - run:
-          name: Skip job if irrelevant
-          command: |
-            cd skui
-            if git diff --quiet HEAD main -- skui_common/
-            then
-              circleci-agent step halt
-            fi
       - skuisetup
       - run:
           name: Run common tests
@@ -84,14 +76,6 @@ jobs:
       - cloneskfs
       - skfssetup
       - cloneskui
-      - run:
-          name: Skip job if irrelevant
-          command: |
-            cd skui
-            if git diff --quiet HEAD main -- skui_font/
-            then
-              circleci-agent step halt
-            fi
       - skuisetup
       - run:
           name: Run font tests
@@ -108,14 +92,6 @@ jobs:
       - cloneskfs
       - skfssetup
       - cloneskui
-      - run:
-          name: Skip job if irrelevant
-          command: |
-            cd skui
-            if git diff --quiet HEAD main -- skui_mtsdf/
-            then
-              circleci-agent step halt
-            fi
       - skuisetup
       - run:
           name: Run mtsdf tests
@@ -133,14 +109,6 @@ jobs:
       - skfssetup
       - sknpmsetup
       - cloneskui
-      - run:
-          name: Skip job if irrelevant
-          command: |
-            cd skui
-            if git diff --quiet HEAD main -- skui_common/
-            then
-              circleci-agent step halt
-            fi
       - skuisetup
       - run:
           name: Run font tests
