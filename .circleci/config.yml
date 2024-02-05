@@ -130,6 +130,42 @@ jobs:
             cd skui/skui_common && sknpm test -r --junitxml ~/test-results/skui_common-wasm.xml
       - store_test_results:
           path: ~/test-results/skui_common-wasm.xml
+  skui_font-wasm:
+      docker:
+        - image: skiplabs/skdb-base:latest
+      steps:
+      - systemsetup
+      - cloneskdb
+      - skdbsetup
+      - sknpmsetup
+      - cloneskui
+      - skuisetup
+      - run:
+          name: Run wasm skui_font tests
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui/skui_font && sknpm test -r --junitxml ~/test-results/skui_font-wasm.xml
+      - store_test_results:
+          path: ~/test-results/skui_font-wasm.xml
+  skui_mtsdf-wasm:
+      docker:
+        - image: skiplabs/skdb-base:latest
+      steps:
+      - systemsetup
+      - cloneskdb
+      - skdbsetup
+      - sknpmsetup
+      - cloneskui
+      - skuisetup
+      - run:
+          name: Run wasm skui_mtsdf tests
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui/skui_mtsdf && sknpm test -r --junitxml ~/test-results/skui_mtsdf-wasm.xml
+      - store_test_results:
+          path: ~/test-results/skui_mtsdf-wasm.xml
 
 workflows:
   common:
@@ -141,6 +177,12 @@ workflows:
   font:
     jobs:
       - skui_font
+  font-wasm:
+    jobs:
+      - skui_font-wasm
   mtsdf:
     jobs:
       - skui_mtsdf
+  mtsdf-wasm:
+    jobs:
+      - skui_mtsdf-wasm
