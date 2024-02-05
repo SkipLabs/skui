@@ -51,7 +51,7 @@ jobs:
           name: Skip job if irrelevant
           command: |
             cd skui
-            if git diff --quiet HEAD master -- skui_common/
+            if git diff --quiet HEAD main -- skui_common/
             then
               circleci-agent step halt
             fi
@@ -76,7 +76,7 @@ jobs:
           name: Skip job if irrelevant
           command: |
             cd skui
-            if git diff --quiet HEAD master -- skui_font/
+            if git diff --quiet HEAD main -- skui_font/
             then
               circleci-agent step halt
             fi
@@ -100,7 +100,7 @@ jobs:
           name: Skip job if irrelevant
           command: |
             cd skui
-            if git diff --quiet HEAD master -- skui_mtsdf/
+            if git diff --quiet HEAD main -- skui_mtsdf/
             then
               circleci-agent step halt
             fi
