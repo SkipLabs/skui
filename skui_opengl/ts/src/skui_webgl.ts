@@ -1,12 +1,6 @@
-import {
-  int,
-  ptr,
-  Links,
-  Utils,
-  ToWasmManager,
-  Environment,
-} from "#std/sk_types";
-import { Factory } from "#skui_opengl/skui_glcontext";
+// prettier-ignore
+import type {int, ptr, Links, Utils, ToWasmManager, Environment} from "#std/sk_types.js";
+import { Factory } from "#skui_opengl/skui_glcontext.js";
 
 interface Exported {
   SKIP_SKUIGL_performFrame: (

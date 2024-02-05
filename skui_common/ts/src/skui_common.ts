@@ -1,13 +1,4 @@
-import {
-  int,
-  ptr,
-  Links,
-  Utils,
-  ToWasmManager,
-  Shared,
-  Environment,
-  Memory,
-} from "#std/sk_types";
+import type {int, ptr, Links, Utils, ToWasmManager, Shared, Environment} from "#std/sk_types.js";
 
 interface ToWasm {
   SKIP_IO_isExternalBinary: (id: int) => boolean;
@@ -65,10 +56,10 @@ class LinksImpl implements Links, ToWasm {
 
   state = new State();
 
-  SKIP_IO_isExternalBinary: (id: int) => boolean;
-  SKIP_IO_deleteExternalData: (id: int) => void;
-  SKIP_IO_getExternalText: (id: int) => ptr | null;
-  SKIP_IO_getExternalBytes: (id: int) => ptr | null;
+  SKIP_IO_isExternalBinary!: (id: int) => boolean;
+  SKIP_IO_deleteExternalData!: (id: int) => void;
+  SKIP_IO_getExternalText!: (id: int) => ptr | null;
+  SKIP_IO_getExternalBytes!: (id: int) => ptr | null;
 
   complete = (utils: Utils, exports: object) => {
     this.SKIP_IO_isExternalBinary = (id: int) => {

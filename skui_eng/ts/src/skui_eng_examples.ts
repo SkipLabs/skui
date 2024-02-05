@@ -1,13 +1,7 @@
-import {
-  ptr,
-  Opt,
-  Utils,
-  Links,
-  ToWasmManager,
-  Environment,
-} from "#std/sk_types";
-import * as eng from "#skui_eng/skui_eng_types";
-import * as icons from "#skui_eng/skui_eng_icons";
+// prettier-ignore
+import type {ptr, Opt, Utils, Links, ToWasmManager, Environment} from "#std/sk_types.js";
+import * as eng from "#skui_eng/skui_eng_types.js";
+import * as icons from "#skui_eng/skui_eng_icons.js";
 
 function setText(text: eng.Property, strName: string, count: number) {
   let newText =
@@ -72,10 +66,10 @@ var button2 = (scope: eng.Scope) => {
 
 function buildButton(
   mode: eng.ButtonMode,
-  strKind: string,
+  strKind: keyof typeof eng.ButtonKind,
   text: eng.Property,
 ) {
-  const kind = eng.ButtonKind[strKind];
+  const kind = eng.ButtonKind[strKind] as number;
   return eng.button({
     onFire: (count: number) => {
       setText(text, eng.ButtonMode[mode] + " " + strKind, count);
@@ -87,14 +81,14 @@ function buildButton(
   });
 }
 
-function buildLine(strMode: string, text: eng.Property) {
+function buildLine(strMode: keyof typeof eng.ButtonMode, text: eng.Property) {
   const mode = eng.ButtonMode[strMode];
   const line: Array<eng.Widget> = [
     eng.label({ text: strMode, icon: icons.Bookmark }),
   ];
   for (const strKind in eng.ButtonKind) {
     if (isNaN(Number(strKind))) {
-      line.push(buildButton(mode, strKind, text));
+      line.push(buildButton(mode, strKind as keyof typeof eng.ButtonKind, text));
     }
   }
   line.push(
@@ -117,7 +111,7 @@ var buttons = (scope: eng.Scope) => {
   const column: Array<eng.Widget> = [];
   for (const strMode in eng.ButtonMode) {
     if (isNaN(Number(strMode))) {
-      let widgets = buildLine(strMode, text);
+      let widgets = buildLine(strMode as keyof typeof eng.ButtonMode, text);
       let wrap = eng.wrap({
         widgets: widgets,
         spacing: 20,
@@ -168,8 +162,8 @@ interface ToWasm {
 
 class LinksImpl implements Links, ToWasm {
   env: Environment;
-  SKUI_UiEngineJS_examples: () => Opt<ptr>;
-  SKUI_UiEngineJS_getExample: (name: ptr) => Opt<ptr>;
+  SKUI_UiEngineJS_examples!: () => Opt<ptr>;
+  SKUI_UiEngineJS_getExample!: (name: ptr) => Opt<ptr>;
 
   constructor(env: Environment) {
     this.env = env;
@@ -210,7 +204,8 @@ class LinksImpl implements Links, ToWasm {
           null,
           new eng.RenderableElement(renderable),
         );
-      }
+      };
+      return null;
     };
     this.SKUI_UiEngineJS_examples = () => {
       let shared = this.env.shared.get("skuieng") as eng.EngShared;

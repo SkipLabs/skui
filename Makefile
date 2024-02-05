@@ -9,13 +9,17 @@ conf:
 	@echo '    "target": "ES2021",' >> .tsconfig.json
 	@echo '    "outDir": "js",' >> .tsconfig.json
 	@echo '    "baseUrl": ".",' >> .tsconfig.json
-	@echo '    "strictNullChecks":true,' >> .tsconfig.json
+	@echo '    "strict": true,' >> .tsconfig.json
+	@echo '    "strictNullChecks": true,' >> .tsconfig.json
+	@echo '    "module": "Node16",' >> .tsconfig.json
+	@echo '    "moduleResolution": "Node16",' >> .tsconfig.json
+	@echo '    "verbatimModuleSyntax": true,' >> .tsconfig.json
 	@echo '    "paths": {' >> .tsconfig.json
-	@echo '      "#std/*": ["$(SKFS)/prelude/ts/src/*"],' >> .tsconfig.json
-	@echo '      "#skui_base/*": ["skui_base/ts/src/*"],' >> .tsconfig.json
-	@echo '      "#skui_opengl/*": ["skui_opengl/ts/src/*"],' >> .tsconfig.json
-	@echo '      "#skui_views/*": ["skui_views/ts/src/*"]' >> .tsconfig.json,
-	@echo '      "#skui_eng/*": ["skui_eng/ts/src/*"]' >> .tsconfig.json,
+	@echo '      "#std/*.js": ["$(SKFS)/prelude/ts/src/*.ts"],' >> .tsconfig.json
+	@echo '      "#skui_base/*.js": ["skui_base/ts/src/*.ts"],' >> .tsconfig.json
+	@echo '      "#skui_opengl/*.js": ["skui_opengl/ts/src/*.ts"],' >> .tsconfig.json
+	@echo '      "#skui_views/*.js": ["skui_views/ts/src/*.ts"]' >> .tsconfig.json,
+	@echo '      "#skui_eng/*.js": ["skui_eng/ts/src/*.ts"]' >> .tsconfig.json,
 	@echo '    }' >> .tsconfig.json
 	@echo '  }' >> .tsconfig.json
 	@echo '}' >> .tsconfig.json

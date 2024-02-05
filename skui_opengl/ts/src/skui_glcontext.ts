@@ -1,5 +1,5 @@
-import { int, float, ptr, Environment, Utils } from "#std/sk_types";
-import { Loading } from "#skui_opengl/skui_glloading";
+import type { int, float, ptr, Environment, Utils } from "#std/sk_types.js";
+import { Loading } from "#skui_opengl/skui_glloading.js";
 
 interface Env extends Environment {
   window: () => Window;
@@ -85,12 +85,12 @@ const getContext = (canvas: HTMLCanvasElement) => {
 };
 
 export class Factory {
-  utils: Utils | null;
+  utils!: Utils | null;
   private nextId: int = 0;
   private contexts: Map<int, Context> = new Map();
-  private env: Env;
-  private loading: Loading;
-  private wId: int;
+  private env!: Env;
+  private loading!: Loading;
+  private wId!: int;
 
   render?: (id: int, width: int, height: int, ratio: int) => void;
   setGlContext?: (wId: int, cId: int) => void;
@@ -147,8 +147,10 @@ export class Factory {
       return context;
     });
   };
-  onRestore = (ev: Event) => {
-    ev.preventDefault();
+  onRestore = (ev?: Event) => {
+    if (ev) {
+      ev.preventDefault();
+    }
     this.createContext(this.wId).catch((err) =>
       this.env.window().alert("Context cannot be restored: " + err),
     );
@@ -455,7 +457,7 @@ export class Context {
   private env: Env;
   private lostCall: (context: Context, ev?: Event) => void;
   private onMainBinding: () => void;
-  private animationFrameRequest: int;
+  private animationFrameRequest!: int;
   private render?: (id: int, width: int, height: int, ratio: int) => void;
   private setGlContext?: (id: int) => void;
 
@@ -525,15 +527,15 @@ export class Context {
     }
   };
   getGlObject = (id: int, check: boolean = false) => {
-    let obj = this.gVariables[id];
+    let obj = this.gVariables.get(id);
     if (check) {
       console.log([id, obj]);
     }
     return obj;
   };
   removeGlObject = (id: int) => {
-    let obj = this.gVariables[id];
-    delete this.gVariables[id];
+    let obj = this.gVariables.get(id);
+    this.gVariables.delete(id);
     return obj;
   };
   glValue = (value: int) => {
@@ -561,7 +563,7 @@ export class Context {
   };
   create = <T>(fn: (gl: WebGL2RenderingContext) => T) => {
     let id = this.gVariableCount;
-    this.gVariables[id] = fn(this.gl);
+    this.gVariables.set(id, fn(this.gl));
     this.gVariableCount++;
     return id;
   };
@@ -726,7 +728,7 @@ export class Context {
   createVertexArray = () => {
     return this.create((gl) => gl.createVertexArray());
   };
-  deleteVertexArray = function (array: int) {
+  deleteVertexArray = (array: int) => {
     this.gl.deleteVertexArray(this.removeGlObject(array));
   };
   bindVertexArray = (array: int) => {

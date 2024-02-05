@@ -1,4 +1,4 @@
-import { int, Environment, Links, Utils, ToWasmManager } from "#std/sk_types";
+import type { int, Environment, Links, Utils, ToWasmManager } from "#std/sk_types.js";
 
 interface ToWasm {
   SKIP_FWK_applyCursor: (wId: int, cursor: int) => void;
@@ -111,7 +111,7 @@ class LinksImpl implements Links, ToWasm {
       console.log(["Apply cursor", cursor]);
     }
   };
-  SKIP_FWK_update: (wId: int) => void;
+  SKIP_FWK_update!: (wId: int) => void;
 
   complete = (utils: Utils, exports: object) => {
     this.SKIP_FWK_update = (wId: int) => {

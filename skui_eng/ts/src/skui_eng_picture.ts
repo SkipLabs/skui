@@ -1,18 +1,7 @@
-import {
-  int,
-  ptr,
-  Environment,
-  Links,
-  Utils,
-  ToWasmManager,
-  Shared,
-  l,
-  f,
-  check,
-  Text,
-  Raw,
-} from "#std/sk_types";
-import { SkuiUtils } from "#skui_base/skui_types";
+// prettier-ignore
+import type {int, ptr, Environment, Links, Utils, ToWasmManager, Shared, Text} from "#std/sk_types.js";
+import {l, f, check, Raw} from "#std/sk_types.js";
+import { SkuiUtils } from "#skui_base/skui_types.js";
 
 interface Exported {
   SKIP_UiEnginePicture_register: (id: int, width: int, height: int) => void;
@@ -101,8 +90,8 @@ class LinksImpl implements Links, ToWasm {
     this.env = env;
   }
 
-  SKIP_UiEnginePicture_delete: (id: int) => void;
-  SKIP_UiEnginePicture_resize: (id: int, width: int, height: int) => void;
+  SKIP_UiEnginePicture_delete!: (id: int) => void;
+  SKIP_UiEnginePicture_resize!: (id: int, width: int, height: int) => void;
 
   SKIP_UiEnginePicture_asTexture = (id: int, ctx: int) => {
     let image = this.env ? this.state.get(id) : null;
