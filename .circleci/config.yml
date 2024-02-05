@@ -1,6 +1,13 @@
 version: 2.1
 
 commands:
+  systemsetup:
+    description: "Install used libraries"
+    steps:
+      - run:
+          name: Install used libraries
+          command: |
+            apt-get update & apt-get -y install libpcre3 libpcre3-dev
   skdbsetup:
     description: "Setup skip toolchain"
     steps:
@@ -57,6 +64,7 @@ jobs:
     docker:
       - image: skiplabs/skdb-base:latest
     steps:
+      - systemsetup
       - cloneskdb
       - skdbsetup
       - cloneskui
@@ -74,6 +82,7 @@ jobs:
       - image: skiplabs/skdb-base:latest
     resource_class: xlarge
     steps:
+      - systemsetup
       - cloneskdb
       - skdbsetup
       - cloneskui
@@ -90,6 +99,7 @@ jobs:
     docker:
       - image: skiplabs/skdb-base:latest
     steps:
+      - systemsetup
       - cloneskdb
       - skdbsetup
       - cloneskui
@@ -106,6 +116,7 @@ jobs:
       docker:
         - image: skiplabs/skdb-base:latest
       steps:
+      - systemsetup
       - cloneskdb
       - skdbsetup
       - sknpmsetup
