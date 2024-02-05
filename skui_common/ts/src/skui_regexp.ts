@@ -1,11 +1,4 @@
-import {
-  int,
-  ptr,
-  Links,
-  Utils,
-  ToWasmManager,
-  Environment,
-} from "#std/sk_types";
+import type {int, ptr, Links, Utils, ToWasmManager, Environment} from "#std/sk_types.js";
 
 interface Exported {
   SKIP_RegExp_createRangeArray: (size: int) => ptr;
@@ -44,21 +37,21 @@ interface ToWasm {
 }
 
 class LinksImpl implements Links, ToWasm {
-  SKIP_RegExp_check: (strPatternPtr: ptr) => void;
-  SKIP_RegExp_escape: (strPatternPtr: ptr) => ptr;
-  SKIP_RegExp_test: (
+  SKIP_RegExp_check!: (strPatternPtr: ptr) => void;
+  SKIP_RegExp_escape!: (strPatternPtr: ptr) => ptr;
+  SKIP_RegExp_test!: (
     strSubjectPtr: ptr,
     strPatternPtr: ptr,
     caseInsensitive: boolean,
     global: boolean,
   ) => boolean;
-  SKIP_RegExp_matchAll: (
+  SKIP_RegExp_matchAll!: (
     strSubjectPtr: ptr,
     strPatternPtr: ptr,
     caseInsensitive: boolean,
     global: boolean,
   ) => ptr | null;
-  SKIP_RegExp_match: (
+  SKIP_RegExp_match!: (
     strSubjectPtr: ptr,
     strPatternPtr: ptr,
     caseInsensitive: boolean,

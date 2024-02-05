@@ -1,14 +1,15 @@
-import { run } from "#std/sk_types";
-import { GLEnv } from "#skui_opengl/skui_glenv";
+import { run } from "#std/sk_types.js";
+import type { GLEnv } from "#skui_opengl/skui_glenv.js";
 
 var wasm64 = "/*--NAME--*/";
-var modules = [
-  /*--MODULES--*/
-];
+// @ts-ignore
+// prettier-ignore
+var modules = [ /*--MODULES--*/];
 var extensions = new Map();
 /*--EXTENSIONS--*/
 
 async function launch() {
+  // @ts-ignore
   let data = await run(wasm64, modules, extensions);
   let window = (data.environment as GLEnv).window();
   let search = window.location.search.trim().substring(1);

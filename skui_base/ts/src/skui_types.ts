@@ -1,4 +1,4 @@
-import { ptr, Opt, Utils } from "#std/sk_types";
+import type { ptr, Opt, Utils } from "#std/sk_types.js";
 
 interface Exports {
   SKIP_I18N_text: (txtPtr: ptr, optCat: Opt<ptr>) => ptr;
@@ -117,7 +117,7 @@ export class SkuiUtils {
     params.forEach((ptr) => this.exports.SKIP_I18N_pushText(vector, ptr));
     return this.exports.SKIP_I18N_format(format, vector);
   };
-  exportLocale = (text: string | Text) => {
+  exportLocale = (text: string | Text) : ptr => {
     const verified = check(text);
     if (verified instanceof Raw) {
       return this.raw(verified.text);

@@ -1,23 +1,9 @@
-import {
-  int,
-  ptr,
-  Environment,
-  Links,
-  Utils,
-  ToWasmManager,
-  Text,
-  Opt,
-} from "#std/sk_types";
-import {
-  EngShared,
-  Scope,
-  Property,
-  Readable,
-  DialogElement,
-  State,
-  SkuiEngUtils,
-} from "#skui_eng/skui_eng_types";
-import { SkuiUtils } from "#skui_base/skui_types";
+// prettier-ignore
+import type {int, ptr, Environment, Links, Utils, ToWasmManager, Text, Opt} from "#std/sk_types.js";
+// prettier-ignore
+import type {Scope, Property, Readable, DialogElement} from "#skui_eng/skui_eng_types.js";
+import {EngShared, State, SkuiEngUtils} from "#skui_eng/skui_eng_types.js";
+import { SkuiUtils } from "#skui_base/skui_types.js";
 
 interface Exported {
   SKIP_UiEngineJS_register: (id: int, path: Opt<ptr>, type_: ptr) => void;
@@ -96,7 +82,7 @@ class JSONProperty implements Property {
 
 class ScopeImpl implements Scope {
   alert: (text: string | Text, title: Opt<string | Text>) => void;
-  dialog: (dialog: Object) => void;
+  dialog: (dialog: DialogElement) => void;
   create: (value?: any) => Property;
   combine: (
     combine: (values: Array<any>) => any,
@@ -122,40 +108,40 @@ class ScopeImpl implements Scope {
 }
 
 class LinksImpl implements Links, ToWasm {
-  state: State;
+  state!: State;
   env: Env | undefined;
 
   constructor(env?: Env) {
     this.env = env;
   }
 
-  SKIP_UiEngineJS_createObject: () => int;
-  SKIP_UiEngineJS_addToObject: (obj: int, name: ptr, value: int) => void;
-  SKIP_UiEngineJS_createArray: () => int;
-  SKIP_UiEngineJS_addToArray: (arr: int, value: int) => void;
-  SKIP_UiEngineJS_createNull: () => int;
-  SKIP_UiEngineJS_createNumber: (value: number) => int;
-  SKIP_UiEngineJS_createString: (value: ptr) => int;
-  SKIP_UiEngineJS_createBool: (value: boolean) => int;
+  SKIP_UiEngineJS_createObject!: () => int;
+  SKIP_UiEngineJS_addToObject!: (obj: int, name: ptr, value: int) => void;
+  SKIP_UiEngineJS_createArray!: () => int;
+  SKIP_UiEngineJS_addToArray!: (arr: int, value: int) => void;
+  SKIP_UiEngineJS_createNull!: () => int;
+  SKIP_UiEngineJS_createNumber!: (value: number) => int;
+  SKIP_UiEngineJS_createString!: (value: ptr) => int;
+  SKIP_UiEngineJS_createBool!: (value: boolean) => int;
   SKIP_UiEngineJS_delete = (id: int) => this.state.delete(id);
-  SKIP_UiEngineJS_apply: (id: int, type: ptr, paremeter: ptr) => Opt<ptr>;
-  private getter: (path: Opt<string>, name: string) => any;
-  private setter: (path: Opt<string>, name: string, v: any) => void;
-  private registerCombine: (
+  SKIP_UiEngineJS_apply!: (id: int, type: ptr, paremeter: ptr) => Opt<ptr>;
+  private getter!: (path: Opt<string>, name: string) => any;
+  private setter!: (path: Opt<string>, name: string, v: any) => void;
+  private registerCombine!: (
     path: Opt<string>,
     combine: () => any,
     write?: (values: any) => void,
   ) => string;
-  private registerProperty: (path: Opt<string>, value: any) => string;
-  private combine: (
+  private registerProperty!: (path: Opt<string>, value: any) => string;
+  private combine!: (
     path: string,
     combine: (values: Array<any>) => any,
     combinables: Array<Readable>,
     write?: (value: any) => void,
   ) => Property;
-  private create: (path: string, value?: any) => Property;
-  private alert: (text: string | Text, title: Opt<string | Text>) => void;
-  private dialog: (path: Opt<string>, dialog: DialogElement) => void;
+  private create!: (path: string, value?: any) => Property;
+  private alert!: (text: string | Text, title: Opt<string | Text>) => void;
+  private dialog!: (path: Opt<string>, dialog: DialogElement) => void;
 
   complete = (utils: Utils, exports: object) => {
     this.state = utils.getState("skuieng", () => new State());
@@ -191,7 +177,7 @@ class LinksImpl implements Links, ToWasm {
     this.registerCombine = (
       path: Opt<string>,
       combine: () => any,
-      write: (values: any) => void,
+      write?: (values: any) => void,
     ) => {
       return utils.runWithGc(() => {
         let skPath = path != null ? utils.exportString(path) : null;

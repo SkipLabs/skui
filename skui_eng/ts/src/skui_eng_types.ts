@@ -1,4 +1,5 @@
-import { int, float, ptr, Text, Opt, Utils, Shared } from "#std/sk_types";
+// prettier-ignore
+import type { int, float, ptr, Text, Opt, Utils, Shared } from "#std/sk_types.js";
 
 export interface Readable {
   get: () => any;
@@ -733,7 +734,7 @@ export class SkuiEngUtils {
     return id;
   }
 
-  exportValue(path: Opt<string>, skPath: Opt<ptr>, value: any) {
+  exportValue(path: Opt<string>, skPath: Opt<ptr>, value: any): ptr {
     let type = typeof value;
     if (value == null || value == undefined) {
       return this.exports.SKIP_JSON_createNull();

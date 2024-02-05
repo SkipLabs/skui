@@ -1,4 +1,4 @@
-import { Environment } from "#std/sk_types";
+import type { Environment } from "#std/sk_types.js";
 
 export interface GLEnv extends Environment {
   clipboard: () => Clipboard | null | undefined;

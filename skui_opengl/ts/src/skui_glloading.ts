@@ -1,8 +1,8 @@
-import { int } from "#std/sk_types";
-import { Matrix } from "#skui_opengl/skui_matrix";
+import type { int } from "#std/sk_types.js";
+import { Matrix } from "#skui_opengl/skui_matrix.js";
 
 export class Loading {
-  win: Window;
+  win!: Window;
   program: WebGLProgram;
   positionLocation: GLint;
   matrixLocation: WebGLUniformLocation;
@@ -14,7 +14,7 @@ export class Loading {
   step: GLint;
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
-  interval: int | null;
+  interval!: int | null;
   setInterval: (handler: TimerHandler, timeout: int) => int;
 
   constructor(
