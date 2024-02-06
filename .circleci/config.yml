@@ -14,25 +14,25 @@ commands:
       - run:
           name: Fetch submodules
           command: |
-            cd skdb && git submodule update --init --recursive
+            cd dependencies/skdb && git submodule update --init --recursive
       - run:
           name: Build compiler
           command: |
-            cd skdb/compiler && make STAGE=0 && make install STAGE=0
+            cd dependencies/skdb/compiler && make STAGE=0 && make install STAGE=0
   sknpmsetup:
     description: "Setup sknpm toolchain"
     steps:
       - run:
           name: Build sknpm
           command: |
-            cd skdb/sknpm && skargo b -r && cp target/host/release/sknpm /usr/local/bin/
+            cd dependencies/skdb/sknpm && skargo b -r && cp target/host/release/sknpm /usr/local/bin/
   skuisetup:
     description: "Setup skui toolchain"
     steps:
       - run:
           name: Set skargo config
           command: |
-            printf "{\"repositories\": [\"skdb\", \"skui\"]}" > .skargoconfig
+            printf "{\"repositories\": [\"dependencies/skdb\"]}" > .skargoconfig
   cloneskdb:
     description: "Clone skdb"
     steps:
@@ -44,36 +44,23 @@ commands:
           command: |
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            git clone git@github.com:SkipLabs/skdb
-  cloneskui:
-    description: "Clone skui"
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "a5:96:bf:61:22:02:b6:5c:d9:82:14:d7:9b:01:39:61"
-      - run:
-          name: Clone skui
-          command: |
-            mkdir -p ~/.ssh
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-            git clone -b "$CIRCLE_BRANCH" "$CIRCLE_REPOSITORY_URL"
-
+            git clone git@github.com:SkipLabs/skdb dependencies/skdb
 jobs:
   skui_common:
     docker:
       - image: skiplabs/skdb-base:latest
     steps:
       - systemsetup
+      - checkout
       - cloneskdb
       - skdbsetup
-      - cloneskui
       - skuisetup
       - run:
           name: Run common tests
-          no_output_timeout: 2m
+          no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui/skui_common && skargo test --junitxml ~/test-results/skui_common.xml
+            cd skui_common && skargo test --junitxml ~/test-results/skui_common.xml
       - store_test_results:
           path: ~/test-results/skui_common.xml
   skui_font:
@@ -82,16 +69,16 @@ jobs:
     resource_class: xlarge
     steps:
       - systemsetup
+      - checkout
       - cloneskdb
       - skdbsetup
-      - cloneskui
       - skuisetup
       - run:
           name: Run font tests
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui/skui_font && skargo test --junitxml ~/test-results/skui_font.xml
+            cd skui_font && skargo test --junitxml ~/test-results/skui_font.xml
       - store_test_results:
           path: ~/test-results/skui_font.xml
   skui_mtsdf:
@@ -99,16 +86,16 @@ jobs:
       - image: skiplabs/skdb-base:latest
     steps:
       - systemsetup
+      - checkout
       - cloneskdb
       - skdbsetup
-      - cloneskui
       - skuisetup
       - run:
           name: Run mtsdf tests
-          no_output_timeout: 2m
+          no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui/skui_mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
+            cd skui_mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
       - store_test_results:
           path: ~/test-results/skui_mtsdf.xml
   skui_common-wasm:
@@ -116,17 +103,17 @@ jobs:
         - image: skiplabs/skdb-base:latest
       steps:
       - systemsetup
+      - checkout
       - cloneskdb
       - skdbsetup
       - sknpmsetup
-      - cloneskui
       - skuisetup
       - run:
           name: Run wasm skui_common tests
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui/skui_common && sknpm test -r --junitxml ~/test-results/skui_common-wasm.xml
+            cd skui_common && sknpm test -r --junitxml ~/test-results/skui_common-wasm.xml
       - store_test_results:
           path: ~/test-results/skui_common-wasm.xml
   skui_font-wasm:
@@ -134,17 +121,17 @@ jobs:
         - image: skiplabs/skdb-base:latest
       steps:
       - systemsetup
+      - checkout
       - cloneskdb
       - skdbsetup
       - sknpmsetup
-      - cloneskui
       - skuisetup
       - run:
           name: Run wasm skui_font tests
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui/skui_font && sknpm test -r --junitxml ~/test-results/skui_font-wasm.xml
+            cd skui_font && sknpm test -r --junitxml ~/test-results/skui_font-wasm.xml
       - store_test_results:
           path: ~/test-results/skui_font-wasm.xml
   skui_mtsdf-wasm:
@@ -152,17 +139,17 @@ jobs:
         - image: skiplabs/skdb-base:latest
       steps:
       - systemsetup
+      - checkout
       - cloneskdb
       - skdbsetup
       - sknpmsetup
-      - cloneskui
       - skuisetup
       - run:
           name: Run wasm skui_mtsdf tests
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui/skui_mtsdf && sknpm test -r --junitxml ~/test-results/skui_mtsdf-wasm.xml
+            cd skui_mtsdf && sknpm test -r --junitxml ~/test-results/skui_mtsdf-wasm.xml
       - store_test_results:
           path: ~/test-results/skui_mtsdf-wasm.xml
 

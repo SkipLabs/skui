@@ -9,6 +9,16 @@ const unhinted: Int = 1;
 const inFontUnits: Int = 2;
 const numPointType: Int = 3;
 
+class HintingException(msg: String) extends Exception {
+  fun getMessage(): String {
+    `TrueType: hinting: ${this.msg}`
+  }
+}
+
+fun invariant(cond: Bool, msg: String = "assert"): void {
+  if (!cond) throw HintingException(msg)
+}
+
 /**
  * CallStackEntry is a bytecode call stack entry.
  */
@@ -156,10 +166,7 @@ mutable class Hinter{
     optInFontUnits: ?(Vector<Point>) = None(),
     optEnds: ?(Vector<Int>) = None(),
   ): mutable Hinter {
-    invariant(
-      program.size() <= 50000,
-      "TrueType: hinting: too many instructions",
-    );
+    invariant(program.size() <= 50000, "too many instructions");
     !this.gs = this.defaultGS;
     !this.glyphCurrent = Array::mcreateFromItems(optCurrent.default(Vector[]));
     !this.glyphUnhinted = Array::mcreateFromItems(
@@ -176,12 +183,9 @@ mutable class Hinter{
     callStackTop = 0;
     while (pc >= 0 && pc < program.size()) {
       !steps = steps + 1;
-      invariant(steps < 100000, "TrueType: hinting: too many steps");
+      invariant(steps < 100000, "too many steps");
       opcode = program[pc];
-      invariant(
-        top >= popCount[opcode.toInt()].toInt(),
-        "TrueType: hinting: stack underflow",
-      );
+      invariant(top >= popCount[opcode.toInt()].toInt(), "stack underflow");
       iOpcode = opcode.toInt();
       if (iOpcode == opSVTCA0) {
         !this.gs.pv = (int16(0), int16(0x4000));
@@ -240,10 +244,7 @@ mutable class Hinter{
           int16(this.stack.get(top + 1).toInt()),
         );
       } else if (iOpcode == opGPV || iOpcode == opGFV) {
-        invariant(
-          top + 1 < this.stack.size(),
-          "TrueType: hinting: stack overflow",
-        );
+        invariant(top + 1 < this.stack.size(), "stack overflow");
         (x, y) = if (iOpcode == opGPV) this.gs.pv else this.gs.fv;
         this.stack.set(top, int32(x.toInt()));
         this.stack.set(top + 1, int32(y.toInt()));
@@ -333,7 +334,7 @@ mutable class Hinter{
         // glyph in the DejaVuSansMono.ttf that comes with Ubuntu 14.04,
         // issue SLOOP with a zero on top of the stack. Just like the C
         // Freetype code, we allow the zero.
-        invariant(this.stack[top] >= 0, "TrueType: hinting: invalid data");
+        invariant(this.stack[top] >= 0, "invalid data");
         !this.gs.loopCount = this.stack[top];
       } else if (iOpcode == opRTG) {
         !this.gs.roundPeriod = fixed26_6(1.shl(6));
@@ -367,7 +368,7 @@ mutable class Hinter{
           this.font.scale(this.scale.asInt() * this.stack[top].toInt()),
         );
       } else if (iOpcode == opDUP) {
-        invariant(top < this.stack.size(), "TrueType: hinting: stack overflow");
+        invariant(top < this.stack.size(), "stack overflow");
         this.stack.set(top, this.stack[top - 1]);
         !top = top + 1;
       } else if (iOpcode == opPOP) {
@@ -380,12 +381,12 @@ mutable class Hinter{
         this.stack.set(top - 1, v2);
         this.stack.set(top - 2, v1);
       } else if (iOpcode == opDEPTH) {
-        invariant(top < this.stack.size(), "TrueType: hinting: stack overflow");
+        invariant(top < this.stack.size(), "stack overflow");
         this.stack.set(top, int32(top));
         !top = top + 1;
       } else if (iOpcode == opCINDEX || iOpcode == opMINDEX) {
         x = this.stack[top - 1].toInt();
-        invariant(x > 0 && x < top, "TrueType: hinting: invalid data");
+        invariant(x > 0 && x < top, "invalid data");
         this.stack.set(top - 1, this.stack[top - 1 - x]);
         if (opcode == opMINDEX) {
           toCopy = this.stack.slice(top - x, top);
@@ -413,10 +414,7 @@ mutable class Hinter{
         !p.flags = p.flags.and(flagTouchedX.or(flagTouchedY).not());
         pPoints.set(ip, p);
       } else if (iOpcode == opLOOPCALL || iOpcode == opCALL) {
-        invariant(
-          callStackTop < callStack.size(),
-          "TrueType: hinting: call stack overflow",
-        );
+        invariant(callStackTop < callStack.size(), "call stack overflow");
         !top = top - 1;
         f = this.functions.get(this.stack[top]);
         stackEntry = CallStackEntry(program, pc, int32(1));
@@ -437,9 +435,9 @@ mutable class Hinter{
         startPC = pc + 1;
         loop {
           !pc = pc + 1;
-          invariant(pc < program.size(), "TrueType: hinting: unbalanced FDEF");
+          invariant(pc < program.size(), "unbalanced FDEF");
           subCode = program[pc].toInt();
-          invariant(subCode != opFDEF, "TrueType: hinting: nested FDEF");
+          invariant(subCode != opFDEF, "nested FDEF");
           if (subCode == opENDF) {
             !top = top - 1;
             this.functions.set(this.stack[top], program.slice(startPC, pc + 1));
@@ -449,7 +447,7 @@ mutable class Hinter{
           }
         };
       } else if (iOpcode == opENDF) {
-        invariant(callStackTop != 0, "TrueType: hinting: call stack underflow");
+        invariant(callStackTop != 0, "call stack underflow");
         !callStackTop = callStackTop - 1;
         stackEntry = callStack[callStackTop];
         !stackEntry.loopCount = int32(stackEntry.loopCount - 1);
@@ -525,10 +523,7 @@ mutable class Hinter{
           !prevEnd = end;
         });
       } else if (iOpcode == opSHP0 || iOpcode == opSHP1) {
-        invariant(
-          top >= this.gs.loopCount,
-          "TrueType: hinting:  stack underflow",
-        );
+        invariant(top >= this.gs.loopCount, " stack underflow");
         (_, _, d) = this.displacement(iOpcode.and(1) == 0);
         loopCount = this.gs.loopCount.toInt();
         toMove = this.getPoints(2, current);
@@ -543,10 +538,7 @@ mutable class Hinter{
         !top = top - 1;
         (zonePointer, i, d) = this.displacement(iOpcode.and(1) == 0);
         (zp0, zp1, zp2) = this.gs.zp;
-        invariant(
-          zp2 != 0,
-          "TrueType: hinting:  unimplemented SHC instruction",
-        );
+        invariant(zp2 != 0, " unimplemented SHC instruction");
         contour = this.stack[top];
         j0 = if (contour.toInt() > 0) {
           this.ends[contour.toInt() - 1]
@@ -600,10 +592,7 @@ mutable class Hinter{
         };
         !this.gs.loopCount = int32(1);
       } else if (iOpcode == opIP) {
-        invariant(
-          top >= this.gs.loopCount.toInt(),
-          "TrueType: hinting:  opIP stack underflow",
-        );
+        invariant(top >= this.gs.loopCount.toInt(), " opIP stack underflow");
         pointType = inFontUnits;
         (zp0, zp1, zp2) = this.gs.zp;
         twilight = zp0 == 0 || zp1 == 0 || zp2 == 0;
@@ -913,7 +902,7 @@ mutable class Hinter{
       } else if (iOpcode == opDIV) {
         !top = top - 1;
         st = this.stack[top].toInt();
-        invariant(st != 0, "TrueType: hinting: division by zero");
+        invariant(st != 0, "division by zero");
         this.stack.set(
           top - 1,
           int32(
@@ -1103,7 +1092,7 @@ mutable class Hinter{
         this.stack.set(top - 1, int32(res));
       } else if (iOpcode == opIDEF) {
         // IDEF is for ancient versions of the bytecode interpreter, and is no longer used.
-        invariant_violation("TrueType: hinting: unsupported IDEF instruction");
+        invariant_violation("unsupported IDEF instruction");
       } else if (iOpcode == opROLL) {
         st1 = this.stack[top - 1];
         st2 = this.stack[top - 2];
@@ -1229,10 +1218,7 @@ mutable class Hinter{
           (zp0, zp1, _) = this.gs.zp;
           // TODO: implement once we have a .ttf file that triggers
           // this, so that we can step through C's freetype.
-          invariant(
-            zp1 != 0,
-            "TrueType: hinting: unimplemented twilight point adjustment",
-          );
+          invariant(zp1 != 0, "unimplemented twilight point adjustment");
           ref = this.getPoints(0, unhinted).get(rp0.toInt());
           p = this.getPoints(1, unhinted).get(i);
           oldDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.dv);
@@ -1296,7 +1282,7 @@ mutable class Hinter{
     };
     !top = top - 1;
     n = this.stack[top].toInt();
-    invariant(top >= 2 * n, "TrueType: hinting: stack underflow");
+    invariant(top >= 2 * n, "stack underflow");
     while (n > 0) {
       !top = top - 2;
       b = this.stack[top].toInt();
@@ -1342,18 +1328,12 @@ mutable class Hinter{
     };
     if (opcode == 0) {
       !pc = pc + 1;
-      invariant(pc < program.size(), "TrueType: hinting:  insufficient data");
+      invariant(pc < program.size(), " insufficient data");
       !opcode = program[pc].toInt();
     };
     !pc = pc + 1;
-    invariant(
-      top + opcode <= this.stack.size(),
-      "TrueType: hinting:  stack overflow",
-    );
-    invariant(
-      pc + (width * opcode) <= program.size(),
-      "TrueType: hinting:  insufficient data",
-    );
+    invariant(top + opcode <= this.stack.size(), " stack overflow");
+    invariant(pc + (width * opcode) <= program.size(), " insufficient data");
     while (opcode > 0) {
       v1 = program[pc];
       this.stack.set(
@@ -1561,10 +1541,7 @@ mutable class Hinter{
     depth = 0;
     loop {
       !pc = pc + 1;
-      invariant(
-        pc < program.size(),
-        "TrueType: hinting: unbalanced IF or ELSE",
-      );
+      invariant(pc < program.size(), "unbalanced IF or ELSE");
       code = program[pc].toInt();
       if (code == opIF) {
         !depth = depth + 1;
