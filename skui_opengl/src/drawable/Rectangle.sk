@@ -15,7 +15,7 @@ class SolidRectangle(color: .Color) extends GLRectangleDrawable {
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.rectangleDrawer().map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         drawer.run(
           GLProgram.SolidParameters(this.color),
           GLProgram.RectangleParameters(
@@ -46,7 +46,7 @@ class LinearGradientRectangle(
     buffer = data as GLProgram.Buffer _;
     count = this.linearGradient.stops.size();
     supplier.linearGradientRectangle(count).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
           GLProgram.LinearGradientParameters(
@@ -78,7 +78,7 @@ class RadialGradientRectangle(
     buffer = data as GLProgram.Buffer _;
     count = this.radialGradient.stops.size();
     supplier.radialGradientRectangle(count).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
           GLProgram.RadialGradientParameters(
@@ -111,7 +111,7 @@ class RoundedRectangle(
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.roundedRectangleDrawer().map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         offset = this.bounds.topLeft();
         bsize = this.bounds.size();
         (size, xMove, yMove) = if (bsize.height > bsize.width) {
@@ -156,7 +156,7 @@ class BoxShadow(sigma: Float, color: .Color) extends GLRectangleDrawable {
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.boxShadowDrawer().map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         box = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
           GLProgram.ShadowParameters(box, this.color, this.sigma * ratio),
@@ -184,7 +184,7 @@ class Texture(
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.textureDrawer(this.flipped).map(program ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         program.run(
           GLProgram.TextureParameters(this.texture.asTexture(gl)),
           GLProgram.RectangleParameters(
@@ -244,7 +244,7 @@ fun imageHandle(
 ): Ui.Handle {
   texture = GLTexture.createImage(image.width, image.height, Some(image.data));
   tex = texture.texture.asTexture(gl);
-  Ui.LambdaHandle((shift, window, height, ratio) ~> {
+  Ui.LambdaHandle((shift, window, height, ratio, _frame) ~> {
     topLeft = window.toRect().topLeft();
     rectWindow = window.toRect();
     absolute = bounds.shift(topLeft).shift(shift.toOffset());

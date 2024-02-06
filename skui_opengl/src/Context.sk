@@ -188,15 +188,29 @@ class Ctx(id: UInt32) extends SKStore.File uses Hashable, HasClassName {
     deleteProgram(program, this.id)
   }
 
-  fun getUniformLocation(program: ProgramRef, index: UInt32): UniformLocation {
-    getUniformLocation(program, index, this.id)
+  fun getIdxUniformLocation(
+    program: ProgramRef,
+    index: UInt32,
+  ): UniformLocation {
+    getIdxUniformLocation(program, index, this.id)
+  }
+
+  fun getUniformLocation(program: ProgramRef, name: String): UniformLocation {
+    getUniformLocation(program, name, this.id)
+  }
+
+  fun getIdxAttributeLocation(
+    program: ProgramRef,
+    index: UInt32,
+  ): AttributeLocation {
+    getIdxAttributeLocation(program, index, this.id)
   }
 
   fun getAttributeLocation(
     program: ProgramRef,
-    index: UInt32,
+    name: String,
   ): AttributeLocation {
-    getAttributeLocation(program, index, this.id)
+    getAttributeLocation(program, name, this.id)
   }
 
   /// DRAW FUNCTIONS
@@ -366,7 +380,7 @@ class Ctx(id: UInt32) extends SKStore.File uses Hashable, HasClassName {
     )
   }
 
-  fun uniform1i(location: UniformLocation, v0: UInt32): void {
+  fun uniform1i(location: UniformLocation, v0: Int32): void {
     uniform1i(location, v0, this.id)
   }
 
@@ -387,12 +401,28 @@ class Ctx(id: UInt32) extends SKStore.File uses Hashable, HasClassName {
     uniform4f(location, v0, v1, v2, v3, this.id)
   }
 
+  fun uniform1iv(
+    location: UniformLocation,
+    count: UInt32,
+    values: Array<Int32>,
+  ): void {
+    uniform1iv(location, count, values, this.id)
+  }
+
   fun uniform1fv(
     location: UniformLocation,
     count: UInt32,
     values: Array<Float>,
   ): void {
     uniform1fv(location, count, values, this.id)
+  }
+
+  fun uniform2fv(
+    location: UniformLocation,
+    count: UInt32,
+    values: Array<Float>,
+  ): void {
+    uniform2fv(location, count, values, this.id)
   }
 
   fun uniform3fv(

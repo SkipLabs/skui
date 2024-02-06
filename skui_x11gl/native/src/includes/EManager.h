@@ -14,6 +14,7 @@ public:
                       uint32_t ratio) = 0;
   virtual void performFrame(void *enviroment, uint32_t ctxId, void *userContext,
                             uint32_t width, uint32_t height, uint32_t ratio,
+                            uint32_t count,
                             std::function<void(void *)> onDone) = 0;
   virtual void requestClose(uint32_t wId) = 0;
   virtual void manageMouseLocation(uint32_t wId, uint32_t x, uint32_t y,

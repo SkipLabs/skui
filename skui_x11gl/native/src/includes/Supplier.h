@@ -57,7 +57,7 @@ private:
   std::map<u_int64_t, Cursor> cursors;
 };
 
-void sendExposeMessage(Display *disp, Window fWindow);
+void sendExposeMessage(Display *disp, Window fWindow, uint64_t count);
 
 } // namespace skui
 

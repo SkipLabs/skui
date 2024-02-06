@@ -173,14 +173,14 @@ float GLWindowManager::getDpiFromResource() {
   return dpi;
 }
 
-void GLWindowManager::performFrame() {
+void GLWindowManager::performFrame(uint32_t count) {
   if (this->eventManager != nullptr) {
     XWindowAttributes gwa;
     XGetWindowAttributes(this->display, this->window, &gwa);
     glXMakeCurrent(this->display, this->window, this->context);
     this->eventManager->performFrame(
         this->userEnviroment, this->config.wId, this->userContext, gwa.width,
-        gwa.height, 100, [this](void *userContext) {
+        gwa.height, 100, count, [this](void *userContext) {
           this->userContext = userContext;
           this->animationFrame.framePerformed();
           glXSwapBuffers(this->display, this->window);
@@ -249,12 +249,15 @@ void GLWindowManager::requestClipboard(const std::string &mimeType,
   }
 }
 
-void GLWindowManager::initiliazed(
-    XIC xic, std::function<void(Display *disp, Window fWindow)> expose) {
+void GLWindowManager::initialized(
+    XIC xic, std::function<void(Display *disp, Window fWindow, uint64_t frames)>
+                 expose) {
   this->xic = xic;
   this->onContextChange(this->config.wId, this->config.wId);
   this->animationFrame.start(
-      [this, expose]() { expose(this->display, this->window); },
+      [this, expose](uint64_t frames) {
+        expose(this->display, this->window, frames);
+      },
       this->config.framePerSecond);
   this->resourceTimer.setInterval(
       [this]() {

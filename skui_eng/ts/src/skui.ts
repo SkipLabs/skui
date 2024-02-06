@@ -8,13 +8,12 @@ var extensions = new Map();
 /*--EXTENSIONS--*/
 
 async function launch() {
-
   let data = await runUrl(
     new URL("./skui_eng.wasm", import.meta.url),
     // @ts-ignore
     modules,
     extensions,
-    "SKDB_factory",
+    "SKDB_factory"
   );
   // @ts-ignore
   let data = await run(wasm64, modules, extensions);

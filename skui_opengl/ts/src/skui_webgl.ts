@@ -165,6 +165,18 @@ interface ToWasm {
     valuesPtr: ptr<Internal.Array<Internal.Float>>,
     ctxId: int
   ) => void;
+  SKIP_GL_uniform3fv: (
+    location: int,
+    count: int,
+    valuesPtr: ptr,
+    ctxId: int,
+  ) => void;
+  SKIP_GL_uniform2fv: (
+    location: int,
+    count: int,
+    valuesPtr: ptr,
+    ctxId: int,
+  ) => void;
   SKIP_GL_uniform1fv: (
     location: int,
     count: int,
@@ -478,6 +490,18 @@ class Manager implements ToWasmManager {
       valuesPtr: ptr<Internal.Array<Internal.Float>>,
       ctxId: int
     ) => this.factory.uniform4fv(location, count, valuesPtr, ctxId);
+    toWasm.SKIP_GL_uniform2fv = (
+      location: int,
+      count: int,
+      valuesPtr: ptr,
+      ctxId: int,
+    ) => this.factory.uniform2fv(location, count, valuesPtr, ctxId);
+    toWasm.SKIP_GL_uniform3fv = (
+      location: int,
+      count: int,
+      valuesPtr: ptr,
+      ctxId: int,
+    ) => this.factory.uniform3fv(location, count, valuesPtr, ctxId);
     toWasm.SKIP_GL_uniform1fv = (
       location: int,
       count: int,

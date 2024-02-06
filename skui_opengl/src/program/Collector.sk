@@ -47,6 +47,18 @@ class Supplier(programs: GetProgram) {
     this.programs("FWK.BoxShadowDrawer")
   }
 
+  fun glslDrawer(
+    program: GLSL.Program,
+    version: ?GLSL.Version = None(),
+    level: GLSL.Level = GLSL.High(),
+  ): ?TriangleProgram {
+    this.programs(
+      `FWK.GLSL.${program.hash()}.${version
+        .default(GLSL.Version())
+        .getId()}.${level}`,
+    )
+  }
+
   fun radialGradientTriangle(count: Int, side: .UiSide): ?TriangleProgram {
     name = side match {
     | UiSide.Left() -> "left"
@@ -90,10 +102,11 @@ class Supplier(programs: GetProgram) {
   }
 }
 
-base class Used(value: String) extends SKStore.File {
+base class Used extends SKStore.File {
   children =
-  | UBuffer
-  | UArray
+  | UBuffer(value: String)
+  | UArray(value: String)
+  | UMany(value: Array<(String, Used)>)
 }
 
 mutable class Initializer(
@@ -160,6 +173,44 @@ mutable class Initializer(
 
   mutable fun roundedRectangle(): Used {
     this.rectangleBase("FWK.RoundedRectangleDrawer", RoundedRectangleShader())
+  }
+
+  mutable fun glsl(
+    program: GLSL.Program,
+    version: ?GLSL.Version = None(),
+    level: GLSL.Level = GLSL.High(),
+  ): Used {
+    id = `FWK.GLSL.${program.hash()}.${version
+      .default(GLSL.Version())
+      .getId()}.${level}`;
+    vertexShader = program.toVertexShader(level);
+    if (this.programs.maybeGet(id).isNone()) {
+      vShader = GLSL.VertexShaderBuilder(
+        vertexShader,
+        program.getVertexSize(),
+        version,
+      );
+      fShader = GLSL.FragmentShaderBuilder(
+        program.toFragmentShader(level),
+        version,
+      );
+      fn = gl ~> triangleProgram(gl, fShader, vShader);
+      this.programs.set(id, fn);
+    };
+    es = version.map(v -> v.es).default(false);
+    UMany(
+      vertexShader.attributes.map(a -> {
+        builder = program.getAttributeBuilder(a);
+        (
+          a.getName(),
+          if (es) {
+            this.array(builder.getName(), builder.build)
+          } else {
+            this.buffer(builder.getName(), builder.build)
+          },
+        )
+      }),
+    )
   }
 
   mutable fun boxShadow(): Used {
@@ -252,11 +303,20 @@ mutable class Initializer(
 
   // VertexArray
 
+  mutable fun array(id: String, builder: GL.Ctx ~> GL.Buffer): UArray {
+    if (this.arrays.maybeGet(id).isNone()) {
+      buffer = this.buffer(id, builder);
+      fn = gl ~> VertexArray(GL.VertexArray::create(gl), buffer);
+      this.arrays.set(id, fn)
+    };
+    UArray(id)
+  }
+
   mutable fun bilinearVertexArray(): Used {
     id = "FWK.BilinearVertexArray";
     if (this.arrays.maybeGet(id).isNone()) {
       positions = this.rectanglePositionBuffer();
-      fn = gl ~> VertexArray(GL.VertexArray::create(gl), positions.value);
+      fn = gl ~> VertexArray(GL.VertexArray::create(gl), positions);
       this.arrays.set(id, fn)
     };
     UArray(id)
@@ -264,16 +324,19 @@ mutable class Initializer(
 
   // Buffers
 
-  mutable fun rectanglePositionBuffer(): Used {
-    id = "FWK.RectanglePositionBuffer";
+  mutable fun buffer(id: String, builder: GL.Ctx ~> GL.Buffer): UBuffer {
     if (this.buffers.maybeGet(id).isNone()) {
-      fn = gl ~> Buffer(rectanglePositionBuffer(gl));
+      fn = gl ~> Buffer(builder(gl));
       this.buffers.set(id, fn)
     };
     UBuffer(id)
   }
 
-  mutable fun trianglePositionBuffer(side: .UiSide): Used {
+  mutable fun rectanglePositionBuffer(): UBuffer {
+    this.buffer("FWK.RectanglePositionBuffer", rectanglePositionBuffer);
+  }
+
+  mutable fun trianglePositionBuffer(side: .UiSide): UBuffer {
     name = side match {
     | UiSide.Left() -> "left"
     | UiSide.Top() -> "top"

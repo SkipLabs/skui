@@ -1,0 +1,159 @@
+module GLSL;
+
+fun planeNornal(p1: VVec, p2: VVec, p3: VVec): VVec {
+  invariant(p1.size() == 3, "The size of vectors must be 3");
+  p1p2 = p2 - p1;
+  p1p3 = p3 - p1;
+  atob = p1p3.z() * p1p2.y() - p1p3.y() * p1p2.z();
+  atoc = p1p3.y() * p1p2.z() - p1p3.z() * p1p2.y();
+  n = if (atob != 0.0 && atoc != 0.0) {
+    b = (p1p3.x() * p1p2.z() - p1p3.z() * p1p2.x()) / atob;
+    c = (p1p3.x() * p1p2.y() - p1p3.y() * p1p2.x()) / atoc;
+    VVec(Array[1.0, b, c]);
+  } else {
+    ctoa = p1p3.y() * p1p2.x() - p1p3.x() * p1p2.y();
+    ctob = p1p3.x() * p1p2.y() - p1p3.y() * p1p2.x();
+    if (ctoa != 0.0 && ctob != 0.0) {
+      a = (p1p3.z() * p1p2.y() - p1p3.y() * p1p2.z()) / ctoa;
+      b = (p1p3.z() * p1p2.x() - p1p3.x() * p1p2.z()) / ctob;
+      VVec(Array[a, b, 1.0]);
+    } else {
+      btoa = p1p3.y() * p1p2.z() - p1p3.z() * p1p2.y();
+      btoc = p1p3.x() * p1p2.z() - p1p3.z() * p1p2.x();
+      a = (p1p3.y() * p1p2.z() - p1p3.z() * p1p2.y()) / btoa;
+      c = (p1p3.y() * p1p2.x() - p1p3.x() * p1p2.y()) / btoc;
+      VVec(Array[a, 1.0, c]);
+    }
+  };
+  d = n.dot(p1);
+  VVec(n.values.concat(Array[d]));
+}
+
+fun planeFn(): Function {
+  Function(
+    Signature(
+      "plane",
+      TVoid(),
+      Array[
+        Param("z", true, SFloat()),
+        Param("normal", true, vec3()),
+        Param::make("position", vec2()),
+        Param::make("equation", vec4()),
+      ],
+    ),
+    Textual(
+      Array[
+        "z = (equation.w - (equation.x * position.x + equation.y * position.y)) / equation.z;",
+        "normal = vec3(equation);",
+      ],
+    ),
+  )
+}
+
+fun ellipsoideFn(): Function {
+  Function(
+    Signature(
+      "ellipsoideFn",
+      TVoid(),
+      Array[
+        Param("z", true, SFloat()),
+        Param("normal", true, vec3()),
+        Param::make("position", vec2()),
+        Param::make("ellipsoide", ellipsoideStruct),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec2 pos = position - ellipsoide.center.xy;",
+        "float x2 = pos.x * pos.x;",
+        "float y2 = pos.y * pos.y;",
+        "float a2 = ellipsoide.radius.x * ellipsoide.radius.x;",
+        "float b2 = ellipsoide.radius.y * ellipsoide.radius.y;",
+        "z = ellipsoide.radius.z * sqrt(1.0 - (x2 / a2) - (y2 / b2));",
+        "normal = sign(z) * vec3(pos, z);",
+        "z += ellipsoide.center.z;",
+      ],
+    ),
+  )
+}
+
+fun cylinderPosNormalFn(): Function {
+  Function(
+    Signature(
+      "cylinderPosNormal",
+      TVoid(),
+      Array[
+        Param::make("z", SFloat(), true),
+        Param::make("normal", vec3(), true),
+        Param::make("position", vec2()),
+        Param::make("x", SFloat()),
+        Param::make("ref", vec3()),
+        Param::make("radius", vec2()),
+      ],
+    ),
+    Textual(
+      Array[
+        "if (abs(x) <= radius.x) {",
+        "   float r2 = radius.x * radius.x;",
+        "   float x2 = x * x;",
+        "   z = radius.y * sqrt(1.0 - (x2 / r2));",
+        "   normal = vec3(position, z) - ref;",
+        "} else {",
+        "   z = 0.0;",
+        "   normal = vec3(position, z) - ref;",
+        "}",
+      ],
+      Array[],
+    ),
+  )
+}
+
+fun hCylinderFn(): Function {
+  Function(
+    Signature(
+      "hCylinder",
+      TVoid(),
+      Array[
+        Param("z", true, SFloat()),
+        Param("normal", true, vec3()),
+        Param::make("position", vec2()),
+        Param::make("cylinder", cylinderStruct),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec2 pos = position - vec2(cylinder.center.x);",
+        "vec3 ref = vec3(position.x, cylinder.center.x, 0.0);",
+        "cylinderPosNormal(z, normal, position, pos.y, ref, cylinder.radius);",
+        "z += cylinder.center.y;",
+      ],
+      Array[cylinderPosNormalFn()],
+    ),
+  )
+}
+
+fun vCylinderFn(): Function {
+  Function(
+    Signature(
+      "vCylinder",
+      TVoid(),
+      Array[
+        Param("z", true, SFloat()),
+        Param("normal", true, vec3()),
+        Param::make("position", vec2()),
+        Param::make("cylinder", cylinderStruct),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec2 pos = position - vec2(cylinder.center.x);",
+        "vec3 ref = vec3(cylinder.center.x, position.y, 0.0);",
+        "cylinderPosNormal(z, normal, position, pos.x, ref, cylinder.radius);",
+        "z += cylinder.center.y;",
+      ],
+      Array[cylinderPosNormalFn()],
+    ),
+  )
+}
+
+module end;

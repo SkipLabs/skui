@@ -13,7 +13,7 @@ class SolidEllipse(color: .Color, radius: Float) extends GLRectangleDrawable {
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.ellipseDrawer().map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         size = this.bounds.size();
         side = Math.max(size.width, size.height) * ratio;
         smooth = Math.min(2.0, side / 16.0);
@@ -52,7 +52,7 @@ class SolidDisk(
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.diskDrawer().map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         size = this.bounds.size();
         side = Math.max(size.width, size.height) * ratio;
         smooth = Math.min(2.0, side / 16.0);

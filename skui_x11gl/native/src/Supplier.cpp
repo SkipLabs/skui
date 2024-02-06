@@ -144,7 +144,7 @@ Display *WindowSupplier::init(WindowManager &vManager, WindowInfo *info) {
   }
   XSetICFocus(ic);
   this->windows[wId] = &vManager;
-  vManager.initiliazed(ic, sendExposeMessage);
+  vManager.initialized(ic, sendExposeMessage);
   return display;
 }
 
@@ -183,7 +183,7 @@ bool WindowSupplier::handleWindowEvents(Display *display) {
       std::string keyValue;
       switch (event.type) {
       case Expose:
-        wManager->performFrame();
+        wManager->performFrame(event.xexpose.count);
         break;
       case ConfigureNotify:
         wManager->resize(event.xconfigurerequest.width,
@@ -304,7 +304,7 @@ void WindowSupplier::sendCloseMessage(uint32_t wId) {
   }
 }
 
-void sendExposeMessage(Display *disp, Window fWindow) {
+void sendExposeMessage(Display *disp, Window fWindow, uint64_t count) {
   XWindowAttributes gwa;
   XGetWindowAttributes(disp, fWindow, &gwa);
   XEvent event;
@@ -316,7 +316,7 @@ void sendExposeMessage(Display *disp, Window fWindow) {
   event.xexpose.y = 0;
   event.xexpose.width = gwa.width;
   event.xexpose.height = gwa.height;
-  event.xexpose.count = 0;
+  event.xexpose.count = count;
   if (XSendEvent(disp, fWindow, False, ExposureMask, &event) != 0) {
     XFlush(disp);
   } else {

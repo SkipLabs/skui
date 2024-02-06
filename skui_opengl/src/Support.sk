@@ -45,10 +45,11 @@ fun performFrame(
   width: UInt32,
   height: UInt32,
   ratio: UInt32,
+  frames: UInt32,
 ): void {
   pos = SKStore.newObstack();
   SKStore.Context::withoutGc(context ~>
-    drawFrame(context, cid, width, height, ratio)
+    drawFrame(context, cid, width, height, ratio, frames)
   );
   SKStore.destroyObstack(pos);
 }
@@ -140,7 +141,7 @@ class DrawableSupport(
     );
     webglComputedArraysHdl = webglFilteredProgramsHdl.map(
       ArrayId::keyType,
-      GLProgram.VertexArray::type,
+      GLProgram.ArrayInfo::type,
       context,
       webglComputedArraysPath,
       (context, writer, key, _) ~> {
@@ -148,10 +149,11 @@ class DrawableSupport(
         | ak @ ArrayKey _ ->
           ctx = GL.Ctx(UInt32::truncate(ak.webgl));
           array = ak.builder(ctx);
-          array.init(bufId ->
-            webglComputedBuffersHdl.get(context, BufId(ak.webgl, bufId))
+          buffer = webglComputedBuffersHdl.get(
+            context,
+            BufId(ak.webgl, array.buffer.value),
           );
-          writer.set(ak.toArrayId(), array)
+          writer.set(ak.toArrayId(), GLProgram.ArrayInfo(array, buffer))
         | _ -> void
         }
       },
@@ -187,21 +189,22 @@ class DrawableSupport(
               )
             );
             tmp = mutable Vector<Ui.Handle>[];
+            bufferGetter = id ->
+              webglComputedBuffersHdl.maybeGet(context, BufId(webgl.value, id));
+            arrayGetter = id ->
+              webglComputedArraysHdl.maybeGet(
+                context,
+                ArrayId(webgl.value, id),
+              );
             drawables.value.each(drawable ->
-              drawable.i0 match {
-              | GLProgram.UBuffer(bufId) ->
-                webglComputedBuffersHdl
-                  .maybeGet(context, BufId(webgl.value, bufId))
-                  .each(buffer ->
-                    drawable.i1.build(gl, buffer, supplier).each(tmp.push)
-                  )
-              | GLProgram.UArray(arrId) ->
-                webglComputedArraysHdl
-                  .maybeGet(context, ArrayId(webgl.value, arrId))
-                  .each(array ->
-                    drawable.i1.build(gl, array, supplier).each(tmp.push)
-                  )
-              }
+              static::toHandles(
+                gl,
+                drawable,
+                bufferGetter,
+                arrayGetter,
+                supplier,
+                tmp,
+              )
             );
             if (!tmp.isEmpty()) {
               writer.set(
@@ -389,6 +392,43 @@ class DrawableSupport(
     | _ -> invariant_violation("Not implemented; only Color Fill managed")
     }
   }
+
+  static fun toHandles(
+    gl: GL.Ctx,
+    drawable: (GLProgram.Used, GLDrawable),
+    bufferGetter: (id: String) -> ?GLProgram.Buffer,
+    arrayGetter: (id: String) -> ?GLProgram.ArrayInfo,
+    supplier: GLProgram.Supplier,
+    handles: mutable Vector<Ui.Handle>,
+  ): void {
+    drawable.i0 match {
+    | GLProgram.UBuffer(bufId) ->
+      bufferGetter(bufId).each(buffer ->
+        drawable.i1.build(gl, buffer, supplier).each(handles.push)
+      )
+    | GLProgram.UArray(arrId) ->
+      arrayGetter(arrId).each(array ->
+        drawable.i1.build(gl, array, supplier).each(handles.push)
+      )
+    | GLProgram.UMany(value) ->
+      multiple = GLProgram.Multiple(
+        value
+          .map(elem -> {
+            (name, used) = elem;
+            used match {
+            | GLProgram.UBuffer(bufId) ->
+              bufferGetter(bufId).map(buffer -> (name, buffer))
+            | GLProgram.UArray(arrId) ->
+              arrayGetter(arrId).map(array -> (name, array))
+            | GLProgram.UMany _ ->
+              invariant_violation("Many of Many ot managed")
+            }
+          })
+          .filterNone(),
+      );
+      drawable.i1.build(gl, multiple, supplier).each(handles.push)
+    }
+  }
 }
 
 trait Key {
@@ -542,6 +582,7 @@ fun populateViewport(
   handles: Array<Array<Ui.Handles>>,
   height: Int,
   ratio: Float,
+  frame: Int,
 ): void {
   top = height - viewport.window.height() - viewport.window.top();
   fLeft = (viewport.window.left().toFloat() * ratio).toInt();
@@ -556,7 +597,9 @@ fun populateViewport(
   fWindow = viewport.window;
   handles.each(hdls ->
     hdls.each(v ->
-      v.value.each(handle -> handle.draw(fOffset, fWindow, height, ratio))
+      v.value.each(handle ->
+        handle.draw(fOffset, fWindow, height, ratio, frame)
+      )
     )
   );
   gl.flush();
@@ -570,6 +613,7 @@ fun drawFrame(
   width: UInt32,
   height: UInt32,
   ratio: UInt32,
+  frames: UInt32,
 ): void {
   frame = context
     .getGlobal("SKUIGL.AnimationFrame")
@@ -586,7 +630,7 @@ fun drawFrame(
   | Some(
     tick,
   ) if (optVersion.map(v -> tick.value > v).default(true) || kAlwaysDraw) ->
-    drawCtxFrame(context, GL.Ctx(cid), width, height, ratio, tick.value)
+    drawCtxFrame(context, GL.Ctx(cid), width, height, ratio, frames, tick.value)
   | _ -> void
   };
 }
@@ -598,6 +642,7 @@ fun drawCtxFrame(
   width: UInt32,
   height: UInt32,
   ratio: UInt32,
+  frames: UInt32,
   time: Int,
 ): void {
   fRatio = ratio.toFloat() / 100.0;
@@ -609,7 +654,14 @@ fun drawCtxFrame(
   ctx.viewport(int32(0), int32(0), uint32(fWidth), uint32(fHeight));
   ctx.clearColor(1.0, 1.0, 1.0, 1.0);
   ctx.clear();
-  drawViewports(ctx, context, width.toInt(), height.toInt(), fRatio);
+  drawViewports(
+    ctx,
+    context,
+    width.toInt(),
+    height.toInt(),
+    fRatio,
+    frames.toInt(),
+  );
   context.setGlobal("SKUIGL.Version", SKStore.IntFile(time));
 }
 
@@ -619,6 +671,7 @@ fun drawViewports(
   width: Int,
   height: Int,
   ratio: Float,
+  frames: Int,
 ): void {
   doOnDirectory(context, Ui.viewportsPath, viewportsDir ->
     doOnDirectory(context, layerHandlesPath, layerHandlesDir ->
@@ -642,6 +695,7 @@ fun drawViewports(
           width,
           height,
           ratio,
+          frames,
           layerHandlesDir,
           vpInfosDir,
         );
@@ -658,6 +712,7 @@ fun drawViewport(
   width: Int,
   height: Int,
   ratio: Float,
+  frames: Int,
   layerHandlesDir: SKStore.EagerDir,
   vpInfosDir: SKStore.EagerDir,
 ): void {
@@ -675,7 +730,7 @@ fun drawViewport(
         CtxLayer(ctxId, Ui.KLayer(vpPath, Ui.MainLayer())),
         CtxLayer(ctxId, Ui.KLayer(vpPath, Ui.ForegroundLayer())),
       ].map(key -> getValues(layerHandlesDir, key, Ui.Handles::type));
-      populateViewport(gCtx, toPopulate, layerHandles, height, ratio);
+      populateViewport(gCtx, toPopulate, layerHandles, height, ratio, frames);
       !absolute = Ui.NViewport(diff, visibleBounds);
     }
   };
@@ -688,6 +743,7 @@ fun drawViewport(
       width,
       height,
       ratio,
+      frames,
       layerHandlesDir,
       vpInfosDir,
     )

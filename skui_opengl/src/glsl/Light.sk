@@ -1,0 +1,288 @@
+module GLSL;
+
+base class Light(color: .Color) {
+  children =
+  | Ambient()
+  | Directional(direction: VVec)
+  | Point(position: VVec)
+}
+
+fun planeNornalFn(): Function {
+  Function(
+    Signature(
+      "planeNornal",
+      vec4(),
+      Array[Param::make("points", SArray(vec3(), 3))],
+    ),
+    Textual(
+      Array[
+        "vec3 p1p2 = points[1] - points[0];",
+        "vec3 p1p3 = points[2] - points[0];",
+        "float atob = p1p3.z * p1p2.y - p1p3.y * p1p2.z;",
+        "float atoc = p1p3.y * p1p2.z - p1p3.z * p1p2.y;",
+        "if (atob != 0.0 && atoc != 0.0) {",
+        "  float b = (p1p3.x * p1p2.z - p1p3.z * p1p2.x) / atob;",
+        "  float c = (p1p3.x * p1p2.y - p1p3.y * p1p2.x) / atoc;",
+        "  vec3  n = vec3(1.0, b, c);",
+        "  float d = dot(n, points[0]);",
+        "  return vec4(n, d);",
+        "}",
+        "float ctoa = p1p3.y * p1p2.x - p1p3.x * p1p2.y;",
+        "float ctob = p1p3.x * p1p2.y - p1p3.y * p1p2.x;",
+        "if (ctoa != 0.0 && ctob != 0.0) {",
+        "  float a = (p1p3.z * p1p2.y - p1p3.y * p1p2.z) / ctoa;",
+        "  float b = (p1p3.z * p1p2.x - p1p3.x * p1p2.z) / ctob;",
+        "  vec3  n = vec3(a, b, 1.0);",
+        "  float d = dot(n, points[0]);",
+        "  return vec4(n, d);",
+        "}",
+        "float btoa = p1p3.y * p1p2.z - p1p3.z * p1p2.y;",
+        "float btoc = p1p3.x * p1p2.z - p1p3.z * p1p2.x;",
+        "float a = (p1p3.y * p1p2.z - p1p3.z * p1p2.y) / btoa;",
+        "float c = (p1p3.y * p1p2.x - p1p3.x * p1p2.y) / btoc;",
+        "vec3  n = vec3(a, 1.0, c);",
+        "float d = dot(n, points[0]);",
+        "return vec4(n, d);",
+      ],
+    ),
+  )
+}
+
+fun directionalLightFn(): Function {
+  Function(
+    Signature(
+      "directionalLight",
+      vec4(),
+      Array[
+        Param::make("color", vec4()),
+        Param::make("surfaceDirection", vec3()),
+        Param::make("lightColor", vec3()),
+        Param::make("lightDirection", vec3()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec3 light = normalize(lightDirection);",
+        "float nsign = sign(surfaceDirection.z);",
+        "vec3 normal = normalize(surfaceDirection);",
+        "float cosTeta = max(nsign * dot(normal, light), 0.0);",
+        "vec3 ligthedColor = lightColor * vec3(color) * cosTeta;",
+        "return withAlpha(vec4(ligthedColor, 1.0), color.a);",
+      ],
+      Array[withAlphaFn()],
+    ),
+  )
+}
+
+fun planeDirectionalLightFn(): Function {
+  Function(
+    Signature(
+      "planeDirectionalLight",
+      vec4(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("color", vec4()),
+        Param::make("lightColor", vec3()),
+        Param::make("lightPosition", vec3()),
+        Param::make("points", SArray(vec3(), 3)),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec4 surface = planeNornal(points);",
+        "float z = (surface.w - (surface.x * position.x + surface.y * position.y)) / surface.z;",
+        "vec3 p0 = vec3(position, z);",
+        "vec3 light = lightPosition - p0;",
+        "return directionalLight(color, vec3(surface), lightColor, light);",
+      ],
+      Array[planeNornalFn(), directionalLightFn()],
+    ),
+  )
+}
+
+fun ellipsoideDirectionalLightFn(): Function {
+  Function(
+    Signature(
+      "ellipsoideDirectionalLight",
+      vec4(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("color", vec4()),
+        Param::make("lightColor", vec3()),
+        Param::make("lightPosition", vec3()),
+        Param::make("ellipsoideCenter", vec2()),
+        Param::make("ellipsoideRadius", vec3()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec2 pos = position - ellipsoideCenter;",
+        "float x2 = pos.x * pos.x;",
+        "float y2 = pos.y * pos.y;",
+        "float a2 = ellipsoideRadius.x * ellipsoideRadius.x;",
+        "float b2 = ellipsoideRadius.y * ellipsoideRadius.y;",
+        "float z = ellipsoideRadius.z * sqrt(1.0 - (x2 / a2) - (y2 / b2));",
+        "vec3 surface = vec3(pos, z);",
+        "vec3 light = lightPosition - vec3(position, z);",
+        "return directionalLight(color, surface, lightColor, light);",
+      ],
+      Array[directionalLightFn()],
+    ),
+  )
+}
+
+fun cylinderPosNormal1Fn(): Function {
+  Function(
+    Signature(
+      "cylinderPosNormal",
+      TVoid(),
+      Array[
+        Param::make("surface", vec3(), true),
+        Param::make("normal", vec3(), true),
+        Param::make("position", vec2()),
+        Param::make("x", SFloat()),
+        Param::make("ref", vec3()),
+        Param::make("radius", vec2()),
+      ],
+    ),
+    Textual(
+      Array[
+        "if (abs(x) <= radius.x) {",
+        "   float r2 = radius.x * radius.x;",
+        "   float x2 = x * x;",
+        "   float z = radius.y * sqrt(1.0 - (x2 / r2));",
+        "   surface = vec3(position, z);",
+        "   normal = surface - ref;",
+        "} else {",
+        "   surface = vec3(position, 0.0);",
+        "   normal = surface - ref;",
+        "}",
+      ],
+      Array[],
+    ),
+  )
+}
+
+fun cylinderDirectionalLightFn(): Function {
+  Function(
+    Signature(
+      "cylinderDirectionalLight",
+      vec4(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("color", vec4()),
+        Param::make("lightColor", vec3()),
+        Param::make("lightPosition", vec3()),
+        Param::make("cylinderPos", SFloat()),
+        Param::make("cylinderRadius", vec2()),
+        Param::make("cylinderAxis", SBool()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec2 pos = position - vec2(cylinderPos);",
+        "vec3 surface = vec3(0.0);",
+        "vec3 normal = vec3(0.0);",
+        "if (cylinderAxis) {",
+        "  vec3 ref = vec3(cylinderPos, position.y, 0.0);",
+        "  cylinderPosNormal(surface, normal, position, pos.x, ref, cylinderRadius);",
+        "} else {",
+        "  vec3 ref = vec3(position.x, cylinderPos, 0.0);",
+        "  cylinderPosNormal(surface, normal, position, pos.y, ref, cylinderRadius);",
+        "}",
+        "vec3 light = lightPosition - surface;",
+        "return directionalLight(color, normal, lightColor, light);",
+      ],
+      Array[cylinderPosNormal1Fn(), directionalLightFn()],
+    ),
+  )
+}
+
+fun lightsFn(nb: Int): Function {
+  ssize = ligthStruct.size();
+  size = nb * ssize;
+  lines = mutable Vector[
+    "vec3 rgb = color.rgb;",
+    "vec3 diffuse = vec3(0.0);",
+    "// The vertex's normal vector is being interpolated across the primitive",
+    "// which can make it un-normalized. So normalize the vertex's normal vector.",
+    "vec3 nNormal = normalize(normal);",
+    "vec3 diffuse_color;",
+    "vec3 specular_color;",
+    "vec3 to_light;",
+    "vec3 reflection;",
+    "vec3 to_camera;",
+    "float cos_angle;",
+    `int size = min(${nb}, ligthcount);`,
+    `for (int i = 0; i < size; i++) {`,
+    "  Light lstruct = Light(vec3(0.0), false, vec3(0.0));",
+  ];
+  functions = mutable Vector[];
+  index = 0;
+  for (i in Range(0, nb)) {
+    fn = buildWithIndex(ligthStruct, index, size);
+    functions.push(fn);
+    fName = fn.signature.name;
+    if (i == 0) {
+      lines.push(`  if (i == ${i}) {`);
+    } else {
+      lines.push(`  } else if (i == ${i}) {`);
+    };
+    lines.push(`    lstruct = ${fName}(lights);`);
+    !index = index + ssize;
+  };
+  if (nb > 0) {
+    lines.push("  }");
+  };
+  Array[
+    "  // Calculate a vector from the fragment location to the light source",
+    "  if (lstruct.point) {",
+    "    to_light = normalize(lstruct.value - position);",
+    "  } else {",
+    "    to_light = normalize(lstruct.value);",
+    "  }",
+    "  // Calculate the cosine of the angle between the vertex's normal vector",
+    "  // and the vector going to the light.",
+    "  cos_angle = clamp(dot(nNormal, to_light), 0.0, 1.0);",
+    "  // Scale the color of this fragment based on its angle to the light.",
+    "  diffuse_color = rgb * cos_angle;",
+    "  // Calculate the reflection vector",
+    "  reflection = normalize(-reflect(to_light, nNormal));",
+    "  // Calculate a vector from the fragment location to the camera.",
+    "  // The camera is at the origin, so negating the vertex location gives the vector",
+    "  to_camera = normalize(camera - position);",
+    "  // Calculate the cosine of the angle between the reflection vector",
+    "  // and the vector going to the camera.",
+    "  cos_angle = clamp(dot(reflection, to_camera), 0.0, 1.0);",
+    "  cos_angle = pow(cos_angle, shininess);",
+    "  // The specular color is from the light source, not the object",
+    "  if (cos_angle > 0.0) {",
+    "    specular_color = lstruct.color * cos_angle;",
+    "    diffuse_color = diffuse_color * (1.0 - cos_angle);",
+    "  } else {",
+    "    specular_color = vec3(0.0, 0.0, 0.0);",
+    "  }",
+    "  diffuse += diffuse_color + specular_color;",
+    "}",
+    "return vec4(rgb * ambient + clamp(diffuse, 0.0, 1.0), color.a);",
+  ].each(lines.push);
+  Function(
+    Signature(
+      "lights",
+      vec4(),
+      Array[
+        Param::make("position", vec3()),
+        Param::make("normal", vec3()),
+        Param::make("shininess", SFloat()),
+        Param::make("color", vec4()),
+        Param::make("ambient", vec3()),
+        Param::make("camera", vec3()),
+        Param::make("lights", SArray(SFloat(), size)),
+        Param::make("ligthcount", SInt()),
+      ],
+    ),
+    Textual(lines.toArray(), functions.toArray()),
+  )
+}
+
+module end;

@@ -1,0 +1,400 @@
+module GLSL;
+
+class Parameters(values: Map<String, Value>) extends GLProgram.Parameters {
+  static fun fromParams(obj: GLProgram.Parameters): this {
+    obj match {
+    | x @ Parameters _ -> x
+    | _ -> SKStore.cast_violation("GLSL.Parameters", obj)
+    }
+  }
+}
+
+class VertexParameters(
+  values: Map<String, Value>,
+  attributes: Array<(String, GLProgram.Data)>,
+) extends GLProgram.VertexShaderParams {
+  static fun fromParams(obj: GLProgram.Parameters): this {
+    obj match {
+    | x @ VertexParameters _ -> x
+    | _ -> SKStore.cast_violation("GLSL.VertexParameters", obj)
+    }
+  }
+}
+
+fun manageUniforms(
+  ctx: GL.Ctx,
+  shader: Shader,
+  values: Map<String, Value>,
+  locations: SortedMap<String, GL.UniformLocation>,
+  applied: mutable Set<String>,
+): void {
+  shader.uniforms.each(uniform -> {
+    name = uniform.getName();
+    if (applied.contains(name)) {
+      return void;
+    };
+    applied.insert(name);
+    ul = locations.get(name);
+    setUniform(ctx, name, uniform.type_, ul, values)
+  });
+}
+
+class FragmentShaderBuilder(
+  shader: Shader,
+  version: ?Version = None(),
+) extends GLProgram.FragmentShaderBuilder {
+  //
+  fun source(): String {
+    this.shader.toString(this.version);
+  }
+
+  fun build(program: GL.Prepared): GLProgram.FragmentShader {
+    uniforms = SortedMap[];
+    this.shader.uniforms.each(uniform -> {
+      name = uniform.getName();
+      ul = program.getUniformLocation(name);
+      !uniforms = uniforms.set(name, ul)
+    });
+
+    //debug("FragmentShaderBuilder");
+    //uniforms.each((k,v) -> debug(`${k}: ${v.id}`));
+    fUniforms = uniforms;
+    GLProgram.LambdaFragmentShader((parameters, applied) ~> {
+      ctx = program.context();
+      ps = Parameters::fromParams(parameters);
+      manageUniforms(ctx, this.shader, ps.values, fUniforms, applied);
+    })
+  }
+}
+
+class VertexShaderBuilder(
+  shader: Shader,
+  vertexSize: Int,
+  version: ?Version = None(),
+) extends GLProgram.VertexShaderBuilder {
+  //
+  fun source(): String {
+    this.shader.toString(this.version);
+  }
+
+  fun build(program: GL.Prepared): GLProgram.VertexShader {
+    uniforms = SortedMap[];
+    this.shader.uniforms.each(uniform -> {
+      name = uniform.getName();
+      ul = program.getUniformLocation(name);
+      !uniforms = uniforms.set(name, ul)
+    });
+    //debug("VertexShaderBuilder");
+    //uniforms.each((k,v) -> debug(`${k}: ${v.id}`));
+    fUniforms = uniforms;
+    attributes = SortedMap[];
+    this.shader.attributes.each(attribute -> {
+      name = attribute.getName();
+      al = program.getAttributeLocation(name);
+      !attributes = attributes.set(name, al)
+    });
+    fAttributes = attributes;
+    LambdaVertexShader(
+      (parameters, _, applied) ~> {
+        ctx = program.context();
+        ps = VertexParameters::fromParams(parameters);
+        manageUniforms(ctx, this.shader, ps.values, fUniforms, applied);
+        this.vertexSize;
+      },
+      () ~> void,
+      fAttributes,
+    )
+  }
+}
+
+fun setUniform(
+  ctx: GL.Ctx,
+  name: String,
+  type_: Type,
+  location: GL.UniformLocation,
+  values: Map<String, Value>,
+): void {
+  error = (name, size) ~>
+    invariant_violation(`'${name}' values size must be equal to ${size}.`);
+  vec = (vtype_, vsize, asize) ->
+    vtype_ match {
+    | GLSL.SDouble()
+    | GLSL.SFloat() ->
+      if (vsize == 2) {
+        glValues = values.get(name).toArray();
+        if (glValues.size() < 2 * asize) error(name, 2 * asize);
+        ctx.uniform2fv(location, uint32(asize), glValues)
+      } else if (vsize == 3) {
+        glValues = values.get(name).toArray();
+        if (glValues.size() < 3 * asize) error(name, 3 * asize);
+        ctx.uniform3fv(location, uint32(asize), glValues)
+      } else if (vsize == 4) {
+        glValues = values.get(name).toArray();
+        if (glValues.size() < 4 * asize) error(name, 4 * asize);
+        ctx.uniform4fv(location, uint32(asize), glValues)
+      } else {
+        invariant_violation(`${type_.full()} value convertion not managed`)
+      }
+    | SBool()
+    | SUInt()
+    | SInt() ->
+      invariant_violation(`${type_.full()} value convertion not managed`)
+    };
+
+  type_ match {
+  | SDouble()
+  | SFloat() ->
+    glValues = values.get(name).toArray();
+    if (glValues.size() < 1) error(name, 1);
+    ctx.uniform1f(location, glValues[0])
+  | SInt()
+  | SUInt()
+  | SBool() ->
+    glValues = values.get(name).toArray();
+    if (glValues.size() < 1) error(name, 1);
+    ctx.uniform1i(location, int32(glValues[0].toInt()))
+  | Sampler2D() ->
+    values.get(name) match {
+    | VTexture(texture, chanel) ->
+      GLProgram.activateTexture(ctx, chanel, texture, location)
+    | _ -> invariant_violation("Invalid value for Sampler2D.")
+    }
+  | Vec(vtype_, size) -> vec(vtype_, size, 1)
+  | Mat4() ->
+    glValues = values.get(name).toArray();
+    if (glValues.size() < 16) error(name, 16);
+    ctx.uniformMatrix4fv(
+      location,
+      false,
+      glValues[0],
+      glValues[1],
+      glValues[2],
+      glValues[3],
+      glValues[4],
+      glValues[5],
+      glValues[6],
+      glValues[7],
+      glValues[8],
+      glValues[9],
+      glValues[10],
+      glValues[11],
+      glValues[12],
+      glValues[13],
+      glValues[14],
+      glValues[15],
+    )
+  | SArray(atype_, asize) ->
+    atype_ match {
+    | SDouble()
+    | SFloat() ->
+      glValues = values.get(name).toArray();
+      if (glValues.size() < asize) error(name, asize);
+      ctx.uniform1fv(location, uint32(asize), glValues)
+    | Sampler2D _ ->
+      values.get(name) match {
+      | VTextures(textures) ->
+        GLProgram.activateTextures(ctx, textures, location)
+      | _ -> invariant_violation("Invalid value for Sampler2D array.")
+      }
+    | Vec(vtype_, vsize) -> vec(vtype_, vsize, asize)
+    | Mat4()
+    | SInt()
+    | SUInt()
+    | SBool()
+    | GenType()
+    | SArray _
+    | TVoid()
+    | Struct _ ->
+      invariant_violation(`${type_.full()} value convertion not managed`)
+    }
+  | GenType()
+  | TVoid()
+  | Struct _ ->
+    invariant_violation(`${type_.full()} value convertion not managed`)
+  }
+}
+
+base class BufferBuilder uses Hashable {
+  fun getName(): String;
+  fun build(ctx: GL.Ctx): GL.Buffer;
+}
+
+class RectangleBufferBuilder() extends BufferBuilder {
+  fun getName(): String {
+    "GSLS.RectangleBuffer"
+  }
+
+  fun build(ctx: GL.Ctx): GL.Buffer {
+    GLProgram.rectanglePositionBuffer(ctx)
+  }
+}
+
+base class Program uses Hashable {
+  fun toVertexShader(fLevel: Level = High()): Shader;
+  fun toFragmentShader(fLevel: Level = High()): Shader;
+  fun getAttributeBuilder(attr: Attribute): BufferBuilder;
+  fun getVertexSize(): Int;
+}
+
+base class VertexShader(
+  locations: SortedMap<String, GL.AttributeLocation>,
+) extends GLProgram.VertexShader {
+  @debug
+  fun apply(
+    params: GLProgram.VertexShaderParams,
+    window: Geometry.Size,
+    applied: mutable Set<String>,
+  ): Int {
+    params match {
+    | vParameters @ VertexParameters _ ->
+      vParameters.attributes.eachWithIndex((idx, attribute) -> {
+        (name, data) = attribute;
+        data match {
+        | buffer @ GLProgram.Buffer _ ->
+          location = this.locations.get(name);
+          ctx = buffer.context();
+          ctx.bindArrayBuffer(buffer.value.ref);
+          ctx.enableVertexAttributeArray(location);
+          ctx.vertexFloatAttributePointer(
+            location,
+            UInt32::truncate(2),
+            false,
+            UInt32::truncate(0),
+          );
+          buffer.value.unbind()
+        | array @ GLProgram.ArrayInfo _ ->
+          array.init(idx);
+          array.array.value.bind()
+        | _ -> void
+        }
+      });
+      this.toApply(vParameters, window, applied)
+    | _ -> SKStore.cast_violation("GLSL.VertexParameters", params)
+    };
+  }
+
+  fun clean(params: GLProgram.VertexShaderParams): void {
+    params match {
+    | vParameters @ VertexParameters _ ->
+      vParameters.attributes.each(attribute -> {
+        (_, data) = attribute;
+        data match {
+        | array @ GLProgram.ArrayInfo _ -> array.array.value.unbind()
+        | _ -> void
+        }
+      })
+    | _ -> SKStore.cast_violation("GLSL.VertexParameters", params)
+    };
+    this.onClean();
+  }
+
+  protected fun onClean(): void;
+  protected fun toApply(
+    params: VertexParameters,
+    window: Geometry.Size,
+    applied: mutable Set<String>,
+  ): Int;
+}
+
+class LambdaVertexShader(
+  applyFun: (VertexParameters, Geometry.Size, mutable Set<String>) ~> Int,
+  cleanFun: () ~> void,
+) extends VertexShader {
+  protected fun toApply(
+    parameter: VertexParameters,
+    window: Geometry.Size,
+    applied: mutable Set<String>,
+  ): Int {
+    this.applyFun(parameter, window, applied)
+  }
+
+  protected fun onClean(): void {
+    this.cleanFun()
+  }
+}
+
+class Drawable(
+  program: Program,
+  values: Map<String, GL.Ctx ~> ?(Geometry.Rect, Geometry.Size) ~> Value>,
+  version: ?GLSL.Version,
+  fLevel: GLSL.Level,
+) extends GLRectangleDrawable {
+  //
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.glsl(this.program, this.version, this.fLevel);
+  }
+
+  fun build(
+    gl: GL.Ctx,
+    data: GLProgram.Data,
+    supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    multiple = data as GLProgram.Multiple _;
+    supplier.glslDrawer(this.program, this.version).flatMap(drawer -> {
+      mValues = mutable Map[];
+      for ((n, fn) in this.values.items()) {
+        fn(gl).each(v -> mValues.set(n, v))
+      };
+      fValues = mValues.chill();
+      Some(
+        Ui.LambdaHandle((shift, window, _height, ratio, frames) ~> {
+          cValues = fValues.map((_, fn) -> fn(this.bounds, window.size()));
+          bounds = this.bounds.shift(shift.toOffset()).scale(ratio);
+          offset = bounds.topLeft();
+          bsize = bounds.size();
+          side = Math.max(bsize.width, bsize.height);
+          dx = (side - bsize.width) / 2.0;
+          dy = (side - bsize.height) / 2.0;
+          x = offset.dx - dx;
+          y = offset.dy - dy;
+          dbounds = Geometry.Rect::fromOffsetSize(
+            Geometry.Offset(x, y),
+            Geometry.Size::square(side),
+          );
+          // this matrix will convert from pixels to clip space
+          // this matrix will translate our quad to dstX, dstY
+          // this matrix will scale our 1 unit quad
+          // from 1 unit to width, height units
+          wsize = window.size() * ratio;
+          matrix = GL.Matrix4::orthographic(
+            0.0,
+            wsize.width,
+            wsize.height,
+            0.0,
+            -1.0,
+            1.0,
+          )
+            .translate(dbounds.left, dbounds.top, 0.0)
+            .scale(dbounds.width(), dbounds.height(), 1.0);
+          values = Maps.set(
+            Maps.set(
+              Maps.set(
+                cValues,
+                "u_bounds",
+                VVec(
+                  Array[
+                    (dx / side),
+                    (dy / side),
+                    (bsize.width / side),
+                    (bsize.height / side),
+                  ],
+                ),
+              ),
+              "u_frames",
+              VVec(Array[frames.toFloat()]),
+            ),
+            "u_matrix",
+            VVec(matrix.matrix),
+          );
+          drawer.run(
+            Parameters(values),
+            VertexParameters(values, multiple.value),
+            wsize,
+          )
+        }),
+      )
+    })
+  }
+}
+
+module end;

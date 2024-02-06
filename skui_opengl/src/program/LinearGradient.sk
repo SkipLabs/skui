@@ -88,11 +88,11 @@ class LinearGradientShader(stops: Int) extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    startLocation = program.getUniformLocation(uStart);
-    endLocation = program.getUniformLocation(uEnd);
-    colorsLocation = program.getUniformLocation(uStopColors);
-    offsetsLocation = program.getUniformLocation(uStopOffsets);
-    LambdaFragmentShader(parameters ~> {
+    startLocation = program.getIdxUniformLocation(uStart);
+    endLocation = program.getIdxUniformLocation(uEnd);
+    colorsLocation = program.getIdxUniformLocation(uStopColors);
+    offsetsLocation = program.getIdxUniformLocation(uStopOffsets);
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       lgps = LinearGradientParameters::fromParams(parameters);
       invariant(

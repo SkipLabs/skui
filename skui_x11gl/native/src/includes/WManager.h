@@ -28,16 +28,17 @@ public:
   virtual WindowConfig configuration() = 0;
   virtual XVisualInfo *initializeDisplay(Display *disp, uint32_t screen) = 0;
   virtual Atom createContext(Window window) = 0;
-  virtual void
-  initiliazed(XIC xic,
-              std::function<void(Display *disp, Window fWindow)> expose) = 0;
+  virtual void initialized(
+      XIC xic,
+      std::function<void(Display *disp, Window fWindow, uint64_t frames)>
+          expose) = 0;
   virtual void onIdle() = 0;
   virtual void checkClipboard(XSelectionEvent *s) = 0;
   virtual void updateClipboard(XSelectionRequestEvent *s) = 0;
   virtual void requestClipboard(const std::string &mimeType,
                                 const std::string &content) = 0;
   virtual void resize(uint32_t width, uint32_t height) = 0;
-  virtual void performFrame() = 0;
+  virtual void performFrame(uint32_t count) = 0;
   virtual void manageMouseLocation(uint32_t x, uint32_t y, uint32_t sx,
                                    uint32_t sy) = 0;
   virtual void manageMouseButton(uint32_t b, bool pressed) = 0;

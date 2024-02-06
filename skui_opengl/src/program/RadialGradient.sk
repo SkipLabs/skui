@@ -85,11 +85,11 @@ class RadialGradientShader(stops: Int) extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    centerLocation = program.getUniformLocation(uCenter);
-    radiusLocation = program.getUniformLocation(uRadius);
-    colorsLocation = program.getUniformLocation(uStopColors);
-    offsetsLocation = program.getUniformLocation(uStopOffsets);
-    LambdaFragmentShader(parameters ~> {
+    centerLocation = program.getIdxUniformLocation(uCenter);
+    radiusLocation = program.getIdxUniformLocation(uRadius);
+    colorsLocation = program.getIdxUniformLocation(uStopColors);
+    offsetsLocation = program.getIdxUniformLocation(uStopOffsets);
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       lgps = RadialGradientParameters::fromParams(parameters);
       invariant(

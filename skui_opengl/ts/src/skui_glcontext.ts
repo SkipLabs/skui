@@ -178,9 +178,12 @@ export class Factory {
   onMainBinding = () => {
     this.loading.stop();
   };
-  doOnContext = <T>(ctxId: int, fn: (glCtx: Context) => T) => {
-    const context = this.utils ? this.contexts.get(ctxId) : null;
-    return context ? fn(context) : null;
+  doOnContext = <T>(ctxId: int, fn: (glCtx: Context, utils: Utils) => T) => {
+    if (this.utils) {
+      let context = this.contexts.get(ctxId);
+      return context ? fn(context, this.utils) : null;
+    }
+    return null;
   };
 
   activateTextureAt = (texture: int, location: int, index: int, ctxId: int) =>
@@ -323,10 +326,24 @@ export class Factory {
   drawTriangles = (first: int, count: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => ctx.drawTriangles(first, count));
   /////////////////////////// LOCATIONS ///////////////////////////
-  getAttributeLocation = (program: int, index: int, ctxId: int) =>
-    this.doOnContext(ctxId, (ctx) => ctx.getAttributeLocation(program, index));
-  getUniformLocation = (program: int, index: int, ctxId: int) =>
-    this.doOnContext(ctxId, (ctx) => ctx.getUniformLocation(program, index));
+  getIdxAttributeLocation = (program: int, index: int, ctxId: int) =>
+    this.doOnContext(ctxId, (ctx) =>
+      ctx.getIdxAttributeLocation(program, index)
+    );
+  getAttributeLocation = (
+    program: int,
+    name: ptr<Internal.String>,
+    ctxId: int
+  ) =>
+    this.doOnContext(ctxId, (ctx, utils) =>
+      ctx.getAttributeLocation(utils, program, name)
+    );
+  getIdxUniformLocation = (program: int, index: int, ctxId: int) =>
+    this.doOnContext(ctxId, (ctx) => ctx.getIdxUniformLocation(program, index));
+  getUniformLocation = (program: int, name: ptr<Internal.String>, ctxId: int) =>
+    this.doOnContext(ctxId, (ctx, utils) =>
+      ctx.getUniformLocation(utils, program, name)
+    );
   /////////////////////////// FRAME BUFFERS //////////////////////////////
   bindMainFrameBuffer = (ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => ctx.bindMainFrameBuffer());
@@ -399,6 +416,28 @@ export class Factory {
       const values = this.utils!.importFloats(valuesPtr);
       ctx.uniform4fv(location, Float32Array.from(values));
     });
+  uniform3fv = (
+    location: int,
+    _count: int,
+    valuesPtr: ptr<Internal.Array<Internal.Float>>,
+    ctxId: int
+  ) => {
+    let values = this.utils!.importFloats(valuesPtr);
+    this.doOnContext(ctxId, (ctx) =>
+      ctx.uniform3fv(location, Float32Array.from(values))
+    );
+  };
+  uniform2fv = (
+    location: int,
+    _count: int,
+    valuesPtr: ptr<Internal.Array<Internal.Float>>,
+    ctxId: int
+  ) => {
+    let values = this.utils!.importFloats(valuesPtr);
+    this.doOnContext(ctxId, (ctx) =>
+      ctx.uniform2fv(location, Float32Array.from(values))
+    );
+  };
   uniform1fv = (
     location: int,
     _count: int,
@@ -838,6 +877,12 @@ export class Context {
   uniform4fv = (location: int, data: Float32Array) => {
     this.gl.uniform4fv(this.getGlObject(location), data);
   };
+  uniform3fv = (location: int, data: Float32Array) => {
+    this.gl.uniform3fv(this.getGlObject(location), data);
+  };
+  uniform2fv = (location: int, data: Float32Array) => {
+    this.gl.uniform2fv(this.getGlObject(location), data);
+  };
   uniform1fv = (location: int, data: Float32Array) => {
     this.gl.uniform1fv(this.getGlObject(location), data);
   };
@@ -849,14 +894,32 @@ export class Context {
     this.gl.drawArrays(this.gl.TRIANGLES, first, count);
   };
   /////////////////////////// LOCATIONS ///////////////////////////
-  getAttributeLocation = (program: int, index: int) => {
+  getAttributeLocation = (
+    utils: Utils,
+    program: int,
+    name: ptr<Internal.String>
+  ) => {
+    return this.create((gl) =>
+      gl.getAttribLocation(this.getGlObject(program), utils.importString(name))
+    );
+  };
+  getIdxAttributeLocation = (program: int, index: int) => {
     return this.create((gl) =>
       gl.getAttribLocation(this.getGlObject(program), attributes[index]!)
     );
   };
-  getUniformLocation = (program: int, index: int) => {
+  getIdxUniformLocation = (program: int, index: int) => {
     return this.create((gl) =>
       gl.getUniformLocation(this.getGlObject(program), uniforms[index]!)
+    );
+  };
+  getUniformLocation = (
+    utils: Utils,
+    program: int,
+    name: ptr<Internal.String>
+  ) => {
+    return this.create((gl) =>
+      gl.getAttribLocation(this.getGlObject(program), utils.importString(name))
     );
   };
   /////////////////////////// FRAME BUFFERS //////////////////////////////

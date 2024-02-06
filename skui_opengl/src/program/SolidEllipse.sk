@@ -32,11 +32,29 @@ const diskFramentShader: String = source(
     "float draw_circle(vec2 coord, float radius, float p) {",
     "  return smoothstep(radius, radius - p, length(coord));",
     "}",
+    "float ellipse(vec2 center, vec2 radius, vec2 position, float precision) {",
+    "  float x = position.x - center.x;",
+    "  float y = position.y - center.y;",
+    "  float a = radius.x;",
+    "  float b = radius.y;",
+    "  float e = ( ( x * x ) / ( a * a ) ) + ( ( y * y ) / ( b * b ) );",
+    "  float alpha;",
+    "  if(e < i) {",
+    "    alpha = 1.0;",
+    "  }",
+    "  else if(e > 1.0) {",
+    "    alpha = 0.0;",
+    "  }",
+    "  else {",
+    "    alpha = smoothstep(1.0, i, e);",
+    "  }",
+    "  return alpha;",
+    "}",
     "void main() {",
     "  vec2 coord = v_position;",
     "  vec2 offset = vec2(0.5, 0.5);",
-    "  float outter = draw_circle(coord - offset, u_radius, u_precision);",
-    "  float inner = draw_circle(coord - offset, u_radius - u_thickness, u_precision);",
+    "  float outter = ellipse(offset, vec2(u_radius), coord, u_precision);",
+    "  float inner = ellipse(offset, vec2(u_radius - u_thickness), coord, u_precision);",
     "  gl_FragColor = mix(vec4(0.0, 0.0, 0.0, 0.0), u_color, outter - inner);",
     "  gl_FragColor.a *= outter;",
     "}",
@@ -66,12 +84,11 @@ class EllipseShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    colorUniform = program.getUniformLocation(uColor);
-    radiusUniform = program.getUniformLocation(uRadius);
-    precisionUniform = program.getUniformLocation(uPrecision);
-    LambdaFragmentShader(parameters ~> {
+    colorUniform = program.getIdxUniformLocation(uColor);
+    radiusUniform = program.getIdxUniformLocation(uRadius);
+    precisionUniform = program.getIdxUniformLocation(uPrecision);
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
-
       (color, radius, precision) = parameters match {
       | eps @ EllipseParameters _ -> (eps.color, eps.radius, eps.precision)
       | sps @ SolidParameters _ -> (sps.color, 0.5, 0.0)
@@ -121,11 +138,11 @@ class DiskShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    colorUniform = program.getUniformLocation(uColor);
-    thicknessUniform = program.getUniformLocation(uThickness);
-    radiusUniform = program.getUniformLocation(uRadius);
-    precisionUniform = program.getUniformLocation(uPrecision);
-    LambdaFragmentShader(parameters ~> {
+    colorUniform = program.getIdxUniformLocation(uColor);
+    thicknessUniform = program.getIdxUniformLocation(uThickness);
+    radiusUniform = program.getIdxUniformLocation(uRadius);
+    precisionUniform = program.getIdxUniformLocation(uPrecision);
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       diskParameters = DiskParameters::fromParams(parameters);
       rect = diskParameters.rect;

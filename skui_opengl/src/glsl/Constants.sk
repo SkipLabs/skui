@@ -1,0 +1,179 @@
+module GLSL;
+
+const ellipseStruct: Struct = Struct(
+  "CenterRadius2",
+  SortedMap["center" => vec2(), "radius" => vec2()],
+);
+
+const ellipsoideStruct: Struct = Struct(
+  "Ellipsoide",
+  SortedMap["center" => vec3(), "radius" => vec3()],
+);
+
+const cylinderStruct: Struct = ellipseStruct;
+
+const mtsdfStruct: Struct = Struct(
+  "Mtsdf",
+  SortedMap[
+    "texture" => Sampler2D(),
+    "range" => SFloat(),
+    "thickness" => SFloat(),
+  ],
+);
+
+const ligthStruct: Struct = Struct(
+  "Light",
+  SortedMap["color" => vec3(), "point" => SBool(), "value" => vec3()],
+);
+
+const smoothstepFn: Function = Function(
+  Signature(
+    "smoothstep",
+    SFloat(),
+    Array[
+      Param::make("edge0", SFloat()),
+      Param::make("edge1", SFloat()),
+      Param::make("inter", SFloat()),
+    ],
+  ),
+  Internal(),
+);
+
+const vec2Fn: Function = Function(
+  Signature(
+    "vec2",
+    SFloat(),
+    Array[Param::make("v1", SFloat()), Param::make("v2", SFloat())],
+  ),
+  Internal(),
+);
+
+const minFn: Function = Function(
+  Signature(
+    "min",
+    SFloat(),
+    Array[Param::make("v1", SFloat()), Param::make("v2", SFloat())],
+  ),
+  Internal(),
+);
+
+const maxFn: Function = Function(
+  Signature(
+    "max",
+    SFloat(),
+    Array[Param::make("v1", SFloat()), Param::make("v2", SFloat())],
+  ),
+  Internal(),
+);
+
+const vec3Fn: Function = Function(
+  Signature(
+    "vec3",
+    SFloat(),
+    Array[
+      Param::make("v1", SFloat()),
+      Param::make("v2", SFloat()),
+      Param::make("v3", SFloat()),
+    ],
+  ),
+  Internal(),
+);
+
+const mat4Fn: Function = Function(
+  Signature(
+    "mat4",
+    SFloat(),
+    Array::fillBy(16, i ~> Param::make(`v${i}`, SFloat())),
+  ),
+  Internal(),
+);
+
+const vec4Fn: Function = Function(
+  Signature(
+    "vec4",
+    SFloat(),
+    Array[
+      Param::make("v1", SFloat()),
+      Param::make("v2", SFloat()),
+      Param::make("v3", SFloat()),
+      Param::make("v4", SFloat()),
+    ],
+  ),
+  Internal(),
+);
+
+const lengthFn: Function = Function(
+  Signature("length", SFloat(), Array[Param::make("point", vec2())]),
+  Internal(),
+);
+
+const mixFn: Function = Function(
+  Signature(
+    "mix",
+    SFloat(),
+    Array[
+      Param::make("a", SFloat()),
+      Param::make("b", SFloat()),
+      Param::make("t", SFloat()),
+    ],
+  ),
+  Internal(),
+);
+
+const sinFn: Function = Function(
+  Signature("sin", SFloat(), Array[Param::make("v", SFloat())]),
+  Internal(),
+);
+
+const cosFn: Function = Function(
+  Signature("cos", SFloat(), Array[Param::make("v", SFloat())]),
+  Internal(),
+);
+
+const radiansFn: Function = Function(
+  Signature("radians", SFloat(), Array[Param::make("v", SFloat())]),
+  Internal(),
+);
+
+const sqrtFn: Function = Function(
+  Signature("sqrt", GenType(), Array[Param::make("x", GenType())]),
+  Internal(),
+);
+
+const normalizeFn: Function = Function(
+  Signature("normalize", GenType(), Array[Param::make("x", GenType())]),
+  Internal(),
+);
+
+const clampFn: Function = Function(
+  Signature(
+    "clamp",
+    SFloat(),
+    Array[
+      Param::make("v", SFloat()),
+      Param::make("min", SFloat()),
+      Param::make("max", SFloat()),
+    ],
+  ),
+  Internal(),
+);
+
+const textureFn: Function = Function(
+  Signature(
+    "texture",
+    vec4(),
+    Array[Param::make("tex", Sampler2D()), Param::make("pos", vec2())],
+  ),
+  Internal(),
+);
+
+const floatFn: Function = Function(
+  Signature("float", SFloat(), Array[Param::make("v", SBool())]),
+  Internal(),
+);
+
+fun smoothstepCall(edge0: Expr, edge1: Expr, inter: Expr): Call {
+  Call(smoothstepFn, Array[edge0, edge1, inter])
+}
+
+module end;

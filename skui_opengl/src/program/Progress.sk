@@ -165,12 +165,12 @@ class ProgressShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    color1Uniform = program.getUniformLocation(uColor1);
-    color2Uniform = program.getUniformLocation(uColor2);
-    thicknessUniform = program.getUniformLocation(uThickness);
-    progressUniform = program.getUniformLocation(uProgress);
-    smoothLocation = program.getUniformLocation(uSmooth);
-    LambdaFragmentShader(parameters ~> {
+    color1Uniform = program.getIdxUniformLocation(uColor1);
+    color2Uniform = program.getIdxUniformLocation(uColor2);
+    thicknessUniform = program.getIdxUniformLocation(uThickness);
+    progressUniform = program.getIdxUniformLocation(uProgress);
+    smoothLocation = program.getIdxUniformLocation(uSmooth);
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       progressParameters = ProgressParameters::fromParams(parameters);
       rect = progressParameters.rect;

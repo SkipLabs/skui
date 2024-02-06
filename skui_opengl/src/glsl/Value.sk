@@ -1,0 +1,160 @@
+module GLSL;
+
+base class Value {
+  fun toArray(): Array<Float>;
+}
+
+class VStruct(values: SortedMap<String, Value>) extends Value {
+  //
+  static fun createFromItems<I: readonly Sequence<(String, Value)>>(
+    items: I,
+  ): this {
+    static(SortedMap::createFromItems(items))
+  }
+
+  fun toArray(): Array<Float> {
+    Arrays.mergeAll(this.values.values().collect(Array).map(t -> t.toArray()));
+  }
+}
+
+class VTexture(texture: GL.Texture, chanel: Int) extends Value {
+  //
+  fun toArray(): Array<Float> {
+    Array[this.chanel.toFloat()]
+  }
+}
+
+class VTextures(textures: Array<GL.Texture>) extends Value {
+  //
+  static fun createFromItems<I: readonly Sequence<GL.Texture>>(items: I): this {
+    static(Array::createFromItems(items))
+  }
+
+  fun toArray(): Array<Float> {
+    Array::fillBy(this.textures.size(), i -> i.toFloat())
+  }
+}
+
+class VArray(values: Array<Value>) extends Value {
+  //
+  static fun createFromItems<I: readonly Sequence<Value>>(items: I): this {
+    static(Array::createFromItems(items))
+  }
+
+  fun toArray(): Array<Float> {
+    Arrays.mergeAll(this.values.map(t -> t.toArray()));
+  }
+}
+
+class VVec(values: Array<Float>) extends Value {
+  //
+  static fun createFromItems<I: readonly Sequence<Float>>(items: I): this {
+    static(Array::createFromItems(items))
+  }
+
+  fun toArray(): Array<Float> {
+    this.values;
+  }
+
+  static fun v1(v: Float): VVec {
+    VVec(Array[v])
+  }
+
+  static fun v2(v1: Float, v2: Float): VVec {
+    VVec(Array[v1, v2])
+  }
+
+  static fun v3(v1: Float, v2: Float, v3: Float): VVec {
+    VVec(Array[v1, v2, v3])
+  }
+
+  static fun v4(v1: Float, v2: Float, v3: Float, v4: Float): VVec {
+    VVec(Array[v1, v2, v3, v4])
+  }
+
+  fun *(other: VVec): VVec {
+    this.checkSize(other, "mutiply");
+    VVec(this.values.mapWithIndex((idx, v) -> v * other.values[idx]))
+  }
+
+  fun /(other: VVec): VVec {
+    this.checkSize(other, "div");
+    VVec(this.values.mapWithIndex((idx, v) -> v / other.values[idx]))
+  }
+
+  fun +(other: VVec): VVec {
+    this.checkSize(other, "add");
+    VVec(this.values.mapWithIndex((idx, v) -> v + other.values[idx]))
+  }
+
+  fun -(other: VVec): VVec {
+    this.checkSize(other, "substract");
+    VVec(this.values.mapWithIndex((idx, v) -> v - other.values[idx]))
+  }
+
+  fun dot(other: VVec): Float {
+    multiply = this * other;
+    multiply.values.reduce((acc, v) -> acc + v, 0.0)
+  }
+
+  fun norme(): Float {
+    Math.sqrt(this.dot(this))
+  }
+
+  fun normalize(): VVec {
+    norme = this.norme();
+    VVec(this.values.map(v -> v / norme))
+  }
+
+  fun size(): Int {
+    this.values.size()
+  }
+
+  fun x(): Float {
+    this.values[0]
+  }
+
+  fun y(): Float {
+    this.values[1]
+  }
+
+  fun z(): Float {
+    this.values[2]
+  }
+
+  fun w(): Float {
+    this.values[3]
+  }
+
+  fun r(): Float {
+    this.values[0]
+  }
+
+  fun g(): Float {
+    this.values[1]
+  }
+
+  fun b(): Float {
+    this.values[2]
+  }
+
+  fun a(): Float {
+    this.values[3]
+  }
+
+  fun toSize(size: Int): VVec {
+    if (this.size() == size) {
+      this
+    } else {
+      VVec(Array::fillBy(size, i -> this.values.maybeGet(i).default(0.0)))
+    }
+  }
+
+  private fun checkSize(other: VVec, op: String): void {
+    if (other.size() != this.size()) {
+      invariant_violation(`Unable to ${op} two vector of different size`);
+    }
+  }
+}
+
+module end;

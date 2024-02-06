@@ -115,15 +115,30 @@ private native fun validateProgram(program: ProgramRef, ctx: UInt32): void;
 private native fun deleteProgram(program: UInt32, ctx: UInt32): void;
 
 @cpp_extern
-private native fun getUniformLocation(
+private native fun getIdxUniformLocation(
   program: ProgramRef,
   index: UInt32,
   ctx: UInt32,
 ): UniformLocation;
+
+@cpp_extern
+private native fun getUniformLocation(
+  program: ProgramRef,
+  name: String,
+  ctx: UInt32,
+): UniformLocation;
+
+@cpp_extern
+private native fun getIdxAttributeLocation(
+  program: ProgramRef,
+  index: UInt32,
+  ctx: UInt32,
+): AttributeLocation;
+
 @cpp_extern
 private native fun getAttributeLocation(
   program: ProgramRef,
-  index: UInt32,
+  name: String,
   ctx: UInt32,
 ): AttributeLocation;
 
@@ -242,7 +257,7 @@ native fun uniformMatrix4fv(
 ): void;
 
 @cpp_extern
-native fun uniform1i(location: UniformLocation, v0: UInt32, ctx: UInt32): void;
+native fun uniform1i(location: UniformLocation, v0: Int32, ctx: UInt32): void;
 @cpp_extern
 native fun uniform1f(location: UniformLocation, v0: Float, ctx: UInt32): void;
 @cpp_extern
@@ -263,12 +278,29 @@ native fun uniform4f(
 ): void;
 
 @cpp_extern
+native fun uniform1iv(
+  location: UniformLocation,
+  count: UInt32,
+  values: Array<Int32>,
+  ctx: UInt32,
+): void;
+
+@cpp_extern
 native fun uniform1fv(
   location: UniformLocation,
   count: UInt32,
   values: Array<Float>,
   ctx: UInt32,
 ): void;
+
+@cpp_extern
+native fun uniform2fv(
+  location: UniformLocation,
+  count: UInt32,
+  values: Array<Float>,
+  ctx: UInt32,
+): void;
+
 @cpp_extern
 native fun uniform3fv(
   location: UniformLocation,
@@ -276,6 +308,7 @@ native fun uniform3fv(
   values: Array<Float>,
   ctx: UInt32,
 ): void;
+
 @cpp_extern
 native fun uniform4fv(
   location: UniformLocation,

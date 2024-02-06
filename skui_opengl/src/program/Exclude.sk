@@ -18,19 +18,6 @@ const excludeFramentShader: String = source(
   ],
 );
 
-@debug
-fun activateTexture(
-  gl: GL.Ctx,
-  chanel: Int,
-  texture: GL.Texture,
-  location: GL.UniformLocation,
-): void {
-  index = UInt32::truncate(chanel);
-  gl.activeTexture(index);
-  texture.bind();
-  gl.uniform1i(location, index);
-}
-
 class ExcludeParameters(
   texture1: GL.Texture,
   texture2: GL.Texture,
@@ -52,9 +39,9 @@ class ExcludeShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    texture1Location = program.getUniformLocation(uTexture1);
-    texture2Location = program.getUniformLocation(uTexture2);
-    LambdaFragmentShader(parameters ~> {
+    texture1Location = program.getIdxUniformLocation(uTexture1);
+    texture2Location = program.getIdxUniformLocation(uTexture2);
+    LambdaFragmentShader((parameters, _) ~> {
       gl = program.context();
       eps = ExcludeParameters::fromParams(parameters);
       activateTexture(gl, 0, eps.texture1, texture1Location);

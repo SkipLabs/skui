@@ -6,7 +6,8 @@
 #include <thread>
 
 namespace skui {
-void AnimationFrame::start(std::function<void()> function, int framePerSecond) {
+void AnimationFrame::start(std::function<void(uint64_t)> function,
+                           int framePerSecond) {
   this->cancel = false;
   this->framePerSecond = framePerSecond;
   int64_t interval = (int64_t)floor(1000.0 / framePerSecond);
@@ -19,7 +20,7 @@ void AnimationFrame::start(std::function<void()> function, int framePerSecond) {
         return;
       this->total++;
       if (!this->animationRequested) {
-        function();
+        function(this->total);
         this->animationRequested = true;
       } else {
         if (this->dropped == 0) {

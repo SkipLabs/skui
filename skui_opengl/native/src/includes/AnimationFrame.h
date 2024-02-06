@@ -18,7 +18,7 @@ class AnimationFrame {
   uint64_t maxDroppedAt = 0;
 
 public:
-  void start(std::function<void()> function, int framePerSecond);
+  void start(std::function<void(uint64_t)> function, int framePerSecond);
   void stop();
   void framePerformed();
   void print(std::ostream &buffer);
