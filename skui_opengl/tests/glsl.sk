@@ -1,0 +1,1119 @@
+module alias T = SKTest;
+
+module GLSLTest;
+
+fun fillShaderCommon(lines: mutable Vector<String>): void {
+  Array[
+    "precision highp float;",
+    "",
+    "uniform vec4 u_bounds;",
+    "uniform int u_frames;",
+  ].each(lines.push)
+}
+
+fun fillShaderVarying(lines: mutable Vector<String>): void {
+  Array["varying vec2 v_position;", ""].each(lines.push)
+}
+
+fun fillInRectangle(lines: mutable Vector<String>): void {
+  Array[
+    "float rectangleFn(vec2 position, float smoothing, vec4 bounds) {",
+    "  float centerX = bounds.x + bounds.z / 2.0;",
+    "  float centerY = bounds.y + bounds.w / 2.0;",
+    "  float lx = 2.0 * abs(position.x - centerX) / bounds.z;",
+    "  float ly = 2.0 * abs(position.y - centerY) / bounds.w;",
+    "  float len = max(lx, ly);",
+    "  if (len > 1.0) {",
+    "    return 0.0;",
+    "  }",
+    "  if (len <= 1.0 - smoothing) {",
+    "    return 1.0;",
+    "  }",
+    "  return smoothingstep(1.0, 1.0 - smoothing, len);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillInEllipse(lines: mutable Vector<String>): void {
+  Array[
+    "float ellipse(vec2 position, float smoothing, CenterRadius2 ellipse) {",
+    "  float x = position.x - ellipse.center.x;",
+    "  float y = position.y - ellipse.center.y;",
+    "  float a = ellipse.radius.x;",
+    "  float b = ellipse.radius.y;",
+    "  float e = ((x * x) / (a * a)) + ((y * y) / (b * b));",
+    "  if((a == 0.0) || (b == 0.0) || (e > 1.0)) {",
+    "    return 0.0;",
+    "  }",
+    "  if(e < 1.0 - smoothing) {",
+    "    return 1.0;",
+    "  }",
+    "  return smoothstep(1.0, 1.0 - smoothing, e);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillInRounded(lines: mutable Vector<String>): void {
+  Array[
+    "float rounded(vec4 bounds, vec2 position, vec2 ulr, vec2 urr, vec2 llr, vec2 lrr, float smoothing) {",
+    "  float recAlpha = rectangleFn(position, smoothing, bounds);",
+    "  if(!(recAlpha > 0.0)) {",
+    "    return 0.0;",
+    "  }",
+    "  if((ulr.x == 0.0) || (ulr.y == 0.0)) {",
+    "    ulr = vec2(0.0);",
+    "  }",
+    "  if((urr.x == 0.0) || (urr.y == 0.0)) {",
+    "    urr = vec2(0.0);",
+    "  }",
+    "  if((llr.x == 0.0) || (llr.y == 0.0)) {",
+    "    llr = vec2(0.0);",
+    "  }",
+    "  if((lrr.x == 0.0) || (lrr.y == 0.0)) {",
+    "    lrr = vec2(0.0);",
+    "  }",
+    "  vec2 uLC = bounds.xy + ulr;",
+    "  float inUl = ellipse(position, smoothing, CenterRadius2(uLC, ulr));",
+    "  vec2 upperRight = vec2(bounds.x + bounds.z, bounds.y);",
+    "  vec2 uRC = vec2(upperRight.x - urr.x, upperRight.y + urr.y);",
+    "  float inUr = ellipse(position, smoothing, CenterRadius2(uRC, urr));",
+    "  vec2 lowerLeft = vec2(bounds.x, bounds.y + bounds.w);",
+    "  vec2 lLC = vec2(lowerLeft.x + llr.x, lowerLeft.y - llr.y);",
+    "  float inLl = ellipse(position, smoothing, CenterRadius2(lLC, llr));",
+    "  vec2 lowerRight = bounds.xy + bounds.zw;",
+    "  vec2 lRC = lowerRight - lrr;",
+    "  float inLr = ellipse(position, smoothing, CenterRadius2(lRC, lrr));",
+    "  float x = position.x;",
+    "  float y = position.y;",
+    "  float rect1 = float((y >= uLC.y) && (y < lLC.y) && (x < min(uRC.x, lRC.x)));",
+    "  float rect2 = float((y >= uRC.y) && (y < lRC.y) && (x >= max(uLC.x, lLC.x)));",
+    "  float rect3 = float((x >= uLC.x) && (x < uRC.x) && (y < min(lLC.y, lRC.y)));",
+    "  float rect4 = float((x >= lLC.x) && (x < lRC.x) && (y >= max(uLC.y, uRC.y)));",
+    "  return min(inUl + inUr + inLl + inLr + rect1 + rect2 + rect3 + rect4, 1.0) * recAlpha;",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillInRoundedTop(lines: mutable Vector<String>): void {
+  Array[
+    "float roundedTop(vec4 o_bounds, vec2 position, vec2 o_ulr, vec2 o_urr, float smoothing, vec4 i_bounds, vec2 i_ulr, vec2 i_urr) {",
+    "  float res0 = rounded(o_bounds, position, o_ulr, o_urr, vec2(0.0), vec2(0.0), smoothing);",
+    "  float res1 = rounded(i_bounds, position, i_ulr, i_urr, vec2(0.0), vec2(0.0), smoothing);",
+    "  return res0 - res1;",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillInSimpleRoundedTop(lines: mutable Vector<String>): void {
+  Array[
+    "float inSimpleRoundedTop(vec4 bounds, vec2 position, vec2 radius, float thickness, float smoothing) {",
+    "  vec4 i_bounds = vec4(vec2(bounds.x, bounds.y + thickness), vec2(bounds.z, bounds.w - thickness));",
+    "  vec2 i_radius = vec2(radius.x, min(radius.y, i_bounds.w));",
+    "  return roundedTop(bounds, position, radius, radius, smoothing, i_bounds, i_radius, i_radius);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillWithAlpha(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 withAlpha(vec4 color, float alpha) {",
+    "  if(alpha > 0.0) {",
+    "    color.a *= alpha;",
+    "    return color;",
+    "  } else {",
+    "    return vec4(0.0);",
+    "  }",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillInRoundedBottom(lines: mutable Vector<String>): void {
+  Array[
+    "float roundedBottom(vec4 o_bounds, vec2 position, vec2 o_llr, vec2 o_lrr, float smoothing, vec4 i_bounds, vec2 i_llr, vec2 i_lrr) {",
+    "  float res0 = rounded(o_bounds, position, vec2(0.0), vec2(0.0), o_llr, o_lrr, smoothing);",
+    "  float res1 = rounded(i_bounds, position, vec2(0.0), vec2(0.0), i_llr, i_lrr, smoothing);",
+    "  return res0 - res1;",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillInSimpleRoundedBottom(lines: mutable Vector<String>): void {
+  Array[
+    "float inSimpleRoundedBottom(vec4 bounds, vec2 position, vec2 radius, float thickness, float smoothing) {",
+    "  vec4 i_bounds = vec4(bounds.xy, vec2(bounds.z, bounds.w - thickness));",
+    "  vec2 i_radius = vec2(radius.x, min(radius.y, i_bounds.w));",
+    "  return roundedBottom(bounds, position, radius, radius, smoothing, i_bounds, i_radius, i_radius);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillInSimpleRoundedCenter(lines: mutable Vector<String>): void {
+  Array[
+    "float inSimpleRoundedCenter(vec4 bounds, vec2 position, vec2 radius, float thickness, float smoothing) {",
+    "  vec4 i_bounds = vec4(vec2(bounds.x, bounds.y + thickness), vec2(bounds.z, bounds.w - (2.0 * thickness)));",
+    "  vec2 i_radius = vec2(radius.x, min(radius.y, i_bounds.w / 2.0));",
+    "  return rounded(i_bounds, position, i_radius, i_radius, i_radius, i_radius, smoothing);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillGetGradientColor2(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 getGradientColor2(float distance, float len, vec4 colors[2], float offsets[2]) {",
+    "  float t = distance / len;",
+    "  for(int i=0; i<2; ++i) {",
+    "    if (offsets[i] == t) {",
+    "      return colors[i];",
+    "    } else if (offsets[i] > t) {",
+    "      float bOffset = offsets[i - 1];",
+    "      vec4 bColor = colors[i - 1];",
+    "      float tlen = offsets[i] - bOffset;",
+    "      float ct = (t - bOffset) / tlen;",
+    "      return mix(bColor, colors[i], ct);",
+    "    }",
+    "  }",
+    "  return colors[1];",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillLinearGradientColor2(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 linearGradient2(vec2 position, vec2 start, vec2 end, vec4 colors[2], float offsets[2], float alpha) {",
+    "  float len = length(end - start);",
+    "  float ac = length(position - start);",
+    "  float bc = length(position - end);",
+    "  float distance = -((bc * bc) - (ac * ac) - (len * len)) / (2.0 * len);",
+    "  vec4 color;",
+    "  if (distance <= len * offsets[0]) {",
+    "    color = colors[0];",
+    "  } else if (distance >= len * offsets[1]) {",
+    "    color = colors[1];",
+    "  } else {",
+    "    color = getGradientColor2(distance, len, colors, offsets);",
+    "  }",
+    "  return withAlpha(color, alpha);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillRadialGradientColor2(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 radialGradient2(vec2 position, vec2 center, float radius, vec4 colors[2], float offsets[2], float alpha) {",
+    "  float distance = length(position - center);",
+    "  vec4 color;",
+    "  if (distance <= radius * offsets[0]) {",
+    "    color = colors[0];",
+    "  } else if (distance >= radius * offsets[1]) {",
+    "    color = colors[1];",
+    "  } else {",
+    "    color = getGradientColor2(distance, radius, colors, offsets);",
+    "  }",
+    "  return withAlpha(color, alpha);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillPlaneNornal(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 planeNornal(vec3 points[3]) {",
+    "  vec3 p1p2 = points[1] - points[0];",
+    "  vec3 p1p3 = points[2] - points[0];",
+    "  float atob = p1p3.z * p1p2.y - p1p3.y * p1p2.z;",
+    "  float atoc = p1p3.y * p1p2.z - p1p3.z * p1p2.y;",
+    "  if (atob != 0.0 && atoc != 0.0) {",
+    "    float b = (p1p3.x * p1p2.z - p1p3.z * p1p2.x) / atob;",
+    "    float c = (p1p3.x * p1p2.y - p1p3.y * p1p2.x) / atoc;",
+    "    vec3  n = vec3(1.0, b, c);",
+    "    float d = dot(n, points[0]);",
+    "    return vec4(n, d);",
+    "  }",
+    "  float ctoa = p1p3.y * p1p2.x - p1p3.x * p1p2.y;",
+    "  float ctob = p1p3.x * p1p2.y - p1p3.y * p1p2.x;",
+    "  if (ctoa != 0.0 && ctob != 0.0) {",
+    "    float a = (p1p3.z * p1p2.y - p1p3.y * p1p2.z) / ctoa;",
+    "    float b = (p1p3.z * p1p2.x - p1p3.x * p1p2.z) / ctob;",
+    "    vec3  n = vec3(a, b, 1.0);",
+    "    float d = dot(n, points[0]);",
+    "    return vec4(n, d);",
+    "  }",
+    "  float btoa = p1p3.y * p1p2.z - p1p3.z * p1p2.y;",
+    "  float btoc = p1p3.x * p1p2.z - p1p3.z * p1p2.x;",
+    "  float a = (p1p3.y * p1p2.z - p1p3.z * p1p2.y) / btoa;",
+    "  float c = (p1p3.y * p1p2.x - p1p3.x * p1p2.y) / btoc;",
+    "  vec3  n = vec3(a, 1.0, c);",
+    "  float d = dot(n, points[0]);",
+    "  return vec4(n, d);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillPlaneDirectionalLight(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 planeDirectionalLight(vec2 position, vec4 color, vec3 lightColor, vec3 lightPosition, vec3 points[3]) {",
+    "  vec4 surface = planeNornal(points);",
+    "  float z = (surface.w - (surface.x * position.x + surface.y * position.y)) / surface.z;",
+    "  vec3 p0 = vec3(position, z);",
+    "  vec3 light = lightPosition - p0;",
+    "  return directionalLight(color, vec3(surface), lightColor, light);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillDirectionalLight(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 directionalLight(vec4 color, vec3 surfaceDirection, vec3 lightColor, vec3 lightDirection) {",
+    "  vec3 light = normalize(lightDirection);",
+    "  float nsign = sign(surfaceDirection.z);",
+    "  vec3 normal = normalize(surfaceDirection);",
+    "  float cosTeta = max(nsign * dot(normal, light), 0.0);",
+    "  vec3 ligthedColor = lightColor * vec3(color) * cosTeta;",
+    "  return withAlpha(vec4(ligthedColor, 1.0), color.a);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillEllipsoideDirectionalLight(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 ellipsoideDirectionalLight(vec2 position, vec4 color, vec3 lightColor, vec3 lightPosition, vec2 ellipsoideCenter, vec3 ellipsoideRadius) {",
+    "  vec2 pos = position - ellipsoideCenter;",
+    "  float x2 = pos.x * pos.x;",
+    "  float y2 = pos.y * pos.y;",
+    "  float a2 = ellipsoideRadius.x * ellipsoideRadius.x;",
+    "  float b2 = ellipsoideRadius.y * ellipsoideRadius.y;",
+    "  float z = ellipsoideRadius.z * sqrt(1.0 - (x2 / a2) - (y2 / b2));",
+    "  vec3 surface = vec3(pos, z);",
+    "  vec3 light = lightPosition - vec3(position, z);",
+    "  return directionalLight(color, surface, lightColor, light);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillCylinderDirectionalLight(lines: mutable Vector<String>): void {
+  Array[
+    "vec4 cylinderDirectionalLight(vec2 position, vec4 color, vec3 lightColor, vec3 lightPosition, float cylinderPos, vec2 cylinderRadius, bool cylinderAxis) {",
+    "  vec2 pos = position - vec2(cylinderPos);",
+    "  vec3 surface = vec3(0.0);",
+    "  vec3 normal = vec3(0.0);",
+    "  if (cylinderAxis) {",
+    "    vec3 ref = vec3(cylinderPos, position.y, 0.0);",
+    "    cylinderPosNormal(surface, normal, position, pos.x, ref, cylinderRadius);",
+    "  } else {",
+    "    vec3 ref = vec3(position.x, cylinderPos, 0.0);",
+    "    cylinderPosNormal(surface, normal, position, pos.y, ref, cylinderRadius);",
+    "  }",
+    "  vec3 light = lightPosition - surface;",
+    "  return directionalLight(color, normal, lightColor, light);",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillCylinderPosNormal(lines: mutable Vector<String>): void {
+  Array[
+    "void cylinderPosNormal(inout vec3 surface, inout vec3 normal, vec2 position, float x, vec3 ref, vec2 radius) {",
+    "  if (abs(x) <= radius.x) {",
+    "     float r2 = radius.x * radius.x;",
+    "     float x2 = x * x;",
+    "     float z = radius.y * sqrt(1.0 - (x2 / r2));",
+    "     surface = vec3(position, z);",
+    "     normal = surface - ref;",
+    "  } else {",
+    "     surface = vec3(position, 0.0);",
+    "     normal = surface - ref;",
+    "  }",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillMakeHCylinder(lines: mutable Vector<String>): void {
+  Array[
+    "void relativeHCylinder(inout float z, inout vec3 normal, vec2 position, vec4 bounds, CenterRadius2 relative) {",
+    "  float clip = rectangleFn(position, 0.0, bounds);",
+    "  if(clip > 0.0) {",
+    "    float shift = bounds.w * relative.center.x;",
+    "    float yPosition = bounds.y + shift;",
+    "    vec2 radius = vec2(bounds.w * relative.radius.x, relative.radius.y);",
+    "    hCylinder(z, normal, position, CenterRadius2(vec2(yPosition, relative.center.y), radius));",
+    "  }",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillMakeVCylinder(lines: mutable Vector<String>): void {
+  Array[
+    "void relativeVCylinder(inout float z, inout vec3 normal, vec2 position, vec4 bounds, CenterRadius2 relative) {",
+    "  float clip = rectangleFn(position, 0.0, bounds);",
+    "  if(clip > 0.0) {",
+    "    float shift = bounds.z * relative.center.x;",
+    "    float xPosition = bounds.x + shift;",
+    "    vec2 radius = vec2(bounds.z * relative.radius.x, relative.radius.y);",
+    "    vCylinder(z, normal, position, CenterRadius2(vec2(xPosition, relative.center.y), radius));",
+    "  }",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillMakeFace(lines: mutable Vector<String>): void {
+  Array[
+    "void relativeFace(inout float z, inout vec3 normal, vec2 position, vec4 bounds, float depth) {",
+    "  float clip = rectangleFn(position, 0.0, bounds);",
+    "  if(clip > 0.0) {",
+    "    z = depth;",
+    "    normal = vec3(0.0, 0.0, 1.0);",
+    "  }",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillMakeEllipsoide(lines: mutable Vector<String>): void {
+  Array[
+    "void relativeEllipsoide(inout float z, inout vec3 normal, vec2 position, vec4 bounds, Ellipsoide relative) {",
+    "  vec2 shift = relative.center.xy * bounds.zw;",
+    "  vec2 center = bounds.xy + shift;",
+    "  vec2 radius = relative.radius.xy * bounds.zw;",
+    "  float clip = ellipse(position, 0.0, CenterRadius2(center, radius));",
+    "  if(clip > 0.0) {",
+    "    ellipsoideFn(z, normal, position, Ellipsoide(vec3(center, relative.center.z), vec3(radius, relative.radius.z)));",
+    "  }",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun fillButton1(lines: mutable Vector<String>): void {
+  Array[
+    "void button1(inout float z, inout vec3 normal, vec2 position, vec4 bounds, vec3 radius) {",
+    "  vec2 xyradius = min(radius.xy, bounds.zw * vec2(0.5));",
+    "  float row02 = xyradius.y;",
+    "  float row1 = bounds.w - 2.0 * row02;",
+    "  float col02 = xyradius.x;",
+    "  float col1 = bounds.z - 2.0 * col02;",
+    "  vec2 size_02_02 = vec2(col02, row02);",
+    "  vec4 bounds_0_0 = vec4(bounds.xy, size_02_02);",
+    "  if(rectangleFn(position, 0.0, bounds_0_0) > 0.0) {",
+    "    relativeEllipsoide(z, normal, position, bounds_0_0, Ellipsoide(vec3(1.0, 1.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+    "    return;",
+    "  }",
+    "  vec2 size_0_1 = vec2(col1, row02);",
+    "  vec4 bounds_0_1 = vec4(bounds.xy + vec2(col02, 0.0), size_0_1);",
+    "  if(rectangleFn(position, 0.0, bounds_0_1) > 0.0) {",
+    "    relativeHCylinder(z, normal, position, bounds_0_1, CenterRadius2(vec2(1.0, 0.0), vec2(1.0, radius.z)));",
+    "    return;",
+    "  }",
+    "  vec4 bounds_0_2 = vec4(bounds.xy + vec2(col02 + col1, 0.0), size_02_02);",
+    "  if(rectangleFn(position, 0.0, bounds_0_2) > 0.0) {",
+    "    relativeEllipsoide(z, normal, position, bounds_0_2, Ellipsoide(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+    "    return;",
+    "  }",
+    "  vec2 size_1_0 = vec2(col02, row1);",
+    "  vec4 bounds_1_0 = vec4(bounds.xy + vec2(0.0, row02), size_1_0);",
+    "  if(rectangleFn(position, 0.0, bounds_1_0) > 0.0) {",
+    "    relativeVCylinder(z, normal, position, bounds_1_0, CenterRadius2(vec2(1.0, 0.0), vec2(1.0, radius.z)));",
+    "    return;",
+    "  }",
+    "  vec2 size_1_1 = vec2(col1, row1);",
+    "  vec4 bounds_1_1 = vec4(bounds.xy + size_02_02, size_1_1);",
+    "  if(rectangleFn(position, 0.0, bounds_1_1) > 0.0) {",
+    "    relativeFace(z, normal, position, bounds_1_1, radius.z);",
+    "    return;",
+    "  }",
+    "  vec2 size_1_2 = vec2(col02, row1);",
+    "  vec4 bounds_1_2 = vec4(bounds.xy + vec2(col02 + col1, row02), size_1_2);",
+    "  if(rectangleFn(position, 0.0, bounds_1_2) > 0.0) {",
+    "    relativeVCylinder(z, normal, position, bounds_1_2, CenterRadius2(vec2(0.0, 0.0), vec2(1.0, radius.z)));",
+    "    return;",
+    "  }",
+    "  vec4 bounds_2_0 = vec4(bounds.xy + vec2(0.0, row02 + row1), size_02_02);",
+    "  if(rectangleFn(position, 0.0, bounds_2_0) > 0.0) {",
+    "    relativeEllipsoide(z, normal, position, bounds_2_0, Ellipsoide(vec3(1.0, 0.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+    "    return;",
+    "  }",
+    "  vec2 size_2_1 = vec2(col1, row02);",
+    "  vec4 bounds_2_1 = vec4(bounds.xy + vec2(col02, row02 + row1), size_2_1);",
+    "  if(rectangleFn(position, 0.0, bounds_2_1) > 0.0) {",
+    "    relativeHCylinder(z, normal, position, bounds_2_1, CenterRadius2(vec2(0.0, 0.0), vec2(1.0, radius.z)));",
+    "    return;",
+    "  }",
+    "  vec4 bounds_2_2 = vec4(bounds.xy + vec2(col02 + col1, row02 + row1), size_02_02);",
+    "  relativeEllipsoide(z, normal, position, bounds_2_2, Ellipsoide(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+    "}",
+    "",
+  ].each(lines.push)
+}
+
+fun toArray(function: GLSL.Function): Array<String> {
+  buffer = mutable Vector[];
+  function.write(buffer);
+  buffer.toArray()
+}
+
+fun mainFunction(
+  optPosition: ?GLSL.Varying = None(),
+  optRadius: ?GLSL.Uniform = None(),
+  optThickness: ?GLSL.Uniform = None(),
+  optPrecision: ?GLSL.Uniform = None(),
+  optColor: ?GLSL.Uniform = None(),
+): GLSL.Function {
+  drawCircle = drawCircleFunction();
+  position = optPosition.default(GLSL.Varying("position", false, GLSL.vec2()));
+  radius = optRadius.default(GLSL.Uniform("radius", GLSL.SFloat()));
+  thickness = optThickness.default(GLSL.Uniform("thickness", GLSL.SFloat()));
+  precision = optPrecision.default(GLSL.Uniform("precision", GLSL.SFloat()));
+  color = optColor.default(GLSL.Uniform("color", GLSL.vec4()));
+  coord = GLSL.Declaration("coord", Some(GLSL.Ref(position)), GLSL.vec2());
+  offset = GLSL.Declaration(
+    "offset",
+    Some(GLSL.Call(GLSL.vec2Fn, Array[GLSL.Const("0.5"), GLSL.Const("0.5")])),
+    GLSL.vec2(),
+  );
+  outter = GLSL.Declaration(
+    "outter",
+    Some(
+      GLSL.Call(
+        drawCircle,
+        Array[
+          GLSL.Op("-", Array[coord.ref(), offset.ref()]),
+          GLSL.Ref(radius),
+          GLSL.Ref(precision),
+        ],
+      ),
+    ),
+    GLSL.SFloat(),
+  );
+  inner = GLSL.Declaration(
+    "inner",
+    Some(
+      GLSL.Call(
+        drawCircle,
+        Array[
+          GLSL.Op("-", Array[coord.ref(), offset.ref()]),
+          GLSL.Op("-", Array[GLSL.Ref(radius), GLSL.Ref(thickness)]),
+          GLSL.Ref(precision),
+        ],
+      ),
+    ),
+    GLSL.SFloat(),
+  );
+  GLSL.Function(
+    GLSL.Signature("main", GLSL.TVoid(), Array[]),
+    GLSL.Equations(
+      Array[
+        coord,
+        offset,
+        outter,
+        inner,
+        GLSL.Declaration(
+          "gl_FragColor",
+          Some(
+            GLSL.Call(
+              GLSL.mixFn,
+              Array[
+                GLSL.Call(
+                  GLSL.vec4Fn,
+                  Array[
+                    GLSL.Const("0.0"),
+                    GLSL.Const("0.0"),
+                    GLSL.Const("0.0"),
+                    GLSL.Const("0.0"),
+                  ],
+                ),
+                GLSL.Ref(color),
+                GLSL.Op("-", Array[outter.ref(), inner.ref()]),
+              ],
+            ),
+          ),
+          GLSL.TVoid(),
+        ),
+        GLSL.Assign("gl_FragColor.a", "*", outter.ref()),
+      ],
+    ),
+  )
+}
+
+fun drawCircleFunction(): GLSL.Function {
+  p1 = GLSL.Param::make("coord", GLSL.vec2());
+  p2 = GLSL.Param::make("radius", GLSL.SFloat());
+  p3 = GLSL.Param::make("p", GLSL.SFloat());
+  GLSL.Function(
+    GLSL.Signature("draw_circle", GLSL.SFloat(), Array[p1, p2, p3]),
+    GLSL.Equations(
+      Array[
+        GLSL.Return(
+          GLSL.Call(
+            GLSL.smoothstepFn,
+            Array[
+              GLSL.Ref(p2),
+              GLSL.Op("-", Array[GLSL.Ref(p2), GLSL.Ref(p3)]),
+              GLSL.Call(GLSL.lengthFn, Array[GLSL.Ref(p1)]),
+            ],
+          ),
+        ),
+      ],
+    ),
+  )
+}
+
+fun exMainFunction(): Array<String> {
+  Array[
+    "void main() {",
+    "  vec2 coord = v_position;",
+    "  vec2 offset = vec2(0.5, 0.5);",
+    "  float outter = draw_circle(coord - offset, u_radius, u_precision);",
+    "  float inner = draw_circle(coord - offset, u_radius - u_thickness, u_precision);",
+    "  gl_FragColor = mix(vec4(0.0, 0.0, 0.0, 0.0), u_color, outter - inner);",
+    "  gl_FragColor.a *= outter;",
+    "}",
+  ]
+}
+
+fun exDrawCircleFunction(): Array<String> {
+  Array[
+    "float draw_circle(vec2 coord, float radius, float p) {",
+    "  return smoothstep(radius, radius - p, length(coord));",
+    "}",
+  ]
+}
+
+@test
+fun function1(): void {
+  function = mainFunction();
+  expected = exMainFunction();
+  got = toArray(function);
+  print_debug(got.join("\n"));
+  T.expectEq(got, expected)
+}
+
+@test
+fun function2(): void {
+  function = drawCircleFunction();
+  expected = exDrawCircleFunction();
+  got = toArray(function);
+  print_debug(got.join("\n"));
+  T.expectEq(got, expected)
+}
+
+@test
+fun ellipse(): void {
+  ellipse = GLSL.ellipseFn();
+  got = toArray(ellipse);
+  debug(got);
+  lines = mutable Vector[];
+  fillInEllipse(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun pxRange(): void {
+  pxRange = GLSL.pxRangeFn();
+  got = toArray(pxRange);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "float pxRange(sampler2D tex, vec2 position, float range) {",
+      "  ivec2 size = textureSize(tex, 0);",
+      "  vec2 unitRange = vec2(range) / vec2(float(size.x), float(size.y));",
+      "  vec2 screenTexSize = vec2(1.0) / fwidth(position);",
+      "  return max(0.5 * dot(unitRange, screenTexSize), 1.0);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun median(): void {
+  median = GLSL.medianFn();
+  got = toArray(median);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "float median(float v1, float v2, float v3) {",
+      "  return max(min(v1, v2), min(max(v1, v2), v3));",
+      "}",
+    ],
+  )
+}
+
+@test
+fun mtsdfFn(): void {
+  mtsdf = GLSL.mtsdfFn();
+  got = toArray(mtsdf);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "float mtsdf(vec2 position, Mtsdf mtsdf) {",
+      "  vec4 info = texture(mtsdf.texture, position);",
+      "  float msd = info.rgb + clamp(mtsdfthickness, -0.5, 0.5);",
+      "  float sd = clamp(median(msd.r, msd.g, msd.b), 0.0, 255.0);",
+      "  float distance = pxRange(mtsdf.tex, position, mtsdf.range) * (sd - 0.5);",
+      "  return clamp(distance - 0.5, 0.0, 1.0);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun errorApprox4Fn(): void {
+  errorApprox = GLSL.errorApproxFn(4);
+  got = toArray(errorApprox);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "vec4 errorApprox4(vec4 x) {",
+      "  vec4 s = sign(x), a = abs(x);",
+      "  x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;",
+      "  x *= x;",
+      "  return s - s / (x * x);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun boxShadow(): void {
+  boxShadow = GLSL.boxShadowFn();
+  got = toArray(boxShadow);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "float boxShadow(vec2 upper, vec2 lower, vec2 position, float sigma) {",
+      "  vec4 query = vec4(position - lower, position - upper);",
+      "  vec4 integral = 0.5 + (0.5 * errorApprox4(query * (sqrt(0.5) / sigma)));",
+      "  return (integral.z - integral.x) * (integral.w - integral.y);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun roundedFn(): void {
+  rounded = GLSL.roundedFn();
+  got = toArray(rounded);
+  debug(got);
+  lines = mutable Vector[];
+  fillInRounded(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun withAlpha(): void {
+  withAlpha = GLSL.withAlphaFn();
+  got = toArray(withAlpha);
+  debug(got);
+  lines = mutable Vector[];
+  fillWithAlpha(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun grayScale(): void {
+  grayScale = GLSL.grayScaleFn();
+  got = toArray(grayScale);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "vec4 grayScale(vec4 color) {",
+      "  float gray = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;",
+      "  return vec4(gray, gray, gray, color.a);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun sepia(): void {
+  sepia = GLSL.sepiaFn();
+  got = toArray(sepia);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "vec4 sepia(vec4 color) {",
+      "  float r = 0.393 * color.r + 0.769 * color.g + 0.189 * color.b;",
+      "  float g = 0.349 * color.r + 0.686 * color.g + 0.168 * color.b;",
+      "  float b = 0.272 * color.r + 0.534 * color.g + 0.131 * color.b;",
+      "  return vec4(r, g, b, color.a);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun roundedTop(): void {
+  roundedTop = GLSL.roundedTopFn();
+  got = toArray(roundedTop);
+  debug(got);
+  lines = mutable Vector[];
+  fillInRoundedTop(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun roundedBottom(): void {
+  roundedBottom = GLSL.roundedBottomFn();
+  got = toArray(roundedBottom);
+  debug(got);
+  lines = mutable Vector[];
+  fillInRoundedBottom(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun simpleRoundedTop(): void {
+  simpleRoundedTop = GLSL.simpleRoundedTopFn();
+  got = toArray(simpleRoundedTop);
+  debug(got);
+  lines = mutable Vector[];
+  fillInSimpleRoundedTop(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun simpleRoundedBottom(): void {
+  simpleRoundedBottom = GLSL.simpleRoundedBottomFn();
+  got = toArray(simpleRoundedBottom);
+  debug(got);
+  lines = mutable Vector[];
+  fillInSimpleRoundedBottom(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun simpleRoundedCenter(): void {
+  simpleRoundedCenter = GLSL.simpleRoundedCenterFn();
+  got = toArray(simpleRoundedCenter);
+  debug(got);
+  lines = mutable Vector[];
+  fillInSimpleRoundedCenter(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun planeNornalFn(): void {
+  planeNornal = GLSL.planeNornalFn();
+  got = toArray(planeNornal);
+  debug(got);
+  lines = mutable Vector[];
+  fillPlaneNornal(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun planeDirectionalLight(): void {
+  planeDirectionalLight = GLSL.planeDirectionalLightFn();
+  got = toArray(planeDirectionalLight);
+  debug(got);
+  lines = mutable Vector[];
+  fillPlaneDirectionalLight(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun testPlaneNornal(): void {
+  p1 = GLSL.VVec(Array[0.0, 0.0, 0.0]);
+  p2 = GLSL.VVec(Array[1.0, 0.0, 0.0]);
+  p3 = GLSL.VVec(Array[1.0, 1.0, 1.0]);
+  res = GLSL.planeNornal(p1, p2, p3);
+  nornal = res.toSize(3);
+  got1 = Array[p1.dot(nornal), p2.dot(nornal), p3.dot(nornal)];
+  debug(got1);
+  T.expectEq(got1, Array[res.w(), res.w(), res.w()]);
+  z1 = -(nornal.x() * 0.5 + nornal.y() * 0.5) / nornal.z();
+  z2 = -(nornal.x() * 0.0 + nornal.y() * 0.5) / nornal.z();
+  debug((z1, z2));
+  T.expectEq((z1, z2), (0.5, 0.5));
+  sign = Math.sign(nornal.z());
+  normalized = nornal.normalize();
+  p0 = GLSL.VVec(Array[0.5, 0.5, z1]);
+  light0 = (GLSL.VVec(Array[0.7, 0.5, 5.0]) - p0).normalize();
+  dot0 = sign.toFloat() * normalized.dot(light0);
+  cosTeta0 = Math.max(dot0, 0.0);
+  debug((light0, normalized, dot0, cosTeta0));
+  T.expectEq(cosTeta0, 0.706409437);
+}
+
+@test
+fun shapeFn(): void {
+  function = GLSL.shapeFn(
+    GLSL.rectangleFn(),
+    GLSL.asParam(),
+    Some(GLSL.planeFn()),
+  );
+  got = toArray(function);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "vec4 rectangleFn_plane(inout float z, inout vec3 normal, vec2 position, float smoothing, vec4 equation) {",
+      "  float alpha = rectangleFn(position, smoothing, bounds);",
+      "  plane(z, normal, position, equation);",
+      "  return alpha;",
+      "}",
+    ],
+  )
+}
+
+@test
+fun testMakeEllipsoide(): void {
+  relativeEllipsoide = GLSL.relativeEllipsoide();
+  got = toArray(relativeEllipsoide);
+  debug(got);
+  lines = mutable Vector[];
+  fillMakeEllipsoide(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun testMakeHCylinder(): void {
+  relativeHCylinder = GLSL.relativeHCylinder();
+  got = toArray(relativeHCylinder);
+  debug(got);
+  lines = mutable Vector[];
+  fillMakeHCylinder(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun testMakeVCylinder(): void {
+  relativeVCylinder = GLSL.relativeVCylinder();
+  got = toArray(relativeVCylinder);
+  debug(got);
+  lines = mutable Vector[];
+  fillMakeVCylinder(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun testMakeFace(): void {
+  relativeFace = GLSL.relativeFace();
+  got = toArray(relativeFace);
+  debug(got);
+  lines = mutable Vector[];
+  fillMakeFace(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun testButton1(): void {
+  button1 = GLSL.button1();
+  got = toArray(button1);
+  debug(got);
+  lines = mutable Vector[];
+  fillButton1(lines);
+  T.expectEq(got.concat(Array[""]), lines.toArray())
+}
+
+@test
+fun lightsFn(): void {
+  function = GLSL.lightsFn(10);
+  got = toArray(function);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "vec4 lights(vec3 position, vec3 normal, float shininess, vec4 color, vec3 ambient, vec3 camera, float lights[70], int ligthcount) {",
+      "  vec3 rgb = color.rgb;",
+      "  vec3 diffuse = vec3(0.0);",
+      "  // The vertex's normal vector is being interpolated across the primitive",
+      "  // which can make it un-normalized. So normalize the vertex's normal vector.",
+      "  vec3 nNormal = normalize(normal);",
+      "  vec3 diffuse_color;",
+      "  vec3 specular_color;",
+      "  vec3 to_light;",
+      "  vec3 reflection;",
+      "  vec3 to_camera;",
+      "  float cos_angle;",
+      "  int size = min(10, ligthcount);",
+      "  for (int i = 0; i < size; i++) {",
+      "    Light lstruct = Light(vec3(0.0), false, vec3(0.0));",
+      "    if (i == 0) {",
+      "      lstruct = build_Light_70_at_0(lights);",
+      "    } else if (i == 1) {",
+      "      lstruct = build_Light_70_at_7(lights);",
+      "    } else if (i == 2) {",
+      "      lstruct = build_Light_70_at_14(lights);",
+      "    } else if (i == 3) {",
+      "      lstruct = build_Light_70_at_21(lights);",
+      "    } else if (i == 4) {",
+      "      lstruct = build_Light_70_at_28(lights);",
+      "    } else if (i == 5) {",
+      "      lstruct = build_Light_70_at_35(lights);",
+      "    } else if (i == 6) {",
+      "      lstruct = build_Light_70_at_42(lights);",
+      "    } else if (i == 7) {",
+      "      lstruct = build_Light_70_at_49(lights);",
+      "    } else if (i == 8) {",
+      "      lstruct = build_Light_70_at_56(lights);",
+      "    } else if (i == 9) {",
+      "      lstruct = build_Light_70_at_63(lights);",
+      "    }",
+      "    // Calculate a vector from the fragment location to the light source",
+      "    if (lstruct.point) {",
+      "      to_light = normalize(lstruct.value - position);",
+      "    } else {",
+      "      to_light = normalize(lstruct.value);",
+      "    }",
+      "    // Calculate the cosine of the angle between the vertex's normal vector",
+      "    // and the vector going to the light.",
+      "    cos_angle = clamp(dot(nNormal, to_light), 0.0, 1.0);",
+      "    // Scale the color of this fragment based on its angle to the light.",
+      "    diffuse_color = rgb * cos_angle;",
+      "    // Calculate the reflection vector",
+      "    reflection = normalize(-reflect(to_light, nNormal));",
+      "    // Calculate a vector from the fragment location to the camera.",
+      "    // The camera is at the origin, so negating the vertex location gives the vector",
+      "    to_camera = normalize(camera - position);",
+      "    // Calculate the cosine of the angle between the reflection vector",
+      "    // and the vector going to the camera.",
+      "    cos_angle = clamp(dot(reflection, to_camera), 0.0, 1.0);",
+      "    cos_angle = pow(cos_angle, shininess);",
+      "    // The specular color is from the light source, not the object",
+      "    if (cos_angle > 0.0) {",
+      "      specular_color = lstruct.color * cos_angle;",
+      "      diffuse_color = diffuse_color * (1.0 - cos_angle);",
+      "    } else {",
+      "      specular_color = vec3(0.0, 0.0, 0.0);",
+      "    }",
+      "    diffuse += diffuse_color + specular_color;",
+      "  }",
+      "  return vec4(rgb * ambient + clamp(diffuse, 0.0, 1.0), color.a);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun testBuild(): void {
+  function = GLSL.buildWithIndex(GLSL.SArray(GLSL.ligthStruct, 1), 0, 16);
+  got = toArray(function);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "Light[1] build_Light_a1_16_at_0(float values[16]) {",
+      "  Light value_0 = build_Light_16_at_0(values);",
+      "  return Light[1](value_0);",
+      "}",
+    ],
+  )
+}
+
+@test
+fun testLinearGradient(): void {
+  function = GLSL.linearGradientFn(3, 4);
+  got = toArray(function);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "vec4 linearGradient3_4(vec2 position, vec4 start_end, vec4 colors[4], float offsets[3]) {",
+      "  float len = length(start_end.zw - start_end.xy);",
+      "  float ac = length(position - start_end.xy);",
+      "  float bc = length(position - start_end.zw);",
+      "  float distance = -((bc * bc) - (ac * ac) - (len * len)) / (2.0 * len);",
+      "  float t = distance / len;",
+      "  float tlen, ct;",
+      "  if (distance >= len * offsets[2]) {",
+      "    return colors[2];",
+      "  }",
+      "  if (distance >= len * offsets[1]) {",
+      "    tlen = offsets[2] - offsets[1];",
+      "    ct = (t - offsets[1]) / tlen;",
+      "    return mix(colors[1], colors[2], ct);",
+      "  }",
+      "  if (distance >= len * offsets[0]) {",
+      "    tlen = offsets[1] - offsets[0];",
+      "    ct = (t - offsets[0]) / tlen;",
+      "    return mix(colors[0], colors[1], ct);",
+      "  }",
+      "  return colors[0];",
+      "}",
+    ],
+  )
+}
+
+@test
+fun testRadialGradient(): void {
+  function = GLSL.radialGradientFn(3, 3);
+  got = toArray(function);
+  debug(got);
+  T.expectEq(
+    got,
+    Array[
+      "vec4 radialGradient3(vec2 position, CenterRadius2 ellipse, vec4 colors[3], float offsets[3]) {",
+      "  float x = position.x - ellipse.center.x;",
+      "  float y = position.y - ellipse.center.y;",
+      "  vec2 radius2 = ellipse.radius * offsets[2];",
+      "  if(radius2.x == 0.0 || radius2.y == 0.0) {",
+      "    return colors[2];",
+      "  }",
+      "  float e2 = ((x * x) / (radius2.x * radius2.x)) + ((y * y) / (radius2.y * radius2.y));",
+      "  if(e2 >= 1.0) {",
+      "    return colors[2];",
+      "  }",
+      "  vec2 radius1 = ellipse.radius * offsets[1];",
+      "  if(radius1.x == 0.0 || radius1.y == 0.0) {",
+      "    return mix(colors[1], colors[2], e2);",
+      "  }",
+      "  float e1 = ((x * x) / (radius1.x * radius1.x)) + ((y * y) / (radius1.y * radius1.y));",
+      "  if(e1 >= 1.0) {",
+      "    e2 = (radius2.x * radius2.x) / (radius1.x * radius1.x);",
+      "    return mix(colors[1], colors[2], (e1 - 1.0) / (e2 - 1.0));",
+      "  }",
+      "  vec2 radius0 = ellipse.radius * offsets[0];",
+      "  if(radius0.x == 0.0 || radius0.y == 0.0) {",
+      "    return mix(colors[0], colors[1], e1);",
+      "  }",
+      "  float e0 = ((x * x) / (radius0.x * radius0.x)) + ((y * y) / (radius0.y * radius0.y));",
+      "  if(e0 >= 1.0) {",
+      "    e1 = (radius1.x * radius1.x) / (radius0.x * radius0.x);",
+      "    return mix(colors[0], colors[1], (e0 - 1.0) / (e1 - 1.0));",
+      "  }",
+      "  return colors[0];",
+      "}",
+    ],
+  )
+}
+
+//@test
+fun testScene(): void {
+  scene = GLSL.Scene(
+    GLSL.Button1(Some(GLSL.TexturedButton1Material())),
+    GLSL.Config{lights => 1, colors => 1, shininesses => 2, textures => 2},
+  );
+  fragment = scene.toFragmentShader();
+  vertex = scene.toVertexShader();
+  got = vertex
+    .toArray(Some(GLSL.es300()))
+    .concat(fragment.toArray(Some(GLSL.es300())));
+  debug(got);
+  T.expectEq(got, Array[])
+}
+
+module end;

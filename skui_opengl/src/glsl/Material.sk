@@ -1,0 +1,433 @@
+module GLSL;
+
+base class MaterialSupplier uses Hashable {
+  fun getNumberOfColor(): Int;
+
+  overridable fun getNumberOfShininess(): Int {
+    0
+  }
+
+  overridable fun getNumberOfTextures(): Int {
+    0
+  }
+
+  fun fillMaterial(
+    position: Expr,
+    nbColor: Int,
+    nbShininess: Int,
+    nbTexture: Int,
+    params: mutable Vars,
+    equations: mutable Vector<Equation>,
+  ): Call;
+}
+
+trait WithMaterialFunction extends WithFunction {
+  //
+  protected fun getMaterialFunction(
+    nbColor: Int,
+    nbShininess: Int,
+    nbTexture: Int,
+  ): Function;
+
+  fun fillMaterial(
+    position: Expr,
+    nbColor: Int,
+    nbShininess: Int,
+    nbTexture: Int,
+    params: mutable Vars,
+    _equations: mutable Vector<Equation>,
+  ): Call {
+    this.toFunctionCall(
+      position,
+      params,
+      this.getMaterialFunction(nbColor, nbShininess, nbTexture),
+    )
+  }
+}
+
+class LinearGradientMaterial(
+  stops: Int,
+) extends MaterialSupplier, WithMapper uses WithMaterialFunction {
+  //
+  fun getNumberOfColor(): Int {
+    this.stops
+  }
+
+  protected fun getMaterialFunction(
+    nbColor: Int,
+    _nbShininess: Int,
+    _nbTexture: Int,
+  ): Function {
+    linearGradientFn(this.stops, nbColor)
+  }
+}
+
+class RadialGradientMaterial(
+  stops: Int,
+) extends MaterialSupplier, WithMapper uses WithMaterialFunction {
+  //
+  fun getNumberOfColor(): Int {
+    this.stops
+  }
+
+  protected fun getMaterialFunction(
+    nbColors: Int,
+    _nbShininess: Int,
+    _nbTexture: Int,
+  ): Function {
+    radialGradientFn(this.stops, nbColors)
+  }
+}
+
+class Button1Material() extends MaterialSupplier, WithMapper {
+  //
+  fun getNumberOfColor(): Int {
+    2
+  }
+
+  fun getNumberOfShininess(): Int {
+    2
+  }
+
+  fun fillMaterial(
+    position: Expr,
+    colors: Int,
+    shininesses: Int,
+    _textures: Int,
+    params: mutable Vars,
+    equations: mutable Vector<Equation>,
+  ): Call {
+    radius = params.insert(None(), Param::make("radius", vec3()), 0).fromSome();
+    bounds = params.insert(None(), Param::make("bounds", vec4()), 0).fromSome();
+    relative = Declaration(
+      "relative",
+      Some(Op("*", Array[radius.access("xy"), bounds.access("zw")])),
+      vec2(),
+    );
+    equations.push(relative);
+    subbounds = Declaration(
+      "subbounds",
+      Some(
+        Call(
+          vec4Fn,
+          Array[
+            Op("+", Array[bounds.access("xy"), relative.ref()]),
+            Op(
+              "-",
+              Array[
+                bounds.access("zw"),
+                Op("*", Array[relative.ref(), Const("2.0")]),
+              ],
+            ),
+          ],
+        ),
+      ),
+      vec4(),
+    );
+    equations.push(subbounds);
+    fn = boundedMaterial(colors, shininesses);
+    fn.toCall((p, _) ->
+      p.name match {
+      | "position" -> Some(position)
+      | "bounds" -> Some(subbounds.ref())
+      | _ -> params.insert(Some(fn), p, 0).map(p -> p.ref())
+      }
+    )
+  }
+}
+
+class TexturedButton1Material() extends MaterialSupplier, WithMapper {
+  //
+  fun getNumberOfColor(): Int {
+    1
+  }
+
+  fun getNumberOfShininess(): Int {
+    2
+  }
+
+  fun getNumberOfTextures(): Int {
+    2
+  }
+
+  fun fillMaterial(
+    position: Expr,
+    _colors: Int,
+    shininesses: Int,
+    textures: Int,
+    params: mutable Vars,
+    equations: mutable Vector<Equation>,
+  ): Call {
+    radius = params.insert(None(), Param::make("radius", vec3()), 0).fromSome();
+    bounds = params.insert(None(), Param::make("bounds", vec4()), 0).fromSome();
+    relative = Declaration(
+      "relative",
+      Some(Op("*", Array[radius.access("xy"), bounds.access("zw")])),
+      vec2(),
+    );
+    equations.push(relative);
+    subbounds = Declaration(
+      "subbounds",
+      Some(
+        Call(
+          vec4Fn,
+          Array[
+            Op("+", Array[bounds.access("xy"), relative.ref()]),
+            Op(
+              "-",
+              Array[
+                bounds.access("zw"),
+                Op("*", Array[relative.ref(), Const("2.0")]),
+              ],
+            ),
+          ],
+        ),
+      ),
+      vec4(),
+    );
+    equations.push(subbounds);
+    fn = boundedTexturedMaterial(textures, shininesses);
+    fn.toCall((p, _) ->
+      p.name match {
+      | "position" -> Some(position)
+      | "bounds" -> Some(subbounds.ref())
+      | _ -> params.insert(Some(fn), p, 0).map(p -> p.ref())
+      }
+    )
+  }
+}
+
+fun withAlphaFn(): Function {
+  Function(
+    Signature(
+      "withAlpha",
+      vec4(),
+      Array[Param::make("color", vec4()), Param::make("alpha", SFloat())],
+    ),
+    Textual(
+      Array[
+        "if(alpha > 0.0) {",
+        "  color.a *= alpha;",
+        "  return color;",
+        "} else {",
+        "  return vec4(0.0);",
+        "}",
+      ],
+    ),
+  )
+}
+
+fun boundedTextureFn(): Function {
+  Function(
+    Signature(
+      "boundedTexture",
+      vec4(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("texture", Sampler2D()),
+        Param::make("bounds", vec4()),
+        Param::make("size", vec2()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec2 relpos = (position - bounds.xy) / bounds.zw;",
+        "vec2 texpos = mod(relpos, size) / size;",
+        "return texture2D(texture, texpos);",
+      ],
+    ),
+  )
+}
+
+fun grayScaleFn(): Function {
+  Function(
+    Signature("grayScale", vec4(), Array[Param::make("color", vec4())]),
+    Textual(
+      Array[
+        "float gray = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;",
+        "return vec4(gray, gray, gray, color.a);",
+      ],
+    ),
+  )
+}
+
+fun sepiaFn(): Function {
+  Function(
+    Signature("sepia", vec4(), Array[Param::make("color", vec4())]),
+    Textual(
+      Array[
+        "float r = 0.393 * color.r + 0.769 * color.g + 0.189 * color.b;",
+        "float g = 0.349 * color.r + 0.686 * color.g + 0.168 * color.b;",
+        "float b = 0.272 * color.r + 0.534 * color.g + 0.131 * color.b;",
+        "return vec4(r, g, b, color.a);",
+      ],
+    ),
+  )
+}
+
+fun linearGradientFn(stops: Int, colors: Int): Function {
+  suffix = if (stops == colors) {
+    `${stops}`
+  } else {
+    `${stops}_${colors}`
+  };
+  lines = mutable Vector[
+    "float len = length(start_end.zw - start_end.xy);",
+    "float ac = length(position - start_end.xy);",
+    "float bc = length(position - start_end.zw);",
+    "float distance = -((bc * bc) - (ac * ac) - (len * len)) / (2.0 * len);",
+    "float t = distance / len;",
+    "float tlen, ct;",
+  ];
+  current: ?Int = None();
+  for (i in Range(0, stops).reversed()) {
+    lines.push(`if (distance >= len * offsets[${i}]) {`);
+    current match {
+    | Some(v) ->
+      lines.push(`  tlen = offsets[${v}] - offsets[${i}];`);
+      lines.push(`  ct = (t - offsets[${i}]) / tlen;`);
+      lines.push(
+        `  return mix(colors[${i % colors}], colors[${v % colors}], ct);`,
+      )
+    | _ -> lines.push(`  return colors[${i % colors}];`)
+    };
+    lines.push("}");
+    !current = Some(i)
+  };
+  lines.push("return colors[0];");
+  Function(
+    Signature(
+      `linearGradient${suffix}`,
+      vec4(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("start_end", vec4()),
+        Param::make("colors", SArray(vec4(), colors)),
+        Param::make("offsets", SArray(SFloat(), stops)),
+      ],
+    ),
+    Textual(lines.toArray(), Array[]),
+  )
+}
+
+fun radialGradientFn(stops: Int, colors: Int): Function {
+  suffix = if (stops == colors) {
+    `${stops}`
+  } else {
+    `${stops}_${colors}`
+  };
+  lines = mutable Vector[];
+  lines.push("float x = position.x - ellipse.center.x;");
+  lines.push("float y = position.y - ellipse.center.y;");
+  current: ?Int = None();
+  for (i in Range(0, stops).reversed()) {
+    lines.push(`vec2 radius${i} = ellipse.radius * offsets[${i}];`);
+    lines.push(`if(radius${i}.x == 0.0 || radius${i}.y == 0.0) {`);
+    current match {
+    | Some(v) ->
+      lines.push(
+        `  return mix(colors[${i % colors}], colors[${v % colors}], e${v});`,
+      )
+    | _ -> lines.push(`  return colors[${i % colors}];`)
+    };
+    lines.push("}");
+    lines.push(
+      `float e${i} = ((x * x) / (radius${i}.x * radius${i}.x)) + ((y * y) / (radius${i}.y * radius${i}.y));`,
+    );
+    lines.push(`if(e${i} >= 1.0) {`);
+    current match {
+    | Some(v) ->
+      lines.push(
+        `  e${v} = (radius${v}.x * radius${v}.x) / (radius${i}.x * radius${i}.x);`,
+      );
+      lines.push(
+        `  return mix(colors[${i % colors}], colors[${v %
+          colors}], (e${i} - 1.0) / (e${v} - 1.0));`,
+      )
+    | _ -> lines.push(`  return colors[${(stops - 1) % colors}];`)
+    };
+    lines.push("}");
+    !current = Some(i)
+  };
+  lines.push("return colors[0];");
+  Function(
+    Signature(
+      `radialGradient${suffix}`,
+      vec4(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("ellipse", ellipseStruct),
+        Param::make("colors", SArray(vec4(), colors)),
+        Param::make("offsets", SArray(SFloat(), stops)),
+      ],
+    ),
+    Textual(lines.toArray(), Array[]),
+  )
+}
+
+fun boundedMaterial(colors: Int, shininesses: Int): Function {
+  lines = mutable Vector[];
+  if (shininesses > 1 || colors > 1) {
+    lines.push("if(rectangleFn(position, 0.0, bounds) > 0.0) {");
+    if (shininesses > 1) {
+      lines.push("  shininess = shininesses[1];");
+    };
+    if (colors > 1) {
+      lines.push("  return colors[1];");
+    };
+    lines.push("}");
+  };
+  lines.push("shininess = shininesses[0];");
+  lines.push("return colors[0];");
+  Function(
+    Signature(
+      `boundedColor${colors}_${shininesses}`,
+      vec4(),
+      Array[
+        Param("shininess", true, SFloat()),
+        Param::make("position", vec2()),
+        Param::make("bounds", vec4()),
+        Param::make("colors", SArray(vec4(), colors)),
+        Param::make("shininesses", SArray(SFloat(), shininesses)),
+      ],
+    ),
+    Textual(lines.toArray(), Array[rectangleFn()]),
+  )
+}
+
+fun boundedTexturedMaterial(textures: Int, shininesses: Int): Function {
+  lines = mutable Vector[];
+  if (shininesses > 1 || textures > 1) {
+    lines.push("if(rectangleFn(position, 0.0, bounds) > 0.0) {");
+    if (shininesses > 1) {
+      lines.push("  shininess = shininesses[1];");
+    };
+    if (textures > 1) {
+      lines.push(
+        "  return boundedTexture(position, textures[1], bounds, texture_sizes[1]);",
+      );
+    };
+    lines.push("}");
+  };
+  lines.push("shininess = shininesses[0];");
+  lines.push(
+    "return boundedTexture(position, textures[0], vec4(vec2(0.0), vec2(1.0)), texture_sizes[0]);",
+  );
+  Function(
+    Signature(
+      `boundedTexture${textures}_${shininesses}`,
+      vec4(),
+      Array[
+        Param("shininess", true, SFloat()),
+        Param::make("position", vec2()),
+        Param::make("bounds", vec4()),
+        Param::make("textures", SArray(Sampler2D(), textures)),
+        Param::make("texture_sizes", SArray(vec2(), textures)),
+        Param::make("shininesses", SArray(SFloat(), shininesses)),
+      ],
+    ),
+    Textual(lines.toArray(), Array[rectangleFn(), boundedTextureFn()]),
+  )
+}
+
+module end;

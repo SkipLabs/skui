@@ -6,19 +6,21 @@ base class Handle extends SKStore.File {
     window: Geometry.Rectangle,
     height: Int,
     ratio: Float,
+    frame: Int,
   ): void;
 }
 
 class LambdaHandle(
-  fn: (Ui.Shift, Geometry.Rectangle, Int, Float) ~> void,
+  fn: (Ui.Shift, Geometry.Rectangle, Int, Float, Int) ~> void,
 ) extends Ui.Handle {
   fun draw(
     shift: Ui.Shift,
     window: Geometry.Rectangle,
     height: Int,
     ratio: Float,
+    frame: Int,
   ): void {
-    this.fn(shift, window, height, ratio);
+    this.fn(shift, window, height, ratio, frame);
   }
 }
 

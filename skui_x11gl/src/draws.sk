@@ -7,25 +7,27 @@ fun initDrawables(ctx: GL.Ctx, drawables: Vector<GLDrawable>): Context {
   buffers = initializer.buffers.map((_, v) -> v(ctx));
   arrays = initializer.arrays.map((_, v) -> v(ctx));
   supplier = GLProgram.Supplier(programs.maybeGet);
-  handles = drawablesUsage
-    .map(tuple -> {
-      (drawable, used) = tuple;
-      used match {
-      | GLProgram.UBuffer(bufId) ->
-        buffers.maybeGet(bufId).flatMap(buffer ->
-          drawable.build(ctx, buffer, supplier)
-        )
-      | GLProgram.UArray(arrId) ->
-        arrays.maybeGet(arrId).flatMap(array ->
-          drawable.build(ctx, array, supplier)
-        )
-      }
-    })
-    .filterNone();
-  Context(handles);
+  handles = mutable Vector<Ui.Handle>[];
+
+  drawablesUsage.each(tuple -> {
+    (drawable, used) = tuple;
+    SKUIGL.DrawableSupport::toHandles(
+      ctx,
+      (used, drawable),
+      buffers.maybeGet,
+      arrId ->
+        arrays.maybeGet(arrId).flatMap(array -> {
+          buffers.maybeGet(array.buffer.value).map(buffer ->
+            GLProgram.ArrayInfo(array, buffer)
+          )
+        }),
+      supplier,
+      handles,
+    )
+  });
+  Context(handles.chill());
 }
 
-@draw
 fun rounded(ctx: GL.Ctx, width: Int, height: Int): Context {
   initDrawables(
     ctx,
@@ -44,7 +46,6 @@ fun rounded(ctx: GL.Ctx, width: Int, height: Int): Context {
   )
 }
 
-@draw
 fun rectangle(ctx: GL.Ctx, width: Int, height: Int): Context {
   initDrawables(
     ctx,
@@ -57,4 +58,155 @@ fun rectangle(ctx: GL.Ctx, width: Int, height: Int): Context {
     ],
   )
 }
+
+fun program(
+  ctx: GL.Ctx,
+  width: Int,
+  height: Int,
+  entity: GLSL.Entity,
+  config: GLSL.Config = GLSL.Config{
+    lights => 1,
+    colors => 1,
+    shininesses => 1,
+    textures => 0,
+  },
+): Context {
+  program = GLSL.Scene(entity, config);
+  wood = SKIP_SKUIX11Res.woodImage();
+  steel = SKIP_SKUIX11Res.steelImage();
+  woodTex = GLTexture.Image(Some(wood.data), true, wood.width, wood.height);
+  steelTex = GLTexture.Image(Some(steel.data), true, wood.width, wood.height);
+  constValue: GLSL.Value -> GL.Ctx ~> ?(
+    Geometry.Rect,
+    Geometry.Size,
+  ) ~> GLSL.Value = v -> (_ctx) ~> Some((_bs, _w) ~> v);
+
+  scaledValue: GLSL.VVec -> GL.Ctx ~> ?(
+    Geometry.Rect,
+    Geometry.Size,
+  ) ~> GLSL.Value = v ->
+    (_ctx) ~>
+      Some((bs, _w) ~>
+        GLSL.VVec[v.x() / bs.width(), v.y() / bs.height(), v.z()]
+      );
+
+  ellipsoide = (_ctx) ~>
+    Some((bs, _w) ~> {
+      side = Math.max(bs.width(), bs.height());
+      GLSL.VStruct(
+        SortedMap[
+          "center" => GLSL.VVec::v3(0.5, 0.5, 0.0),
+          "radius" => GLSL.VVec::v3(
+            0.5 * bs.width() / side,
+            0.5 * bs.height() / side,
+            0.5,
+          ),
+        ],
+      )
+    });
+
+  textures = (ctx) ~> {
+    t1 = woodTex.asTexture(ctx);
+    t2 = steelTex.asTexture(ctx);
+    Some((_bs, _w) ~> GLSL.VTextures[t2, t1]);
+  };
+
+  texture_sizes = (_ctx) ~> {
+    Some((bs, _w) ~> {
+      side = Math.max(bs.width(), bs.height());
+      GLSL.VArray[
+        GLSL.VVec::v2(
+          steelTex.width.toFloat() / side,
+          steelTex.height.toFloat() / side,
+        ),
+        GLSL.VVec::v2(
+          woodTex.width.toFloat() / side,
+          woodTex.height.toFloat() / side,
+        ),
+        GLSL.VVec::v2(0.0, 0.0),
+        GLSL.VVec::v2(0.0, 0.0),
+        GLSL.VVec::v2(0.0, 0.0),
+        GLSL.VVec::v2(0.0, 0.0),
+      ]
+    })
+  };
+
+  initDrawables(
+    ctx,
+    Vector[
+      GLSL.Drawable(
+        program,
+        Map[
+          "u_filter" => constValue(GLSL.VVec::v1(0.0)),
+          "u_shininesses" => constValue(GLSL.VVec[7.0, 10.0]),
+          "u_textures" => textures,
+          "u_texture_sizes" => texture_sizes,
+          "u_smoothing" => (_ctx) ~>
+            Some((bds, _) ~>
+              GLSL.VVec::v1(4.0 / Math.min(bds.width(), bds.height()))
+            ),
+          "u_camera" => constValue(GLSL.VVec::v3(0.5, 0.5, 2.0)),
+          "u_ambient" => constValue(GLSL.rgb(.Colors.transparent())),
+          "u_colors" => constValue(
+            GLSL.VArray[
+              GLSL.rgba(.Color::rgbaInt(52, 152, 219)),
+              GLSL.rgba(.Colors.yellow()),
+              GLSL.rgba(.Colors.firebrick()),
+            ],
+          ),
+          "u_start_end" => constValue(GLSL.VVec[0.0, 0.0, 1.0, 0.0]),
+          "u_offsets" => constValue(GLSL.VVec[0.1, 0.5, 0.9]),
+          "u_ellipsoide" => ellipsoide,
+          "u_ligthcount" => constValue(GLSL.VVec[1.0]),
+          "u_radius" => scaledValue(GLSL.VVec[12.0, 12.0, 0.8]),
+          "u_lights" => constValue(
+            GLSL.VArray[
+              GLSL.VStruct[
+                "color" => GLSL.rgb(.Colors.white()),
+                "point" => GLSL.VVec::v1(1.0),
+                "value" => GLSL.VVec::v3(0.5, -0.5, 1.5),
+              ],
+              GLSL.VStruct[
+                "color" => GLSL.rgb(.Colors.green()),
+                "point" => GLSL.VVec::v1(0.0),
+                "value" => GLSL.VVec::v3(0.0, 0.5, 0.5) -
+                  GLSL.VVec::v3(0.5, 0.5, 0.0),
+              ],
+              GLSL.VStruct[
+                "color" => GLSL.rgb(.Colors.pink()),
+                "point" => GLSL.VVec::v1(1.0),
+                "value" => GLSL.VVec::v3(0.5, 1.5, 0.05),
+              ],
+            ],
+          ),
+        ],
+        None(),
+        //Some(GLSL.es300()),
+        GLSL.High(),
+        Geometry.Rect::fromOffsetSize(
+          Geometry.Offset(10.0, 10.0),
+          Geometry.Size(width.toFloat() / 2.0, height.toFloat() / 3.0),
+        ),
+      ),
+    ],
+  )
+}
+
+fun ellipsoide(ctx: GL.Ctx, width: Int, height: Int): Context {
+  program(ctx, width, height, GLSL.Ellipsoide());
+}
+
+fun button1(ctx: GL.Ctx, width: Int, height: Int): Context {
+  program(ctx, width, height, GLSL.Button1(Some(GLSL.Button1Material())));
+}
+
+fun tex_button1(ctx: GL.Ctx, width: Int, height: Int): Context {
+  program(
+    ctx,
+    width,
+    height,
+    GLSL.Button1(Some(GLSL.TexturedButton1Material())),
+  );
+}
+
 module end;

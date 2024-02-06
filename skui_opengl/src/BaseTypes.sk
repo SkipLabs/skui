@@ -207,12 +207,20 @@ class Program extends WithExtern<ProgramRef> {
     this.ctx.validateProgram(this.ref)
   }
 
-  fun getUniformLocation(index: UInt32): UniformLocation {
-    this.ctx.getUniformLocation(this.ref, index)
+  fun getUniformLocation(name: String): UniformLocation {
+    this.ctx.getUniformLocation(this.ref, name)
   }
 
-  fun getAttributeLocation(index: UInt32): AttributeLocation {
-    this.ctx.getAttributeLocation(this.ref, index)
+  fun getIdxUniformLocation(index: UInt32): UniformLocation {
+    this.ctx.getIdxUniformLocation(this.ref, index)
+  }
+
+  fun getAttributeLocation(name: String): AttributeLocation {
+    this.ctx.getAttributeLocation(this.ref, name)
+  }
+
+  fun getIdxAttributeLocation(index: UInt32): AttributeLocation {
+    this.ctx.getIdxAttributeLocation(this.ref, index)
   }
 }
 
@@ -232,12 +240,20 @@ class Prepared(program: Program, shaders: Array<Shader>) {
     this.program.use()
   }
 
-  fun getUniformLocation(index: UInt32): UniformLocation {
-    this.program.getUniformLocation(index)
+  fun getIdxUniformLocation(index: UInt32): UniformLocation {
+    this.program.getIdxUniformLocation(index)
   }
 
-  fun getAttributeLocation(index: UInt32): AttributeLocation {
-    this.program.getAttributeLocation(index)
+  fun getUniformLocation(name: String): UniformLocation {
+    this.program.getUniformLocation(name)
+  }
+
+  fun getIdxAttributeLocation(index: UInt32): AttributeLocation {
+    this.program.getIdxAttributeLocation(index)
+  }
+
+  fun getAttributeLocation(name: String): AttributeLocation {
+    this.program.getAttributeLocation(name)
   }
 }
 

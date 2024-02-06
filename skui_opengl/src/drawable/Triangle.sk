@@ -13,7 +13,7 @@ class SolidTriangle(color: .Color, side: .UiSide) extends GLRectangleDrawable {
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.solidTriangle(this.side).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~>
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~>
         drawer.run(
           GLProgram.SolidParameters(this.color),
           GLProgram.RectangleParameters(
@@ -45,7 +45,7 @@ class LinearGradientTriangle(
     buffer = data as GLProgram.Buffer _;
     count = this.linearGradient.stops.size();
     supplier.linearGradientTriangle(count, this.side).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
           GLProgram.LinearGradientParameters(
@@ -78,7 +78,7 @@ class RadialGradientTriangle(
     buffer = data as GLProgram.Buffer _;
     count = this.radialGradient.stops.size();
     supplier.radialGradientTriangle(count, this.side).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         rect = this.bounds.shift(shift.toOffset()).scale(ratio);
         drawer.run(
           GLProgram.RadialGradientParameters(

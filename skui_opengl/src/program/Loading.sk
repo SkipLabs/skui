@@ -63,12 +63,12 @@ class LoadingShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    color1Location = program.getUniformLocation(uColor1);
-    color2Location = program.getUniformLocation(uColor2);
-    stepLocation = program.getUniformLocation(uStep);
-    smoothLocation = program.getUniformLocation(uSmooth);
+    color1Location = program.getIdxUniformLocation(uColor1);
+    color2Location = program.getIdxUniformLocation(uColor2);
+    stepLocation = program.getIdxUniformLocation(uStep);
+    smoothLocation = program.getIdxUniformLocation(uSmooth);
 
-    LambdaFragmentShader(parameters ~> {
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       lps = LoadingParameters::fromParams(parameters);
       len = lps.rect.size().distance();
@@ -86,7 +86,7 @@ class LoadingShader() extends FragmentShaderBuilder {
         lps.color2.blue,
         lps.color2.alpha,
       );
-      ctx.uniform1i(stepLocation, UInt32::truncate(lps.step));
+      ctx.uniform1i(stepLocation, Int32::truncate(lps.step));
       ctx.uniform1f(smoothLocation, 4.2 / len);
     })
   }

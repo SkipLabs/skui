@@ -52,10 +52,10 @@ class ShadowVertexShader() extends VertexShaderBuilder {
   }
 
   fun build(program: GL.Prepared): VertexShader {
-    positionLocation = program.getAttributeLocation(aPosition);
+    positionLocation = program.getIdxAttributeLocation(aPosition);
     // lookup uniforms
-    matrixLocation = program.getUniformLocation(uMatrix);
-    boxShadowBox = program.getUniformLocation(uBox);
+    matrixLocation = program.getIdxUniformLocation(uMatrix);
+    boxShadowBox = program.getIdxUniformLocation(uBox);
     LambdaVertexShader(
       (parameters, window) ~> {
         ctx = program.context();
@@ -86,10 +86,7 @@ class ShadowParameters(
   static fun fromParams(obj: Parameters): this {
     obj match {
     | x @ ShadowParameters _ -> x
-    | _ ->
-      invariant_violation(
-        `Must be GLProgram.ShadowParameters got ${obj.getClassName()}`,
-      )
+    | _ -> SKStore.cast_violation("GLProgram.ShadowParameters", obj)
     }
   }
 }
@@ -100,11 +97,11 @@ class ShadowShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    boxShadowBox = program.getUniformLocation(uBox);
-    boxShadowColor = program.getUniformLocation(uColor);
-    boxShadowSigma = program.getUniformLocation(uSigma);
+    boxShadowBox = program.getIdxUniformLocation(uBox);
+    boxShadowColor = program.getIdxUniformLocation(uColor);
+    boxShadowSigma = program.getIdxUniformLocation(uSigma);
 
-    LambdaFragmentShader(parameters ~> {
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       sps = ShadowParameters::fromParams(parameters);
       ctx.uniform4f(

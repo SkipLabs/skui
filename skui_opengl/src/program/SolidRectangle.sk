@@ -83,8 +83,8 @@ class SolidShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    colorUniform = program.getUniformLocation(uColor);
-    LambdaFragmentShader(parameters ~> {
+    colorUniform = program.getIdxUniformLocation(uColor);
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       optColor = parameters match {
       | sps @ SolidParameters _ -> Some(sps.color)
@@ -124,9 +124,9 @@ base class RectangleBaseShader extends VertexShaderBuilder {
   fun getSize(): Int;
 
   fun build(program: GL.Prepared): VertexShader {
-    positionLocation = program.getAttributeLocation(aPosition);
+    positionLocation = program.getIdxAttributeLocation(aPosition);
     // lookup uniforms
-    matrixLocation = program.getUniformLocation(uMatrix);
+    matrixLocation = program.getIdxUniformLocation(uMatrix);
     LambdaVertexShader(
       (parameters, window) ~> {
         ctx = program.context();
@@ -185,14 +185,14 @@ class RoundedRectangleShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    colorUniform = program.getUniformLocation(uColor);
-    radiusUniform = program.getUniformLocation(uRadius);
-    centerUniform = program.getUniformLocation(uCenter);
-    sizeUniform = program.getUniformLocation(uSize);
-    smoothUniform = program.getUniformLocation(uSmooth);
-    bColorUniform = program.getUniformLocation(uBColor);
-    thicknessUniform = program.getUniformLocation(uThickness);
-    LambdaFragmentShader(parameters ~> {
+    colorUniform = program.getIdxUniformLocation(uColor);
+    radiusUniform = program.getIdxUniformLocation(uRadius);
+    centerUniform = program.getIdxUniformLocation(uCenter);
+    sizeUniform = program.getIdxUniformLocation(uSize);
+    smoothUniform = program.getIdxUniformLocation(uSmooth);
+    bColorUniform = program.getIdxUniformLocation(uBColor);
+    thicknessUniform = program.getIdxUniformLocation(uThickness);
+    LambdaFragmentShader((parameters, _) ~> {
       ctx = program.context();
       rrParams = parameters as RoundedRectangleParameters _;
       size = rrParams.size.width;

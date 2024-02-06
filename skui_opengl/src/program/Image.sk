@@ -174,7 +174,7 @@ base class BoundsBaseShader extends VertexShaderBuilder {
 
   fun build(program: GL.Prepared): VertexShader {
     // lookup uniforms
-    matrixLocation = program.getUniformLocation(uMatrix);
+    matrixLocation = program.getIdxUniformLocation(uMatrix);
     LamLayoutVertexShader(
       (parameters, window) ~> {
         ctx = program.context();
@@ -194,8 +194,8 @@ class TextureShader() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    textureLocation = program.getUniformLocation(uTexture);
-    LambdaFragmentShader(parameters ~> {
+    textureLocation = program.getIdxUniformLocation(uTexture);
+    LambdaFragmentShader((parameters, _) ~> {
       gl = program.context();
       tps = TextureParameters::fromParams(parameters);
       activateTexture(gl, 0, tps.texture, textureLocation);
@@ -219,8 +219,8 @@ class BilinearFragment() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    textureLocation = program.getUniformLocation(uTexture);
-    LambdaFragmentShader(parameters ~> {
+    textureLocation = program.getIdxUniformLocation(uTexture);
+    LambdaFragmentShader((parameters, _) ~> {
       gl = program.context();
       tps = TextureParameters::fromParams(parameters);
       activateTexture(gl, 0, tps.texture, textureLocation);
@@ -234,11 +234,11 @@ class MsdfFragment() extends FragmentShaderBuilder {
   }
 
   fun build(program: GL.Prepared): FragmentShader {
-    textureUniform = program.getUniformLocation(uTexture);
-    colorUniform = program.getUniformLocation(uColor);
-    pxRangeUniform = program.getUniformLocation(uPxRange);
-    thicknessUniform = program.getUniformLocation(uThickness);
-    LambdaFragmentShader(parameters ~> {
+    textureUniform = program.getIdxUniformLocation(uTexture);
+    colorUniform = program.getIdxUniformLocation(uColor);
+    pxRangeUniform = program.getIdxUniformLocation(uPxRange);
+    thicknessUniform = program.getIdxUniformLocation(uThickness);
+    LambdaFragmentShader((parameters, _) ~> {
       gl = program.context();
       ps = MsdfParameters::fromParams(parameters);
       activateTexture(gl, 0, ps.texture, textureUniform);
@@ -253,6 +253,39 @@ class MsdfFragment() extends FragmentShaderBuilder {
       gl.uniform1f(thicknessUniform, ps.thickness.toFloat());
     });
   }
+}
+
+@debug
+fun activateTexture(
+  gl: GL.Ctx,
+  chanel: Int,
+  texture: GL.Texture,
+  location: GL.UniformLocation,
+): void {
+  gl.activeTexture(uint32(chanel));
+  texture.bind();
+  gl.uniform1i(location, int32(chanel));
+}
+
+@debug
+fun activateTextures(
+  gl: GL.Ctx,
+  textures: Array<GL.Texture>,
+  location: GL.UniformLocation,
+): void {
+  if (textures.isEmpty()) {
+    return void
+  };
+  size = textures.size();
+  gl.uniform1iv(
+    location,
+    uint32(size),
+    Array::fillBy(size, chanel -> {
+      gl.activeTexture(uint32(chanel));
+      textures[chanel].bind();
+      int32(chanel)
+    }),
+  );
 }
 
 module end;

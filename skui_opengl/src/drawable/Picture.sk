@@ -19,14 +19,15 @@ class Bilinear(texture: GL.Ctx ~> ?GL.Texture) extends GLRectangleDrawable {
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
-    array = data as GLProgram.VertexArray _;
+    array = data as GLProgram.ArrayInfo _;
     supplier.bilinearDrawer().flatMap(drawer -> {
       this.texture(gl).map(texture -> {
-        Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+        Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
+          array.init(0);
           bounds = this.bounds.shift(shift.toOffset()).scale(ratio);
           drawer.run(
             GLProgram.TextureParameters(texture),
-            GLProgram.BoundsParameters(bounds, array),
+            GLProgram.BoundsParameters(bounds, array.array),
             window.size() * ratio,
           )
         })
@@ -71,10 +72,11 @@ class Msdf(
     data: GLProgram.Data,
     supplier: GLProgram.Supplier,
   ): ?Ui.Handle {
-    array = data as GLProgram.VertexArray _;
+    array = data as GLProgram.ArrayInfo _;
     supplier.msdfDrawer().flatMap(drawer ->
       this.texture(gl).map(texture ->
-        Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+        Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
+          array.init(0);
           rect = this.conv(this.bounds.shift(shift.toOffset()).scale(ratio));
           drawer.run(
             GLProgram.MsdfParameters(
@@ -83,7 +85,7 @@ class Msdf(
               this.color,
               this.thickness * ratio,
             ),
-            GLProgram.BoundsParameters(rect, array),
+            GLProgram.BoundsParameters(rect, array.array),
             window.size() * ratio,
           )
         })

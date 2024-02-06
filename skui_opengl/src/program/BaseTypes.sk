@@ -16,31 +16,24 @@ class Buffer(value: GL.Buffer) extends SKStore.File, Data {
   }
 }
 
-class VertexArray(
-  value: GL.VertexArray,
-  positions: String,
-) extends SKStore.File, Data {
-  //
-  static fun type(obj: SKStore.File): this {
-    obj match {
-    | x @ VertexArray _ -> x
-    | _ -> SKStore.cast_violation("GLProgram.VertexArray", obj)
-    }
-  }
-
+class ArrayInfo(array: VertexArray, buffer: Buffer) extends SKStore.File, Data {
   @debug
-  fun init(buffers: String -> Buffer): void {
-    this.value.bind();
-    vertexPosLocation = GL.AttributeLocation::fromInt(0);
-    vertexPosBuffer = buffers(this.positions);
-    this.value.ctx.enable2DVertex(vertexPosLocation, vertexPosBuffer.value.ref);
-    this.value.unbind();
+  fun init(index: Int): void {
+    this.array.value.bind();
+    location = GL.AttributeLocation::fromInt(index);
+    this.array.value.ctx.enable2DVertex(location, this.buffer.value.ref);
+    this.array.value.unbind();
   }
+}
 
+class VertexArray(value: GL.VertexArray, buffer: UBuffer) {
+  //
   fun context(): GL.Ctx {
     this.value.ctx
   }
 }
+
+class Multiple(value: Array<(String, Data)>) extends Data
 
 base class Parameters uses HasClassName
 
@@ -50,16 +43,16 @@ base class LayoutVertexParams(vArray: VertexArray) extends VertexShaderParams
 class DummyLayoutParams() extends LayoutVertexParams
 
 base class FragmentShader {
-  fun apply(parameter: Parameters): void;
+  fun apply(parameter: Parameters, applied: mutable Set<String>): void;
   fun clean(): void;
 }
 
 class LambdaFragmentShader(
-  applyFun: Parameters ~> void,
+  applyFun: (Parameters, mutable Set<String>) ~> void,
   cleanFun: () ~> void = () ~> void,
 ) extends FragmentShader {
-  fun apply(parameter: Parameters): void {
-    this.applyFun(parameter)
+  fun apply(parameter: Parameters, applied: mutable Set<String>): void {
+    this.applyFun(parameter, applied)
   }
   fun clean(): void {
     this.cleanFun()
@@ -67,7 +60,11 @@ class LambdaFragmentShader(
 }
 
 base class VertexShader {
-  fun apply(params: VertexShaderParams, window: Geometry.Size): Int;
+  fun apply(
+    params: VertexShaderParams,
+    window: Geometry.Size,
+    applied: mutable Set<String>,
+  ): Int;
   fun clean(params: VertexShaderParams): void;
 }
 
@@ -75,7 +72,11 @@ base class AttributeVertexShader(
   positionLocation: GL.AttributeLocation,
 ) extends VertexShader {
   @debug
-  fun apply(params: VertexShaderParams, window: Geometry.Size): Int {
+  fun apply(
+    params: VertexShaderParams,
+    window: Geometry.Size,
+    _applied: mutable Set<String>,
+  ): Int {
     params match {
     | attrParams @ AttributeVertexParams _ ->
       ctx = attrParams.positions.context();
@@ -87,17 +88,13 @@ base class AttributeVertexShader(
         false,
         UInt32::truncate(0),
       );
+      attrParams.positions.value.unbind();
       this.toApply(attrParams, window)
     | _ -> SKStore.cast_violation("GLProgram.AttributeVertexParams", params)
     };
   }
 
-  fun clean(params: VertexShaderParams): void {
-    params match {
-    | attrParams @ AttributeVertexParams _ ->
-      attrParams.positions.value.unbind()
-    | _ -> SKStore.cast_violation("GLProgram.AttributeVertexParams", params)
-    };
+  fun clean(_params: VertexShaderParams): void {
     this.onClean();
   }
 
@@ -110,7 +107,11 @@ base class AttributeVertexShader(
 
 base class LayoutVertexShader() extends VertexShader {
   @debug
-  fun apply(params: VertexShaderParams, window: Geometry.Size): Int {
+  fun apply(
+    params: VertexShaderParams,
+    window: Geometry.Size,
+    _applied: mutable Set<String>,
+  ): Int {
     params match {
     | lParams @ LayoutVertexParams _ ->
       lParams.vArray.value.bind();
@@ -188,8 +189,9 @@ class TriangleProgram(
   ): void {
     ctx = this.program.context();
     this.program.use();
-    this.fragmentShader.apply(fragment);
-    size = this.vertexShader.apply(vertex, window);
+    applied = mutable Set<String>[];
+    this.fragmentShader.apply(fragment, applied);
+    size = this.vertexShader.apply(vertex, window, applied);
     ctx.drawTriangles(UInt32::truncate(0), UInt32::truncate(size));
     this.fragmentShader.clean();
     this.vertexShader.clean(vertex);

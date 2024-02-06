@@ -1,0 +1,926 @@
+module GLSL;
+
+type MapperFn = (Function, Param, Int) ~> ?Expr;
+
+fun asParam(): MapperFn {
+  (_fn, p, _i) ~> Some(p.ref())
+}
+
+base class Entity(material: ?MaterialSupplier = None()) uses Hashable {
+  fun fillShape(
+    position: Expr,
+    params: mutable Vars,
+    equations: mutable Vector<Equation>,
+  ): Call;
+
+  fun fillRelief(
+    position: Expr,
+    params: mutable Vars,
+    equations: mutable Vector<Equation>,
+  ): void;
+
+  overridable fun getAttributeBuilder(attr: Attribute): BufferBuilder {
+    attr.name match {
+    | "position" -> RectangleBufferBuilder()
+    | name -> invariant_violation(`Attribute '${name}' not managed.`)
+    }
+  }
+
+  overridable fun getVertexSize(): Int {
+    6;
+  }
+}
+
+trait WithFunction {
+  protected fun mapParameter(
+    params: mutable Vars,
+    fn: Function,
+    p: Param,
+  ): ?Expr;
+  //
+  fun toFunctionCall(position: Expr, params: mutable Vars, fn: Function): Call {
+    fn.toCall((p, _) ->
+      p.name match {
+      | "position" -> Some(position)
+      | _ -> this.mapParameter(params, fn, p)
+      }
+    )
+  }
+}
+
+trait WithReliefFunction extends WithFunction {
+  //
+  protected fun getReliefFunction(): Function;
+
+  fun fillRelief(
+    position: Expr,
+    params: mutable Vars,
+    equations: mutable Vector<Equation>,
+  ): void {
+    equations.push(
+      VoidCall(this.toFunctionCall(position, params, this.getReliefFunction())),
+    )
+  }
+}
+
+trait WithDefaultMapper {
+  protected fun mapParameter(
+    params: mutable Vars,
+    fn: Function,
+    p: Param,
+  ): ?Expr {
+    params.insert(Some(fn), p, 0).map(p -> p.ref())
+  }
+}
+
+base class Mapper uses Hashable {
+  fun mapParameter(params: mutable Vars, fn: Function, p: Param): ?Expr;
+}
+
+class DefaultMapper() extends Mapper {
+  //
+  fun mapParameter(params: mutable Vars, fn: Function, p: Param): ?Expr {
+    params.insert(Some(fn), p, 0).map(p -> p.ref())
+  }
+}
+
+base class WithMapper(mapper: Mapper = DefaultMapper()) {
+  protected fun mapParameter(
+    params: mutable Vars,
+    fn: Function,
+    p: Param,
+  ): ?Expr {
+    this.mapper.mapParameter(params, fn, p)
+  }
+}
+
+trait WithShapeFunction extends WithFunction {
+  //
+  protected fun getShapeFunction(): Function;
+
+  fun fillShape(
+    position: Expr,
+    params: mutable Vars,
+    _equations: mutable Vector<Equation>,
+  ): Call {
+    this.toFunctionCall(position, params, this.getShapeFunction())
+  }
+}
+
+class EllipsoideMapper() extends Mapper {
+  fun mapParameter(params: mutable Vars, fn: Function, p: Param): ?Expr {
+    res = p.name match {
+    | "ellipse" ->
+      _ = params.insert(
+        Some(fn),
+        Param::make("ellipsoide", ellipsoideStruct),
+        0,
+      );
+      Some(Const("CenterRadius2(ellipsoide.center.xy, ellipsoide.radius.xy)"))
+    | _ -> params.insert(Some(fn), p, 0).map(p -> p.ref())
+    };
+    res;
+  }
+}
+
+class Ellipsoide() extends Entity uses WithReliefFunction, WithShapeFunction {
+  const mapper: EllipsoideMapper = EllipsoideMapper();
+
+  protected fun getReliefFunction(): Function {
+    ellipsoideFn()
+  }
+
+  protected fun getShapeFunction(): Function {
+    ellipseFn()
+  }
+
+  protected fun mapParameter(
+    params: mutable Vars,
+    fn: Function,
+    p: Param,
+  ): ?Expr {
+    static::mapper.mapParameter(params, fn, p)
+  }
+}
+
+class Button1() extends Entity uses WithReliefFunction, WithShapeFunction {
+  protected fun getReliefFunction(): Function {
+    button1()
+  }
+
+  protected fun getShapeFunction(): Function {
+    roundedFn()
+  }
+
+  protected fun mapParameter(
+    params: mutable Vars,
+    fn: Function,
+    p: Param,
+  ): ?Expr {
+    res = p.name match {
+    | "ulr" | "urr" | "llr" | "lrr" ->
+      params.insert(None(), Param::make("radius", vec3()), 0).map(p ->
+        p.access("xy")
+      )
+    | _ -> params.insert(Some(fn), p, 0).map(p -> p.ref())
+    };
+    res;
+  }
+}
+
+class Cylinder(
+  vertical: Bool = false,
+) extends Entity uses WithReliefFunction, WithShapeFunction, WithDefaultMapper {
+  //
+  protected fun getReliefFunction(): Function {
+    if (this.vertical) {
+      vCylinderFn()
+    } else {
+      hCylinderFn()
+    };
+  }
+
+  protected fun getShapeFunction(): Function {
+    rectangleFn()
+  }
+}
+
+class Face()
+  extends Entity
+  uses WithReliefFunction, WithShapeFunction, WithDefaultMapper {
+  //
+  protected fun getReliefFunction(): Function {
+    setZFn()
+  }
+
+  protected fun getShapeFunction(): Function {
+    rectangleFn()
+  }
+}
+
+/*
+ * A shape function shall define tune a z, the normal and returns a alpha
+ */
+
+fun shapeFn(
+  shape: Function,
+  mapper: MapperFn = asParam(),
+  opt3D: ?Function = None(),
+): Function {
+  z = Param("z", true, SFloat());
+  normal = Param("normal", true, vec3());
+  position = Param::make("position", vec2());
+  smooth = Param::make("smoothing", SFloat());
+  params = mutable Params(
+    (_fn, p, _i) ~> Some(p),
+    SortedSet[z, normal, position, smooth],
+    mutable Vector[z, normal, position, smooth],
+  );
+  equations = mutable Vector<Equation>[];
+  name = `${shape.signature.name}_${opt3D
+    .map(fn -> fn.signature.name)
+    .default("")}`;
+  alpha = Declaration(
+    "alpha",
+    Some(
+      shape.toCall((p, idx) ->
+        p.name match {
+        | "position" -> Some(position.ref())
+        | "smoothing" -> Some(smooth.ref())
+        | _ -> mapper(shape, p, idx)
+        }
+      ),
+    ),
+    SFloat(),
+  );
+  equations.push(alpha);
+  opt3D.each(fn -> {
+    fn.check3D();
+    equations.push(
+      VoidCall(
+        fn.toCall((p, _) ->
+          p.name match {
+          | "position" -> Some(position.ref())
+          | "alpha" -> Some(alpha.ref())
+          | "z" -> Some(z.ref())
+          | "normal" -> Some(normal.ref())
+          | _ -> params.insert(Some(fn), p, 0).map(p -> p.ref())
+          }
+        ),
+      ),
+    )
+  });
+  equations.push(Return(alpha.ref()));
+  Function(
+    Signature(name, vec4(), params.toArray()),
+    Equations(equations.toArray()),
+  )
+}
+
+fun ellipseFn(): Function {
+  Function(
+    Signature(
+      "ellipse",
+      SFloat(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("smoothing", SFloat()),
+        Param::make("ellipse", ellipseStruct),
+      ],
+    ),
+    Textual(
+      Array[
+        "float x = position.x - ellipse.center.x;",
+        "float y = position.y - ellipse.center.y;",
+        "float a = ellipse.radius.x;",
+        "float b = ellipse.radius.y;",
+        "float e = ((x * x) / (a * a)) + ((y * y) / (b * b));",
+        "if((a == 0.0) || (b == 0.0) || (e > 1.0)) {",
+        "  return 0.0;",
+        "}",
+        "if(e < 1.0 - smoothing) {",
+        "  return 1.0;",
+        "}",
+        "return smoothstep(1.0, 1.0 - smoothing, e);",
+      ],
+    ),
+  )
+}
+
+fun rectangleFn(): Function {
+  Function(
+    Signature(
+      "rectangleFn",
+      SFloat(),
+      Array[
+        Param::make("position", vec2()),
+        Param::make("smoothing", SFloat()),
+        Param::make("bounds", vec4()),
+      ],
+    ),
+    Textual(
+      Array[
+        "float centerX = bounds.x + bounds.z / 2.0;",
+        "float centerY = bounds.y + bounds.w / 2.0;",
+        "float lx = 2.0 * abs(position.x - centerX) / bounds.z;",
+        "float ly = 2.0 * abs(position.y - centerY) / bounds.w;",
+        "float len = max(lx, ly);",
+        "if (len > 1.0) {",
+        "  return 0.0;",
+        "}",
+        "if (len <= 1.0 - smoothing) {",
+        "  return 1.0;",
+        "}",
+        "return smoothstep(1.0, 1.0 - smoothing, len);",
+      ],
+    ),
+  )
+}
+
+fun mtsdfFn(): Function {
+  Function(
+    Signature(
+      "mtsdf",
+      SFloat(),
+      Array[Param::make("position", vec2()), Param::make("mtsdf", mtsdfStruct)],
+    ),
+    Textual(
+      Array[
+        "vec4 info = texture(mtsdf.texture, position);",
+        "float msd = info.rgb + clamp(mtsdfthickness, -0.5, 0.5);",
+        "float sd = clamp(median(msd.r, msd.g, msd.b), 0.0, 255.0);",
+        "float distance = pxRange(mtsdf.tex, position, mtsdf.range) * (sd - 0.5);",
+        "return clamp(distance - 0.5, 0.0, 1.0);",
+      ],
+      Array[pxRangeFn()],
+    ),
+  )
+}
+
+fun check(p: Param): Equation {
+  zero = Const("0.0");
+  IfThenElse(
+    Array[
+      Branch(
+        Some(or(eq(p.access("x"), zero), eq(p.access("y"), zero))),
+        Array[Declaration(p.name, Some(Call(vec2Fn, Array[zero])), TVoid())],
+      ),
+    ],
+  );
+}
+
+fun ellipse(
+  name: String,
+  center: Expr,
+  radius: Expr,
+  position: Expr,
+  smooth: Expr,
+): Declaration {
+  Declaration(
+    name,
+    Some(Call(ellipseFn(), Array[center, radius, position, smooth])),
+    SFloat(),
+  )
+}
+
+fun roundedFn(): Function {
+  position = Param::make("position", vec2());
+  smooth = Param::make("smoothing", SFloat());
+  bounds = Param::make("bounds", vec4());
+  ulr = Param::make("ulr", vec2());
+  urr = Param::make("urr", vec2());
+  llr = Param::make("llr", vec2());
+  lrr = Param::make("lrr", vec2());
+  Function(
+    Signature(
+      "rounded",
+      SFloat(),
+      Array[bounds, position, ulr, urr, llr, lrr, smooth],
+    ),
+    Textual(
+      Array[
+        "float recAlpha = rectangleFn(position, smoothing, bounds);",
+        "if(!(recAlpha > 0.0)) {",
+        "  return 0.0;",
+        "}",
+        "if((ulr.x == 0.0) || (ulr.y == 0.0)) {",
+        "  ulr = vec2(0.0);",
+        "}",
+        "if((urr.x == 0.0) || (urr.y == 0.0)) {",
+        "  urr = vec2(0.0);",
+        "}",
+        "if((llr.x == 0.0) || (llr.y == 0.0)) {",
+        "  llr = vec2(0.0);",
+        "}",
+        "if((lrr.x == 0.0) || (lrr.y == 0.0)) {",
+        "  lrr = vec2(0.0);",
+        "}",
+        "vec2 uLC = bounds.xy + ulr;",
+        "float inUl = ellipse(position, smoothing, CenterRadius2(uLC, ulr));",
+        "vec2 upperRight = vec2(bounds.x + bounds.z, bounds.y);",
+        "vec2 uRC = vec2(upperRight.x - urr.x, upperRight.y + urr.y);",
+        "float inUr = ellipse(position, smoothing, CenterRadius2(uRC, urr));",
+        "vec2 lowerLeft = vec2(bounds.x, bounds.y + bounds.w);",
+        "vec2 lLC = vec2(lowerLeft.x + llr.x, lowerLeft.y - llr.y);",
+        "float inLl = ellipse(position, smoothing, CenterRadius2(lLC, llr));",
+        "vec2 lowerRight = bounds.xy + bounds.zw;",
+        "vec2 lRC = lowerRight - lrr;",
+        "float inLr = ellipse(position, smoothing, CenterRadius2(lRC, lrr));",
+        "float x = position.x;",
+        "float y = position.y;",
+        "float rect1 = float((y >= uLC.y) && (y < lLC.y) && (x < min(uRC.x, lRC.x)));",
+        "float rect2 = float((y >= uRC.y) && (y < lRC.y) && (x >= max(uLC.x, lLC.x)));",
+        "float rect3 = float((x >= uLC.x) && (x < uRC.x) && (y < min(lLC.y, lRC.y)));",
+        "float rect4 = float((x >= lLC.x) && (x < lRC.x) && (y >= max(uLC.y, uRC.y)));",
+        "return min(inUl + inUr + inLl + inLr + rect1 + rect2 + rect3 + rect4, 1.0) * recAlpha;",
+      ],
+      Array[rectangleFn(), ellipseFn()],
+    ),
+  )
+}
+
+fun roundedTopFn(): Function {
+  GLSL.compose(
+    "roundedTop",
+    Array[GLSL.roundedFn(), GLSL.roundedFn()],
+    exprs ~> GLSL.Op("-", exprs),
+    GLSL.SFloat(),
+    (_fn, param, i) ~> {
+      prefix = i match {
+      | 0 -> "o"
+      | 1 -> "i"
+      | _ -> `k${i}`
+      };
+      param.name match {
+      | "position" | "smoothing" -> Some(param)
+      | "llr" | "lrr" -> None()
+      | _ -> Some(GLSL.Param::make(`${prefix}_${param.name}`, param.type_))
+      }
+    },
+  );
+}
+
+fun roundedBottomFn(): Function {
+  GLSL.compose(
+    "roundedBottom",
+    Array[GLSL.roundedFn(), GLSL.roundedFn()],
+    exprs ~> GLSL.Op("-", exprs),
+    GLSL.SFloat(),
+    (_fn, param, i) ~> {
+      prefix = i match {
+      | 0 -> "o"
+      | 1 -> "i"
+      | _ -> `k${i}`
+      };
+      param.name match {
+      | "position" | "smoothing" -> Some(param)
+      | "ulr" | "urr" -> None()
+      | _ -> Some(GLSL.Param::make(`${prefix}_${param.name}`, param.type_))
+      }
+    },
+  );
+}
+
+fun simpleRoundedTopFn(): Function {
+  Function(
+    Signature(
+      "inSimpleRoundedTop",
+      SFloat(),
+      Array[
+        Param::make("bounds", vec4()),
+        Param::make("position", vec2()),
+        Param::make("radius", vec2()),
+        Param::make("thickness", SFloat()),
+        Param::make("smoothing", SFloat()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec4 i_bounds = vec4(vec2(bounds.x, bounds.y + thickness), vec2(bounds.z, bounds.w - thickness));",
+        "vec2 i_radius = vec2(radius.x, min(radius.y, i_bounds.w));",
+        "return roundedTop(bounds, position, radius, radius, smoothing, i_bounds, i_radius, i_radius);",
+      ],
+      Array[roundedTopFn()],
+    ),
+  )
+}
+
+fun simpleRoundedBottomFn(): Function {
+  Function(
+    Signature(
+      "inSimpleRoundedBottom",
+      SFloat(),
+      Array[
+        Param::make("bounds", vec4()),
+        Param::make("position", vec2()),
+        Param::make("radius", vec2()),
+        Param::make("thickness", SFloat()),
+        Param::make("smoothing", SFloat()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec4 i_bounds = vec4(bounds.xy, vec2(bounds.z, bounds.w - thickness));",
+        "vec2 i_radius = vec2(radius.x, min(radius.y, i_bounds.w));",
+        "return roundedBottom(bounds, position, radius, radius, smoothing, i_bounds, i_radius, i_radius);",
+      ],
+      Array[roundedBottomFn()],
+    ),
+  )
+}
+
+fun simpleRoundedCenterFn(): Function {
+  Function(
+    Signature(
+      "inSimpleRoundedCenter",
+      SFloat(),
+      Array[
+        Param::make("bounds", vec4()),
+        Param::make("position", vec2()),
+        Param::make("radius", vec2()),
+        Param::make("thickness", SFloat()),
+        Param::make("smoothing", SFloat()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec4 i_bounds = vec4(vec2(bounds.x, bounds.y + thickness), vec2(bounds.z, bounds.w - (2.0 * thickness)));",
+        "vec2 i_radius = vec2(radius.x, min(radius.y, i_bounds.w / 2.0));",
+        "return rounded(i_bounds, position, i_radius, i_radius, i_radius, i_radius, smoothing);",
+      ],
+      Array[roundedFn()],
+    ),
+  )
+}
+
+fun relativeEllipsoide(): Function {
+  zp = Param("z", true, SFloat());
+  normal = Param("normal", true, vec3());
+  position = Param::make("position", vec2());
+  bounds = Param::make("bounds", vec4());
+  relative = Param::make("relative", ellipsoideStruct);
+  params = mutable Params(
+    (_fn, p, _i) ~> Some(p),
+    SortedSet[zp, normal, position, bounds, relative],
+    mutable Vector[zp, normal, position, bounds, relative],
+  );
+  equations = mutable Vector<Equation>[];
+  shift = Declaration(
+    "shift",
+    Some(Op("*", Array[relative.access("center.xy"), bounds.access("zw")])),
+    vec2(),
+  );
+  equations.push(shift);
+  center = Declaration(
+    "center",
+    Some(Op("+", Array[bounds.access("xy"), shift.ref()])),
+    vec2(),
+  );
+  equations.push(center);
+  radius = Declaration(
+    "radius",
+    Some(Op("*", Array[relative.access("radius.xy"), bounds.access("zw")])),
+    vec2(),
+  );
+  equations.push(radius);
+  clip = Declaration(
+    "clip",
+    Some(
+      ellipseFn().toCall((p, _) ->
+        p.name match {
+        | "position" -> Some(position.ref())
+        | "ellipse" -> Some(Const("CenterRadius2(center, radius)"))
+        | _ -> None()
+        }
+      ),
+    ),
+    SFloat(),
+  );
+  equations.push(clip);
+  equations.push(
+    IfThenElse(
+      Array[
+        Branch(
+          Some(gt(clip.ref(), Const("0.0"))),
+          Array[
+            VoidCall(
+              ellipsoideFn().toCall((p, _) ->
+                p.name match {
+                | "position" -> Some(position.ref())
+                | "z" -> Some(zp.ref())
+                | "normal" -> Some(normal.ref())
+                | "ellipsoide" ->
+                  Some(
+                    Const(
+                      `Ellipsoide(vec3(center, relative.center.z), vec3(radius, relative.radius.z))`,
+                    ),
+                  )
+                | _ -> None()
+                }
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+  Function(
+    Signature("relativeEllipsoide", TVoid(), params.toArray()),
+    Equations(equations.toArray()),
+  )
+}
+
+fun relativeHCylinder(): Function {
+  zp = Param("z", true, SFloat());
+  normal = Param("normal", true, vec3());
+  position = Param::make("position", vec2());
+  bounds = Param::make("bounds", vec4());
+  relative = Param::make("relative", cylinderStruct);
+  params = mutable Params(
+    (_fn, p, _i) ~> Some(p),
+    SortedSet[zp, normal, position, bounds, relative],
+    mutable Vector[zp, normal, position, bounds, relative],
+  );
+  equations = mutable Vector<Equation>[];
+  clip = Declaration(
+    "clip",
+    Some(
+      rectangleFn().toCall((p, _) ->
+        p.name match {
+        | "position" -> Some(position.ref())
+        | "bounds" -> Some(bounds.ref())
+        | _ -> None()
+        }
+      ),
+    ),
+    SFloat(),
+  );
+  equations.push(clip);
+  shift = Declaration(
+    "shift",
+    Some(Op("*", Array[bounds.access("w"), relative.access("center.x")])),
+    SFloat(),
+  );
+  yPosition = Declaration(
+    "yPosition",
+    Some(Op("+", Array[bounds.access("y"), shift.ref()])),
+    SFloat(),
+  );
+  radius = Declaration(
+    "radius",
+    Some(
+      Call(
+        vec2Fn,
+        Array[
+          Op("*", Array[bounds.access("w"), relative.access("radius.x")]),
+          relative.access("radius.y"),
+        ],
+      ),
+    ),
+    vec2(),
+  );
+
+  equations.push(
+    IfThenElse(
+      Array[
+        Branch(
+          Some(gt(clip.ref(), Const("0.0"))),
+          Array[
+            shift,
+            yPosition,
+            radius,
+            VoidCall(
+              hCylinderFn().toCall((p, _) ->
+                p.name match {
+                | "position" -> Some(position.ref())
+                | "z" -> Some(zp.ref())
+                | "normal" -> Some(normal.ref())
+                | "cylinder" ->
+                  Some(
+                    Const(
+                      `CenterRadius2(vec2(${
+                        yPosition.name
+                      }, relative.center.y), radius)`,
+                    ),
+                  )
+                | _ -> None()
+                }
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+  Function(
+    Signature("relativeHCylinder", TVoid(), params.toArray()),
+    Equations(equations.toArray()),
+  )
+}
+
+fun relativeVCylinder(): Function {
+  zp = Param("z", true, SFloat());
+  normal = Param("normal", true, vec3());
+  position = Param::make("position", vec2());
+  bounds = Param::make("bounds", vec4());
+  relative = Param::make("relative", cylinderStruct);
+  params = mutable Params(
+    (_fn, p, _i) ~> Some(p),
+    SortedSet[zp, normal, position, bounds, relative],
+    mutable Vector[zp, normal, position, bounds, relative],
+  );
+  equations = mutable Vector<Equation>[];
+  clip = Declaration(
+    "clip",
+    Some(
+      rectangleFn().toCall((p, _) ->
+        p.name match {
+        | "position" -> Some(position.ref())
+        | "bounds" -> Some(bounds.ref())
+        | _ -> None()
+        }
+      ),
+    ),
+    SFloat(),
+  );
+  equations.push(clip);
+  shift = Declaration(
+    "shift",
+    Some(Op("*", Array[bounds.access("z"), relative.access("center.x")])),
+    SFloat(),
+  );
+  xPosition = Declaration(
+    "xPosition",
+    Some(Op("+", Array[bounds.access("x"), shift.ref()])),
+    SFloat(),
+  );
+  radius = Declaration(
+    "radius",
+    Some(
+      Call(
+        vec2Fn,
+        Array[
+          Op("*", Array[bounds.access("z"), relative.access("radius.x")]),
+          relative.access("radius.y"),
+        ],
+      ),
+    ),
+    vec2(),
+  );
+  equations.push(
+    IfThenElse(
+      Array[
+        Branch(
+          Some(gt(clip.ref(), Const("0.0"))),
+          Array[
+            shift,
+            xPosition,
+            radius,
+            VoidCall(
+              vCylinderFn().toCall((p, _) ->
+                p.name match {
+                | "position" -> Some(position.ref())
+                | "z" -> Some(zp.ref())
+                | "normal" -> Some(normal.ref())
+                | "cylinder" ->
+                  Some(
+                    Const(
+                      `CenterRadius2(vec2(${
+                        xPosition.name
+                      }, relative.center.y), radius)`,
+                    ),
+                  )
+                | _ -> None()
+                }
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Function(
+    Signature("relativeVCylinder", TVoid(), params.toArray()),
+    Equations(equations.toArray()),
+  )
+}
+
+fun setZFn(): Function {
+  zp = Param("z", true, SFloat());
+  depth = Param::make("depth", SFloat());
+  params = mutable Params(
+    (_fn, p, _i) ~> Some(p),
+    SortedSet[zp, depth],
+    mutable Vector[zp, depth],
+  );
+  equations = mutable Vector<Equation>[zp.set(depth.ref())];
+  Function(
+    Signature("setz", TVoid(), params.toArray()),
+    Equations(equations.toArray()),
+  )
+}
+
+fun relativeFace(): Function {
+  zp = Param("z", true, SFloat());
+  normal = Param("normal", true, vec3());
+  position = Param::make("position", vec2());
+  bounds = Param::make("bounds", vec4());
+  depth = Param::make("depth", SFloat());
+  params = mutable Params(
+    (_fn, p, _i) ~> Some(p),
+    SortedSet[zp, normal, position, bounds, depth],
+    mutable Vector[zp, normal, position, bounds, depth],
+  );
+  equations = mutable Vector<Equation>[];
+  clip = Declaration(
+    "clip",
+    Some(
+      rectangleFn().toCall((p, _) ->
+        p.name match {
+        | "position" -> Some(position.ref())
+        | "bounds" -> Some(bounds.ref())
+        | _ -> None()
+        }
+      ),
+    ),
+    SFloat(),
+  );
+  equations.push(clip);
+  equations.push(
+    IfThenElse(
+      Array[
+        Branch(
+          Some(gt(clip.ref(), Const("0.0"))),
+          Array[
+            zp.set(depth.ref()),
+            normal.set(
+              Call(vec3Fn, Array[Const("0.0"), Const("0.0"), Const("1.0")]),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+  Function(
+    Signature("relativeFace", TVoid(), params.toArray()),
+    Equations(equations.toArray()),
+  )
+}
+
+fun button1(): Function {
+  zp = Param("z", true, SFloat());
+  normal = Param("normal", true, vec3());
+  position = Param::make("position", vec2());
+  bounds = Param::make("bounds", vec4());
+  radius = Param::make("radius", vec3());
+  Function(
+    Signature("button1", TVoid(), Array[zp, normal, position, bounds, radius]),
+    Textual(
+      Array[
+        "vec2 xyradius = min(radius.xy, bounds.zw * vec2(0.5));",
+        "float row02 = xyradius.y;",
+        "float row1 = bounds.w - 2.0 * row02;",
+        "float col02 = xyradius.x;",
+        "float col1 = bounds.z - 2.0 * col02;",
+        "vec2 size_02_02 = vec2(col02, row02);",
+        "vec4 bounds_0_0 = vec4(bounds.xy, size_02_02);",
+        "if(rectangleFn(position, 0.0, bounds_0_0) > 0.0) {",
+        "  relativeEllipsoide(z, normal, position, bounds_0_0, Ellipsoide(vec3(1.0, 1.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+        "  return;",
+        "}",
+        "vec2 size_0_1 = vec2(col1, row02);",
+        "vec4 bounds_0_1 = vec4(bounds.xy + vec2(col02, 0.0), size_0_1);",
+        "if(rectangleFn(position, 0.0, bounds_0_1) > 0.0) {",
+        "  relativeHCylinder(z, normal, position, bounds_0_1, CenterRadius2(vec2(1.0, 0.0), vec2(1.0, radius.z)));",
+        "  return;",
+        "}",
+        "vec4 bounds_0_2 = vec4(bounds.xy + vec2(col02 + col1, 0.0), size_02_02);",
+        "if(rectangleFn(position, 0.0, bounds_0_2) > 0.0) {",
+        "  relativeEllipsoide(z, normal, position, bounds_0_2, Ellipsoide(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+        "  return;",
+        "}",
+        "vec2 size_1_0 = vec2(col02, row1);",
+        "vec4 bounds_1_0 = vec4(bounds.xy + vec2(0.0, row02), size_1_0);",
+        "if(rectangleFn(position, 0.0, bounds_1_0) > 0.0) {",
+        "  relativeVCylinder(z, normal, position, bounds_1_0, CenterRadius2(vec2(1.0, 0.0), vec2(1.0, radius.z)));",
+        "  return;",
+        "}",
+        "vec2 size_1_1 = vec2(col1, row1);",
+        "vec4 bounds_1_1 = vec4(bounds.xy + size_02_02, size_1_1);",
+        "if(rectangleFn(position, 0.0, bounds_1_1) > 0.0) {",
+        "  relativeFace(z, normal, position, bounds_1_1, radius.z);",
+        "  return;",
+        "}",
+        "vec2 size_1_2 = vec2(col02, row1);",
+        "vec4 bounds_1_2 = vec4(bounds.xy + vec2(col02 + col1, row02), size_1_2);",
+        "if(rectangleFn(position, 0.0, bounds_1_2) > 0.0) {",
+        "  relativeVCylinder(z, normal, position, bounds_1_2, CenterRadius2(vec2(0.0, 0.0), vec2(1.0, radius.z)));",
+        "  return;",
+        "}",
+        "vec4 bounds_2_0 = vec4(bounds.xy + vec2(0.0, row02 + row1), size_02_02);",
+        "if(rectangleFn(position, 0.0, bounds_2_0) > 0.0) {",
+        "  relativeEllipsoide(z, normal, position, bounds_2_0, Ellipsoide(vec3(1.0, 0.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+        "  return;",
+        "}",
+        "vec2 size_2_1 = vec2(col1, row02);",
+        "vec4 bounds_2_1 = vec4(bounds.xy + vec2(col02, row02 + row1), size_2_1);",
+        "if(rectangleFn(position, 0.0, bounds_2_1) > 0.0) {",
+        "  relativeHCylinder(z, normal, position, bounds_2_1, CenterRadius2(vec2(0.0, 0.0), vec2(1.0, radius.z)));",
+        "  return;",
+        "}",
+        "vec4 bounds_2_2 = vec4(bounds.xy + vec2(col02 + col1, row02 + row1), size_02_02);",
+        "relativeEllipsoide(z, normal, position, bounds_2_2, Ellipsoide(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, radius.z)));",
+      ],
+      Array[
+        rectangleFn(),
+        relativeEllipsoide(),
+        relativeVCylinder(),
+        relativeHCylinder(),
+        relativeFace(),
+      ],
+    ),
+  )
+}
+
+module end;

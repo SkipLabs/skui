@@ -1,0 +1,335 @@
+module GLSL;
+
+fun medianFn(): Function {
+  Function(
+    Signature(
+      "median",
+      SFloat(),
+      Array[
+        Param::make("v1", SFloat()),
+        Param::make("v2", SFloat()),
+        Param::make("v3", SFloat()),
+      ],
+    ),
+    Textual(Array["return max(min(v1, v2), min(max(v1, v2), v3));"]),
+  )
+}
+
+fun errorApproxFn(size: Int): Function {
+  Function(
+    Signature(
+      `errorApprox${size}`,
+      Vec(SFloat(), size),
+      Array[Param::make("x", Vec(SFloat(), size))],
+    ),
+    Textual(
+      Array[
+        `vec${size} s = sign(x), a = abs(x);`,
+        "x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;",
+        "x *= x;",
+        "return s - s / (x * x);",
+      ],
+    ),
+  )
+}
+
+fun boxShadowFn(): Function {
+  Function(
+    Signature(
+      "boxShadow",
+      SFloat(),
+      Array[
+        Param::make("upper", vec2()),
+        Param::make("lower", vec2()),
+        Param::make("position", vec2()),
+        Param::make("sigma", SFloat()),
+      ],
+    ),
+    Textual(
+      Array[
+        "vec4 query = vec4(position - lower, position - upper);",
+        "vec4 integral = 0.5 + (0.5 * errorApprox4(query * (sqrt(0.5) / sigma)));",
+        "return (integral.z - integral.x) * (integral.w - integral.y);",
+      ],
+      Array[errorApproxFn(4)],
+    ),
+  )
+}
+
+fun pxRangeFn(): Function {
+  Function(
+    Signature(
+      "pxRange",
+      SFloat(),
+      Array[
+        Param::make("tex", Sampler2D()),
+        Param::make("position", vec2()),
+        Param::make("range", SFloat()),
+      ],
+    ),
+    Textual(
+      Array[
+        "ivec2 size = textureSize(tex, 0);",
+        "vec2 unitRange = vec2(range) / vec2(float(size.x), float(size.y));",
+        "vec2 screenTexSize = vec2(1.0) / fwidth(position);",
+        "return max(0.5 * dot(unitRange, screenTexSize), 1.0);",
+      ],
+    ),
+  )
+}
+
+fun or(e1: Expr, e2: Expr): Expr {
+  Op("||", Array[e1, e2])
+}
+
+fun and(e1: Expr, e2: Expr): Expr {
+  Op("&&", Array[e1, e2])
+}
+
+fun eq(e1: Expr, e2: Expr): Expr {
+  Op("==", Array[e1, e2])
+}
+
+fun lt(e1: Expr, e2: Expr): Expr {
+  Op("<", Array[e1, e2])
+}
+
+fun gt(e1: Expr, e2: Expr): Expr {
+  Op(">", Array[e1, e2])
+}
+
+fun lte(e1: Expr, e2: Expr): Expr {
+  Op("<=", Array[e1, e2])
+}
+
+fun gte(e1: Expr, e2: Expr): Expr {
+  Op(">=", Array[e1, e2])
+}
+
+fun not(e1: Expr): Expr {
+  Op("!", Array[e1])
+}
+
+fun min(e1: Expr, e2: Expr): Expr {
+  Call(minFn, Array[e1, e2])
+}
+
+fun max(e1: Expr, e2: Expr): Expr {
+  Call(maxFn, Array[e1, e2])
+}
+
+fun aMin(vs: Array<Expr>): Expr {
+  s: ?Expr = None();
+  vs
+    .reduce(
+      (acc, a) -> {
+        acc match {
+        | Some(c) -> Some(min(c, a))
+        | _ -> Some(a)
+        }
+      },
+      s,
+    )
+    .fromSome();
+}
+
+fun aMax(vs: Array<Expr>): Expr {
+  s: ?Expr = None();
+  vs
+    .reduce(
+      (acc, a) -> {
+        acc match {
+        | Some(c) -> Some(max(c, a))
+        | _ -> Some(a)
+        }
+      },
+      s,
+    )
+    .fromSome();
+}
+
+fun float(e: Expr): Expr {
+  Call(floatFn, Array[e])
+}
+
+fun cFloat(name: String, right: Expr): Declaration {
+  Declaration(name, Some(right), SFloat());
+}
+
+fun mainFn(body: Body): Function {
+  Function(Signature("main", TVoid(), Array[]), body)
+}
+
+fun compose(
+  name: String,
+  fns: Array<Function>,
+  composer: Array<Expr> ~> Expr,
+  return_: Type,
+  mapping: (?Function, Param, Int) ~> ?Param,
+): Function {
+  params = mutable Params(mapping);
+  decls = fns.mapWithIndex((idx, fn) -> {
+    Declaration(
+      `res${idx}`,
+      Some(
+        fn.toCall((p, _i) -> params.insert(Some(fn), p, idx).map(p -> p.ref())),
+      ),
+      fn.signature.return_,
+    )
+  });
+  Function(
+    Signature(name, return_, params.toArray()),
+    Equations(decls.concat(Array[Return(composer(decls.map(p -> p.ref())))])),
+  )
+}
+
+fun toOffsetConst(offset: Geometry.Offset): Expr {
+  arrs = Array[Const(`${offset.dx}`), Const(`${offset.dy}`)];
+  vec2Fn.toCall((_n, idx) -> arrs.maybeGet(idx));
+}
+
+fun toSizeConst(size: Geometry.Size): Expr {
+  arrs = Array[Const(`${size.width}`), Const(`${size.height}`)];
+  vec2Fn.toCall((_n, idx) -> arrs.maybeGet(idx));
+}
+
+fun rgba(color: .Color): VVec {
+  VVec(Array[color.red, color.green, color.blue, color.alpha])
+}
+
+fun rgb(color: .Color): VVec {
+  VVec(Array[color.red, color.green, color.blue])
+}
+
+fun conv(t: Scalar, expr: String): String {
+  t match {
+  | SInt() -> `int(${expr})`
+  | SUInt() -> `uint(${expr})`
+  | SFloat() -> expr
+  | SDouble() -> `double(${expr})`
+  | SBool() -> `bool(${expr})`
+  }
+}
+
+fun buildWithIndex(t: Type, index: Int, size: Int): Function {
+  fnIndex = index;
+  values = Param::make("values", SArray(SFloat(), size));
+  equations = mutable Vector<Equation>[];
+  t match {
+  | v @ Vec(s, vsize) ->
+    exprs = mutable Vector[];
+    for (i in Range(0, vsize)) {
+      exprs.push(Const(conv(s, `values[${index + i}]`)))
+    };
+    equations.push(Return(Call(vec(v), exprs.toArray())))
+  | Mat4() ->
+    exprs = mutable Vector[];
+    for (i in Range(0, 16)) {
+      exprs.push(Const(`values[${index + i}]`))
+    };
+    equations.push(Return(Call(mat4Fn, exprs.toArray())))
+  | a @ SArray(type_, asize) ->
+    tsize = type_.size();
+    type_ match {
+    | s @ Scalar _ ->
+      exprs = mutable Vector[];
+      for (i in Range(0, asize)) {
+        exprs.push(Const(conv(s, `values[${index + i}]`)));
+      };
+      equations.push(Return(Call(array(a), exprs.toArray())))
+    | _ ->
+      exprs = mutable Vector[];
+      for (i in Range(0, asize)) {
+        build = buildWithIndex(type_, index + (i * tsize), size);
+        value = Declaration(
+          `value_${i}`,
+          Some(
+            build.toCall((p, _) ->
+              p.name match {
+              | "values" -> Some(values.ref())
+              | _ -> None()
+              }
+            ),
+          ),
+          type_,
+        );
+        equations.push(value);
+        exprs.push(value.ref());
+      };
+      equations.push(Return(Call(array(a), exprs.toArray())))
+    }
+  | st @ Struct(_, types) ->
+    exprs = types.map((n, t) -> {
+      tsize = t.size();
+      res = t match {
+      | s @ Scalar _ ->
+        value = Declaration(n, Some(Const(conv(s, `values[${index}]`))), t);
+        equations.push(value);
+        value.ref()
+      | _ ->
+        build = buildWithIndex(t, index, size);
+        value = Declaration(
+          n,
+          Some(
+            build.toCall((p, _) ->
+              p.name match {
+              | "values" -> Some(values.ref())
+              | _ -> None()
+              }
+            ),
+          ),
+          t,
+        );
+        equations.push(value);
+        value.ref()
+      };
+      !index = index + tsize;
+      res
+    });
+    equations.push(Return(struct(st).toCall((p, _i) -> exprs.maybeGet(p.name))))
+  | Sampler2D() -> invariant_violation("No value build for sampler2D")
+  | GenType() -> invariant_violation("No value build for genType")
+  | TVoid() -> invariant_violation("No value build for void")
+  | Scalar _ -> invariant_violation("No value build for scalar")
+  };
+  Function(
+    Signature(
+      `build_${t.full()}_${size}_at_${fnIndex}`
+        .replace("[", "_a")
+        .replace("]", ""),
+      t,
+      Array[values],
+    ),
+    Equations(equations.toArray()),
+  )
+}
+
+fun vec(t: Vec): Function {
+  Function(
+    Signature(
+      t.prefix(),
+      t,
+      Array::fillBy(t.size(), i -> Param::make(`v${i}`, t.type_)),
+    ),
+    Internal(),
+  )
+}
+
+fun struct(struct: Struct): Function {
+  params = mutable Vector[];
+  struct.types.each((k, t) -> params.push(Param::make(k, t)));
+  Function(Signature(struct.prefix(), struct, params.toArray()), Internal())
+}
+
+fun array(array: SArray): Function {
+  Function(
+    Signature(
+      array.full(),
+      array,
+      Array::fillBy(array.asize, i -> Param::make(`v${i}`, array.type_)),
+    ),
+    Internal(),
+  )
+}
+
+module end;

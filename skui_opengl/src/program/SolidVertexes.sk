@@ -23,9 +23,9 @@ class VertexesShader(normalized: Bool) extends VertexShaderBuilder {
   }
 
   fun build(program: GL.Prepared): VertexShader {
-    positionLocation = program.getAttributeLocation(aPosition);
+    positionLocation = program.getIdxAttributeLocation(aPosition);
     // lookup uniforms
-    matrixLocation = program.getUniformLocation(uMatrix);
+    matrixLocation = program.getIdxUniformLocation(uMatrix);
     LambdaVertexShader(
       (parameters, window) ~>
         displayVertex(

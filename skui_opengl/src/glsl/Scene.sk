@@ -1,0 +1,580 @@
+module GLSL;
+
+base class Mixing {
+  children =
+  | MSrc()
+  | MDst()
+  | MConst(Float)
+}
+
+class Object(
+  shapeFn: Function,
+  colorFn: Function,
+  bounds: Geometry.Rect,
+  ligthFn: ?Function = None(),
+) {
+  //
+  fun toFunction(
+    name: String,
+    mapping: (?Function, Param, Int) ~> ?Param = (_fn, p, _i) ~> Some(p),
+  ): Function {
+    params = mutable Params(mapping);
+    equations = mutable Vector<Equation>[];
+    bounds = params.insert(None(), Param::make("bounds", vec4()), 0).fromSome();
+    position = params
+      .insert(None(), Param::make("position", vec2()), 0)
+      .fromSome();
+    sized = Op(
+      "*",
+      Array[bounds.access("zw"), toOffsetConst(this.bounds.topLeft())],
+    );
+    o_bounds = Declaration(
+      "o_bounds",
+      Some(
+        Call(
+          vec4Fn,
+          Array[
+            Op("+", Array[bounds.access("xy"), sized]),
+            Op(
+              "*",
+              Array[bounds.access("zw"), toSizeConst(this.bounds.size())],
+            ),
+          ],
+        ),
+      ),
+      vec4(),
+    );
+    equations.push(o_bounds);
+    alpha = Declaration(
+      "alpha",
+      Some(
+        this.shapeFn.toCall((p, _) ->
+          p.name match {
+          | "position" -> Some(position.ref())
+          | "bounds" -> Some(o_bounds.ref())
+          | _ -> params.insert(Some(this.shapeFn), p, 0).map(p -> p.ref())
+          }
+        ),
+      ),
+      SFloat(),
+    );
+    equations.push(alpha);
+    colorCall = this.colorFn.toCall((p, _) ->
+      p.name match {
+      | "position" -> Some(position.ref())
+      | "alpha" -> Some(alpha.ref())
+      | _ -> params.insert(Some(this.colorFn), p, 0).map(p -> p.ref())
+      }
+    );
+    this.ligthFn match {
+    | Some(ligthFn) ->
+      sColor = Declaration("surfaceColor", Some(colorCall), vec4());
+      equations.push(sColor);
+      equations.push(
+        Return(
+          ligthFn.toCall((p, _) ->
+            p.name match {
+            | "position" -> Some(position.ref())
+            | "color" -> Some(sColor.ref())
+            | _ -> params.insert(Some(ligthFn), p, 0).map(p -> p.ref())
+            }
+          ),
+        ),
+      )
+    | _ -> equations.push(Return(colorCall))
+    };
+
+    Function(
+      Signature(name, vec4(), params.toArray()),
+      Equations(equations.toArray()),
+    )
+  }
+}
+
+class Group(name: String, objects: Array<Object>) {
+  //
+  fun fillData(
+    bounds: Var,
+    mixing: Mixing,
+    params: mutable Vars,
+    equations: mutable Vector<Equation>,
+  ): ?Declaration {
+    position = params
+      .insert(None(), Param::make("position", vec2()), 0)
+      .fromSome();
+    current: ?Declaration = None();
+    this.objects.eachWithIndex((idx, obj) -> {
+      sized = Op(
+        "*",
+        Array[bounds.access("zw"), toOffsetConst(obj.bounds.topLeft())],
+      );
+      o_bounds = Declaration(
+        `bounds_${idx}`,
+        Some(
+          Call(
+            vec4Fn,
+            Array[
+              Op("+", Array[bounds.access("xy"), sized]),
+              Op(
+                "*",
+                Array[bounds.access("zw"), toSizeConst(obj.bounds.size())],
+              ),
+            ],
+          ),
+        ),
+        vec4(),
+      );
+      equations.push(o_bounds);
+      alpha = Declaration(
+        `alpha_${idx}`,
+        Some(
+          obj.shapeFn.toCall((p, _) ->
+            p.name match {
+            | "position" -> Some(position.ref())
+            | "bounds" -> Some(o_bounds.ref())
+            | _ -> params.insert(Some(obj.shapeFn), p, 0).map(p -> p.ref())
+            }
+          ),
+        ),
+        SFloat(),
+      );
+      equations.push(alpha);
+      sColor = Declaration(
+        `sColor_${idx}`,
+        Some(
+          obj.colorFn.toCall((p, _) ->
+            p.name match {
+            | "position" -> Some(position.ref())
+            | "alpha" -> Some(alpha.ref())
+            | "color" ->
+              params
+                .insert(
+                  Some(obj.colorFn),
+                  Param::make(`color_${idx}`, p.type_),
+                  0,
+                )
+                .map(p -> p.ref())
+            | _ -> params.insert(Some(obj.colorFn), p, 0).map(p -> p.ref())
+            }
+          ),
+        ),
+        vec4(),
+      );
+      equations.push(sColor);
+      res = obj.ligthFn match {
+      | Some(ligthFn) ->
+        lColor = Declaration(
+          `lColor_${idx}`,
+          Some(
+            ligthFn.toCall((p, _) ->
+              p.name match {
+              | "position" -> Some(position.ref())
+              | "color" -> Some(sColor.ref())
+              | "lightColor" ->
+                params
+                  .insert(
+                    Some(ligthFn),
+                    Param::make(`lightColor_${idx}`, p.type_),
+                    0,
+                  )
+                  .map(p -> p.ref())
+              | "lightPosition" ->
+                params
+                  .insert(
+                    Some(ligthFn),
+                    Param::make(`lightPosition_${idx}`, p.type_),
+                    0,
+                  )
+                  .map(p -> p.ref())
+              | "points" ->
+                params
+                  .insert(
+                    Some(ligthFn),
+                    Param::make(`points_${idx}`, p.type_),
+                    0,
+                  )
+                  .map(p -> p.ref())
+              | _ -> params.insert(Some(ligthFn), p, 0).map(p -> p.ref())
+              }
+            ),
+          ),
+          vec4(),
+        );
+        equations.push(lColor);
+        lColor
+      | _ -> sColor
+      };
+
+      current match {
+      | Some(c) ->
+        equations.push(
+          res.set(
+            Call(
+              mixFn,
+              Array[
+                c.ref(),
+                res.ref(),
+                mixing match {
+                | MSrc() -> c.access("a")
+                | MDst() -> res.access("a")
+                | MConst(v) -> Const(v.toString())
+                },
+              ],
+            ),
+          ),
+        )
+      | _ -> void
+      };
+      !current = Some(res);
+    });
+    current;
+  }
+
+  fun toFunction(
+    mixing: Mixing,
+    mapping: (?Function, Param, Int) ~> ?Param = (_fn, p, _i) ~> Some(p),
+  ): Function {
+    params = mutable Vars(mapping);
+    bounds = Param::make("bounds", vec4());
+    _ = params.insert(None(), bounds, 0);
+    equations = mutable Vector<Equation>[];
+    current = this.fillData(bounds, mixing, params, equations);
+    current.each(c -> equations.push(Return(c.ref())));
+    Function(
+      Signature(this.name, vec4(), params.toParameters()),
+      Equations(equations.toArray()),
+    )
+  }
+
+  fun toShader(
+    mapping: (Param, Int) ~> ?Param = (p, _i) ~> Some(p),
+    mixing: Mixing = MDst(),
+    fLevel: Level = High(),
+  ): Shader {
+    structures = mutable Vector<Uniform>[];
+    position = Varying("position", false, vec2());
+    bounds = Uniform("bounds", vec4());
+    frames = Uniform("frames", SInt());
+    params = mutable Vars(
+      (_fn, p, i) -> {
+        p.name match {
+        | "position" -> Some(position)
+        | "bounds" -> Some(bounds)
+        | "frames" -> Some(frames)
+        | _ ->
+          mapping(p, i).map(v ->
+            p.type_ match {
+            | Struct _ ->
+              u = v.toUniform();
+              structures.push(u);
+              v
+            | _ -> v.toUniform()
+            }
+          )
+        }
+      },
+      SortedSet[],
+      mutable Vector<Var>[bounds, frames],
+    );
+    equations = mutable Vector<Equation>[];
+    optExpr = this.fillData(bounds, mixing, params, equations);
+    structuresCollection = mutable Structs();
+    structures.each(u -> {
+      params.add(u.check());
+      fillStructures(u.type_, structuresCollection);
+      fillEquations(u, equations);
+    });
+    fEquations = equations.toArray();
+    Shader(
+      this.name,
+      Array[Precision(fLevel, SFloat())],
+      structuresCollection.toArray(),
+      Array[],
+      params.toUniforms(),
+      Array[position],
+      result ~> {
+        mainFn(
+          Equations(
+            fEquations.concat(
+              optExpr
+                .map(current -> Array[result.set(current.ref())])
+                .default(Array[]),
+            ),
+          ),
+        )
+      },
+    )
+  }
+}
+
+fun hashToString<T: Hashable>(v: T, prefix: String): String {
+  hash = v.hash();
+  prefix + (if (hash < 0) "_" else "") + Math.abs(hash);
+}
+
+value class Config{
+  lights: Int = 6,
+  colors: Int = 6,
+  shininesses: Int = 6,
+  textures: Int = 6,
+  reliefInVertex: Bool = false,
+} uses Hashable
+
+class Scene(entity: Entity, config: Config = Config{}) extends Program {
+  //
+  fun getVertexSize(): Int {
+    this.entity.getVertexSize();
+  }
+
+  fun getAttributeBuilder(attr: Attribute): BufferBuilder {
+    this.entity.getAttributeBuilder(attr);
+  }
+
+  fun getName(): String {
+    hashToString(this, "sc_")
+  }
+
+  fun toFragmentShader(fLevel: Level = High()): Shader {
+    nbColor = Math.max(
+      this.config.colors,
+      this.entity.material.map(m -> m.getNumberOfColor()).default(
+        this.config.colors,
+      ),
+    );
+    nbShininess = Math.max(
+      this.config.shininesses,
+      this.entity.material.map(m -> m.getNumberOfShininess()).default(
+        this.config.shininesses,
+      ),
+    );
+    nbTexture = Math.max(
+      this.config.textures,
+      this.entity.material.map(m -> m.getNumberOfTextures()).default(
+        this.config.textures,
+      ),
+    );
+    structures = mutable Vars((_fn, p, _i) -> Some(p));
+    position = Varying("position", false, vec3());
+    vnormal = Varying("normal", false, vec3());
+    smooth = Uniform("smoothing", SFloat());
+    filter = Uniform("filter", SInt());
+    colors = Uniform("colors", SArray(vec4(), nbColor));
+    camera = Uniform("camera", vec3());
+    shininesses = Uniform("shininesses", SArray(SFloat(), nbShininess));
+
+    equations = mutable Vector<Equation>[];
+    shininess = Declaration("shininess", Some(shininesses.index(0)), SFloat());
+    equations.push(shininess);
+    normal = Declaration("normal", Some(vnormal.ref()), vec3());
+    equations.push(normal);
+    z = Declaration("z", Some(position.access("z")), SFloat());
+    equations.push(z);
+    params = Vars::create(
+      (_fn, p, _i) -> {
+        p.name match {
+        | "position" -> Some(position)
+        | "smoothing" -> Some(smooth)
+        | "z" -> Some(z.var())
+        | "normal" -> Some(normal.var())
+        | "shininess" -> Some(shininess.var())
+        | "camera" -> Some(camera)
+        | _ ->
+          p.type_ match {
+          | Struct _
+          | SArray(Struct _, _) ->
+            u = p.toUniform();
+            structures.add(u);
+            Some(p)
+          | _ -> Some(p.toUniform())
+          }
+        }
+      },
+      Array[smooth, filter, z.var(), normal.var(), colors, shininesses, camera],
+    );
+    if (!this.config.reliefInVertex) {
+      this.entity.fillRelief(position.access("xy"), params, equations);
+    };
+    alpha = Declaration(
+      "alpha",
+      Some(this.entity.fillShape(position.access("xy"), params, equations)),
+      SFloat(),
+    );
+    equations.push(alpha);
+    color = Declaration(
+      "color",
+      this.entity.material match {
+      | Some(supplier) ->
+        Some(
+          supplier.fillMaterial(
+            position.access("xy"),
+            nbColor,
+            nbShininess,
+            nbTexture,
+            params,
+            equations,
+          ),
+        )
+      | _ -> Some(colors.index(0))
+      },
+      vec4(),
+    );
+    equations.push(color);
+    lcolor = Declaration(
+      "lcolor",
+      Some(
+        lightsFn(this.config.lights).toCall((p, _) ->
+          p.name match {
+          | "normal" -> Some(normal.ref())
+          | "position" -> Some(position.ref())
+          | "color" -> Some(color.ref())
+          | "camera" -> Some(camera.ref())
+          | _ -> params.insert(None(), p, 0).map(p -> p.ref())
+          }
+        ),
+      ),
+      vec4(),
+    );
+    equations.push(lcolor);
+    equations.push(
+      IfThenElse(
+        Array[
+          Branch(
+            Some(eq(filter.ref(), Const("1"))),
+            Array[lcolor.set(Call(grayScaleFn(), Array[lcolor.ref()]))],
+          ),
+          Branch(
+            Some(eq(filter.ref(), Const("2"))),
+            Array[lcolor.set(Call(sepiaFn(), Array[lcolor.ref()]))],
+          ),
+        ],
+      ),
+    );
+    structuresCollection = mutable Structs();
+    structuresCollection.add(ligthStruct);
+    uniformStuctures = structures.toUniforms();
+    uniformStuctures.each(u -> {
+      params.add(u.check());
+      fillStructures(u.type_, structuresCollection);
+      fillEquations(u, equations)
+    });
+    fEquations = equations.toArray();
+    Shader(
+      this.getName(),
+      Array[Precision(fLevel, SFloat())],
+      structuresCollection.toArray(),
+      Array[],
+      params.toUniforms(),
+      Array[position, vnormal],
+      result ~> {
+        withAlpha = withAlphaFn();
+        mainFn(
+          Equations(
+            fEquations.concat(
+              Array[
+                result.set(
+                  withAlpha.toCall((p, _) ->
+                    p.name match {
+                    | "position" -> Some(position.ref())
+                    | "color" -> Some(lcolor.ref())
+                    | "alpha" -> Some(alpha.ref())
+                    | _ -> None()
+                    }
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+      },
+    )
+  }
+
+  fun toVertexShader(fLevel: Level = High()): Shader {
+    structures = mutable Vars((_fn, p, _i) -> Some(p));
+    aposition = Attribute("position", vec4());
+    vposition = Varying("position", true, vec3());
+    vnormal = Varying("normal", true, vec3());
+    matrix = Uniform("matrix", Mat4());
+
+    equations = mutable Vector<Equation>[];
+    z = Declaration("z", Some(Const("0.0")), SFloat());
+    equations.push(z);
+    normal = Declaration("normal", Some(Const("vec3(0.0, 0.0, 1.0)")), vec3());
+    equations.push(normal);
+
+    params = mutable Vars(
+      (_fn, p, _i) -> {
+        p.name match {
+        | "position" -> Some(aposition)
+        | "matrix" -> Some(matrix)
+        | "z" -> Some(z.var())
+        | "normal" -> Some(normal.var())
+        | _ ->
+          p.type_ match {
+          | Struct _
+          | SArray(Struct _, _) ->
+            u = p.toUniform();
+            structures.add(u);
+            Some(p)
+          | _ -> Some(p.toUniform())
+          }
+        }
+      },
+      SortedSet[aposition, matrix, z.var(), normal.var()],
+      mutable Vector<Var>[aposition, matrix, z.var(), normal.var()],
+    );
+    if (this.config.reliefInVertex) {
+      this.entity.fillRelief(aposition.access("xy"), params, equations);
+    };
+    equations.push(vnormal.set(normal.ref()));
+    equations.push(
+      vposition.set(
+        Call(
+          vec3Fn,
+          Array[
+            aposition.access("xy"),
+            Op("+", Array[aposition.access("z"), z.ref()]),
+          ],
+        ),
+      ),
+    );
+    structuresCollection = mutable Structs();
+    uniformStuctures = structures.toUniforms();
+    uniformStuctures.each(u -> {
+      params.add(u.check());
+      fillStructures(u.type_, structuresCollection);
+      fillEquations(u, equations)
+    });
+    fEquations = equations.toArray();
+    Shader(
+      this.getName(),
+      Array[Precision(fLevel, SFloat())],
+      structuresCollection.toArray(),
+      Array[aposition],
+      params.toUniforms(),
+      Array[vposition, vnormal],
+      result ~> {
+        mainFn(
+          Equations(
+            fEquations.concat(
+              Array[
+                result.set(
+                  Op(
+                    "*",
+                    Array[
+                      matrix.ref(),
+                      Call(vec4Fn, Array[vposition.ref(), Const("1.0")]),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+      },
+      true,
+    )
+  }
+}
+
+module end;

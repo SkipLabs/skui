@@ -1,6 +1,6 @@
 module Shape;
 
-class Path{elements: Array<PathElement> = Array[]} {
+class Path{elements: Array<PathElement> = Array[]} uses Orderable {
   static fun rectangle(rect: Geometry.Rect): Path {
     Path{
       elements => Array[

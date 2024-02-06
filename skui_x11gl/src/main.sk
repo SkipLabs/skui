@@ -8,10 +8,10 @@ fun main(): void {
   available = mutable Vector[
     ("rounded", SkuiX11gl.rounded),
     ("rectangle", SkuiX11gl.rectangle),
+    ("ellipsoide", SkuiX11gl.ellipsoide),
+    ("button1", SkuiX11gl.button1),
+    ("tex_button1", SkuiX11gl.tex_button1),
   ];
-  /*#forEachFunction (@draw, #function, #functionName) {
-    available.push((#functionName.split(".").last(), #function))
-  };*/
   perform(available);
 }
 
@@ -64,11 +64,7 @@ native fun run(
 ): void;
 
 fun destroyObstackKeep<T>(pos: SKStore.Obstack, value: T): T {
-  copied = SKStore.destroyObstackWithValue(pos, List.Cons(value, List.Nil()));
-  copied match {
-  | List.Cons(v, _) -> v
-  | _ -> SKStore.cast_violation("List.Cons", "List.Nil")
-  }
+  SKStore.destroyObstackWithValue(pos, List.Cons(value, List.Nil())).getHead();
 }
 
 @cpp_export("SKIP_SkuiX11gl_performFrame")
@@ -78,7 +74,8 @@ fun performFrame(
   optContext: ?Context,
   width: Int,
   height: Int,
-  ratio: Float,
+  ratio: UInt32,
+  count: UInt32,
 ): Context {
   pos = SKStore.newObstack();
   ctx = GL.Ctx(UInt32::truncate(cid));
@@ -97,7 +94,10 @@ fun performFrame(
     Geometry.Point(0, 0),
     Geometry.Point(width, height),
   );
-  context.handles.each(a -> a.draw(shift, window, height, ratio));
+  fRatio = ratio.toFloat() / 100.0;
+  context.handles.each(a ->
+    a.draw(shift, window, height, fRatio, count.toInt())
+  );
   ctx.flush();
   destroyObstackKeep(pos, context);
 }

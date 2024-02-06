@@ -1,0 +1,17 @@
+module SKIP_SKUIX11Res;
+
+@cpp_extern("SKIP_skui_x11_resources_textures_steel_rgba")
+native fun steel(): Array<Ui.Pix>;
+
+@cpp_extern("SKIP_skui_x11_resources_textures_wood_rgba")
+native fun wood(): Array<Ui.Pix>;
+
+fun steelImage(): Ui.Image {
+  Ui.Image(steel(), 600, 600)
+}
+
+fun woodImage(): Ui.Image {
+  Ui.Image(wood(), 600, 333)
+}
+
+module end;

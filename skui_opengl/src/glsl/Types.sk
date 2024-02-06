@@ -1,0 +1,947 @@
+module GLSL;
+
+base class Type uses Orderable {
+  children =
+  | Vec(type_: Scalar, vsize: Int)
+  | Sampler2D()
+  | TVoid()
+  | GenType()
+  | Mat4()
+  | SArray(type_: Type, asize: Int)
+  | Struct(name: String, types: SortedMap<String, Type>)
+
+  fun prefix(): String
+  | Vec(type_, size) ->
+    prefix = type_ match {
+    | SInt() -> "i"
+    | SUInt() -> "u"
+    | SFloat() -> ""
+    | SDouble() -> "d"
+    | SBool() -> "b"
+    };
+    `${prefix}vec${size}`
+  | Sampler2D() -> "sampler2D"
+  | TVoid() -> "void"
+  | GenType() -> "genType"
+  | Mat4() -> "mat4"
+  | SArray(type_, _) -> type_.prefix()
+  | Struct(name, _) -> name
+
+  fun size(): Int
+  | Vec(_, size) -> size
+  | Sampler2D() -> 1
+  | TVoid() -> 0
+  | Mat4() -> 16
+  | GenType() -> invariant_violation("No size for genType")
+  | SArray(type_, size) -> size * type_.size()
+  | Struct(_, types) -> types.reduce((acc, _, t) -> acc + t.size(), 0)
+
+  fun suffix(): String
+  | Vec _
+  | Sampler2D _
+  | TVoid _
+  | Mat4 _
+  | GenType _
+  | Struct _ ->
+    ""
+  | SArray(_, size) -> `[${size}]`
+
+  fun full(): String {
+    `${this.prefix()}${this.suffix()}`
+  }
+
+  fun default(): Expr
+  | Vec(type_, size) ->
+    (prefix, value) = type_ match {
+    | SInt() -> ("i", "0")
+    | SUInt() -> ("u", "0")
+    | SFloat() -> ("", "0.0")
+    | SDouble() -> ("d", "0.0")
+    | SBool() -> ("b", "false")
+    };
+    Const(`${prefix}vec${size}(${value})`)
+  | Mat4() -> Const("mat4(0.0)")
+  | Sampler2D() -> invariant_violation("No default value for sampler2D")
+  | GenType() -> invariant_violation("No default value for genType")
+  | TVoid() -> Const("void")
+  | SArray(type_, size) ->
+    values = Array::fillBy(size, _idx -> type_.default());
+    Const(`${type_.prefix()}[${size}](${values.join(", ")})`)
+  | Struct(name, types) ->
+    Const(
+      `${name}(${types
+        .map((_, t) -> t.default().toString())
+        .joinValues(", ")})`,
+    )
+
+  fun toUniformType(): Type {
+    this match {
+    | SArray(Struct _, _)
+    | Struct _ ->
+      SArray(SFloat(), this.size())
+    | SInt()
+    | SUInt()
+    | SFloat()
+    | SDouble()
+    | SBool()
+    | Mat4()
+    | Vec _
+    | Sampler2D _
+    | TVoid _
+    | SArray _ ->
+      this
+    | GenType _ -> invariant_violation("No uniform type for genType")
+    }
+  }
+}
+
+base class Scalar extends Type {
+  children =
+  | SInt()
+  | SUInt()
+  | SFloat()
+  | SDouble()
+  | SBool()
+
+  fun prefix(): String
+  | SInt() -> "int"
+  | SUInt() -> "uint"
+  | SFloat() -> "float"
+  | SDouble() -> "double"
+  | SBool() -> "bool"
+
+  fun suffix(): String
+  | SInt()
+  | SUInt()
+  | SFloat()
+  | SDouble()
+  | SBool() ->
+    ""
+
+  fun size(): Int
+  | SInt()
+  | SUInt()
+  | SFloat()
+  | SDouble()
+  | SBool() ->
+    1
+
+  fun default(): Expr
+  | SInt()
+  | SUInt() ->
+    Const("0")
+  | SFloat()
+  | SDouble() ->
+    Const("0.0")
+  | SBool() -> Const("false")
+}
+
+fun fillStructures(type_: Type, structures: mutable Structs): void {
+  type_ match {
+  | Mat4 _
+  | Vec _
+  | Sampler2D()
+  | GenType()
+  | TVoid()
+  | SInt()
+  | SUInt()
+  | SFloat()
+  | SDouble()
+  | SBool() ->
+    void
+  | SArray(t, _) -> fillStructures(t, structures)
+  | s @ Struct(_, types) ->
+    types.each((_, t) -> fillStructures(t, structures));
+    structures.add(s)
+  }
+}
+
+fun fillEquations(uniform: Uniform, equations: mutable Vector<Equation>): void {
+  insert = 0;
+  uniform.type_ match {
+  | Struct _
+  | SArray _ ->
+    index = Declaration(`${uniform.name}_index`, Some(Const("0")), SInt());
+    equations.insert(insert, index);
+    !insert = insert + 1;
+    equations.insert(
+      insert,
+      Declaration(
+        uniform.name,
+        Some(
+          buildWithIndex(uniform.type_, 0, uniform.type_.size()).toCall(
+            (p, _i) ->
+              p.name match {
+              | "values" -> Some(uniform.ref())
+              | "index" -> Some(index.ref())
+              | _ -> None()
+              }
+            ,
+          ),
+        ),
+        uniform.type_,
+      ),
+    );
+    !insert = insert + 1
+  | _ -> void
+  }
+}
+
+fun fillExprs(
+  t: Type,
+  name: String,
+  index: Int,
+  exprs: mutable Vector<String>,
+  shift: String = "",
+): Int {
+  t match {
+  | Vec(type_, size) ->
+    prefix = type_ match {
+    | SInt() -> "i"
+    | SUInt() -> "u"
+    | SFloat() -> ""
+    | SDouble() -> "d"
+    | SBool() -> "b"
+    };
+    params = Array::fillBy(size, i -> `${name}[${shift}${index + i}]`);
+    exprs.push(`${prefix}vec${size}(${params.join(", ")})`);
+    index + size
+  | Mat4() ->
+    params = Array::fillBy(16, i -> `${name}[${shift}${index + i}]`);
+    exprs.push(`mat4(${params.join(", ")})`);
+    index + 16
+  | Sampler2D() -> invariant_violation("No value build for sampler2D")
+  | GenType() -> invariant_violation("No value build for genType")
+  | TVoid() -> invariant_violation("No value build for void")
+  | SArray(type_, size) ->
+    subexprs = mutable Vector<String>[];
+    for (_i in Range(0, size)) {
+      !index = fillExprs(type_, name, index, subexprs, shift)
+    };
+    exprs.push(`${type_.prefix()}[${size}](${subexprs.join(", ")})`);
+    index
+  | Struct(sname, types) ->
+    subexprs = mutable Vector<String>[];
+    types.each((_, t) -> !index = fillExprs(t, name, index, subexprs, shift));
+    exprs.push(`${sname}(${subexprs.join(", ")})`);
+    index
+  | SInt() ->
+    exprs.push(`int(${name}[${shift}${index}])`);
+    index + 1
+  | SUInt() ->
+    exprs.push(`uint(${name}[${shift}${index}])`);
+    index + 1
+  | SFloat() ->
+    exprs.push(`${name}[${shift}${index}]`);
+    index + 1
+  | SDouble() ->
+    exprs.push(`double(${name}[${shift}${index}])`);
+    index + 1
+  | SBool() ->
+    exprs.push(`bool(${name}[${shift}${index}])`);
+    index + 1
+  }
+}
+
+fun writeStructures(struct: Struct, lines: mutable Vector<String>): void {
+  lines.push(`struct ${struct.name}`);
+  lines.push("{");
+  struct.types.each((k, t) -> lines.push(`  ${t.prefix()} ${k}${t.suffix()};`));
+  lines.push("};");
+}
+
+fun vec2(): Type {
+  Vec(SFloat(), 2)
+}
+
+fun vec3(): Type {
+  Vec(SFloat(), 3)
+}
+
+fun vec4(): Type {
+  Vec(SFloat(), 4)
+}
+
+base class Level uses Show {
+  children =
+  | High()
+  | Medium()
+  | Low()
+
+  fun toString(): String
+  | High() -> "highp"
+  | Medium() -> "mediump"
+  | Low() -> "lowp"
+}
+
+class Precision(level: Level, type_: Type) uses Show {
+  fun toString(): String {
+    `precision ${this.level} ${this.type_.prefix()};`
+  }
+}
+
+base class Var(type_: Type) uses Show, Orderable {
+  fun getKind(): String;
+  fun getName(): String;
+
+  fun ref(): Ref {
+    Ref(this)
+  }
+
+  fun access(name: String): Access {
+    Access(Ref(this), name)
+  }
+
+  fun index(idx: Int): Index {
+    Index(Ref(this), idx)
+  }
+
+  overridable fun toString(): String {
+    `${this.getKind()} ${this.type_.prefix()} ${this.getName()}${this.type_.suffix()};`
+  }
+}
+
+class Varying(name: String, out: Bool) extends Var {
+  fun getKind(): String {
+    "varying"
+  }
+
+  fun getName(): String {
+    `v_${this.name}`
+  }
+
+  fun toEs(_idx: Int): String {
+    kind = this.out match {
+    | false -> "in"
+    | true -> "out"
+    };
+    `${kind} ${this.type_.prefix()} ${this.getName()}${this.type_.suffix()};`
+  }
+
+  fun set(right: Expr): Equation {
+    Declaration(this.getName(), Some(right), TVoid())
+  }
+}
+
+class Attribute(name: String) extends Var {
+  fun getKind(): String {
+    "attribute"
+  }
+
+  fun getName(): String {
+    `a_${this.name}`
+  }
+
+  fun toEs(idx: Int): String {
+    `layout(location = ${idx}) in ${this.type_.prefix()} ${this.getName()}${this.type_.suffix()};`
+  }
+}
+
+class Uniform(name: String) extends Var {
+  fun getKind(): String {
+    "uniform"
+  }
+
+  fun getName(): String {
+    `u_${this.name}`
+  }
+
+  fun check(): Uniform {
+    !this.type_ = this.type_.toUniformType();
+    this
+  }
+}
+
+class Param(name: String, asref: Bool) extends Var {
+  static fun make(name: String, type_: Type, asref: Bool = false): this {
+    Param(name, asref, type_)
+  }
+
+  fun getKind(): String {
+    "param"
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun toString(): String {
+    prefix = if (this.asref) "inout " else "";
+    `${prefix}${this.type_.prefix()} ${this.name}${this.type_.suffix()}`
+  }
+
+  fun toUniform(): Uniform {
+    Uniform(this.name, this.type_)
+  }
+
+  fun set(right: Expr): Equation {
+    Declaration(this.name, Some(right), TVoid())
+  }
+}
+
+mutable class Functions(
+  mutable set: SortedSet<Function> = SortedSet[],
+  vector: mutable Vector<Function> = mutable Vector[],
+) {
+  mutable fun add(fn: Function): void {
+    if (this.set.contains(fn)) {
+      return void;
+    };
+    this.!set = this.set.add(fn);
+    this.vector.push(fn)
+  }
+
+  readonly fun each(fn: Function -> void): void {
+    this.vector.each(fn)
+  }
+}
+
+mutable class Params(
+  mapping: (?Function, Param, Int) -> ?Param = (_fn, p, _i) -> Some(p),
+  mutable set: SortedSet<Param> = SortedSet[],
+  vector: mutable Vector<Param> = mutable Vector[],
+) {
+  mutable fun insert(fn: ?Function, p: Param, idx: Int): ?Param {
+    this.mapping(fn, p, idx) match {
+    | Some(pa) ->
+      this.add(pa);
+      Some(pa)
+    | _ -> None()
+    }
+  }
+
+  mutable fun add(p: Param): void {
+    if (!this.set.contains(p)) {
+      this.!set = this.set.add(p);
+      this.vector.push(p);
+    }
+  }
+
+  readonly fun each(p: Param -> void): void {
+    this.vector.each(p)
+  }
+
+  readonly fun toArray(): Array<Param> {
+    this.vector.toArray()
+  }
+}
+
+mutable class FunctionHelper(
+  params: mutable Params,
+  equations: mutable Vector<Equation> = mutable Vector[],
+)
+
+mutable class Vars(
+  mapping: (?Function, Param, Int) -> ?Var,
+  mutable set: SortedSet<Var> = SortedSet[],
+  vector: mutable Vector<Var> = mutable Vector[],
+) {
+  //
+  static fun create<I: readonly Sequence<Var>>(
+    mapping: (?Function, Param, Int) -> ?Var,
+    items: I,
+  ): mutable this {
+    mutable static(
+      mapping,
+      SortedSet::createFromItems(items),
+      Vector::mcreateFromItems(items),
+    )
+  }
+
+  mutable fun insert(fn: ?Function, p: Param, idx: Int): ?Var {
+    this.mapping(fn, p, idx) match {
+    | Some(pa) ->
+      this.add(pa);
+      Some(pa)
+    | _ -> None()
+    }
+  }
+
+  mutable fun add(var: Var): void {
+    if (!this.set.contains(var)) {
+      this.vector.push(var);
+      this.!set = this.set.add(var);
+    }
+  }
+
+  readonly fun each(p: Var -> void): void {
+    this.vector.each(p)
+  }
+
+  readonly fun toArray(): Array<Var> {
+    this.vector.toArray()
+  }
+
+  readonly fun toParameters(): Array<Param> {
+    this.vector.toArray()
+      .filter(v ->
+        v match {
+        | Param _ -> true
+        | _ -> false
+        }
+      )
+      .map(v -> v as Param _)
+  }
+
+  readonly fun toUniforms(): Array<Uniform> {
+    this.vector.toArray()
+      .filter(v ->
+        v match {
+        | Uniform _ -> true
+        | _ -> false
+        }
+      )
+      .map(v -> v as Uniform _)
+  }
+}
+
+mutable class Structs(
+  mutable set: SortedSet<Struct> = SortedSet[],
+  vector: mutable Vector<Struct> = mutable Vector[],
+) {
+  static fun mcreateFromItems<I: readonly Sequence<Struct>>(
+    items: I,
+  ): mutable this {
+    mutable Structs(
+      SortedSet::createFromItems(items),
+      Vector::mcreateFromItems(items),
+    )
+  }
+
+  mutable fun add(struct: Struct): void {
+    if (!this.set.contains(struct)) {
+      this.vector.push(struct);
+      this.!set = this.set.add(struct);
+    }
+  }
+
+  readonly fun each(p: Struct -> void): void {
+    this.vector.each(p)
+  }
+
+  readonly fun toArray(): Array<Struct> {
+    this.vector.toArray()
+  }
+}
+
+base class Expr uses Show, Orderable {
+  fun fill(fns: mutable Functions): void;
+}
+
+base class Equation uses Orderable {
+  fun write(tab: String, buffer: mutable Vector<String>): void;
+  fun fill(fns: mutable Functions): void;
+}
+
+class VoidCall(call: Call) extends Equation {
+  fun write(tab: String, buffer: mutable Vector<String>): void {
+    buffer.push(`${tab}${this.call};`)
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.call.fill(fns)
+  }
+}
+
+class Signature(
+  name: String,
+  return_: Type,
+  parameters: Array<Param>,
+) uses Show, Orderable {
+  fun toString(): String {
+    `${this.return_.full()} ${this.name}(${this.parameters.map(p ->
+      p.toString()
+    ).join(", ")})`
+  }
+
+  fun fill(
+    uniforms: mutable Vector<Uniform>,
+    refs: SortedMap<String, Ref>,
+  ): SortedMap<String, Ref> {
+    this.parameters.each(p ->
+      if (!refs.containsKey(p.name)) {
+        u = p.toUniform();
+        uniforms.push(p.toUniform());
+        !refs = refs.add(p.name, u.ref())
+      }
+    );
+    refs
+  }
+
+  fun check3D(): void {
+    z = Param("z", true, SFloat());
+    normal = Param("normal", true, vec3());
+    invariant(
+      this.parameters.filter(p -> p == z || p == normal).size() == 2,
+      "3D function must have 'inout float z' and 'inout float param'",
+    );
+  }
+}
+
+base class Body uses Orderable {
+  children =
+  | Textual(Array<String>, Array<Function> = Array[])
+  | Equations(Array<Equation>)
+  | Internal()
+
+  fun write(buffer: mutable Vector<String>): void
+  | Textual(body, _) -> body.each(t -> buffer.push("  " + t))
+  | Equations(body) -> body.each(e -> e.write("  ", buffer))
+  | Internal() -> buffer.push("// internal")
+
+  fun fill(fns: mutable Functions): void
+  | Textual(_, fnArray) -> fnArray.each(f -> f.fill(fns))
+  | Equations(body) -> body.each(e -> e.fill(fns))
+  | Internal() -> void
+
+  fun isInternal(): Bool
+  | Textual _
+  | Equations _ ->
+    false
+  | Internal() -> true
+}
+
+class Function(signature: Signature, body: Body) uses Orderable {
+  fun getName(): String {
+    this.signature.name
+  }
+
+  fun write(buffer: mutable Vector<String>): void {
+    buffer.push(`${this.signature} {`);
+    this.body.write(buffer);
+    buffer.push("}");
+  }
+
+  fun fill(fns: mutable Functions): void {
+    if (this.body.isInternal()) {
+      return void
+    };
+    this.body.fill(fns);
+    fns.add(this)
+  }
+
+  fun toCall(refs: (name: Param, idx: Int) -> ?Expr): Call {
+    Call(
+      this,
+      this.signature.parameters.mapWithIndex((idx, p) ->
+        refs(p, idx) match {
+        | Some(x) -> x
+        | _ -> p.type_.default()
+        }
+      ),
+    )
+  }
+
+  fun check3D(): void {
+    this.signature.check3D()
+  }
+}
+
+class Block(
+  var: BlockVar,
+  lines: Array<String>,
+  dependencies: Array<Function> = Array[],
+) extends Equation {
+  fun write(tab: String, buffer: mutable Vector<String>): void {
+    this.lines.each(line -> buffer.push(`${tab}${line}`))
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.dependencies.each(f -> f.fill(fns))
+  }
+
+  fun ref(): Ref {
+    this.var.ref()
+  }
+}
+
+class Declaration(name: String, right: ?Expr, type_: Type) extends Equation {
+  fun write(tab: String, buffer: mutable Vector<String>): void {
+    left = this.type_ match {
+    | TVoid _ -> this.name
+    | type_ -> `${type_.prefix()} ${this.name}${type_.suffix()}`
+    };
+    this.right match {
+    | Some(right) -> buffer.push(`${tab}${left} = ${right};`)
+    | None() -> buffer.push(`${tab}${left};`)
+    }
+  }
+
+  fun set(right: Expr): Equation {
+    static(this.name, Some(right), TVoid())
+  }
+
+  fun ref(): Ref {
+    DeclVar(this, this.type_).ref()
+  }
+
+  fun var(): Var {
+    DeclVar(this, this.type_)
+  }
+
+  fun access(name: String): Access {
+    Access(this.ref(), name)
+  }
+
+  fun index(idx: Int): Index {
+    Index(this.ref(), idx)
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.right match {
+    | Some(right) -> right.fill(fns)
+    | _ -> void
+    }
+  }
+}
+
+class DeclVar(d: Declaration) extends Var {
+  fun getKind(): String {
+    "declaration"
+  }
+
+  fun getName(): String {
+    this.d.name
+  }
+}
+
+class BlockVar(name: String) extends Var {
+  fun getKind(): String {
+    "block"
+  }
+
+  fun getName(): String {
+    this.name
+  }
+}
+
+class Assign(name: String, op: String, right: Expr) extends Equation {
+  fun write(tab: String, buffer: mutable Vector<String>): void {
+    buffer.push(`${tab}${this.name} ${this.op}= ${this.right};`);
+  }
+
+  fun fill(_fns: mutable Functions): void {
+    void
+  }
+}
+
+class Return(expr: Expr) extends Equation {
+  fun write(tab: String, buffer: mutable Vector<String>): void {
+    buffer.push(`${tab}return ${this.expr};`);
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.expr.fill(fns)
+  }
+}
+
+class Branch(condition: ?Expr, body: Array<Equation>) uses Orderable {
+  fun write(tab: String, first: Bool, buffer: mutable Vector<String>): void {
+    buffer.push(
+      this.condition match {
+      | Some(cond) -> `${tab}${if (first) "if" else "else if"}(${cond}) {`
+      | _ -> `${tab}else {`
+      },
+    );
+    this.body.each(e -> e.write(`${tab}  `, buffer));
+    buffer.push(`${tab}}`)
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.condition match {
+    | Some(cond) -> cond.fill(fns)
+    | _ -> void
+    };
+    this.body.each(e -> e.fill(fns));
+  }
+}
+
+class IfThenElse(branches: Array<Branch>) extends Equation {
+  fun write(tab: String, buffer: mutable Vector<String>): void {
+    first = true;
+    this.branches.each(branch -> {
+      branch.write(tab, first, buffer);
+      !first = false;
+    });
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.branches.each(e -> e.fill(fns));
+  }
+}
+
+class Call(function: Function, params: Array<Expr>) extends Expr {
+  fun toString(): String {
+    `${this.function.getName()}(${this.params.map(p -> p.toString()).join(
+      ", ",
+    )})`
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.params.each(p -> p.fill(fns));
+    this.function.fill(fns);
+  }
+}
+
+class Ref(var: Var) extends Expr {
+  fun toString(): String {
+    `${this.var.getName()}`
+  }
+
+  fun fill(_fns: mutable Functions): void {
+    void
+  }
+}
+
+class Const(name: String) extends Expr {
+  fun toString(): String {
+    `${this.name}`
+  }
+
+  fun fill(_fns: mutable Functions): void {
+    void
+  }
+}
+
+class Op(name: String, exprs: Array<Expr>) extends Expr {
+  fun toString(): String {
+    if (this.exprs.size() == 1) {
+      p = this.exprs[0];
+      v = p match {
+      | Op _ -> `(${p})`
+      | _ -> p.toString()
+      };
+      `${this.name}${v}`
+    } else {
+      this.exprs.map(p ->
+        p match {
+        | Op _ -> `(${p})`
+        | _ -> p.toString()
+        }
+      ).join(` ${this.name} `)
+    }
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.exprs.each(p -> p.fill(fns));
+  }
+}
+
+class Access(expr: Expr, name: String) extends Expr {
+  fun toString(): String {
+    `${this.expr}.${this.name}`
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.expr.fill(fns)
+  }
+}
+
+class Index(expr: Expr, idx: Int) extends Expr {
+  fun toString(): String {
+    `${this.expr}[${this.idx}]`
+  }
+
+  fun fill(fns: mutable Functions): void {
+    this.expr.fill(fns)
+  }
+}
+
+class Version(number: Int = 100, es: Bool = false) uses Show {
+  fun getId(): String {
+    `${if (this.es) " es" else ""}_${this.number}`
+  }
+
+  fun toString(): String {
+    `#version ${this.number}${if (this.es) " es" else ""}`
+  }
+}
+
+fun es300(): Version {
+  Version(300, true)
+}
+
+class Shader(
+  name: String,
+  precisions: Array<Precision>,
+  structures: Array<Struct>,
+  attributes: Array<Attribute>,
+  uniforms: Array<Uniform>,
+  varyings: Array<Varying>,
+  main: Param ~> Function,
+  vertex: Bool = false,
+) {
+  fun getName(): String {
+    this.name
+  }
+
+  fun write(buffer: mutable Vector<String>, version: ?Version = None()): void {
+    es = version.map(v -> v.es).default(false);
+    outName = if (this.vertex) "Position" else "FragColor";
+    out = if (es && !this.vertex) {
+      Param::make(`gl${outName}`, vec4());
+    } else {
+      Param::make(`gl_${outName}`, vec4());
+    };
+    main = this.main(out);
+    functions = mutable Functions();
+    main.fill(functions);
+    version.each(v -> buffer.push(v.toString()));
+    if (!this.precisions.isEmpty()) {
+      this.precisions.each(p -> buffer.push(p.toString()));
+      buffer.push("");
+    };
+    structs = Structs::mcreateFromItems(this.structures);
+    functions.each(f -> {
+      f.signature.parameters.each(p -> fillStructures(p.type_, structs))
+    });
+    if (!structs.vector.isEmpty()) {
+      structs.vector.each(s -> {
+        writeStructures(s, buffer);
+        buffer.push("");
+      });
+    };
+    if (!this.attributes.isEmpty()) {
+      if (es) {
+        this.attributes.eachWithIndex((idx, a) -> buffer.push(a.toEs(idx)));
+      } else {
+        this.attributes.each(a -> buffer.push(a.toString()));
+      };
+      buffer.push("");
+    };
+    if (!this.uniforms.isEmpty()) {
+      this.uniforms.each(u -> buffer.push(u.check().toString()));
+      buffer.push("");
+    };
+    if (!this.varyings.isEmpty()) {
+      if (es) {
+        this.varyings.eachWithIndex((idx, v) -> buffer.push(v.toEs(idx)));
+      } else {
+        this.varyings.each(v -> buffer.push(v.toString()));
+      };
+      buffer.push("");
+    };
+    if (es && !this.vertex) {
+      buffer.push(`out ${out};`);
+      buffer.push("");
+    };
+    functions.each(f -> {
+      f.write(buffer);
+      buffer.push("")
+    });
+  }
+
+  fun toString(version: ?Version = None()): String {
+    buffer = mutable Vector[];
+    this.write(buffer, version);
+    buffer.join("\n");
+  }
+
+  fun toArray(version: ?Version = None()): Array<String> {
+    buffer = mutable Vector[];
+    this.write(buffer, version);
+    buffer.toArray()
+  }
+}
+
+module end;

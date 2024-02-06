@@ -29,7 +29,7 @@ class SolidVertexes(
   ): ?Ui.Handle {
     buffer = data as GLProgram.Buffer _;
     supplier.solidVertexes(this.normalized).map(drawer ->
-      Ui.LambdaHandle((shift, window, _height, ratio) ~> {
+      Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
         drawer.run(
           GLProgram.SolidParameters(this.color),
           GLProgram.VertexesParameters(

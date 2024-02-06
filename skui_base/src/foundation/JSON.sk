@@ -36,6 +36,13 @@ fun optFloat(value: Value): ?Float {
   }
 }
 
+fun expectFloat(value: Value): Float {
+  optFloat(value) match {
+  | Some(x) -> x
+  | _ -> throw JSONValueExpectedError("Float")
+  }
+}
+
 fun optBool(value: Value): ?.Bool {
   value match {
   | IntNumber(v) -> Some(v != 0)
@@ -64,10 +71,7 @@ fun getInt(key: .String, obj: Object): .Int {
 }
 
 fun getFloat(key: .String, obj: Object): .Float {
-  optFloat(obj.get(key)) match {
-  | Some(x) -> x
-  | _ -> throw JSONValueExpectedError("Float")
-  }
+  expectFloat(obj.get(key))
 }
 
 fun getBool(key: .String, obj: Object): .Bool {

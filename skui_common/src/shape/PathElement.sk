@@ -4,11 +4,11 @@ base class PathEntity {
   fun transform(conv: Geometry.Offset ~> Geometry.Offset): this;
 }
 
-base class PathSegment extends PathEntity {}
+base class PathSegment extends PathEntity
 
-base class PathEdge extends PathEntity {}
+base class PathEdge extends PathEntity
 
-base class PathElement() uses Hashable, Equality {
+base class PathElement uses Hashable, Orderable {
   fun getEndOffset(previous: Geometry.Offset): Geometry.Offset;
   fun transform(conv: Geometry.Offset ~> Geometry.Offset): this;
 }
