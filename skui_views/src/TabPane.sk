@@ -249,3 +249,5 @@ fun init(context: mutable SKStore.Context, path: Ui.Path): State {
   );
   State(SKStore.IHandle::notTyped(dirName), computedHdl)
 }
+
+module end;

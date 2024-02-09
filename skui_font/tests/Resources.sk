@@ -20,3 +20,5 @@ native fun xdvsoBin(): Array<UInt8>;
 
 @cpp_extern("SKIP_resources_tests_xtnr_bin")
 native fun xtnrBin(): Array<UInt8>;
+
+module end;

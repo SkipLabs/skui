@@ -117,7 +117,7 @@ export class SkuiUtils {
     params.forEach((ptr) => this.exports.SKIP_I18N_pushText(vector, ptr));
     return this.exports.SKIP_I18N_format(format, vector);
   };
-  exportLocale = (text: string | Text) : ptr => {
+  exportLocale = (text: string | Text): ptr => {
     const verified = check(text);
     if (verified instanceof Raw) {
       return this.raw(verified.text);

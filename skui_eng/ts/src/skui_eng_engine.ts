@@ -2,7 +2,7 @@
 import type {int, ptr, Environment, Links, Utils, ToWasmManager, Text, Opt} from "#std/sk_types.js";
 // prettier-ignore
 import type {Scope, Property, Readable, DialogElement} from "#skui_eng/skui_eng_types.js";
-import {EngShared, State, SkuiEngUtils} from "#skui_eng/skui_eng_types.js";
+import { EngShared, State, SkuiEngUtils } from "#skui_eng/skui_eng_types.js";
 import { SkuiUtils } from "#skui_base/skui_types.js";
 
 interface Exported {

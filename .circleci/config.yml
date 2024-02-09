@@ -99,9 +99,9 @@ jobs:
       - store_test_results:
           path: ~/test-results/skui_mtsdf.xml
   skui_common-wasm:
-      docker:
-        - image: skiplabs/skdb-base:latest
-      steps:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    steps:
       - systemsetup
       - checkout
       - cloneskdb
@@ -117,9 +117,9 @@ jobs:
       - store_test_results:
           path: ~/test-results/skui_common-wasm.xml
   skui_font-wasm:
-      docker:
-        - image: skiplabs/skdb-base:latest
-      steps:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    steps:
       - systemsetup
       - checkout
       - cloneskdb
@@ -135,9 +135,9 @@ jobs:
       - store_test_results:
           path: ~/test-results/skui_font-wasm.xml
   skui_mtsdf-wasm:
-      docker:
-        - image: skiplabs/skdb-base:latest
-      steps:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    steps:
       - systemsetup
       - checkout
       - cloneskdb

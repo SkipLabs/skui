@@ -72,3 +72,5 @@ class AllMessages() extends ForStorage {
     command as Command _;
   }
 }
+
+module end;
