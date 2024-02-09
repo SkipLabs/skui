@@ -13,3 +13,5 @@ fun bigImage(): Ui.Image {
 fun smallImage(): Ui.Image {
   Ui.Image(smallData(), 400, 225)
 }
+
+module end;

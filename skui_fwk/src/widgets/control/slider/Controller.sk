@@ -60,3 +60,5 @@ class LamController{
     this.value(context, isUnkracked)
   }
 }
+
+module end;

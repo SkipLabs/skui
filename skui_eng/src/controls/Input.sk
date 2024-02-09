@@ -125,3 +125,5 @@ class Input{
     );
   }
 }
+
+module end;

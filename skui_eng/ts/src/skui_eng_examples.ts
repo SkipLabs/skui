@@ -88,7 +88,9 @@ function buildLine(strMode: keyof typeof eng.ButtonMode, text: eng.Property) {
   ];
   for (const strKind in eng.ButtonKind) {
     if (isNaN(Number(strKind))) {
-      line.push(buildButton(mode, strKind as keyof typeof eng.ButtonKind, text));
+      line.push(
+        buildButton(mode, strKind as keyof typeof eng.ButtonKind, text),
+      );
     }
   }
   line.push(
@@ -204,7 +206,7 @@ class LinksImpl implements Links, ToWasm {
           null,
           new eng.RenderableElement(renderable),
         );
-      };
+      }
       return null;
     };
     this.SKUI_UiEngineJS_examples = () => {
