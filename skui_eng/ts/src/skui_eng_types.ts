@@ -251,36 +251,38 @@ export type FlexConf = {
 };
 
 export type Flex = {
-  widgets: Value<Array<Value<Widget>>>;
+  children: Value<Array<Value<Widget>>>;
   vertical?: Value<boolean>;
-  rigthToLeft?: Value<boolean>;
-  mainAlignment?: Value<Alignment>;
-  crossAlignment?: Value<FlCrossAlign>;
-  maxSize?: Value<boolean>;
+  mainreversed?: Value<boolean>;
+  corssreversed?: Value<boolean>;
+  mainalignment?: Value<Alignment>;
+  crossalignment?: Value<FlCrossAlign>;
+  maxsize?: Value<boolean>;
   configuration?: Value<Configuration>;
 };
 
 export type Wrap = {
-  widgets: Value<Array<Value<Widget>>>;
+  children: Value<Array<Value<Widget>>>;
   vertical?: Value<boolean>;
-  rigthToLeft?: Value<boolean>;
-  mainAlignment?: Value<Alignment>;
-  crossAlignment?: Value<WrCrossAlign>;
-  runAlignment?: Value<Alignment>;
+  mainreversed?: Value<boolean>;
+  corssreversed?: Value<boolean>;
+  mainalignment?: Value<Alignment>;
+  crossalignment?: Value<WrCrossAlign>;
+  runalignment?: Value<Alignment>;
   spacing?: Value<int>;
-  runSpacing?: Value<int>;
+  runspacing?: Value<int>;
   configuration?: Value<Configuration>;
 };
 
 export type StackConf = { fit?: Fit; opaque?: boolean };
 
 export type Stack = {
-  widgets: Value<Array<Value<Widget>>>;
+  children: Value<Array<Value<Widget>>>;
   configuration?: Value<Configuration>;
 };
 
 export type AspectRatio = {
-  widgets: Value<Array<Value<Widget>>>;
+  child: Value<Widget>;
   ratio?: Value<float>;
   centered?: Value<boolean>;
   configuration?: Value<Configuration>;
@@ -442,14 +444,14 @@ export type Indicator = {
 
 export type Decorated = {
   decoration: Value<Decoration>;
-  widget?: Value<Widget>;
+  child?: Value<Widget>;
   rigthToLeft?: Value<boolean>;
   configuration?: Value<Configuration>;
 };
 
 export type Constrained = {
   constraints: Value<ConstraintsElement>;
-  widget?: Value<Widget>;
+  child?: Value<Widget>;
   enforced?: Value<boolean>;
   configuration?: Value<Configuration>;
 };
@@ -470,7 +472,9 @@ export type TextStyle = {
 export type TextView = {
   text: Value<string | Text>;
   style: Value<TextStyleElement>;
+  configuration?: Value<Configuration>;
 };
+
 export type IconedAction = {
   id: string;
   icon: Value<IconElement>;
