@@ -62,6 +62,8 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ### Accessibility
 
 Add an aria property to buttons whose labels need an accessibility descriptive label.
@@ -81,26 +83,28 @@ skui.init(myapp);
 
 ## Types
 
-| Name                      | Definition                                                                   |
-|---------------------------|------------------------------------------------------------------------------|
-| <a name="kind">*Kind*</a> | "basic", "raised", "flat", "stroked", "icon", "miniicon", "fab" or "minifab" |
-| <a name="mode">*Mode*</a> | "regular", "primary", "accent", "warn"                                       |
+| Name            | Definition                                                                   |
+|-----------------|------------------------------------------------------------------------------|
+| []{#kind}*Kind* | "basic", "raised", "flat", "stroked", "icon", "miniicon", "fab" or "minifab" |
+| []{#mode}*Mode* | "regular", "primary", "accent", "warn"                                       |
 
 ## Properties
 
-| Property      | Type                                     | Default   | Description                            |
-|---------------|------------------------------------------|-----------|----------------------------------------|
-| disabled      | boolean or Prop`<boolean>`               | false     | Whether or not the button is disabled. |
-| text          | string or Prop`<string>`                 | ""        | The displayed label.                   |
-| tooltip       | string or Prop`<string>`                 | ""        | The tooltip description.               |
-| icon          | ?icon or ?Prop`<icon>`                   | none      | The leading icon.                      |
-| aria          | string or Prop`<string>`                 | ""        | The accessibility description.         |
-| kind          | [*Kind*](#kind)                          | "basic"   | The type of the button.                |
-| mode          | [*Mode*](#mode)                          | "regular" | The mode of the button.                |
-| configuration | ?Configuration or ?Prop`<Configuration>` | none      | Container configuration properties.    |
+| Property      | Type                                       | Default   | Description                            |
+|---------------|--------------------------------------------|-----------|----------------------------------------|
+| disabled      | boolean or Prop`<`boolean`>`               | false     | Whether or not the button is disabled. |
+| text          | string or Prop`<`string`>`                 | ""        | The displayed label.                   |
+| tooltip       | string or Prop`<`string`>`                 | ""        | The tooltip description.               |
+| icon          | ?icon or ?Prop`<`icon`>`                   | none      | The leading icon.                      |
+| aria          | string or Prop`<`string`>`                 | ""        | The accessibility description.         |
+| kind          | [*Kind*](#kind)                            | "basic"   | The type of the button.                |
+| mode          | [*Mode*](#mode)                            | "regular" | The mode of the button.                |
+| configuration | ?Configuration or ?Prop`<`Configuration`>` | none      | Container configuration properties.    |
 
 ## Events
 
 | Property | Type               | Default | Description                                                                   |
 |----------|--------------------|---------|-------------------------------------------------------------------------------|
 | onfire   | ?(count) `=>` void | none    | The button fire handler. Triggered on click, on enter press or on space press.|
+
+\newpage

@@ -14,26 +14,60 @@ The runs themselves are then positioned in the cross axis according to the `runs
 
 ## Types
 
-| Name                     | Definition                                                               |
-|--------------------------|--------------------------------------------------------------------------|
-| <a name="main"/>*Main*   | "start", "end", "center", "spacebetween", "spacearound" or "spaceevenly" |
-| <a name="cross"/>*Cross* | "start", "end", "center" or "stretch"                                    |
-
-
+| Name              | Definition                                                               |
+|-------------------|--------------------------------------------------------------------------|
+| []{#main}*Main*   | "start", "end", "center", "spacebetween", "spacearound" or "spaceevenly" |
+| []{#cross}*Cross* | "start", "end", "center" or "stretch"                                    |
 
 ## Properties
 
-| Property       | Type                                                                       | Default   | Description                                                           |
-|----------------|----------------------------------------------------------------------------|-----------|-----------------------------------------------------------------------|
-| children       | `Component or Prop<Component>`[] or Prop`<Component or Prop<Component>[]>` | []        | The children component to place.                                      |
-| vertical       | boolean or Prop`<boolean>`                                                 | false     | The direction to use as the main axis.                                |
-| mainreversed   | boolean or Prop`<boolean>`                                                 | false     | The main axis run direction.<ul><li>**false:**<br>Left to right for horizontal direction.<br>Up to down for vertical direction.</li><li>**true:**<br>Right to left for horizontal direction.<br>Down to up for vertical direction.</li></ul>|
-| crossreversed  | boolean or Prop`<boolean>`                                                 | false     | The cross axis run direction.<ul><li>**false:**<br>Up to down for horizontal direction.<br>Left to right for vertical direction.</li><li>**true:**<br>Down to up for horizontal direction.<br>Right to left for vertical direction.</li></ul>|
-| mainalignment  | [*Main*](#main) or Prop`<Main>`                                            | "start"   | How the children should be placed along the main axis.                 |
-| crossalignment | [*Cross*](#cross) or Prop`<Cross>`                                         | "start"   | How the children should be placed along the cross axis.                |
-| spacing        | number or Prop`<number>`                                                   | 0.0       | How much space to place between children in a run in the main axis.    |
-| runalignment   | [*Main*](#main) or Prop`<Main>`                                            | "start"   | How the children should be placed along the main axis.                 |
-| runspacing     | number or Prop`<number>`                                                   | 0.0       | How much space to place between the runs themselves in the cross axis. |
-| configuration  | ?Configuration or ?Prop`<Configuration>`                                   | none      | Container configuration properties.                                    |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| Property             | Type                                                                   | Default   | Description                                                            |
++======================+========================================================================+===========+========================================================================+
+| children&nbsp;       | &nbsp;(Component&nbsp;or&nbsp;Prop`<`Component`>`)[]                   | []        | The children component to place.                                       |
+|                      | &nbsp;or&nbsp;Prop`<`(Component&nbsp;or&nbsp;Prop`<`Component`>`)[]`>` |           |                                                                        |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| vertical&nbsp;       | &nbsp;boolean or Prop`<`boolean`>`                                     | false     | The direction to use as the main axis.                                 |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| mainreversed&nbsp;   | &nbsp;boolean or Prop`<`boolean`>`                                     | false     | The main axis run direction.<br/>                                      |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           | - **false:**                                                           |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Left to right for horizontal direction.                              |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Up to down for vertical direction.                                   |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           | - **true:**                                                            |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Right to left for horizontal direction.                              |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Down to up for vertical direction.                                   |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| crossreversed&nbsp;  | &nbsp;boolean or Prop`<`boolean`>`                                     | false     | The cross axis run direction.                                          |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           | - **false:**                                                           |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Left to right for horizontal direction.                              |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Up to down for vertical direction.                                   |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           | - **true:**                                                            |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Right to left for horizontal direction.                              |
+|                      |                                                                        |           |                                                                        |
+|                      |                                                                        |           |   Down to up for vertical direction.                                   |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| mainalignment&nbsp;  | &nbsp;[*Main*](#main) or Prop`<`*Main*`>`                              | "start"   | How the children should be placed along the main axis.                 |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| crossalignment&nbsp; | &nbsp;[*Cross*](#cross) or Prop`<`*Cross*`>`                           | "start"   | How the children should be placed along the cross axis.                |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| spacing&nbsp;        | &nbsp;number or Prop`<`number`>`                                       | 0.0       | How much space to place between children in a run in the main axis.    |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| runalignment&nbsp;   | &nbsp;[*Main*](#main) or Prop`<`*Main*`>`                              | "start"   | How the children should be placed along the main axis.                 |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| runspacing&nbsp;     | &nbsp;number or Prop`<`number`>`                                       | 0.0       | How much space to place between the runs themselves in the cross axis. |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
+| configuration&nbsp;  | &nbsp;?Configuration or ?Prop`<`Configuration`>`                       | none      | Container configuration properties.                                    |
++----------------------+------------------------------------------------------------------------+-----------+------------------------------------------------------------------------+
 
-
+\newpage

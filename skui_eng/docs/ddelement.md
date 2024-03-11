@@ -8,10 +8,10 @@ The **DDElement** could be a **DropdownItem** or a **DropdownMenu**.
 
 ## Types
 
-| Name                                | Definition                                                                |
-|-------------------------------------|---------------------------------------------------------------------------|
-| <a name="separator">*Separator*</a> | "none", "before", "after", "both"                                         |
-| <a name="shortcut">*Shortcut*</a>   | {key: string, ctrl: boolean, shift: boolean, alt: boolean, meta: boolean} |
+| Name                      | Definition                                                                |
+|---------------------------|---------------------------------------------------------------------------|
+| []{#separator}*Separator* | "none", "before", "after", "both"                                         |
+| []{#shortcut}*Shortcut*   | {key: string, ctrl: boolean, shift: boolean, alt: boolean, meta: boolean} |
 
 
 ## DropdownItem properties
@@ -40,3 +40,5 @@ The **DDElement** could be a **DropdownItem** or a **DropdownMenu**.
 | aria           | string                                     | ""      | The accessibility description.                          |
 | separator      | ?[*Separator*](#separator)                 | none    | How the item is seperated from previous and after item. |
 | items          | **DDElement**[] or () `=>` **DDElement**[] | []      | The menu items.                                         |
+
+\newpage

@@ -1,4 +1,4 @@
-# Sliders
+# Slider
 
 Sliders allow users to view and select a value (or range) along a track.
 They're ideal for adjusting settings such as volume and brightness, or for applying image filters.
@@ -65,6 +65,8 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ### Range
 
 A range slider has two handles, and indicates a minimum and maximum value in a range.
@@ -124,17 +126,21 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ## Properties
 
-| Property      | Type                                                            | Default          | Description                                  |
-|---------------|-----------------------------------------------------------------|------------------|----------------------------------------------|
-| disabled      | boolean or Prop`<boolean>`                                      | false            | Whether or not the slider is disabled.       |
-| value         | Prop`<number>` or Prop`<{start: number,end: number}>`           |                  | The value of the slider.                     |
-| bounds        | {min: number, max: number} or Prop`<{min: number, max: number}>`| {min:0, max:100} | The minimun and maximum value of the slider. |
-| step          | ?number or ?Prop`<number>`                                      | none             | The discrete step.                           |
-| ticks         | ?number or ?Prop`<number>`                                      | none             | Tick marks to show.                          |
-| vertical      | boolean or Prop`<boolean>`                                      | false            | Display the slider verticaly.                |
-| small         | boolean or Prop`<boolean>`                                      | false            | Display a smaller slider.                    |
-| labeled       | boolean or Prop`<boolean>`                                      | false            | Specify if value label shall be showed.      |
-| aria          | string or Prop`<string>`                                        | ""               | The accessibility description.               |
-| configuration | ?Configuration or ?Prop`<Configuration>`                        | none             | Container configuration properties.          |
+| Property      | Type                                                               | Default          | Description                                  |
+|---------------|--------------------------------------------------------------------|------------------|----------------------------------------------|
+| disabled      | boolean or Prop`<`boolean`>`                                       | false            | Whether or not the slider is disabled.       |
+| value         | Prop`<`number`>` or Prop`<`{start: number,end: number}`>`          |                  | The value of the slider.                     |
+| bounds        | {min: number, max: number} or Prop`<`{min: number, max: number}`>` | {min:0, max:100} | The minimun and maximum value of the slider. |
+| step          | ?number or ?Prop`<`number`>`                                       | none             | The discrete step.                           |
+| ticks         | ?number or ?Prop`<`number`>`                                       | none             | Tick marks to show.                          |
+| vertical      | boolean or Prop`<`boolean`>`                                       | false            | Display the slider verticaly.                |
+| small         | boolean or Prop`<`boolean`>`                                       | false            | Display a smaller slider.                    |
+| labeled       | boolean or Prop`<`boolean`>`                                       | false            | Specify if value label shall be showed.      |
+| aria          | string or Prop`<`string`>`                                         | ""               | The accessibility description.               |
+| configuration | ?Configuration or ?Prop`<`Configuration`>`                         | none             | Container configuration properties.          |
+
+\newpage

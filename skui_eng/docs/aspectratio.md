@@ -16,9 +16,11 @@ If the container fails to find a feasible size after considering each constraint
 
 ## Properties
 
-| Property       | Type                                     | Default   | Description                                                                              |
-|----------------|------------------------------------------|-----------|------------------------------------------------------------------------------------------|
-| child          | Component or Prop<Component>             | []        | The children component to place.                                                         |
-| ratio          | ?number or ?Prop`<number>`               | none      | The ratio with which to represent the child componant.                                   |
-| center         | boolean or Prop`<boolean>`               | false     | Indicates whether the child is centered in the space remaining after applying the ratio. |
-| configuration  | ?Configuration or ?Prop`<Configuration>` | none      | Container configuration properties.                                                      |
+| Property       | Type                                       | Default   | Description                                                                              |
+|----------------|--------------------------------------------|-----------|------------------------------------------------------------------------------------------|
+| child          | Component or Prop<Component>               | []        | The children component to place.                                                         |
+| ratio          | ?number or ?Prop`<`number`>`               | none      | The ratio with which to represent the child componant.                                   |
+| center         | boolean or Prop`<`boolean`>`               | false     | Indicates whether the child is centered in the space remaining after applying the ratio. |
+| configuration  | ?Configuration or ?Prop`<`Configuration`>` | none      | Container configuration properties.                                                      |
+
+\newpage

@@ -1,7 +1,8 @@
+% SKUI
+\newpage
 # SKUI
 
 The library for web and native fully reactive user interfaces
-
 
 ## Create user interfaces from component
 
@@ -18,7 +19,7 @@ import { skui } from "skui";
 
 function example1(scope, {confirm}) {
   return eng.button({
-    onclick: (count: number) => {
+    onfire: (count: number) => {
       if (confirm)
         scope.alert("Click: " + count);
       else
@@ -47,9 +48,10 @@ function example2(scope) {
   let text = scope.create("Updated text on button click.");
   let label = skui.label({ text: text, icon: icons.Comment });
   let button = skui.button({
-    onclick: (count: number) => {
+    onfire: (count: number) => {
       total += 1;
-      text.set("The button was clicked " + total + " times with an instant click count of " + count);
+      text.set("The button was clicked " + total + 
+               " times with an instant click count of " + count);
     },
     text: "Click me",
   });
@@ -63,5 +65,3 @@ skui.init(example2);
 ## Unify web and native experience
 
 SKUI lets you build both web apps and native apps using the same skills.
-
-

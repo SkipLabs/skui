@@ -1,5 +1,6 @@
 /cli
 /compiler
+/pdfs
 /prelude
 /skargo
 /skfs
@@ -17,3 +18,4 @@
 .skargoconfig
 prepare.sh
 .tsconfig.json
+logging.lua

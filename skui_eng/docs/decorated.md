@@ -2,7 +2,7 @@
 
 A container that paints a [*Decoration*](#decoration) before its positioning child.
 
-## <a name="colored">*Colored*<a> decoration
+## []{#colored}*Colored* decoration
 
 | Property       | Type                                              | Default     | Description                                   |
 |----------------|---------------------------------------------------|-------------|-----------------------------------------------|
@@ -10,20 +10,20 @@ A container that paints a [*Decoration*](#decoration) before its positioning chi
 | padding        | [*Insets*](#insets)                               | {}          | The space between its content and its border. |
 | radius         | ?[*Size*](./size.md)                              | none        | The corner radius.                            |
 
-## <a name="padding">*Padding*<a> decoration
+## []{#padding}*Padding* decoration
 
 | Property       | Type                                              | Default     | Description                                   |
 |----------------|---------------------------------------------------|-------------|-----------------------------------------------|
 | padding        | [*Insets*](#insets)                               | {}          | The space between its content and its border. |
 
-## <a name="borderline">*BorderLine*<a> decoration
+## []{#borderline}*BorderLine* decoration
 
 | Property       | Type                                              | Default     | Description                                   |
 |----------------|---------------------------------------------------|-------------|-----------------------------------------------|
 | color          | [*Color*](./color.md)                             |             | The color of the border.                      |
 | padding        | [*Insets*](#insets)                               | {}          | The thikness of the border.                   |
 
-## <a name="nested">*Nested*<a> decoration
+## []{#nested}*Nested* decoration
 
 | Property       | Type                                              | Default     | Description                                   |
 |----------------|---------------------------------------------------|-------------|-----------------------------------------------|
@@ -32,17 +32,18 @@ A container that paints a [*Decoration*](#decoration) before its positioning chi
 
 ## Types
 
-| Name                                  | Definition                                                                                                |
-|---------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| <a name="decoration">*Decoration*</a> | [*Colored*](#colored), [*Padding*](#padding), [*BorderLine*](#borderline) or [*Nested*](#nested)          |
-| <a name="insets">*Insets*</a>         | {start?: [*Size*](./size.md), left?: *Size*, top?: *Size*, end?: *Size*, right?: *Size*, bottom?: *Size*} |
+| Name                        | Definition                                                                                                |
+|-----------------------------|-----------------------------------------------------------------------------------------------------------|
+| []{#decoration}*Decoration* | [*Colored*](#colored), [*Padding*](#padding), [*BorderLine*](#borderline) or [*Nested*](#nested)          |
+| []{#insets}*Insets*         | {start?: [*Size*](./size.md), left?: *Size*, top?: *Size*, end?: *Size*, right?: *Size*, bottom?: *Size*} |
 
 ## Properties
 
-| Property       | Type                                              | Default   | Description                                             |
-|----------------|---------------------------------------------------|-----------|---------------------------------------------------------|
-| child          | ?Component or ?Prop`<Component>`                  | none      | The child component to place.                           |
-| rigthtoleft    | boolean or Prop`<boolean>`                        | false     | Whether or not the decoration is painted rigth to left. |
-| decoration     | [*Decoration*](#decoration) or Prop`<Decoration>` |           | The decoration to paint.                                |
-| configuration  | ?Configuration or ?Prop`<Configuration>`          | none      | Container configuration properties.                     |
+| Property       | Type                                                | Default   | Description                                             |
+|----------------|-----------------------------------------------------|-----------|---------------------------------------------------------|
+| child          | ?Component or ?Prop`<`Component`>`                  | none      | The child component to place.                           |
+| rigthtoleft    | boolean or Prop`<`boolean`>`                        | false     | Whether or not the decoration is painted rigth to left. |
+| decoration     | [*Decoration*](#decoration) or Prop`<`Decoration`>` |           | The decoration to paint.                                |
+| configuration  | ?Configuration or ?Prop`<`Configuration`>`          | none      | Container configuration properties.                     |
 
+\newpage

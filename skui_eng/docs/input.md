@@ -1,6 +1,6 @@
-# Text field
+# Input
 
-Text fields let users enter text into a UI.
+Input let users enter text into a UI.
 
 ## Usage
 
@@ -113,6 +113,8 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ## Character counter
 
 Text fields will display a character counter base on maxlength (64 by default) if it's not hidden.
@@ -161,6 +163,8 @@ function myapp(scope) {
 skui.init(myapp);
 
 ```
+
+\newpage
 
 ### Manual validation
 
@@ -224,6 +228,8 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ## Accessibility
 
 Add an aria property to text fields with text fields whose labels need to be more descriptive.
@@ -247,45 +253,54 @@ skui.init(myapp);
 
 ```
 
+## Types
+
+| Name                      | Definition                                                                                   |
+|---------------------------|----------------------------------------------------------------------------------------------|
+| []{#type}*Type*           | "text", "password", "ascii", "integer", "real", "hex", "binary", "octal", "url" or "pattern" |
+| []{#selection}*Selection* | {start:number, end:number}                                                                   |
+
+
 ## Properties
 
-| Property       | Type                                                                                         | Default | Description                                   |
-|----------------|----------------------------------------------------------------------------------------------|---------|-----------------------------------------------|
-| disabled       | boolean or Prop`<boolean>`                                                                   | false   | Whether or not the input is disabled.         |
-| editable       | boolean or Prop`<boolean>`                                                                   | true    | Whether or not the input is editable.         |
-| placeholder    | string or Prop`<string>`                                                                     | ""      | The input placeholder.                        |
-| prefix         | string or Prop`<string>`                                                                     | ""      | The input prefix.                             |
-| suffix         | string or Prop`<string>`                                                                     | ""      | The input suffix.                             |
-| tooltip        | string or Prop`<string>`                                                                     | ""      | The tooltip description.                      |
-| icon           | ?icon or ?Prop`<icon>`                                                                       | none    | The leading icon.                             |
-| actionicon     | ?icon or ?Prop`<icon>`                                                                       | none    | The trailing clickable icon.                  |
-| aria           | string or Prop`<string>`                                                                     | ""      | The accessibility description.                |
-| type           | "text", "password", "ascii", "integer", "real", "hex", "binary", "octal", "url" or "pattern" | "text"  | The type of the input.                        |
-| maxlength      | number or Prop`<number>`                                                                     | 64      | The maximun number of writable characters.    |
-| supporting     | ?supporting or ?Prop`<supporting>`                                                           | none    | To specify the supporting behavior.           |
-| showcounter    | boolean or Prop`<boolean>`                                                                   | true    | The specify the counter visibility.           |
-| showsupporting | boolean or Prop`<boolean>`                                                                   | true    | The specify the supporting visibility.        |
-| showlabel      | boolean or Prop`<boolean>`                                                                   | true    | The specify the label visibility.             |
-| showclear      | boolean or Prop`<boolean>`                                                                   | true    | The specify the clear button visibility.      |
-| alignright     | boolean or Prop`<boolean>`                                                                   | true    | The specify the text allignment to the right. |
-| text           | string or Prop`<string>`                                                                     | ""      | The specify the displayed text.               |
-| position       | ?Prop`<number>`                                                                              | none    | The control the caret position.               |
-| selection      | ?Prop`<{start:number, end:number}>`                                                          | none    | The control the selected text.                |
-| configuration  | ?Configuration or ?Prop`<Configuration>`                                                     | none    | Container configuration properties.           |
+| Property             | Type                                         | Default | Description                                   |
+|----------------------|----------------------------------------------|---------|-----------------------------------------------|
+| disabled&nbsp;       | boolean or Prop`<`boolean`>`                 | false   | Whether or not the input is disabled.         |
+| editable&nbsp;       | boolean or Prop`<`boolean`>`                 | true    | Whether or not the input is editable.         |
+| placeholder&nbsp;    | string or Prop`<`string`>`                   | ""      | The input placeholder.                        |
+| prefix&nbsp;         | string or Prop`<`string`>`                   | ""      | The input prefix.                             |
+| suffix&nbsp;         | string or Prop`<`string`>`                   | ""      | The input suffix.                             |
+| tooltip&nbsp;        | string or Prop`<`string`>`                   | ""      | The tooltip description.                      |
+| icon&nbsp;           | ?icon or ?Prop`<`icon`>`                     | none    | The leading icon.                             |
+| actionicon&nbsp;     | ?icon or ?Prop`<`icon`>`                     | none    | The trailing clickable icon.                  |
+| aria&nbsp;           | string or Prop`<`string`>`                   | ""      | The accessibility description.                |
+| type&nbsp;           | [*Type*](#type) or Prop`<`[*Type*](#type)`>` | "text"  | The type of the input.                        |
+| maxlength&nbsp;      | number or Prop`<`number`>`                   | 64      | The maximun number of writable characters.    |
+| supporting&nbsp;     | ?supporting or ?Prop`<`supporting`>`         | none    | To specify the supporting behavior.           |
+| showcounter&nbsp;    | boolean or Prop`<`boolean`>`                 | true    | The specify the counter visibility.           |
+| showsupporting&nbsp; | boolean or Prop`<`boolean`>`                 | true    | The specify the supporting visibility.        |
+| showlabel&nbsp;      | boolean or Prop`<`boolean`>`                 | true    | The specify the label visibility.             |
+| showclear&nbsp;      | boolean or Prop`<`boolean`>`                 | true    | The specify the clear button visibility.      |
+| alignright&nbsp;     | boolean or Prop`<`boolean`>`                 | true    | The specify the text allignment to the right. |
+| text&nbsp;           | string or Prop`<`string`>`                   | ""      | The specify the displayed text.               |
+| position&nbsp;       | ?Prop`<`number`>`                            | none    | The control the caret position.               |
+| selection&nbsp;      | ?Prop`<`[*Selection*](#selection)`>`         | none    | The control the selected text.                |
+| configuration&nbsp;  | ?Configuration or ?Prop`<`Configuration`>`   | none    | Container configuration properties.           |
 
+\newpage
 
 ### Integer type constraints
 
-| Property | Type                       | Default | Description                      |
-|----------|----------------------------|---------|----------------------------------|
-| min      | ?number or ?Prop`<number>` | none    | Specify the minimum valid value. |
-| max      | ?number or ?Prop`<number>` | none    | Specify the maximun valid value. |
+| Property | Type                         | Default | Description                      |
+|----------|------------------------------|---------|----------------------------------|
+| min      | ?number or ?Prop`<`number`>` | none    | Specify the minimum valid value. |
+| max      | ?number or ?Prop`<`number`>` | none    | Specify the maximun valid value. |
 
 ### Pattern type constraints
 
-| Property | Type                       | Default | Description                   |
-|----------|----------------------------|---------|-------------------------------|
-| pattern  | ?string or ?Prop`<string>` | none    | The supported regexp pattern. |
+| Property | Type                         | Default | Description                   |
+|----------|------------------------------|---------|-------------------------------|
+| pattern  | ?string or ?Prop`<`string`>` | none    | The supported regexp pattern. |
 
 ## Events
 
@@ -294,3 +309,4 @@ skui.init(myapp);
 | onaction    | ?(text: string) `=>` void | none    | The input action handler (Pressing enter or action button click)     |
 | onfocuslost | ?(text: string) `=>` void | none    | The input lost focus handler (Pressing enter or action button click) |
 
+\newpage

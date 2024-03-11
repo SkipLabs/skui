@@ -1,3 +1,32 @@
+ENG_DOCUMENTS_DIR=skui_eng/docs
+
+ENG_DOCUMENTS=\
+	index.md \
+	quick_start.md \
+	color.md \
+	size.md \
+	flex.md \
+	wrap.md \
+	stack.md \
+	scroll.md \
+	split.md \
+	aspectratio.md \
+	label.md \
+	image.md \
+	button.md \
+	checkbox.md \
+	radio.md \
+	input.md \
+	slider.md \
+	indicator.md \
+	slider.md \
+	tabs.md \
+	tree.md \
+	ddelement.md \
+	decorated.md \
+	constrained.md
+
+ENG_PANDOC_FILES=$(addprefix $(ENG_DOCUMENTS_DIR)/,$(ENG_DOCUMENTS))
 
 .PHONY: conf
 conf:
@@ -50,3 +79,13 @@ test-wasm:
 	cd skui_common; sknpm test
 	cd skui_font; sknpm test
 	cd skui_mtsdf; sknpm test
+
+.PHONY: enginedoc
+enginedoc:
+	mkdir -p pdfs
+	pandoc $(ENG_PANDOC_FILES) --include-in-header setup.tex --toc -o pdfs/engine.pdf --lua-filter=span.lua -V geometry:margin=0.5in
+
+.PHONY: enginetex
+enginetex:
+	mkdir -p pdfs
+	pandoc $(ENG_PANDOC_FILES) --include-in-header setup.tex --toc -o pdfs/engine.tex --lua-filter=span.lua -V geometry:margin=0.5in

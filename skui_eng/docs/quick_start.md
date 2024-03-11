@@ -4,6 +4,7 @@ Welcome to the SKUI documentation!
 This page will give you an introduction to the SKUI concepts that you will use on a daily basis.
 
 You will learn:
+
 - How to create and nest custom components
 - How to respond to events
 - How to create reactive property and update the screen
@@ -11,6 +12,7 @@ You will learn:
 - How to render conditions
 
 SKUI supplies a collection of component:
+
 - [label](./label.md)
 - [image](./image.md)
 - [textview](./textview.md)
@@ -54,6 +56,8 @@ skui.init(mybutton);
 
 ```
 
+\newpage
+
 Now that you’ve declared MyButton, you can nest it into another component:
 
 ``` javascript
@@ -71,7 +75,7 @@ skui.init(myapp);
 
 ```
 
-# Responding to events
+## Responding to events
 
 Some supplied basic compenents, likes button and input, defines some handlers to respond to events.
 You can respond to events by declaring event handler functions inside your components
@@ -88,7 +92,7 @@ function myapp(scope) {
   let button = skui.button(
     {
       text: "I'm a button",
-      onclick: onButtonClick
+      onfire: onButtonClick
     }
   );
   let label = skui.label({ text: "Welcome to my app" });
@@ -116,10 +120,13 @@ function myapp(scope) {
 }
 
 ```
+
 Thanks to the created property you can: get the current value with get, (`text.get()`), and update the value with set (`text.set(<newval>)`).
 
 At start time the text value will be empty because you passed "" to `scope.create("")`.
 When you want to change state, call `text.set()` and pass the text property to the component that display it.
+
+\newpage
 
 SKUI component parameters can be either const values or reactive properties.
 
@@ -132,8 +139,8 @@ function myapp(scope) {
   let label = skui.label({ text: "Welcome to my app" });
   let input = skui.input(
     {
-      placeHolder: "What needs to be displayed ?",
-      onAction: (value) => text.set(value.trim()),
+      placeholder: "What needs to be displayed ?",
+      onaction: (value) => text.set(value.trim()),
     }
   );
   let diplayed = skui.label({text});
@@ -148,7 +155,7 @@ skui.init(myapp);
 
 In that example, the first label has a const value as text and the second one have a reactive property as text, entering a text in the input field and pressing "Enter" display the entered text in the second label.
 
-# Combining properties
+## Combining properties
 
 In SKUI reactive properties can be combined to create update chain.
 
@@ -165,16 +172,19 @@ function mybutton(scope) {
 skui.init(mybutton);
 
 ```
+
 Clicking on the button will update the `count` property, which in turn will update the `text` property, which will update the displayed button text.
 
 If you render the same component multiple times, each will get its own state.
 
-# Sharing properties between components
+## Sharing properties between components
 
 In the previous example, each mybutton had its own independent count.
 However, often you’ll need components to share data and always update together.
 
 To make multiple components display the same property and update together, you need to move the property from the individual component “upwards” to the closest component containing all of them.
+
+\newpage
 
 First, move the state up from mybutton into myapp, and pass the property down from myapp to each mybutton.
 
@@ -244,8 +254,4 @@ app.setContent(myapp, {isLoggedIn});
 
 ```
 
-## Next Steps
-
-By now, you know the basics of how to write SKUI app!
-
-Check out the Tutorial to put them into practice and build your first mini-app with SKUI.
+\newpage

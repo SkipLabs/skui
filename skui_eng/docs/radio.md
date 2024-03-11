@@ -51,6 +51,8 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ### Tooltip
 
 A tooltip may optionally be added to radio buttons to express more descriptive label.
@@ -100,13 +102,14 @@ skui.init(myapp);
 
 ## Properties
 
-| Property      | Type                                        | Default | Description                                  |
-|---------------|---------------------------------------------|---------|----------------------------------------------|
-| disabled      | boolean or Prop`<boolean>`                  | false   | Whether or not the radio is disabled.        |
-| text          | string or Prop`<string>`                    | ""      | The displayed label.                         |
-| tooltip       | string or Prop`<string>`                    | ""      | The tooltip description.                     |
-| icon          | ?icon or ?Prop`<icon>`                      | none    | The leading icon.                            |
-| aria          | string or Prop`<string>`                    | ""      | The accessibility description.               |
-| selected      | Prop`<boolean>`                             |         | The property that owns the selection status. |
-| configuration | ?Configuration or ?Prop`<Configuration>`    | none    | Container configuration properties.          |
+| Property      | Type                                          | Default | Description                                  |
+|---------------|-----------------------------------------------|---------|----------------------------------------------|
+| disabled      | boolean or Prop`<`boolean`>`                  | false   | Whether or not the radio is disabled.        |
+| text          | string or Prop`<`string`>`                    | ""      | The displayed label.                         |
+| tooltip       | string or Prop`<`string`>`                    | ""      | The tooltip description.                     |
+| icon          | ?icon or ?Prop`<`icon`>`                      | none    | The leading icon.                            |
+| aria          | string or Prop`<`string`>`                    | ""      | The accessibility description.               |
+| selected      | Prop`<`boolean`>`                             |         | The property that owns the selection status. |
+| configuration | ?Configuration or ?Prop`<`Configuration`>`    | none    | Container configuration properties.          |
 
+\newpage

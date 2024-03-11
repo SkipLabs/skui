@@ -50,6 +50,8 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ### Icon
 
 An icon may optionally be added to a checkbox to help draw attention.
@@ -71,6 +73,8 @@ function myapp(scope) {
 skui.init(myapp);
 
 ```
+
+\newpage
 
 ### Tooltip
 
@@ -118,14 +122,15 @@ skui.init(myapp);
 
 ## Properties
 
-| Property      | Type                                     | Default | Description                                      |
-|---------------|------------------------------------------|---------|--------------------------------------------------|
-| disabled      | boolean or Prop`<boolean>`               | false   | Whether or not the checkbox is disabled.         |
-| text          | string or Prop`<string>`                 | ""      | The displayed label.                             |
-| tooltip       | string or Prop`<string>`                 | ""      | The tooltip description.                         |
-| icon          | ?icon or ?Prop`<icon>`                   | none    | The leading icon.                                |
-| aria          | string or Prop`<string>`                 | ""      | The accessibility description.                   |
-| selected      | Prop`<boolean>`                          |         | The property that owns the selection status.     |
-| indeterminate | ?Prop`<boolean>`                         | none    | The property that owns the indeterminate status. |
-| configuration | ?Configuration or ?Prop`<Configuration>` | none    | Container configuration properties.              |
+| Property      | Type                                       | Default | Description                                      |
+|---------------|--------------------------------------------|---------|--------------------------------------------------|
+| disabled      | boolean or Prop`<`boolean`>`               | false   | Whether or not the checkbox is disabled.         |
+| text          | string or Prop`<`string`>`                 | ""      | The displayed label.                             |
+| tooltip       | string or Prop`<`string`>`                 | ""      | The tooltip description.                         |
+| icon          | ?icon or ?Prop`<`icon`>`                   | none    | The leading icon.                                |
+| aria          | string or Prop`<`string`>`                 | ""      | The accessibility description.                   |
+| selected      | Prop`<`boolean`>`                          |         | The property that owns the selection status.     |
+| indeterminate | ?Prop`<`boolean`>`                         | none    | The property that owns the indeterminate status. |
+| configuration | ?Configuration or ?Prop`<`Configuration`>` | none    | Container configuration properties.              |
 
+\newpage

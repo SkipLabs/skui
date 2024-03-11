@@ -49,6 +49,8 @@ skui.init(myapp);
 
 ```
 
+\newpage
+
 ### Accessibility
 
 Add an aria property to indicators whose labels need an accessibility descriptive label.
@@ -75,10 +77,12 @@ skui.init(myapp);
 
 ## Properties
 
-| Property      | Type                                        | Default | Description                                  |
-|---------------|---------------------------------------------|---------|----------------------------------------------|
-| progress      | ?number or ?Prop`<number>`                  | none    | The progress value (none for indeterminated) |
-| tooltip       | string or Prop`<string>`                    | ""      | The tooltip description.                     |
-| aria          | string or Prop`<string>`                    | ""      | The accessibility description.               |
-| linear        | boolean or Prop`<boolean>`                  | false   | Indicated if the indicator is linear.        |
-| configuration | ?Configuration or ?Prop`<Configuration>`    | none    | Container configuration properties.          |
+| Property      | Type                                          | Default | Description                                  |
+|---------------|-----------------------------------------------|---------|----------------------------------------------|
+| progress      | ?number or ?Prop`<`number`>`                  | none    | The progress value (none for indeterminated) |
+| tooltip       | string or Prop`<`string`>`                    | ""      | The tooltip description.                     |
+| aria          | string or Prop`<`string`>`                    | ""      | The accessibility description.               |
+| linear        | boolean or Prop`<`boolean`>`                  | false   | Indicated if the indicator is linear.        |
+| configuration | ?Configuration or ?Prop`<`Configuration`>`    | none    | Container configuration properties.          |
+
+\newpage

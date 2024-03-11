@@ -86,11 +86,12 @@ skui.init(myapp);
 
 ## Properties
 
-| Property      | Type                                     | Default | Description                                  |
-|---------------|------------------------------------------|---------|----------------------------------------------|
-| disabled      | boolean or Prop`<boolean>`               | false   | Whether or not the switch is disabled.       |
-| tooltip       | string or Prop`<string>`                 | ""      | The tooltip description.                     |
-| aria          | string or Prop`<string>`                 | ""      | The accessibility description.               |
-| selected      | Prop`<boolean>`                          |         | The property that owns the selection status. |
-| configuration | ?Configuration or ?Prop`<Configuration>` | none    | Container configuration properties.          |
+| Property      | Type                                       | Default | Description                                  |
+|---------------|--------------------------------------------|---------|----------------------------------------------|
+| disabled      | boolean or Prop`<`boolean`>`               | false   | Whether or not the switch is disabled.       |
+| tooltip       | string or Prop`<`string`>`                 | ""      | The tooltip description.                     |
+| aria          | string or Prop`<`string`>`                 | ""      | The accessibility description.               |
+| selected      | Prop`<`boolean`>`                          |         | The property that owns the selection status. |
+| configuration | ?Configuration or ?Prop`<`Configuration`>` | none    | Container configuration properties.          |
 
+\newpage

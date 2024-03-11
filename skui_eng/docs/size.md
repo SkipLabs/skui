@@ -25,3 +25,5 @@ The relation between the absolute units is as follows: 1in = 2.54cm = 25.4mm = 7
 | %h    | The size is computed according the height of the container.                                    |
 | %min  | The size is computed according the minumum between the width and this height of the container. |
 | %max  | The size is computed according the maximum between the width and this height of the container. |
+
+\newpage

@@ -10,16 +10,18 @@ The divider in a **Split** cannot overlap a side.
 
 ## Types
 
-| Name                                  | Definition                                   |
-|---------------------------------------|----------------------------------------------|
-| <a name="separation">*Separation*</a> | {start:number}, {end:number} or {"%":number} |
+| Name                        | Definition                                   |
+|-----------------------------|----------------------------------------------|
+| []{#separation}*Separation* | {start:number}, {end:number} or {"%":number} |
 
 ## Properties
 
-| Property       | Type                                              | Default      | Description                                                                             |
-|----------------|---------------------------------------------------|--------------|-----------------------------------------------------------------------------------------|
-| first          | Component or Prop`<Component>`                    |              | The first side of **Split**.                                                            |
-| second         | Component or Prop`<Component>`                    |              | The second side of **Split**.                                                           |
-| vertical       | boolean or Prop`<boolean>`                        | false        | Specify if sides are positioned horizontally next to each other, or stacked vertically. |
-| separation     | [*Separation*](#separation) or Prop`<Separation>` | {start: 100} | Specify the position of the divider.                                                    |
-| configuration  | ?Configuration or ?Prop`<Configuration>`          | none         | Container configuration properties.                                                     |
+| Property             | Type                                                | Default           | Description                                                                             |
+|----------------------|-----------------------------------------------------|-------------------|-----------------------------------------------------------------------------------------|
+| first&nbsp;          | Component or Prop`<`Component`>`                    |                   | The first side of **Split**.                                                            |
+| second&nbsp;         | Component or Prop`<`Component`>`                    |                   | The second side of **Split**.                                                           |
+| vertical&nbsp;       | boolean or Prop`<`boolean`>`                        | false             | Specify if sides are positioned horizontally next to each other, or stacked vertically. |
+| separation&nbsp;     | [*Separation*](#separation) or Prop`<`Separation`>` | {start:&nbsp;100} | Specify the position of the divider.                                                    |
+| configuration&nbsp;  | ?Configuration or ?Prop`<`Configuration`>`          | none              | Container configuration properties.                                                     |
+
+\newpage

@@ -11,20 +11,22 @@ The scroll bar policy can be specified independently for the horizontal and vert
 
 ## Types
 
-| Name                          | Definition                                |
-|-------------------------------|-------------------------------------------|
-| <a name="policy">*Policy*</a> | "always", "asneeded", "never" or "hidden" |
+| Name                | Definition                                |
+|---------------------|-------------------------------------------|
+| []{#policy}*Policy* | "always", "asneeded", "never" or "hidden" |
 
 
 ## Properties
 
-| Property       | Type                                     | Default    | Description                         |
-|----------------|----------------------------------------- |------------|-------------------------------------|
-| content        | Component or Prop`<Component>`           | []         | The child component to scroll.      |
-| hscroll        | number or Prop`<number>`                 | 0          | The horizontal scroll position.     |
-| vscroll        | number or Prop`<number>`                 | 0          | The vertical scroll position.       |
-| hpolicy        | [*Policy*](#policy) or Prop`<Policy>`    | "asneeded" | The horizontal scroll bar policy.   |
-| vpolicy        | [*Policy*](#policy) or Prop`<Policy>`    | "asneeded" | The vertical scroll bar policy.     |
-| unit           | ?number or ?Prop`<number>`               | none       | The scroll unit value               |
-| negative       | boolean or Prop`<boolean>`               | false      | Use base color for scroll bars      |
-| configuration  | ?Configuration or ?Prop`<Configuration>` | none       | Container configuration properties. |
+| Property       | Type                                       | Default    | Description                         |
+|----------------|--------------------------------------------|------------|-------------------------------------|
+| content        | Component or Prop`<`Component`>`           | []         | The child component to scroll.      |
+| hscroll        | number or Prop`<`number`>`                 | 0          | The horizontal scroll position.     |
+| vscroll        | number or Prop`<`number`>`                 | 0          | The vertical scroll position.       |
+| hpolicy        | [*Policy*](#policy) or Prop`<`*Policy*`>`  | "asneeded" | The horizontal scroll bar policy.   |
+| vpolicy        | [*Policy*](#policy) or Prop`<`*Policy*`>`  | "asneeded" | The vertical scroll bar policy.     |
+| unit           | ?number or ?Prop`<`number`>`               | none       | The scroll unit value               |
+| negative       | boolean or Prop`<`boolean`>`               | false      | Use base color for scroll bars      |
+| configuration  | ?Configuration or ?Prop`<`Configuration`>` | none       | Container configuration properties. |
+
+\newpage

@@ -8,14 +8,16 @@ The z-order of the children is defined by the order of the children list with th
 
 ## Properties
 
-| Property       | Type                                                                       | Default   | Description                         |
-|----------------|----------------------------------------------------------------------------|-----------|-------------------------------------|
-| children       | `Component or Prop<Component>`[] or Prop`<Component or Prop<Component>[]>` | []        | The children component to place.    |
-| configuration  | ?Configuration or ?Prop`<Configuration>`                                   | none      | Container configuration properties. |
+| Property       | Type                                                                               | Default   | Description                         |
+|----------------|------------------------------------------------------------------------------------|-----------|-------------------------------------|
+| children       | (Component or Prop`<`Component`>`)[] or Prop`<`(Component or Prop<Component>)[]`>` | []        | The children component to place.    |
+| configuration  | ?Configuration or ?Prop`<`Configuration`>`                                         | none      | Container configuration properties. |
 
 ## Child configuration
 
-| Property    | Type                               | Default | Description                                                                  |
-|-------------|------------------------------------|---------|------------------------------------------------------------------------------|
-| fit         | "loose", "expend" or "passthrough" | 0       | Specify how the child size is constraint.                                    |
-| opaque      | boolean                            | false   | Specify if the events (mouse, key and point) are ignored in back components. |
+| Property | Type                               | Default | Description                                                                  |
+|----------|------------------------------------|---------|------------------------------------------------------------------------------|
+| fit      | "loose", "expend" or "passthrough" | 0       | Specify how the child size is constraint.                                    |
+| opaque   | boolean                            | false   | Specify if the events (mouse, key and point) are ignored in back components. |
+
+\newpage
