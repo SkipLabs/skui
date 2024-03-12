@@ -3,8 +3,10 @@ ENG_DOCUMENTS_DIR=skui_eng/docs
 ENG_DOCUMENTS=\
 	index.md \
 	quick_start.md \
+	layout.md \
 	color.md \
 	size.md \
+	center.md \
 	flex.md \
 	wrap.md \
 	stack.md \
