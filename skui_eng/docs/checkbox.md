@@ -4,6 +4,8 @@ Checkboxes allow users to select one or more items from a set. Checkboxes can tu
 
 There's one type of checkbox in SKUI. Use this selection control when the user needs to select one or more options from a list.
 
+![A **Checkbox**](./assets/checkbox.png)
+
 ## Usage
 
 Checkboxes may be standalone, pre-checked, or indeterminate.

@@ -2,6 +2,8 @@
 
 The **Tree** control provides a view on to a tree root. By using a **Tree**, it is possible to drill down into the children of a [*TreeItem*](#item), recursively until a [*TreeItem*](#item) has no children (that is, it is a leaf node in the tree).
 
+![Tree example](./assets/tree.png)
+
 ## []{#item}*TreeItem* properties
 
 | Property     | Type                                                     | Default   | Description                                         |

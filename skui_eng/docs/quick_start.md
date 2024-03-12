@@ -42,7 +42,7 @@ SKUI apps are made out of components.
 A component is a piece of the UI (user interface) that has its own logic and appearance.
 A component can be as small as a button, or as large as an entire page.
 
-SKUI components are JavaScript functions that return javascript object.
+SKUI custom components are JavaScript functions that return SKUI predifined component.
 
 ``` javascript
 
@@ -58,7 +58,7 @@ skui.init(mybutton);
 
 \newpage
 
-Now that you’ve declared MyButton, you can nest it into another component:
+Now that you’ve declared mybutton, you can nest it into another component:
 
 ``` javascript
 
@@ -67,7 +67,7 @@ import { skui } from "skui";
 function myapp(scope) {
   let label = skui.label({ text: "Welcome to my app" });
   return skui.vcflex({
-    children: [label, new MyButton()],
+    children: [label, mybutton],
   });
 }
 
@@ -77,7 +77,7 @@ skui.init(myapp);
 
 ## Responding to events
 
-Some supplied basic compenents, likes button and input, defines some handlers to respond to events.
+Some supplied predefined compenents, likes button and input, defines some handlers to respond to events.
 You can respond to events by declaring event handler functions inside your components
 
 ``` javascript
@@ -110,7 +110,7 @@ skui.init(myapp);
 SKUI reactivity is essentialy based on reactive properties.
 A reactive property is a state that can be modified to trigger an update.
 
-You can declare a reactive property variable inside your component using supplied scope:
+You can declare a reactive property inside your component using supplied scope:
 
 ``` javascript
 
@@ -166,7 +166,7 @@ import { skui } from "skui";
 function mybutton(scope) {
   const count = scope.create(0);
   const text = scope.combine((values) => "Clicked " + values[0] + " times", [count]);
-  return skui.button({text, onClick: count.set(count.get() + 1)});
+  return skui.button({text, onfire: count.set(count.get() + 1)});
 }
 
 skui.init(mybutton);
@@ -207,17 +207,17 @@ skui.init(myapp);
 
 ```
 
-Finally, change MyButton to read the property you have passed from its parent component:
+Finally, change mybutton to read the property you have passed from its parent component:
 
 ``` javascript
 
 function mybutton(scope, {count, text}) {
-  return skui.button({text, onclick: count.set(count.get() + 1)});
+  return skui.button({text, onfire: count.set(count.get() + 1)});
 }
 
 ```
 
-When you click the button, the onClick handler fires. Each button’s onClick prop update the count property from MyApp, which will update the `text` property, which in turn will update the both button display text.
+When you click the button, the onfire handler fires. Each button’s onfire prop update the count property from myapp, which will update the `text` property, which in turn will update the both button display text.
 
 ## Conditional rendering 
 

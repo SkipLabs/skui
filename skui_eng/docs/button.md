@@ -10,6 +10,8 @@ Buttons help people initiate actions, from sending an email, to sharing a docume
 - Keep labels concise and in sentence-case
 - Containers wide enough to fit label text
 
+![Buttons in their different types and modes](./assets/buttons.png)
+
 ## Usage
 
 Buttons have label text that describes the action that will occur if a user taps a button.
@@ -62,8 +64,6 @@ skui.init(myapp);
 
 ```
 
-\newpage
-
 ### Accessibility
 
 Add an aria property to buttons whose labels need an accessibility descriptive label.
@@ -80,6 +80,8 @@ function myapp(scope) {
 skui.init(myapp);
 
 ```
+
+\newpage
 
 ## Types
 

@@ -2,6 +2,8 @@
 
 Radio buttons let people select one option from a set of options.
 
+![A **Radio** button](./assets/radio.png)
+
 ## Usage
 
 One radio button can be selected in a group.

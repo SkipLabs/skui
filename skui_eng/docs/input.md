@@ -2,6 +2,8 @@
 
 Input let users enter text into a UI.
 
+![**Input** examples](./assets/inputs.png)
+
 ## Usage
 
 Text fields provide a container with labels for user input.
@@ -20,6 +22,8 @@ A text field's type attribute changes how the text field works, such as displayi
 - "octal"
 - "url"
 - "pattern"
+
+\newpage
 
 ## Labels
 
@@ -113,8 +117,6 @@ skui.init(myapp);
 
 ```
 
-\newpage
-
 ## Character counter
 
 Text fields will display a character counter base on maxlength (64 by default) if it's not hidden.
@@ -134,6 +136,8 @@ function myapp(scope) {
 skui.init(myapp);
 
 ```
+
+\newpage
 
 ## Validation
 
@@ -164,8 +168,6 @@ skui.init(myapp);
 
 ```
 
-\newpage
-
 ### Manual validation
 
 Alternatively, text fields can manually control their error state and error message.
@@ -184,26 +186,22 @@ function mayapp(scope) {
   let supporting = scope.combine(
     values => {
       if (!validate(values[0])) {
-        return {
-          text: "Username is not available",
-          type: "error",
-        }
+        return {text: "Username is not available", type: "error"}
       };
       return {}
     },
     [text]
   );
-
   return skui.vcflex({
-    children: [
-      skui.input({label: "Username", text, supporting}),
-    ],
+    children: [skui.input({label: "Username", text, supporting})],
   });
 }
 
 skui.init(myapp);
 
 ```
+
+\newpage
 
 ## Tooltip
 
@@ -228,8 +226,6 @@ skui.init(myapp);
 
 ```
 
-\newpage
-
 ## Accessibility
 
 Add an aria property to text fields with text fields whose labels need to be more descriptive.
@@ -252,6 +248,8 @@ function mayapp(scope) {
 skui.init(myapp);
 
 ```
+
+\newpage
 
 ## Types
 

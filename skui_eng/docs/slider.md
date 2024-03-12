@@ -5,6 +5,8 @@ They're ideal for adjusting settings such as volume and brightness, or for apply
 
 Sliders can use icons or labels to represent a numeric or relative scale.
 
+![Horizontal sliders](./assets/hsliders.png)
+
 ## Usage
 
 Sliders may be continuous or discrete, and may also represent a range.
@@ -26,6 +28,8 @@ function myapp(scope) {
 skui.init(myapp);
 
 ```
+
+\newpage
 
 ### Continuous
 
@@ -65,8 +69,6 @@ skui.init(myapp);
 
 ```
 
-\newpage
-
 ### Range
 
 A range slider has two handles, and indicates a minimum and maximum value in a range.
@@ -84,6 +86,9 @@ function myapp(scope) {
 skui.init(myapp);
 
 ```
+
+\newpage
+
 ## Value label
 
 A value label displays the specific value that corresponds with the handle's placement.
@@ -125,8 +130,6 @@ function myapp(scope) {
 skui.init(myapp);
 
 ```
-
-\newpage
 
 ## Properties
 

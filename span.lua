@@ -23,3 +23,8 @@ function Span (el)
     return el
   end
 end
+
+function Image(img)
+  img.src = 'skui_eng/docs/'..img.src
+  return img
+end
