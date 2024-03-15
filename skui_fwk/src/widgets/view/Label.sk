@@ -57,7 +57,7 @@ class Label protected {
     path: Ui.Path,
     controller: UiLabel.Controller,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }

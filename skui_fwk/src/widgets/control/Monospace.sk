@@ -17,7 +17,7 @@ class Monospace protected {
     path: Path,
     params: UiMonospace.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     mainHdl = context.makeDir(
       SKStore.IID::keyType,

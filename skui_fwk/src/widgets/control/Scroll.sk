@@ -15,7 +15,7 @@ class ScrollPane{
     path: Path,
     controller: UiScroll.Controller,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     hKey = SKStore.IID(0);
     vKey = SKStore.IID(1);

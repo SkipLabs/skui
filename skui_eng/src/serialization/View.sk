@@ -20,9 +20,7 @@ extension class Label extends SObject {
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),
       optTooltip => maybeGet(value, "tooltip"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -43,9 +41,7 @@ extension class Indicator {
   static fun deserialize(value: Map<String, Serializable>): Indicator {
     Indicator{
       optProgress => maybeGet(value, "progress"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -70,9 +66,7 @@ extension class Decorated {
       optDecoration => maybeGet(value, "decoration"),
       optWidget => maybeGet(value, "widget"),
       optRigthToLeft => maybeGet(value, "rigthToLeft"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -97,9 +91,7 @@ extension class Constrained {
       optConstraints => maybeGet(value, "constraints"),
       optWidget => maybeGet(value, "widget"),
       optEnforced => maybeGet(value, "enforced"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -120,9 +112,7 @@ extension class Image {
   static fun deserialize(value: Map<String, Serializable>): Image {
     Image{
       optPicture => maybeGet(value, "picture"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -145,9 +135,7 @@ extension class TextView extends SObject {
     TextView{
       optText => maybeGet(value, "text"),
       optStyle => maybeGet(value, "style"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }

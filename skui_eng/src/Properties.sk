@@ -168,6 +168,12 @@ class Property extends
     (ctx, iu) ~> this.maybeGet(ctx, iu).flatMap(conv)
   }
 
+  fun toValueGetter<T>(
+    conv: UiEngine.Serializable ~> T,
+  ): Ui.GetterOne<T, Bool> {
+    (ctx, iu) ~> conv(this.get(ctx, iu))
+  }
+
   fun set(
     context: mutable SKStore.Context,
     optValue: ?UiEngine.Serializable,

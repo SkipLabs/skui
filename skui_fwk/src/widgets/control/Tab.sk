@@ -14,7 +14,7 @@ class Tab protected {
     path: Ui.Path,
     params: UiTab.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,

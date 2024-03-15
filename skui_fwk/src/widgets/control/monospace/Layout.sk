@@ -12,7 +12,7 @@ class Layout protected {
     path: Ui.Path,
     params: LayoutParameters,
     cache: Ui.NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,

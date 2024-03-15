@@ -62,7 +62,7 @@ class Button{
         },
         UiButton.init(context, path),
       ),
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     );
   }
 }
@@ -132,7 +132,7 @@ class Slider{
           withLabel => ctx ~> labeledGetter(ctx, false).default(false),
         },
       ),
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     );
   }
 }
@@ -175,7 +175,7 @@ class Split{
           },
         separation => Ui.defaultOne(separationProp),
       },
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     );
   }
 }
@@ -235,7 +235,7 @@ class Toggle{
         },
         UiToggle.init(context, path),
       ),
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     );
   }
 }
@@ -308,7 +308,7 @@ class Scroll{
         negative => ctx ~> negativeGetter(ctx, false).default(false),
         unit => (ctx, iu) ~> vUnitGetter(ctx, iu).default(100),
       },
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     );
   }
 }

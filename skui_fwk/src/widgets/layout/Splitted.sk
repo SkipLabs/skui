@@ -72,7 +72,7 @@ class Splitted protected {
     path: Ui.Path,
     params: UiSplitted.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,
@@ -91,7 +91,7 @@ class Splitted protected {
     context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiSplitted.Controller,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static::create(
       context,

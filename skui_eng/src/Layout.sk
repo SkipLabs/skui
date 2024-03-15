@@ -82,7 +82,7 @@ class Wrap{
         runSpacing => ctx ~> runSpacing(ctx, false).default(0).toFloat(),
         widgets,
       },
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     )
   }
 }
@@ -152,7 +152,7 @@ class Flex{
           },
         widgets,
       },
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     )
   }
 }
