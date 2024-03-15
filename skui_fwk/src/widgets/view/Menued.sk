@@ -77,7 +77,7 @@ class Menued{
     path: Ui.Path,
     controller: UiMenued.Controller,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }

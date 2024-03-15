@@ -81,7 +81,7 @@ class Stack protected {
     path: Ui.Path,
     params: UiStack.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,
@@ -100,7 +100,7 @@ class Stack protected {
     context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiStack.Controller,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static::create(
       context,
@@ -119,12 +119,13 @@ class Stack protected {
     childVector = mutable Vector<Ui.NChild>[];
     for (index in Range(0, count)) {
       widget = this.controller.getWidget(context, index);
-      childConstraints = this.getFit(widget.optConfiguration) match {
+      optConfiguration = widget.optConfiguration.map(f -> f(context));
+      childConstraints = this.getFit(optConfiguration) match {
       | UiStack.Loose() -> constraints.loosen()
       | UiStack.Expand() -> constraints.expanded()
       | UiStack.Passthrough() -> constraints
       };
-      opaque = this.isOpaque(widget.optConfiguration);
+      opaque = this.isOpaque(optConfiguration);
       rect = Geometry.Rect::fromOffsetSize(
         Geometry.Offset::zero,
         childConstraints.biggest(),

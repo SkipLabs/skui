@@ -13,7 +13,7 @@ class Dialog protected {
     path: Path,
     controller: UiDialog.Controller,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     intermediateHdl = context.makeDir(
       SKStore.StrID::keyType,
@@ -140,7 +140,7 @@ class Dialog protected {
             context,
             path.makeChild("content").makeChild("fit"),
             UiConfigured.LamController{widget => controller.getContent},
-            Some(UiFlex.Configuration{flex => 1}),
+            Some(Ui.default(UiFlex.Configuration{flex => 1})),
           )
         | _ -> controller.getContent(context)
         };
@@ -170,7 +170,7 @@ class Dialog protected {
             direction => _ctx ~> VerticalAxis(),
             crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
           },
-          Some(UiFlex.Configuration{flex => 1}),
+          Some(Ui.default(UiFlex.Configuration{flex => 1})),
         );
         writer.set(
           key,
@@ -373,7 +373,7 @@ fun buildFullScreenTitle(
         Padding(Geometry.Insets::fromLTRB(16.0, 8.0, 16.0, 8.0)),
       widget => _ctx ~> Some(text),
     },
-    Some(UiFlex.Configuration{flex => 1}),
+    Some(Ui.default(UiFlex.Configuration{flex => 1})),
   );
   closeWithTitle = Flex::createForController(
     context,
@@ -381,7 +381,7 @@ fun buildFullScreenTitle(
     UiFlex.LamController{
       widgets => WidgetsArray(Array[closeButton, titlePadding]),
     },
-    Some(UiFlex.Configuration{flex => 1}),
+    Some(Ui.default(UiFlex.Configuration{flex => 1})),
   );
   actions = buildActions(
     context,
@@ -445,7 +445,7 @@ fun buildActions(
         },
         UiButton.init(context, actionPath),
       ),
-      if (flex) Some(UiFlex.Configuration{flex => 1}) else None(),
+      if (flex) Some(Ui.default(UiFlex.Configuration{flex => 1})) else None(),
     )
   });
   if (space > 0) {

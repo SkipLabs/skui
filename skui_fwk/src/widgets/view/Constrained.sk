@@ -41,7 +41,7 @@ class Constrained{
     path: Ui.Path,
     controller: UiConstrained.Controller,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }

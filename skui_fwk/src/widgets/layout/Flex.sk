@@ -181,7 +181,7 @@ class Flex protected {
     path: Ui.Path,
     params: UiFlex.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,
@@ -200,7 +200,7 @@ class Flex protected {
     context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiFlex.Controller,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static::create(
       context,
@@ -242,9 +242,10 @@ class Flex protected {
     | VerticalAxis() -> BoxConstraints::forWidth(0.0, constraints.maxWidth())
     };
     elements.eachWithIndex((index, child) -> {
+      optConfiguration = child.optConfiguration.map(f -> f(context));
       !totalChildren = totalChildren + 1;
-      flex = this.getFlex(child.optConfiguration);
-      ignoreCross = this.isIgnoreCross(child.optConfiguration);
+      flex = this.getFlex(optConfiguration);
+      ignoreCross = this.isIgnoreCross(optConfiguration);
       if (canFlex && flex > 0) {
         if (!ignoreCross) {
           cNode = child.getNode(context, innerConstraints);
@@ -292,8 +293,9 @@ class Flex protected {
         Ui.BoxConstraints::forWidth(maxWidth, maxWidth)
       };
       elements.eachWithIndex((index, child) -> {
+        optConfiguration = child.optConfiguration.map(f -> f(context));
         !totalChildren = totalChildren + 1;
-        flex = this.getFlex(child.optConfiguration);
+        flex = this.getFlex(optConfiguration);
         if (!canFlex || flex == 0) {
           cNode = child.getNode(context, innerConstraints);
           sizes.set(index, (cNode, innerConstraints));
@@ -317,7 +319,8 @@ class Flex protected {
       };
       allocatedFlexSpace = 0.0;
       elements.eachWithIndex((index, child) -> {
-        flex = this.getFlex(child.optConfiguration);
+        optConfiguration = child.optConfiguration.map(f -> f(context));
+        flex = this.getFlex(optConfiguration);
         if (flex > 0) {
           maxChildExtent = if (canFlex) {
             if (lastFlexChild == index) {
@@ -328,7 +331,8 @@ class Flex protected {
           } else {
             Float::inf
           };
-          fit = this.getFit(child.optConfiguration);
+
+          fit = this.getFit(optConfiguration);
           minChildExtent = fit match {
           | UiFlex.Tight() -> maxChildExtent
           | UiFlex.Loose() -> 0.0

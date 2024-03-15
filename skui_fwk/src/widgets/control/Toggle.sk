@@ -13,7 +13,7 @@ class Toggle protected {
     path: Ui.Path,
     params: UiToggle.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,

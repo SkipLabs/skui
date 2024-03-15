@@ -233,7 +233,7 @@ mutable base class Writer<K, T> {
 
 base class Widget protected {
   path: Path,
-  optConfiguration: ?Configuration = None(),
+  optConfiguration: ?Getter<Configuration> = None(),
   protected tick: SKStore.Tick,
 } uses HasClassName {
   fun getNode(
@@ -444,7 +444,7 @@ base class ParameterizedWidget protected {
     context: mutable SKStore.Context,
     params: this::Params,
     path: Path,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     // Create node cache
     w = static::make(
@@ -464,7 +464,7 @@ base class ParameterizedWidget protected {
     context: mutable SKStore.Context,
     path: Path,
     params: this::Params,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static::makeWithCache(context, params, path, optConfiguration);
   }
@@ -474,7 +474,7 @@ base class ParameterizedWidget protected {
     path: Path,
     params: this::Params,
     cache: this::Buffer,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this;
 
   fun layout(

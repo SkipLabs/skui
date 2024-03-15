@@ -15,7 +15,7 @@ class TreeItem protected {
     path: Ui.Path,
     params: UiTreeItem.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,

@@ -14,7 +14,7 @@ class Tabs protected {
     path: Path,
     params: UiTabs.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     mainHdl = context.makeDir(
       SKStore.IID::keyType,
@@ -112,10 +112,11 @@ class Tabs protected {
           tabPath,
           UiTab.Parameters(path, controller, UiTab.init(context, tabPath)),
           if (pinned) {
-            Some(UiFlex.Configuration{flex => 1})
+            Some(Ui.default(UiFlex.Configuration{flex => 1}))
           } else {
             params.controller.getKind(context) match {
-            | UiTabs.Fixed() -> Some(UiFlex.Configuration{flex => 1})
+            | UiTabs.Fixed() ->
+              Some(Ui.default(UiFlex.Configuration{flex => 1}))
             | UiTabs.Scrollable() -> None()
             }
           },
@@ -236,7 +237,7 @@ class Tabs protected {
                     crossAxisAlignment => _ctx ~> UiWrap.Center(),
                   },
                 ),
-                Some(UiFlex.Configuration{ignoreCross => true}),
+                Some(Ui.default(UiFlex.Configuration{ignoreCross => true})),
               )
             };
             writer.set(
@@ -297,7 +298,7 @@ class Tabs protected {
               context,
               subPath.makeChild("configured"),
               UiConfigured.LamController{widget => getFixed},
-              Some(UiFlex.Configuration{flex => 1}),
+              Some(Ui.default(UiFlex.Configuration{flex => 1})),
             )
           } else {
             getFixed(context)
@@ -313,7 +314,7 @@ class Tabs protected {
                 secondWidget => getTabs,
               },
               if (numberOfActions > 0) {
-                Some(UiFlex.Configuration{flex => 1})
+                Some(Ui.default(UiFlex.Configuration{flex => 1}))
               } else {
                 None()
               },
@@ -324,7 +325,7 @@ class Tabs protected {
                 context,
                 subPath.makeChild("configured"),
                 UiConfigured.LamController{widget => getTabs},
-                Some(UiFlex.Configuration{flex => 1}),
+                Some(Ui.default(UiFlex.Configuration{flex => 1})),
               )
             } else {
               getTabs(context)

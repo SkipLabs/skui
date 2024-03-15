@@ -12,7 +12,7 @@ class Split protected {
     path: Ui.Path,
     controller: UiSplit.Controller,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{path, controller, cache, optConfiguration, tick => context.tick}
   }

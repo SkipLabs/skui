@@ -330,7 +330,7 @@ class VText protected {
     path: Ui.Path,
     params: UiText.Parameters,
     cache: UiText.Cache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,
@@ -346,7 +346,7 @@ class VText protected {
     context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiText.Controller,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static::create(
       context,

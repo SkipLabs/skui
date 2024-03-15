@@ -13,7 +13,7 @@ class TabPane protected {
     path: Path,
     controller: UiTabPane.Controller,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     mainHdl = context.makeDir(
       SKStore.IID::keyType,
@@ -194,7 +194,7 @@ class TabPane protected {
                 context,
                 path.makeChild("widgets").makeChild("configured"),
                 UiConfigured.LamController{widget => _ctx ~> widget},
-                Some(UiFlex.Configuration{flex => 1}),
+                Some(Ui.default(UiFlex.Configuration{flex => 1})),
               ),
             ),
           )

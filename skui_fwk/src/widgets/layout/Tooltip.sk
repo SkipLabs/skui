@@ -39,7 +39,7 @@ class TooltipLayout protected {
     path: Ui.Path,
     controller: UiTooltipLayout.Controller,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{path, controller, cache, optConfiguration, tick => context.tick}
   }

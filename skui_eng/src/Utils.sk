@@ -390,6 +390,51 @@ fun toTextOptGetter(
   )
 }
 
+fun toOptConfGetter(
+  context: readonly SKStore.Context,
+  optVar: ?Serializable,
+): ?Ui.Getter<Ui.Configuration> {
+  optVar.map(var -> {
+    var match {
+    | UiEngine.Prop(name, optPath, kind) ->
+      kind match {
+      | Ui.PProp() ->
+        getter = UiSerializableProp.Property::forName(
+          context,
+          optPath,
+          name,
+        ).toValueGetter(s ~> s as Ui.Configuration _);
+        ctx ~> getter(ctx, false)
+      | Ui.PCombined() ->
+        getter = UiSerializableProp.Property::forName(
+          context,
+          optPath match {
+          | Some(p) -> Some(`${p}/combined`)
+          | _ -> Some("combined")
+          },
+          name,
+        ).toValueGetter(s ~> s as Ui.Configuration _);
+        ctx ~> getter(ctx, false)
+      | Ui.PLoadable() ->
+        invariant_violation("Configuration cannot be loadable")
+      | Ui.PHandle() ->
+        optHandle = optPath.map(path ->
+          SKStore.EHandle(
+            SKStore.StrID::keyType,
+            Ui.Configuration::btype,
+            SKStore.DirName::create(path),
+          )
+        );
+        (ctx) ~>
+          optHandle
+            .map(hdl -> hdl.getValue(ctx, SKStore.StrID(name), false))
+            .fromSome()
+      }
+    | _ -> Ui.default(var as Ui.Configuration _)
+    }
+  });
+}
+
 fun toPictureOptGetter(
   _context: readonly SKStore.Context,
   _optVar: ?Serializable,

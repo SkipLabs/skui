@@ -14,7 +14,7 @@ class Dropdown protected {
     path: Path,
     params: UiDropdown.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     mainHdl = context.makeDir(
       SKStore.StrID::keyType,
@@ -249,7 +249,7 @@ class Dropdown protected {
                     }
                   },
                 },
-                Some(UiFlex.Configuration{flex => 1}),
+                Some(Ui.default(UiFlex.Configuration{flex => 1})),
               ),
             ]
           | _ -> Array[button]

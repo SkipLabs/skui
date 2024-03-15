@@ -19,7 +19,7 @@ class TextLine protected {
     path: Ui.Path,
     params: UiTextLine.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     mainKey = SKStore.IID(0);
     mainHdl = context.makeDir(

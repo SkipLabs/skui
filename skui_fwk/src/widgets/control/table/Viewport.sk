@@ -22,7 +22,7 @@ class Viewport{
     path: Ui.Path,
     params: VpParams,
     cache: Ui.NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,

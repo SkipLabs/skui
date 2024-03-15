@@ -32,7 +32,7 @@ class Label{
         text => ctx ~> textGetter(ctx, false),
         tooltip => ctx ~> tooltipGetter(ctx, false),
       },
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     );
   }
 }
@@ -59,7 +59,7 @@ class Indicator{optProgress: ?Serializable = None()} extends Description {
         path,
         UiProgress.LamController{progress => ctx ~> progress(ctx, false)},
       ),
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     )
   }
 }
@@ -184,7 +184,7 @@ class TextView{
             Text.Style{faceId => ctx.getThemeFont(UiTheme.Basic())},
           ),
       },
-      this.optConfiguration,
+      toOptConfGetter(context, this.optConfiguration),
     );
   }
 }

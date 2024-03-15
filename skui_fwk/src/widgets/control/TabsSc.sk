@@ -15,7 +15,7 @@ class TabsSc protected {
     path: Path,
     params: UiTabsSc.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     mainHdl = context.makeDir(
       SKStore.IID::keyType,

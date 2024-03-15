@@ -381,7 +381,7 @@ class SourcedWidget(
             widget => _ctx ~> tooltip,
             offset => _ctx ~> offset,
           },
-          Some(UiStack.Configuration{opaque => false}),
+          Some(Ui.default(UiStack.Configuration{opaque => false})),
         )
       )
     )

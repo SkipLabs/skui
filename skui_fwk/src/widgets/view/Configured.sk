@@ -29,7 +29,7 @@ class Configured{
     path: Ui.Path,
     controller: UiConfigured.Controller,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }

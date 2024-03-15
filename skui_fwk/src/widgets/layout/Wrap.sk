@@ -160,7 +160,7 @@ class Wrap protected {
     path: Ui.Path,
     params: UiWrap.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,
@@ -179,7 +179,7 @@ class Wrap protected {
     context: mutable SKStore.Context,
     path: Ui.Path,
     controller: UiWrap.Controller,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static::create(
       context,

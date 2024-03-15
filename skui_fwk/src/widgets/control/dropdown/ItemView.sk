@@ -50,7 +50,7 @@ base class SettingsBase(
     parent: Ui.Path,
     controller: Controller,
     state: State,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): Ui.Widget;
 }
 
@@ -60,7 +60,7 @@ class Sep() extends SettingsBase {
     parent: Ui.Path,
     _controller: Controller,
     _state: State,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): Ui.Widget {
     Separator{
       path => parent.makeChild("separators").add(this.path),
@@ -83,7 +83,7 @@ class Settings(
     parent: Ui.Path,
     controller: Controller,
     state: State,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): Ui.Widget {
     ItemView::create(
       context,
@@ -116,7 +116,7 @@ class ItemView protected {
     path: Ui.Path,
     params: IVParameters,
     cache: Ui.NodeCache,
-    optConfiguration: ?Ui.Configuration = None(),
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
     static{
       path,

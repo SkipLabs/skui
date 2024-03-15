@@ -35,7 +35,7 @@ fun widget(
   path: Ui.Path,
   v: Bool,
   optNumber: ?Int,
-  optConfiguration: ?Ui.Configuration = None(),
+  optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
 ): Ui.Widget {
   slider1 = slider{
     context,

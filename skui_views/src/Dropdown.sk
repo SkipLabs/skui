@@ -25,7 +25,7 @@ fun dropdown(
   context: mutable SKStore.Context,
   path: Ui.Path,
   optNumber: ?Int,
-  optConfiguration: ?Ui.Configuration = None(),
+  optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
 ): Ui.Widget {
   number = Math.max(0, optNumber.default(0));
   subVec = mutable Vector[

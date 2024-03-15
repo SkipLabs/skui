@@ -16,7 +16,7 @@ class Table protected {
     path: Path,
     params: UiTable.Parameters,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     mainHdl = context.makeDir(
       SKStore.IID::keyType,

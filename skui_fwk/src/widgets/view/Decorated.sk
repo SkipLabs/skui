@@ -42,7 +42,7 @@ class Decorated{
     path: Path,
     controller: UiDecorated.Controller,
     cache: NodeCache,
-    optConfiguration: ?Configuration = None(),
+    optConfiguration: ?Getter<Configuration> = None(),
   ): this {
     static{path, controller, optConfiguration, cache, tick => context.tick}
   }

@@ -86,9 +86,7 @@ extension class Button extends SObject {
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),
       optTooltip => maybeGet(value, "tooltip"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -125,9 +123,7 @@ extension class Slider extends SObject {
       optDisabled => maybeGet(value, "disabled"),
       optStep => maybeGet(value, "step"),
       optTicks => maybeGet(value, "ticks"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -202,9 +198,7 @@ extension class Input extends SObject {
       optAlignRight => maybeGet(value, "alignRight"),
       optPlaceholderAsLabel => maybeGet(value, "placeholderAsLabel"),
       //
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -231,9 +225,7 @@ extension class Split {
       optSecond => maybeGet(value, "second"),
       optVertical => maybeGet(value, "vertical"),
       optSeparation => maybeGet(value, "separation"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -267,9 +259,7 @@ extension class Toggle extends SObject {
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),
       optTooltip => maybeGet(value, "tooltip"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -302,9 +292,7 @@ extension class Scroll {
       optVPolicy => maybeGet(value, "vPolicy"),
       optUnit => maybeGet(value, "unit"),
       optNegative => maybeGet(value, "vertical"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }

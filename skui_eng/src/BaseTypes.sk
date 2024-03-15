@@ -9,7 +9,7 @@ class WidgetableFile(value: Widgetable) extends SKStore.File
 class DescriptionFile(value: Description) extends SKStore.File
 
 base class Description{
-  optConfiguration: ?Ui.Configuration = None(),
+  optConfiguration: ?Serializable = None(),
 } extends Widgetable {
   fun collect(Renderable -> void): void;
   //

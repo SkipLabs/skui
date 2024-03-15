@@ -32,9 +32,7 @@ extension class Wrap extends SObject {
       optRunAlignment => maybeGet(value, "runAlignment"),
       optSpacing => maybeGet(value, "spacing"),
       optRunSpacing => maybeGet(value, "runSpacing"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -67,9 +65,7 @@ extension class Flex extends SObject {
       optMainAlignment => maybeGet(value, "mainAlignment"),
       optCrossAlignment => maybeGet(value, "crossAlignment"),
       optMaxSize => maybeGet(value, "maxSize"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
@@ -94,9 +90,7 @@ extension class AspectRatio {
       optWidget => maybeGet(value, "widget"),
       optCentered => maybeGet(value, "centered"),
       optRatio => maybeGet(value, "ratio"),
-      optConfiguration => maybeGet(value, "configuration").map(v ->
-        v as Ui.Configuration _
-      ),
+      optConfiguration => maybeGet(value, "configuration"),
     }
   }
 }
