@@ -1,4 +1,4 @@
-module IO;
+module SKUIIO;
 
 mutable base class Write {
   mutable fun writeAll(buffer: Array<UInt8>): void;

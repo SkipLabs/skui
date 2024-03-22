@@ -9,7 +9,7 @@ fun bytesPerLine(width: Int): Int {
 }
 
 fun encode(
-  write: mutable IO.Write,
+  write: mutable SKUIIO.Write,
   width: Int,
   height: Int,
   accessor: (Int, Int) -> Pixel,
