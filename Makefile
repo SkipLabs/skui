@@ -91,3 +91,16 @@ enginedoc:
 enginetex:
 	mkdir -p pdfs
 	pandoc $(ENG_PANDOC_FILES) --include-in-header setup.tex --toc -o pdfs/engine.tex --lua-filter=span.lua -V geometry:margin=0.5in
+
+.PHONY: clean
+clean:
+	cd skui_base; skargo clean
+	cd skui_common; skargo clean
+	cd skui_eng; skargo clean
+	cd skui_engex; skargo clean
+	cd skui_font; skargo clean
+	cd skui_fwk; skargo clean
+	cd skui_mtsdf; skargo clean
+	cd skui_opengl; skargo clean
+	cd skui_views; skargo clean
+	cd skui_x11gl; skargo clean
