@@ -27,6 +27,8 @@ fun links(env: Skbuild.Env): Array<String> {
   }
 }
 
+module end;
+
 @debug
 fun main(): void {
   Skbuild.build() match {
@@ -34,5 +36,3 @@ fun main(): void {
   | _ -> void
   }
 }
-
-module end;

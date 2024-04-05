@@ -23,9 +23,12 @@ fun resources(_env: Skbuild.Env): Array<String> {
   Array["resources/src/big.bin", "resources/src/small.bin"]
 }
 
+module end;
+
 @debug
 fun main(): void {
-  _ = Skbuild.build();
+  Skbuild.build() match {
+  | Failure(err) -> skipExit(err.code)
+  | _ -> void
+  }
 }
-
-module end;

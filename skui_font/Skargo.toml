@@ -7,7 +7,7 @@ test-harness = "SKUIFontTest.main"
 skui_common = { "path" = "../skui_common" }
 
 [build-dependencies]
-skbuild = "*"
+skbuild = { path = "../skstore/skbuild" }
 
 #[[bin]]
 #name = "skuifont"

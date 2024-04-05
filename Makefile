@@ -30,11 +30,15 @@ ENG_DOCUMENTS=\
 
 ENG_PANDOC_FILES=$(addprefix $(ENG_DOCUMENTS_DIR)/,$(ENG_DOCUMENTS))
 
-.PHONY: conf
-conf:
+.PHONY: init
+init:
 	@if [ "$(SKDB)" = "" ]; then\
         $(error SKDB must be defined.);\
   fi
+	ln -s $(realpath $(SKDB)) skstore
+
+.PHONY: conf
+conf: init
 	@echo '{' > .tsconfig.json
 	@echo '  "compilerOptions": {' >> .tsconfig.json
 	@echo '    "target": "ES2021",' >> .tsconfig.json
@@ -54,8 +58,7 @@ conf:
 	@echo '    }' >> .tsconfig.json
 	@echo '  }' >> .tsconfig.json
 	@echo '}' >> .tsconfig.json
-	@echo '{"repositories": ["$(SKDB)"]}' >> .skargoconfig
-
+	
 .PHONY: fmt
 fmt:
 	cd skui_base; skargo fmt
