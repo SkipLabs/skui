@@ -1,0 +1,19 @@
+module SkuiViews;
+
+fun display(
+  optOutput: ?String,
+  optError: ?String = None(),
+  html: Bool = false,
+): void {
+  SKUIJS.display(optOutput, optError, html)
+}
+
+fun init(wId: Int, title: String, _args: Cli.ParseResults): void {
+  SKUIJS.init(uint32(wId), title)
+}
+
+fun complete(command: Cli.Command): Cli.Command {
+  command
+}
+
+module end;

@@ -45,8 +45,7 @@ fun initUi(
   context.setGlobal(
     "SKStore.Updater",
     SKStore.Updater(_ctx ~> FWK.update(uint32(wId))),
-  );
-  context.clearProfile();
+  )
 }
 
 fun initUiWidget(
@@ -111,30 +110,16 @@ fun perform(
     (Cli.Command, Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>),
   >,
 ): void {
-  command = Cli.Command("skuiviews")
-    .about("SKUI's Viewer")
-    .arg(
-      Cli.BoolArg("version")
-        .short("V")
-        .long("version")
-        .about("Print version info and exit"),
-    );
-  if (!SkargoVersion.kWasm32) {
-    !command = command
+  command = complete(
+    Cli.Command("skuiviews")
+      .about("SKUI's Viewer")
       .arg(
-        Cli.StringArg("screen")
-          .short("s")
-          .long("screen")
-          .about("The screen where to open the window")
-          .default("0"),
-      )
-      .arg(
-        Cli.StringArg("fps")
-          .about("The frame per second refresh rate")
-          .default("60"),
-      )
-  };
-  !command = command
+        Cli.BoolArg("version")
+          .short("V")
+          .long("version")
+          .about("Print version info and exit"),
+      ),
+  )
     .help()
     .subcommand(
       Cli.Command("help").extra().about("Displays help for a subcommand"),
@@ -154,7 +139,8 @@ fun perform(
     display(None(), Some(`error: ${err.getMessage()}\n${error}`))
   | _ ->
     if (args.getBool("version")) {
-      display(Some("skuiviews " + SkargoVersion.kVersion))
+      // FIXME
+      display(Some("skuiviews " + "FIXME"))
     } else {
       args.maybeGetSubcommand() match {
       | Some(subcmd) ->
@@ -183,13 +169,7 @@ fun perform(
               initUiWidget(context, wId, fn(args));
               context.initPre();
             });
-            if (SkargoVersion.kWasm32) {
-              SKUIJS.init(uint32(wId), title);
-            } else {
-              screen = args.getString("screen").toIntOption().default(0);
-              fps = args.getString("fps").toIntOption().default(60);
-              SKUIX11.launch(wId, title, screen, fps);
-            }
+            init(wId, title, args)
           | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
           }
         }
@@ -205,19 +185,6 @@ fun update(): void {
   pos = checkObstack();
   SKStore.Context::withoutGc(context ~> context.updateIfRoot());
   cleanObstack(pos);
-}
-
-fun display(
-  optOutput: ?String,
-  optError: ?String = None(),
-  html: Bool = false,
-): void {
-  if (SkargoVersion.kWasm32) {
-    SKUIJS.display(optOutput, optError, html)
-  } else {
-    optError.each(print_error);
-    optOutput.each(print_string);
-  }
 }
 
 module end;

@@ -58,20 +58,6 @@ conf: init
 	@echo '    }' >> .tsconfig.json
 	@echo '  }' >> .tsconfig.json
 	@echo '}' >> .tsconfig.json
-	
-.PHONY: fmt
-fmt:
-	cd skui_base; skargo fmt
-	cd skui_common; skargo fmt
-	cd skui_eng; skargo fmt
-	cd skui_engex; skargo fmt
-	cd skui_font; skargo fmt
-	cd skui_fwk; skargo fmt
-	cd skui_mtsdf; skargo fmt
-	cd skui_opengl; skargo fmt
-	cd skui_views; skargo fmt
-	cd skui_x11gl; skargo fmt
-	npx prettier . --write
 
 .PHONY: test-native
 test-native:
@@ -107,3 +93,22 @@ clean:
 	cd skui_opengl; skargo clean
 	cd skui_views; skargo clean
 	cd skui_x11gl; skargo clean
+
+.PHONY: fmt-sk
+fmt-sk:
+	find . -path ./skstore -not -prune -or -name \*.sk | parallel skfmt -i :::
+
+.PHONY: fmt-c
+fmt-c:
+	find . -path ./skstore -not -prune -or -regex '.*\.[ch]\(pp\)*' | parallel clang-format -i :::
+
+.PHONY: fmt-js
+fmt-js:
+	npx prettier --log-level warn --write .
+
+.PHONY: fmt
+fmt: fmt-sk fmt-c fmt-js
+
+.PHONY: check-fmt
+check-fmt: fmt
+	if ! git diff --quiet --exit-code; then echo "make fmt changed some files:"; git status --porcelain; exit 1; fi

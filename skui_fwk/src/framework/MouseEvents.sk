@@ -79,26 +79,44 @@ fun initMouse(
         widget = wf.widget;
         optMouseState: ?FWK.MouseState = None();
         result = FWK.Result(false);
-        context.doProfile("Update mouse states", context -> {
-          mouse = FWKMouse.getMouse(context);
-          current = previousMouseStateHdl.getValue(context, Ui.MainKey(), true);
-          node = nodeGetter(context, widget.path, true);
-          wheel = mouse.getWheelValue(context.tick);
-          current.optDragHandler match {
-          | Some(dragHandler) ->
-            if (wheel == 0) {
-              optDropHandler = msu.getDropHandler(
-                context,
-                mouse.offset(),
-                node,
-              );
-              current.optDropHandler.each(oDph ->
-                optDropHandler match {
-                | Some(cdph) -> if (!cdph.isSame(oDph)) oDph.exit(context)
-                | None() -> oDph.exit(context)
+
+        mouse = FWKMouse.getMouse(context);
+        current = previousMouseStateHdl.getValue(context, Ui.MainKey(), true);
+        node = nodeGetter(context, widget.path, true);
+        wheel = mouse.getWheelValue(context.tick);
+        current.optDragHandler match {
+        | Some(dragHandler) ->
+          if (wheel == 0) {
+            optDropHandler = msu.getDropHandler(context, mouse.offset(), node);
+            current.optDropHandler.each(oDph ->
+              optDropHandler match {
+              | Some(cdph) -> if (!cdph.isSame(oDph)) oDph.exit(context)
+              | None() -> oDph.exit(context)
+              }
+            );
+            if (!mouse.isPrimaryDown(context.tick)) {
+              proposed = if (FWK.isControlDown(context)) {
+                FWK.TrCopy()
+              } else if (FWK.isShiftDown(context)) {
+                FWK.TrLink()
+              } else {
+                FWK.TrMove()
+              };
+              optTarget = optDropHandler.flatMap(dropHandler -> {
+                dropHandler.over(context, mouse, dragHandler, proposed) match {
+                | Some(transfer) ->
+                  dropHandler.dropped(context, dragHandler, transfer);
+                  Some((dropHandler, transfer))
+                | _ -> None()
                 }
-              );
-              if (!mouse.isPrimaryDown(context.tick)) {
+              });
+              dragHandler.dropped(context, optTarget);
+              !current.optDragHandler = None();
+              !current.optDropHandler = None();
+              FWKPointer.resetCursor(context);
+            } else {
+              optDropHandler match {
+              | Some(dropHandler) ->
                 proposed = if (FWK.isControlDown(context)) {
                   FWK.TrCopy()
                 } else if (FWK.isShiftDown(context)) {
@@ -106,160 +124,125 @@ fun initMouse(
                 } else {
                   FWK.TrMove()
                 };
-                optTarget = optDropHandler.flatMap(dropHandler -> {
-                  dropHandler.over(
+                dropHandler.over(context, mouse, dragHandler, proposed) match {
+                | Some(transfer) ->
+                  FWKPointer.setCursor(
                     context,
-                    mouse,
-                    dragHandler,
-                    proposed,
-                  ) match {
-                  | Some(transfer) ->
-                    dropHandler.dropped(context, dragHandler, transfer);
-                    Some((dropHandler, transfer))
-                  | _ -> None()
-                  }
-                });
-                dragHandler.dropped(context, optTarget);
-                !current.optDragHandler = None();
-                !current.optDropHandler = None();
-                FWKPointer.resetCursor(context);
-              } else {
-                optDropHandler match {
-                | Some(dropHandler) ->
-                  proposed = if (FWK.isControlDown(context)) {
-                    FWK.TrCopy()
-                  } else if (FWK.isShiftDown(context)) {
-                    FWK.TrLink()
-                  } else {
-                    FWK.TrMove()
-                  };
-                  dropHandler.over(
-                    context,
-                    mouse,
-                    dragHandler,
-                    proposed,
-                  ) match {
-                  | Some(transfer) ->
-                    FWKPointer.setCursor(
-                      context,
-                      transfer match {
-                      | FWK.TrCopy() -> Ui.DnDCopyCursor()
-                      | FWK.TrLink() -> Ui.DnDLinkCursor()
-                      | FWK.TrMove() -> Ui.DnDMoveCursor()
-                      },
-                    )
-                  | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
-                  }
+                    transfer match {
+                    | FWK.TrCopy() -> Ui.DnDCopyCursor()
+                    | FWK.TrLink() -> Ui.DnDLinkCursor()
+                    | FWK.TrMove() -> Ui.DnDMoveCursor()
+                    },
+                  )
                 | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
-                };
-                !current.optDropHandler = optDropHandler;
-              }
-            } else {
-              msu.getHoverHandler(context, mouse.offset(), node) match {
-              | Some(hoverHandler) ->
-                !result = hoverHandler.manage(context, mouse, None())
-              | _ -> void
-              }
+                }
+              | _ -> FWKPointer.setCursor(context, Ui.ForbiddenCursor())
+              };
+              !current.optDropHandler = optDropHandler;
+            }
+          } else {
+            msu.getHoverHandler(context, mouse.offset(), node) match {
+            | Some(hoverHandler) ->
+              !result = hoverHandler.manage(context, mouse, None())
+            | _ -> void
+            }
+          }
+        | _ ->
+          current.optLockHandler match {
+          | Some(lockHandler) ->
+            lockHandler.i0.update(context, mouse) match {
+            | Some(lh) -> !current.optLockHandler = Some((lh, lockHandler.i1))
+            | _ ->
+              !current.optLockHandler = None();
+              !current.optHoverHandler = lockHandler.i1
             }
           | _ ->
-            current.optLockHandler match {
+            msu.getLockHandler(context, mouse, node) match {
             | Some(lockHandler) ->
-              lockHandler.i0.update(context, mouse) match {
-              | Some(lh) -> !current.optLockHandler = Some((lh, lockHandler.i1))
-              | _ ->
-                !current.optLockHandler = None();
-                !current.optHoverHandler = lockHandler.i1
-              }
+              !current.optLockHandler = Some(
+                (lockHandler, current.optHoverHandler),
+              );
+              !current.optHoverHandler = None()
+            | _ -> void
+            }
+          };
+          if (current.optLockHandler.isNone()) {
+            mouse.checkDrag().flatMap(offset ->
+              msu.getDragHandler(context, offset, node)
+            ) match {
+            | Some(dragHandler) ->
+              !current.optDragHandler = Some(dragHandler);
+              FWKPointer.storeCursor(context)
             | _ ->
-              msu.getLockHandler(context, mouse, node) match {
-              | Some(lockHandler) ->
-                !current.optLockHandler = Some(
-                  (lockHandler, current.optHoverHandler),
+              offset = current.optMouseLock
+                .map(v -> v.i1)
+                .default(mouse.offset());
+              msu.getHoverHandler(context, offset, node) match {
+              | Some(hoverHandler) ->
+                current.optHoverHandler match {
+                | Some(previousHh) ->
+                  if (previousHh != hoverHandler) {
+                    previousHh.exit(context);
+                    hoverHandler.enter(context)
+                  }
+                | _ -> hoverHandler.enter(context)
+                };
+                !result = hoverHandler.manage(
+                  context,
+                  mouse,
+                  current.optHoverHandler,
                 );
-                !current.optHoverHandler = None()
-              | _ -> void
-              }
-            };
-            if (current.optLockHandler.isNone()) {
-              mouse.checkDrag().flatMap(offset ->
-                msu.getDragHandler(context, offset, node)
-              ) match {
-              | Some(dragHandler) ->
-                !current.optDragHandler = Some(dragHandler);
-                FWKPointer.storeCursor(context)
+                !current.optHoverHandler = Some(hoverHandler)
               | _ ->
-                offset = current.optMouseLock
-                  .map(v -> v.i1)
-                  .default(mouse.offset());
-                msu.getHoverHandler(context, offset, node) match {
-                | Some(hoverHandler) ->
-                  current.optHoverHandler match {
-                  | Some(previousHh) ->
-                    if (previousHh != hoverHandler) {
-                      previousHh.exit(context);
-                      hoverHandler.enter(context)
-                    }
-                  | _ -> hoverHandler.enter(context)
-                  };
-                  !result = hoverHandler.manage(
-                    context,
-                    mouse,
-                    current.optHoverHandler,
-                  );
-                  !current.optHoverHandler = Some(hoverHandler)
-                | _ ->
-                  current.optHoverHandler.each(hh -> hh.exit(context));
-                  !current.optHoverHandler = None()
-                }
+                current.optHoverHandler.each(hh -> hh.exit(context));
+                !current.optHoverHandler = None()
               }
             }
-          };
-          if (!result.consumed && current.optHoverHandler.isSome()) {
-            isMenuPressed = mouse.mouse.isSecondaryButtonPressed(context.tick);
-            isMenuReleased = mouse.mouse.isSecondaryButtonReleased(
-              context.tick,
-            );
-            if (current.optArmedMenu.isSome() && isMenuReleased) {
-              if (
-                current.optArmedMenu.map(m -> m.getIdentifier()) ==
-                current.optHoverHandler.map(hh -> hh.getIdentifier())
-              ) {
-                !current.optMenuSupplier = current.optHoverHandler.map(hh ->
-                  (mouse.offset(), hh, context.tick)
-                );
-              } else {
-                !current.optMenuSupplier = None()
-              };
-              !current.optArmedMenu = None();
-            } else if (isMenuPressed) {
-              !current.optArmedMenu = current.optHoverHandler;
-              !current.optMenuSupplier = None();
-            }
-          };
-          current.optHoverHandler match {
-          | Some(hh) ->
-            optPath = current.optMouseLock.map(v -> v.i0);
-            optLocked = result.optLocked match {
-            | Some(true) ->
-              if (optPath != Some(hh.getIdentifier())) {
-                Some(true)
-              } else {
-                None()
-              }
-            | Some(false) -> Some(false)
-            | None() -> Some(optPath == Some(hh.getIdentifier()))
+          }
+        };
+        if (!result.consumed && current.optHoverHandler.isSome()) {
+          isMenuPressed = mouse.mouse.isSecondaryButtonPressed(context.tick);
+          isMenuReleased = mouse.mouse.isSecondaryButtonReleased(context.tick);
+          if (current.optArmedMenu.isSome() && isMenuReleased) {
+            if (
+              current.optArmedMenu.map(m -> m.getIdentifier()) ==
+              current.optHoverHandler.map(hh -> hh.getIdentifier())
+            ) {
+              !current.optMenuSupplier = current.optHoverHandler.map(hh ->
+                (mouse.offset(), hh, context.tick)
+              );
+            } else {
+              !current.optMenuSupplier = None()
             };
-            optLocked.each(locked -> {
-              !current.optMouseLock = if (locked) {
-                Some((hh.getIdentifier(), mouse.offset()))
-              } else {
-                None()
-              }
-            })
-          | _ -> !current.optMouseLock = None()
+            !current.optArmedMenu = None();
+          } else if (isMenuPressed) {
+            !current.optArmedMenu = current.optHoverHandler;
+            !current.optMenuSupplier = None();
+          }
+        };
+        current.optHoverHandler match {
+        | Some(hh) ->
+          optPath = current.optMouseLock.map(v -> v.i0);
+          optLocked = result.optLocked match {
+          | Some(true) ->
+            if (optPath != Some(hh.getIdentifier())) {
+              Some(true)
+            } else {
+              None()
+            }
+          | Some(false) -> Some(false)
+          | None() -> Some(optPath == Some(hh.getIdentifier()))
           };
-          !optMouseState = Some(current);
-        });
+          optLocked.each(locked -> {
+            !current.optMouseLock = if (locked) {
+              Some((hh.getIdentifier(), mouse.offset()))
+            } else {
+              None()
+            }
+          })
+        | _ -> !current.optMouseLock = None()
+        };
+        !optMouseState = Some(current);
         FWKMouse.execute(context, FWKMouse.Next());
         optMouseState.fromSome()
       },

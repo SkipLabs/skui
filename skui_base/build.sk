@@ -21,10 +21,20 @@ fun include_dirs(env: Skbuild.Env): Array<String> {
 @skbuild_links
 fun links(env: Skbuild.Env): Array<String> {
   if (!env.isWasm32()) {
-    Array["-lssl", "-lcrypto", "-lstdc++fs"]
+    Array["-lssl", "-lcrypto"]
   } else {
     Array[]
   }
+}
+
+@skbuild_extra_sources
+fun extra_sources(env: Skbuild.Env): Array<String> {
+  path = if (env.isWasm32()) {
+    env.resolve("extra/src/Wasm32.sk")
+  } else {
+    env.resolve("extra/src/Host.sk")
+  };
+  Array[path]
 }
 
 module end;

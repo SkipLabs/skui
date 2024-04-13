@@ -1,4 +1,12 @@
-import type {int, ptr, Links, Utils, ToWasmManager, Shared, Environment} from "#std/sk_types.js";
+import type {
+  int,
+  ptr,
+  Links,
+  Utils,
+  ToWasmManager,
+  Shared,
+  Environment,
+} from "#std/sk_types.js";
 
 interface ToWasm {
   SKIP_IO_isExternalBinary: (id: int) => boolean;

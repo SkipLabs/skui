@@ -35,7 +35,8 @@ fun perform(
   });
   args = command.parseArgs();
   if (args.getBool("version")) {
-    print_string("skuix11gl " + SkargoVersion.kVersion);
+    // FIXME
+    print_string("skuix11gl " + "FIXME");
   } else {
     args.maybeGetSubcommand() match {
     | Some(subcmd) ->

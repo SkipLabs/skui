@@ -9,9 +9,9 @@ const resizedDirName: SKStore.DirName = SKStore.DirName::create(
   "/ui/engine/pictures/resized/",
 );
 
-const pictureHdl: SKStore.IHandle<SKStore.IID, Impl> = SKStore.IHandle(
+const pictureHdl: SKStore.IHandle<SKStore.IID, Ui.Picture> = SKStore.IHandle(
   SKStore.IID::keyType,
-  Impl::type,
+  Ui.Picture::btype,
   dirName,
 );
 
@@ -94,7 +94,7 @@ fun s(v1: UInt32, v2: UInt32, factor: Float): UInt32 {
 fun init(context: mutable SKStore.Context): void {
   pictures = context.makeDir(
     SKStore.IID::keyType,
-    Impl::type,
+    Ui.Picture::btype,
     dirName,
     Array[],
   );
@@ -164,123 +164,10 @@ fun init(context: mutable SKStore.Context): void {
   );
 }
 
-class Impl private (
-  width: UInt32,
-  height: UInt32,
-  private optEptr: ?SKStore.ExternalPointer,
-) extends Ui.Picture, SKStore.File uses Hashable, HasClassName {
-  //
-  static fun empty(): this {
-    static(UInt32::truncate(0), UInt32::truncate(0), None())
-  }
-
-  fun getSize(): Geometry.ISize {
-    Geometry.ISize(this.width.toInt(), this.height.toInt())
-  }
-
-  fun resized(_width: Int, _height: Int): ?Ui.Picture {
-    print_string("TODO: UiEnginePicture.resized");
-    //resizedHdl.get()
-    Some(this)
-  }
-
-  static fun make(id: UInt32, oWidth: UInt32, oHeight: UInt32): this {
-    static(oWidth, oHeight, Some(SKStore.ExternalPointer::create(id, delete)))
-  }
-
-  fun optId(): ?Int {
-    this.optEptr.map(epr -> epr.value).map(v -> v.toInt())
-  }
-
-  fun hash(): Int {
-    h = this.getClassName().hash();
-    Hashable.combine(h, this.optEptr.map(epr -> epr.value));
-  }
-}
-
-private fun delete(actor: UInt32): void {
-  if (SkargoVersion.kWasm32) {
-    delete_(actor)
-  } else {
-    invariant_violation("Shall not be called in non wasm version")
-  }
-}
-
-@cpp_extern("SKIP_UiEnginePicture_delete")
-private native fun delete_(actor: UInt32): void;
-
 @cpp_extern("SKIP_UiEnginePicture_resize")
 private native fun resize(picture: UInt32, width: UInt32, height: UInt32): void;
 
 @cpp_extern("SKIP_UiEnginePicture_asTexture")
 private native fun asTexture(picture: UInt32, ctx: UInt32): UInt32;
-
-@wasm_export("SKIP_UiEnginePicture_register")
-fun register(id: UInt32, width: UInt32, height: UInt32): void {
-  SKStore.Context::withoutGc(context ~>
-    if (pictureHdl.exists(context)) {
-      pictureHdl.write(
-        context,
-        SKStore.IID(id.toInt()),
-        Impl::make(id, width, height),
-      )
-    }
-  )
-}
-
-@wasm_export("SKIP_UiEnginePicture_unregister")
-fun unregister(picture: UInt32): void {
-  SKStore.Context::withoutGc(context ~>
-    if (pictureHdl.exists(context)) {
-      pictureHdl.remove(context, SKStore.IID(picture.toInt()))
-    }
-  )
-}
-
-@wasm_export("SKIP_UiEnginePicture_resized")
-fun resized(
-  picture: UInt32,
-  width: UInt32,
-  height: UInt32,
-  result: UInt32,
-  optError: ?Text,
-): void {
-  SKStore.Context::withoutGc(context ~> {
-    if (resizedHdl.exists(context)) {
-      fsKey = RKey(picture, width, height);
-      if (result.toInt() == 0 && optError.isNone()) {
-        resizedHdl.remove(context, fsKey)
-      } else {
-        resizedHdl.write(
-          context,
-          fsKey,
-          Variable(if (result.toInt() > 0) Some(result) else None(), optError),
-        );
-      };
-      context.updateIfRoot();
-    } else {
-      print_error(`Texturable directory is missing.`);
-    }
-  });
-}
-
-fun pictureToTexturable(
-  picture: Ui.Picture,
-  linear: Bool = true,
-): ?GL.Texturable {
-  picture match {
-  | img @ Ui.Image _ ->
-    Some(GLTexture.Image(Some(img.data), linear, img.width, img.height))
-  | Ui.EmptyPicture _ -> None()
-  | i @ Impl _ ->
-    i.optId().map(id ->
-      GL.LamTexturable(
-        gl ~> gl.importTexture(asTexture(uint32(id), gl.id)),
-        i.width.toInt(),
-        i.height.toInt(),
-      )
-    )
-  }
-}
 
 module end;

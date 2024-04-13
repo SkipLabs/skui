@@ -3,6 +3,9 @@ name = "skui_font"
 version = "0.1.0"
 test-harness = "SKUIFontTest.main"
 
+[dev-dependencies]
+sktest = { path = "../skstore/sktest" }
+
 [dependencies]
 skui_common = { "path" = "../skui_common" }
 

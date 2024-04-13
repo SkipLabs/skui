@@ -1,7 +1,5 @@
 module SKUIMTSDFTest;
 
-const save: Bool = false;
-
 const scanlines1: Array<Array<Bool>> = Array[
   Array[
     true,

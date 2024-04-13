@@ -99,15 +99,8 @@ trait WithUpdate<T: Command> extends HasClassName {
     scope: String,
     message: JSON.Value,
   ): void {
-    if (this.profile()) {
-      SKStore.profileCall(context, `${this.getClassName()}.manage`, () -> {
-        this.execute(context, name, scope, this.convert(message));
-        context.updateIfRoot();
-      });
-    } else {
-      this.execute(context, name, scope, this.convert(message));
-      context.updateIfRoot();
-    }
+    this.execute(context, name, scope, this.convert(message));
+    context.updateIfRoot()
   }
 
   fun cancel(
@@ -116,15 +109,8 @@ trait WithUpdate<T: Command> extends HasClassName {
     scope: String,
     message: JSON.Value,
   ): void {
-    if (this.profile()) {
-      SKStore.profileCall(context, `${this.getClassName()}.manage`, () -> {
-        this.performCancel(context, name, scope, this.convert(message));
-        context.updateIfRoot();
-      });
-    } else {
-      this.performCancel(context, name, scope, this.convert(message));
-      context.updateIfRoot();
-    }
+    this.performCancel(context, name, scope, this.convert(message));
+    context.updateIfRoot();
   }
 
   fun run(
@@ -137,15 +123,8 @@ trait WithUpdate<T: Command> extends HasClassName {
     | Custom(fields) -> this.convert(JSON.Object(fields))
     | _ -> command
     };
-    function = () -> {
-      this.execute(context, name, scope, this.convertCmd(command));
-      context.updateIfRoot();
-    };
-    if (this.profile()) {
-      SKStore.profileCall(context, `${this.getClassName()}.run`, function);
-    } else {
-      function()
-    }
+    this.execute(context, name, scope, this.convertCmd(command));
+    context.updateIfRoot();
   }
 }
 

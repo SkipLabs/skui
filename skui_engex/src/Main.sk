@@ -19,37 +19,20 @@ fun main(): void {
     SKUIEngExButton.example(),
     SKUIEngExButton2.example(),
   ];
-  /*#forEachFunction (@skuiengex, #function, #functionName) {
-    available.push(#function())
-  };*/
   perform(available);
 }
 
 fun perform(available: readonly Vector<Example>): void {
-  command = Cli.Command(kName)
-    .about("SKUI's Engine example viewer")
-    .arg(
-      Cli.BoolArg("version")
-        .short("V")
-        .long("version")
-        .about("Print version info and exit"),
-    );
-  if (!SkargoVersion.kWasm32) {
-    !command = command
+  command = SkuiViews.complete(
+    Cli.Command(kName)
+      .about("SKUI's Engine example viewer")
       .arg(
-        Cli.StringArg("screen")
-          .short("s")
-          .long("screen")
-          .about("The screen where to open the window")
-          .default("0"),
-      )
-      .arg(
-        Cli.StringArg("fps")
-          .about("The frame per second refresh rate")
-          .default("60"),
-      )
-  };
-  !command = command
+        Cli.BoolArg("version")
+          .short("V")
+          .long("version")
+          .about("Print version info and exit"),
+      ),
+  )
     .help()
     .subcommand(
       Cli.Command("help").extra().about("Displays help for a subcommand"),
@@ -69,7 +52,8 @@ fun perform(available: readonly Vector<Example>): void {
     SkuiViews.display(None(), Some(`error: ${err.getMessage()}\n${error}`))
   | _ ->
     if (args.getBool("version")) {
-      SkuiViews.display(Some(kName + " " + SkargoVersion.kVersion))
+      // FIXME
+      SkuiViews.display(Some(kName + " " + "FIXME"))
     } else {
       args.maybeGetSubcommand() match {
       | Some(subcmd) ->
@@ -99,13 +83,7 @@ fun perform(available: readonly Vector<Example>): void {
               initEngineWidget(context, args, wId, example);
               context.initPre();
             });
-            if (SkargoVersion.kWasm32) {
-              SKUIJS.init(uint32(wId), title);
-            } else {
-              screen = args.getString("screen").toIntOption().default(0);
-              fps = args.getString("fps").toIntOption().default(60);
-              SKUIX11.launch(wId, title, screen, fps);
-            }
+            SkuiViews.init(wId, title, args)
           | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
           }
         }

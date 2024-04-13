@@ -1,0 +1,37 @@
+{
+  "name": "skuifont",
+  "author": "SkipLabs",
+  "version": "0.0.65",
+  "assets": {
+    "tests": [
+      {
+        "name": "SKIP_resources_tests_luximr_bin",
+        "path": "resources/tests/luximr.bin"
+      },
+      {
+        "name": "SKIP_resources_tests_luxirr_bin",
+        "path": "resources/tests/luxirr.bin"
+      },
+      {
+        "name": "SKIP_resources_tests_luxisr_bin",
+        "path": "resources/tests/luxisr.bin"
+      },
+      {
+        "name": "SKIP_resources_tests_xab_bin",
+        "path": "resources/tests/xab.bin"
+      },
+      {
+        "name": "SKIP_resources_tests_xdsff_bin",
+        "path": "resources/tests/xdsff.bin"
+      },
+      {
+        "name": "SKIP_resources_tests_xdvso_bin",
+        "path": "resources/tests/xdvso.bin"
+      },
+      {
+        "name": "SKIP_resources_tests_xtnr_bin",
+        "path": "resources/tests/xtnr.bin"
+      }
+    ]
+  }
+}

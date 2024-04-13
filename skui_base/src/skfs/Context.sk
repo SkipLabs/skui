@@ -17,25 +17,14 @@ native fun .checkMemory(): void;
 
 extension class Context {
   //
-  static fun withoutGc<T>(
-    fn: mutable Context ~> T,
-    optName: ?String = None(),
-  ): T {
+  static fun withoutGc<T>(fn: mutable Context ~> T): T {
     getWorkingContext() match {
-    | Some(context) ->
-      optName match {
-      | Some(name) -> profileCall(context, name, () -> fn(context))
-      | _ -> fn(context)
-      }
+    | Some(context) -> fn(context)
     | _ ->
       fromContext = gUnsafeContextGet();
       fromTick = fromContext.tick;
       context = Context::fromSaved(fromContext);
-      doDo = () -> context.perform(fn, fromContext, fromTick);
-      optName match {
-      | Some(name) -> profileCall(context, name, doDo)
-      | _ -> doDo()
-      }
+      context.perform(fn, fromContext, fromTick)
     }
   }
 
@@ -265,63 +254,6 @@ extension class Context {
     System.timeStamp();
   }
 
-  @debug
-  mutable fun doProfile(
-    name: String,
-    fn: mutable Context -> void,
-    forceCall: Bool = false,
-  ): void {
-    this.getProfiling() match {
-    | Some(print) ->
-      start = this.systemTimeStamp();
-      fn(this);
-      end = this.systemTimeStamp();
-      diff = end - start;
-      if (print || forceCall) {
-        print_string(
-          `${name}[${this.tick}]: Time elpased is ${diff.seconds} seconds and ${
-            diff.microseconds
-          } micros`,
-        )
-      } else {
-        this.logProfile(name, diff);
-      }
-    | _ -> fn(this)
-    }
-  }
-
-  mutable fun logProfile(
-    name: String,
-    time: System.TimeStamp,
-    forceDisplay: Bool = false,
-  ): void {
-    entity = ProfileEntity(time, forceDisplay);
-    this.getGlobal("SKStore.Profiles") match {
-    | Some(file) ->
-      this.setGlobal(
-        "SKStore.Profiles",
-        Profiles::type(file).update(name, this.tick, entity),
-      )
-    | _ ->
-      this.setGlobal(
-        "SKStore.Profiles",
-        Profiles().update(name, this.tick, entity),
-      )
-    }
-  }
-
-  @debug
-  mutable fun clearProfile(): void {
-    this.removeGlobal("SKStore.Profiles");
-  }
-
-  @debug
-  readonly fun printProfile(): void {
-    this.getGlobal("SKStore.Profiles").map(Profiles::type).each(profiles ->
-      profiles.print(this.tick)
-    )
-  }
-
   mutable fun random(start: Int, end: Int): Int {
     random = this.getRandom();
     res = random.random(start, end);
@@ -346,27 +278,6 @@ extension class Context {
   readonly fun getBoolGlobal(name: String): Bool {
     this.getGlobal(name).map(BoolFile::type).map(f -> f.value).default(false)
   }
-}
-
-@debug
-fun profileCall<T>(
-  context: mutable Context,
-  name: String,
-  fn: () -> T,
-  limit: Int = 500,
-): T {
-  start = context.systemTimeStamp();
-  res = fn();
-  end = context.systemTimeStamp();
-  uDiff = end - start;
-  if (uDiff.toMicroseconds() > limit) {
-    print_string(
-      `${name}[${context.tick}]: Manage ${uDiff.seconds} seconds and ${
-        uDiff.microseconds
-      } micros`,
-    );
-  };
-  res
 }
 
 @debug

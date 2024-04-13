@@ -1,4 +1,10 @@
-import type { int, Environment, Links, Utils, ToWasmManager } from "#std/sk_types.js";
+import type {
+  int,
+  Environment,
+  Links,
+  Utils,
+  ToWasmManager,
+} from "#std/sk_types.js";
 
 interface ToWasm {
   SKIP_FWK_applyCursor: (wId: int, cursor: int) => void;

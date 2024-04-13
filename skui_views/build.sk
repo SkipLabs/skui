@@ -23,6 +23,15 @@ fun resources(_env: Skbuild.Env): Array<String> {
   Array["resources/src/big.bin", "resources/src/small.bin"]
 }
 
+@skbuild_extra_sources
+fun extra_sources(env: Skbuild.Env): Array<String> {
+  if (env.isWasm32()) {
+    Array["extra/src/Wasm32.sk", "extra/src/JSEvents.sk"]
+  } else {
+    Array["extra/src/Host.sk", "extra/src/X11Events.sk", "extra/src/X11Key.sk"]
+  }
+}
+
 module end;
 
 @debug
