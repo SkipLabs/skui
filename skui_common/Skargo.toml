@@ -2,8 +2,11 @@
 name = "skui_common"
 version = "0.1.0"
 
+[dev-dependencies]
+sktest = { path = "../skstore/sktest" }
+
 [build-dependencies]
-skbuild = "*"
+skbuild = { path = "../skstore/skbuild" }
 
 [dependencies]
 skui_base = { "path" = "../skui_base" }

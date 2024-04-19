@@ -15,9 +15,12 @@ fun links(env: Skbuild.Env): Array<String> {
   if (!env.isWasm32()) Array["-lGLEW", "-lGL", "-lGLU", "-lglut"] else Array[]
 }
 
+module end;
+
 @debug
 fun main(): void {
-  _ = Skbuild.build();
+  Skbuild.build() match {
+  | Failure(err) -> skipExit(err.code)
+  | _ -> void
+  }
 }
-
-module end;

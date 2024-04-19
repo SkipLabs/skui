@@ -187,10 +187,17 @@ value class Pix(
   }
 }
 
-base class Picture {
+base class Picture extends SKStore.File {
   //
   fun getSize(): Geometry.ISize;
   fun resized(width: Int, height: Int): ?Picture;
+
+  static fun btype(obj: SKStore.File): Picture {
+    obj match {
+    | x @ Picture _ -> x
+    | _ -> SKStore.cast_violation("Ui.Picture", obj)
+    }
+  }
 }
 
 class EmptyPicture() extends Picture {

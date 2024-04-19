@@ -1,0 +1,62 @@
+module UiEngineHandle;
+
+@cpp_extern("SKIP_UiEngineJS_delete")
+private native fun delete_(actor: UInt32): void;
+
+@cpp_extern("SKIP_UiEngineJS_apply")
+private native fun apply(
+  actor: UInt32,
+  type_: String,
+  parameters: JSON.Array,
+): ?JSON.Value;
+
+@wasm_export("SKIP_UiEngineJS_register")
+@cpp_export("SKIP_UiEngineJS_register")
+fun register(id: UInt32, optPath: ?String, type_: String): void {
+  SKStore.Context::withoutGc(context ~> {
+    handlesHdl = handlesHdl(optPath);
+    if (handlesHdl.exists(context)) {
+      handlesHdl.write(
+        context,
+        SKStore.IID(id.toInt()),
+        Handle::make(id, type_),
+      )
+    }
+  })
+}
+
+@wasm_export("SKIP_UiEngineJS_unregister")
+@cpp_export("SKIP_UiEngineJS_unregister")
+fun unregister(id: UInt32, optPath: ?String): void {
+  SKStore.Context::withoutGc(context ~> {
+    handlesHdl = handlesHdl(optPath);
+    if (handlesHdl.exists(context)) {
+      handlesHdl.remove(context, SKStore.IID(id.toInt()))
+    }
+  })
+}
+
+class Handle private (
+  type_: String,
+  eptr: SKStore.ExternalPointer,
+) extends IHandle uses Hashable, HasClassName {
+  static fun make(id: UInt32, type_: String): this {
+    static(type_, SKStore.ExternalPointer::create(id, delete))
+  }
+
+  fun apply(parameters: Vector<JSON.Value>): ?JSON.Value {
+    apply(this.eptr.value, this.type_, JSON.Array(parameters))
+  }
+
+  fun hash(): Int {
+    h = this.getClassName().hash();
+    !h = Hashable.combine(h, this.type_);
+    Hashable.combine(h, this.eptr.value);
+  }
+}
+
+private fun delete(actor: UInt32): void {
+  delete_(actor)
+}
+
+module end;

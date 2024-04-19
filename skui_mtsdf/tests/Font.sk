@@ -161,9 +161,6 @@ class FontCase{
     );
     image = sdf.toImage();
     like = SKUIMTSDFTest.checkImage(image, this.expected.image, 3);
-    if (save && SkargoVersion.kTarget != "wasm32-unknown-unknown" && like) {
-      _ = image.save(`results/mtsdf/font/char_${this.char.code()}.png`)
-    };
     if (!like) {
       throw SKTest.ExpectationError(
         `expected equivalent [image[${this.char}]]`,

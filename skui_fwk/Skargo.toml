@@ -3,5 +3,8 @@ name = "skui_fwk"
 version = "0.1.0"
 test-harness = "SKUIFwkTest.main"
 
+[build-dependencies]
+skbuild = { path = "../skstore/skbuild" } 
+
 [dependencies]
 skui_mtsdf = { "path" = "../skui_mtsdf" }

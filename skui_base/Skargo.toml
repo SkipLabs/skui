@@ -3,7 +3,7 @@ name = "skui_base"
 version = "0.1.0"
 
 [build-dependencies]
-skbuild = "*"
+skbuild = { path = "../skstore/skbuild" } 
 
 [dependencies]
-skfs = "*"
+std = { path = "../skstore/prelude" }

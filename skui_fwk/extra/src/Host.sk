@@ -1,0 +1,16 @@
+module UiEvent;
+
+fun isChar(
+  key: Key,
+  char: Char,
+  tick: SKStore.Tick,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
+): Bool {
+  key.isKey(`Key${Unicode.toUpper(char)}`, tick, state)
+}
+
+fun hasChar(key: Key, char: Char): Bool {
+  key.info.symbol == `Key${Unicode.toUpper(char)}`;
+}
+
+module end;

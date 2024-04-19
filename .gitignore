@@ -1,12 +1,5 @@
-/cli
-/compiler
 /pdfs
-/prelude
-/skargo
-/skfs
-/sktest
-/termcolor
-/toml
+/skstore
 */target/
 */.build/
 */ts/js/

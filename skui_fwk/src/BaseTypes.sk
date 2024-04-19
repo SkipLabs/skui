@@ -949,13 +949,6 @@ fun gaussianScale(dim: Int, radius: Int): Array<Float> {
   Array::fillBy(dim, (index) -> kvals.unsafeGet(index) / total);
 }
 
-fun md5(value: Array<Ui.Pix>): String {
-  natMd5(value, UInt32::truncate(value.size() * 4))
-}
-
-@cpp_extern("SKIP_Utils_md5")
-native fun natMd5(value: Array<Ui.Pix>, size: UInt32): String;
-
 module end;
 
 fun toadd(description: String): void {

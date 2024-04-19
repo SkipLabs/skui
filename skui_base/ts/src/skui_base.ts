@@ -1,4 +1,10 @@
-import type { float, Environment, Links, ToWasmManager, Utils } from "#std/sk_types.js";
+import type {
+  float,
+  Environment,
+  Links,
+  ToWasmManager,
+  Utils,
+} from "#std/sk_types.js";
 
 interface ToWasm {
   SKIP_JS_timeStamp: () => float;

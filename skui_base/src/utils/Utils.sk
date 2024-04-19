@@ -8,23 +8,6 @@ fun toString<T>(x: T): String {
   vector.join("");
 }
 
-@cpp_extern("SKIP_Utils_md5sum")
-native fun md5sum(path: String): String;
-
-fun md5(value: String): String {
-  natMd5(value, UInt32::truncate(0))
-}
-
-fun md5Bytes(value: Array<UInt8>): String {
-  natMd5Bytes(value, UInt32::truncate(value.size()))
-}
-
-@cpp_extern("SKIP_Utils_md5")
-native fun natMd5(value: String, size: UInt32): String;
-
-@cpp_extern("SKIP_Utils_md5")
-native fun natMd5Bytes(value: Array<UInt8>, size: UInt32): String;
-
 @cpp_extern("SKIP_Utils_sha256")
 native fun sha256(toEncode: String): String;
 

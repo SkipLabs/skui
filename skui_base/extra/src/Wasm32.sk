@@ -1,0 +1,17 @@
+module System;
+
+@cpp_extern("SKIP_JS_timeStamp")
+native fun jsTimeStamp(): Float;
+
+fun timeStamp(): TimeStamp {
+  convertFTime(jsTimeStamp())
+}
+
+fun convertFTime(fTimeStamp: Float): TimeStamp {
+  seconds = (fTimeStamp / 1000.0).toInt();
+  microseconds = (((fTimeStamp - (seconds * 1000).toFloat()).toInt()) *
+    1000).toInt();
+  TimeStamp(seconds, microseconds)
+}
+
+module end;

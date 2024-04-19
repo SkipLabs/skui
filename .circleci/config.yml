@@ -14,25 +14,18 @@ commands:
       - run:
           name: Fetch submodules
           command: |
-            cd dependencies/skdb && git submodule update --init --recursive
+            cd skstore && git submodule update --init --recursive
       - run:
           name: Build compiler
           command: |
-            cd dependencies/skdb/compiler && make STAGE=0 && make install STAGE=0
+            cd skstore/compiler && make STAGE=0 && make install STAGE=0
   sknpmsetup:
     description: "Setup sknpm toolchain"
     steps:
       - run:
           name: Build sknpm
           command: |
-            cd dependencies/skdb/sknpm && skargo b -r && cp target/host/release/sknpm /usr/local/bin/
-  skuisetup:
-    description: "Setup skui toolchain"
-    steps:
-      - run:
-          name: Set skargo config
-          command: |
-            printf "{\"repositories\": [\"dependencies/skdb\"]}" > .skargoconfig
+            cd skstore/sknpm && skargo b -r && cp target/host/release/sknpm /usr/local/bin/
   cloneskdb:
     description: "Clone skdb"
     steps:
@@ -44,7 +37,7 @@ commands:
           command: |
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            git clone git@github.com:SkipLabs/skdb dependencies/skdb
+            git clone git@github.com:SkipLabs/skdb skstore
 jobs:
   skui_common:
     docker:
@@ -54,7 +47,6 @@ jobs:
       - checkout
       - cloneskdb
       - skdbsetup
-      - skuisetup
       - run:
           name: Run common tests
           no_output_timeout: 5m
@@ -72,7 +64,6 @@ jobs:
       - checkout
       - cloneskdb
       - skdbsetup
-      - skuisetup
       - run:
           name: Run font tests
           no_output_timeout: 5m
@@ -89,7 +80,6 @@ jobs:
       - checkout
       - cloneskdb
       - skdbsetup
-      - skuisetup
       - run:
           name: Run mtsdf tests
           no_output_timeout: 5m
@@ -107,7 +97,6 @@ jobs:
       - cloneskdb
       - skdbsetup
       - sknpmsetup
-      - skuisetup
       - run:
           name: Run wasm skui_common tests
           no_output_timeout: 5m
@@ -125,7 +114,6 @@ jobs:
       - cloneskdb
       - skdbsetup
       - sknpmsetup
-      - skuisetup
       - run:
           name: Run wasm skui_font tests
           no_output_timeout: 5m
@@ -143,7 +131,6 @@ jobs:
       - cloneskdb
       - skdbsetup
       - sknpmsetup
-      - skuisetup
       - run:
           name: Run wasm skui_mtsdf tests
           no_output_timeout: 5m

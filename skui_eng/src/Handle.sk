@@ -4,93 +4,44 @@ module UiEngineHandle;
 
 const dirName: SKStore.DirName = SKStore.DirName::create("/ui/engine/handles/");
 
+base class IHandle extends SKStore.File {
+  //
+  fun apply(parameters: Vector<JSON.Value>): ?JSON.Value;
+
+  static fun btype(obj: SKStore.File): IHandle {
+    obj match {
+    | x @ IHandle _ -> x
+    | _ -> SKStore.cast_violation("UiEngineHandle.IHandle", obj)
+    }
+  }
+}
+
+class DummyHandle() extends IHandle {
+  fun apply(_parameters: Vector<JSON.Value>): ?JSON.Value {
+    dummy()
+  }
+}
+
 fun toDirName(optPath: ?String): SKStore.DirName {
   optPath
     .map(p -> SKStore.DirName::make(dirName, `${SKStore.normalize(p, true)}/`))
     .default(dirName)
 }
 
-fun handlesHdl(optPath: ?String): SKStore.IHandle<SKStore.IID, Handle> {
-  SKStore.IHandle(SKStore.IID::keyType, Handle::type, toDirName(optPath));
-}
-
-class Handle private (
-  type_: String,
-  eptr: SKStore.ExternalPointer,
-) extends SKStore.File uses Hashable, HasClassName {
-  static fun make(id: UInt32, type_: String): this {
-    static(type_, SKStore.ExternalPointer::create(id, delete))
-  }
-
-  fun apply(parameters: Vector<JSON.Value>): ?JSON.Value {
-    if (SkargoVersion.kWasm32) {
-      apply(this.eptr.value, this.type_, JSON.Array(parameters))
-    } else {
-      invariant_violation("Shall not be called in non wasm version")
-    }
-  }
-
-  fun hash(): Int {
-    h = this.getClassName().hash();
-    !h = Hashable.combine(h, this.type_);
-    Hashable.combine(h, this.eptr.value);
-  }
+fun handlesHdl(optPath: ?String): SKStore.IHandle<SKStore.IID, IHandle> {
+  SKStore.IHandle(SKStore.IID::keyType, IHandle::btype, toDirName(optPath));
 }
 
 fun init(context: mutable SKStore.Context, optPath: ?String): void {
   _ = context.makeDir(
     SKStore.IID::keyType,
-    Handle::type,
+    IHandle::btype,
     toDirName(optPath),
     Array[],
   );
 }
 
-private fun delete(actor: UInt32): void {
-  if (SkargoVersion.kWasm32) {
-    delete_(actor)
-  } else {
-    invariant_violation("Shall not be called in non wasm version")
-  }
-}
-
-@cpp_extern("SKIP_UiEngineJS_delete")
-private native fun delete_(actor: UInt32): void;
-
-@cpp_extern("SKIP_UiEngineJS_apply")
-private native fun apply(
-  actor: UInt32,
-  type_: String,
-  parameters: JSON.Array,
-): ?JSON.Value;
-
-@wasm_export("SKIP_UiEngineJS_register")
-@cpp_export("SKIP_UiEngineJS_register")
-fun register(id: UInt32, optPath: ?String, type_: String): void {
-  SKStore.Context::withoutGc(context ~> {
-    handlesHdl = handlesHdl(optPath);
-    if (handlesHdl.exists(context)) {
-      handlesHdl.write(
-        context,
-        SKStore.IID(id.toInt()),
-        Handle::make(id, type_),
-      )
-    }
-  })
-}
-
-@wasm_export("SKIP_UiEngineJS_unregister")
-@cpp_export("SKIP_UiEngineJS_unregister")
-fun unregister(id: UInt32, optPath: ?String): void {
-  SKStore.Context::withoutGc(context ~> {
-    handlesHdl = handlesHdl(optPath);
-    if (handlesHdl.exists(context)) {
-      handlesHdl.remove(context, SKStore.IID(id.toInt()))
-    }
-  })
-}
-
-fun get(context: mutable SKStore.Context, fn: UiEngine.Function): ?Handle {
+fun get(context: mutable SKStore.Context, fn: UiEngine.Function): ?IHandle {
   handlesHdl(fn.optScope).maybeGetValue(context, SKStore.IID(fn.hdl), true)
 }
 

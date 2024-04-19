@@ -1,0 +1,33 @@
+module SkuiFontBuild;
+
+@skbuild_source_dirs
+fun source_dirs(env: Skbuild.Env): Array<String> {
+  if (!env.isWasm32()) {
+    Array["native/tests"]
+  } else {
+    Array[]
+  }
+}
+
+@skbuild_resources
+fun resources(_env: Skbuild.Env): Array<String> {
+  Array[
+    "resources/tests/luximr.bin",
+    "resources/tests/luxirr.bin",
+    "resources/tests/luxisr.bin",
+    "resources/tests/xab.bin",
+    "resources/tests/xdsff.bin",
+    "resources/tests/xdvso.bin",
+    "resources/tests/xtnr.bin",
+  ]
+}
+
+module end;
+
+@debug
+fun main(): void {
+  Skbuild.build() match {
+  | Failure(err) -> skipExit(err.code)
+  | _ -> void
+  }
+}

@@ -1,4 +1,11 @@
-import type {int, ptr, Links, Utils, ToWasmManager, Environment} from "#std/sk_types.js";
+import type {
+  int,
+  ptr,
+  Links,
+  Utils,
+  ToWasmManager,
+  Environment,
+} from "#std/sk_types.js";
 
 interface Exported {
   SKIP_RegExp_createRangeArray: (size: int) => ptr;

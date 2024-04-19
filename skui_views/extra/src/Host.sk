@@ -1,0 +1,34 @@
+module SkuiViews;
+
+fun display(
+  optOutput: ?String,
+  optError: ?String = None(),
+  _html: Bool = false,
+): void {
+  optError.each(print_error);
+  optOutput.each(print_string);
+}
+
+fun init(wId: Int, title: String, args: Cli.ParseResults): void {
+  screen = args.getString("screen").toIntOption().default(0);
+  fps = args.getString("fps").toIntOption().default(60);
+  SKUIX11.launch(wId, title, screen, fps);
+}
+
+fun complete(command: Cli.Command): Cli.Command {
+  command
+    .arg(
+      Cli.StringArg("screen")
+        .short("s")
+        .long("screen")
+        .about("The screen where to open the window")
+        .default("0"),
+    )
+    .arg(
+      Cli.StringArg("fps")
+        .about("The frame per second refresh rate")
+        .default("60"),
+    )
+}
+
+module end;

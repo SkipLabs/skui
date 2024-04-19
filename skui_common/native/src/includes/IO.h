@@ -3,8 +3,7 @@
 
 #include <string>
 
-namespace skui
-{
+namespace skui {
 
 uint32_t registerString(std::string text);
 uint32_t registerBytes(char *bytes, size_t size);

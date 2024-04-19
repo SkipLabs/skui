@@ -1,0 +1,12 @@
+module System;
+
+@debug
+@cpp_extern("SKIP_System_timeStamp")
+native fun timeStamp(): TimeStamp;
+
+@cpp_export("SKIP_System_createTimeStamp")
+fun createTimeStamp(seconds: UInt32, microseconds: UInt32): TimeStamp {
+  TimeStamp(seconds.toInt(), microseconds.toInt());
+}
+
+module end;

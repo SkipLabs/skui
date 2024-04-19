@@ -366,12 +366,7 @@ class Key(code: String, info: KeyInfo, state: KeyState) {
   }
 
   fun hasChar(char: Char): Bool {
-    if (SkargoVersion.kTarget.startsWith("wasm32")) {
-      key = this.info.key.chars();
-      key.size() == 1 && Unicode.toLower(key.first()) == char;
-    } else {
-      this.info.symbol == `Key${Unicode.toUpper(char)}`;
-    }
+    hasChar(this, char)
   }
 
   fun isChar(
@@ -379,14 +374,7 @@ class Key(code: String, info: KeyInfo, state: KeyState) {
     tick: SKStore.Tick,
     state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
   ): Bool {
-    if (SkargoVersion.kTarget.startsWith("wasm32")) {
-      key = this.info.key.chars();
-      key.size() == 1 &&
-        Unicode.toLower(key.first()) == char &&
-        state(this.state, tick)
-    } else {
-      this.isKey(`Key${Unicode.toUpper(char)}`, tick, state)
-    }
+    isChar(this, char, tick, state)
   }
 }
 

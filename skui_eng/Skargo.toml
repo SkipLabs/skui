@@ -1,8 +1,13 @@
 [package]
 name = "skui_eng"
 version = "0.1.0"
+
 [dependencies]
 skui_views = { "path" = "../skui_views" }
+
+[build-dependencies]
+skbuild = { path = "../skstore/skbuild" } 
+
 
 [[bin]]
 name = "skuieng"

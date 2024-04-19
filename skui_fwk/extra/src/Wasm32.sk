@@ -1,0 +1,20 @@
+module UiEvent;
+
+fun isChar(
+  ckey: Key,
+  char: Char,
+  tick: SKStore.Tick,
+  state: (KeyState, SKStore.Tick) ~> Bool = Key::isKeyPressed,
+): Bool {
+  key = ckey.info.key.chars();
+  key.size() == 1 &&
+    Unicode.toLower(key.first()) == char &&
+    state(ckey.state, tick)
+}
+
+fun hasChar(ckey: Key, char: Char): Bool {
+  key = ckey.info.key.chars();
+  key.size() == 1 && Unicode.toLower(key.first()) == char;
+}
+
+module end;

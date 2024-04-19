@@ -1,0 +1,20 @@
+module SkuiEndBuild;
+
+@skbuild_extra_sources
+fun extra_sources(env: Skbuild.Env): Array<String> {
+  if (env.isWasm32()) {
+    Array["extra/src/Handle.sk", "extra/src/Picture.sk", "extra/src/Main.sk"]
+  } else {
+    Array[]
+  }
+}
+
+module end;
+
+@debug
+fun main(): void {
+  Skbuild.build() match {
+  | Failure(err) -> skipExit(err.code)
+  | _ -> void
+  }
+}

@@ -30,11 +30,15 @@ ENG_DOCUMENTS=\
 
 ENG_PANDOC_FILES=$(addprefix $(ENG_DOCUMENTS_DIR)/,$(ENG_DOCUMENTS))
 
-.PHONY: conf
-conf:
+.PHONY: init
+init:
 	@if [ "$(SKDB)" = "" ]; then\
         $(error SKDB must be defined.);\
   fi
+	ln -s $(realpath $(SKDB)) skstore
+
+.PHONY: conf
+conf: init
 	@echo '{' > .tsconfig.json
 	@echo '  "compilerOptions": {' >> .tsconfig.json
 	@echo '    "target": "ES2021",' >> .tsconfig.json
@@ -54,21 +58,6 @@ conf:
 	@echo '    }' >> .tsconfig.json
 	@echo '  }' >> .tsconfig.json
 	@echo '}' >> .tsconfig.json
-	@echo '{"repositories": ["$(SKDB)"]}' >> .skargoconfig
-
-.PHONY: fmt
-fmt:
-	cd skui_base; skargo fmt
-	cd skui_common; skargo fmt
-	cd skui_eng; skargo fmt
-	cd skui_engex; skargo fmt
-	cd skui_font; skargo fmt
-	cd skui_fwk; skargo fmt
-	cd skui_mtsdf; skargo fmt
-	cd skui_opengl; skargo fmt
-	cd skui_views; skargo fmt
-	cd skui_x11gl; skargo fmt
-	npx prettier . --write
 
 .PHONY: test-native
 test-native:
@@ -91,3 +80,35 @@ enginedoc:
 enginetex:
 	mkdir -p pdfs
 	pandoc $(ENG_PANDOC_FILES) --include-in-header setup.tex --toc -o pdfs/engine.tex --lua-filter=span.lua -V geometry:margin=0.5in
+
+.PHONY: clean
+clean:
+	cd skui_base; skargo clean
+	cd skui_common; skargo clean
+	cd skui_eng; skargo clean
+	cd skui_engex; skargo clean
+	cd skui_font; skargo clean
+	cd skui_fwk; skargo clean
+	cd skui_mtsdf; skargo clean
+	cd skui_opengl; skargo clean
+	cd skui_views; skargo clean
+	cd skui_x11gl; skargo clean
+
+.PHONY: fmt-sk
+fmt-sk:
+	find . -path ./skstore -not -prune -or -name \*.sk | parallel skfmt -i :::
+
+.PHONY: fmt-c
+fmt-c:
+	find . -path ./skstore -not -prune -or -regex '.*\.[ch]\(pp\)*' | parallel clang-format -i :::
+
+.PHONY: fmt-js
+fmt-js:
+	npx prettier --log-level warn --write .
+
+.PHONY: fmt
+fmt: fmt-sk fmt-c fmt-js
+
+.PHONY: check-fmt
+check-fmt: fmt
+	if ! git diff --quiet --exit-code; then echo "make fmt changed some files:"; git status --porcelain; exit 1; fi
