@@ -5,6 +5,7 @@ test-harness = "SKUIFontTest.main"
 
 [dev-dependencies]
 sktest = { path = "../skstore/sktest" }
+skui_font_tests = { path = "./dev" }
 
 [dependencies]
 skui_common = { "path" = "../skui_common" }
