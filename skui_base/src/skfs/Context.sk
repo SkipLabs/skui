@@ -30,7 +30,7 @@ extension class Context {
 
   mutable fun updateIfRoot(): void {
     if (this.currentArrow().isNone()) {
-      if (this.updateWithStatus(0)) {
+      if (this.updateWithStatus()) {
         this.getGlobal("SKStore.Updater").map(Updater::type).each(u ->
           u.fn(this)
         )
