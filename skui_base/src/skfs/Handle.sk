@@ -419,14 +419,6 @@ extension class LHandle {
       collect,
     )
   }
-
-  fun getAsync(context: mutable Context, key: K): V {
-    this.getArrayAsync(context, key).first();
-  }
-
-  fun maybeGetAsync(context: mutable Context, key: K): ?V {
-    this.getArrayAsync(context, key).maybeGet(0);
-  }
 }
 
 extension class EHandle {

@@ -1,10 +1,8 @@
 #include <stdint.h>
 #include <string.h>
 
-
 extern unsigned char resources_src_small_bin[];
 extern unsigned int resources_src_small_bin_len;
-
 
 extern unsigned char resources_src_big_bin[];
 extern unsigned int resources_src_big_bin_len;
