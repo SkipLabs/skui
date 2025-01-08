@@ -56,140 +56,126 @@ interface ToWasm {
 }
 
 class LinksImpl implements Links, ToWasm {
-  SKIP_RegExp_check!: (strPatternPtr: ptr<Internal.String>) => void;
-  SKIP_RegExp_escape!: (
-    strPatternPtr: ptr<Internal.String>
-  ) => ptr<Internal.String>;
-  SKIP_RegExp_test!: (
-    strSubjectPtr: ptr<Internal.String>,
-    strPatternPtr: ptr<Internal.String>,
-    caseInsensitive: boolean,
-    global: boolean
-  ) => boolean;
-  SKIP_RegExp_matchAll!: (
-    strSubjectPtr: ptr<Internal.String>,
-    strPatternPtr: ptr<Internal.String>,
-    caseInsensitive: boolean,
-    global: boolean
-  ) => Nullable<ptr<Internal.RangesArray>>;
-  SKIP_RegExp_match!: (
-    strSubjectPtr: ptr<Internal.String>,
-    strPatternPtr: ptr<Internal.String>,
-    caseInsensitive: boolean,
-    global: boolean
-  ) => Nullable<ptr<Internal.Array<Internal.Range>>>;
+  private utils!: Utils;
+  private exported!: Exported;
 
   complete = (utils: Utils, exports: object) => {
-    const exported = exports as Exported;
-    this.SKIP_RegExp_check = (strPatternPtr: ptr<Internal.String>) => {
-      const strPattern = utils.importString(strPatternPtr);
-      new RegExp(strPattern);
-    };
-    this.SKIP_RegExp_escape = (strPatternPtr: ptr<Internal.String>) => {
-      const strPattern = utils.importString(strPatternPtr);
-      const strEscaped = strPattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-      return utils.exportString(strEscaped);
-    };
-    this.SKIP_RegExp_test = (
-      strSubjectPtr: ptr<Internal.String>,
-      strPatternPtr: ptr<Internal.String>,
-      caseInsensitive: boolean,
-      global: boolean
-    ) => {
-      const strSubject = utils.importString(strSubjectPtr);
-      const strPattern = utils.importString(strPatternPtr);
-      let flags = "";
-      if (global) {
-        flags += "g";
-      }
-      if (caseInsensitive) {
-        flags += "i";
-      }
-      const regExp = new RegExp(strPattern, flags);
-      return regExp.test(strSubject);
-    };
-    this.SKIP_RegExp_match = (
-      strSubjectPtr: ptr<Internal.String>,
-      strPatternPtr: ptr<Internal.String>,
-      caseInsensitive: boolean,
-      global: boolean
-    ) => {
-      const strSubject = utils.importString(strSubjectPtr);
-      const strPattern = utils.importString(strPatternPtr);
-      let flags = "";
-      if (global) {
-        flags += "g";
-      }
-      if (caseInsensitive) {
-        flags += "i";
-      }
-      const regExp = new RegExp(strPattern, flags);
-      const matches = strSubject.match(regExp);
-      if (matches != null) {
-        const ranges = exported.SKIP_RegExp_createRangeArray(matches.length);
-        exported.SKIP_RegExp_setRange(ranges, 0, 0, strSubject.length);
-        if (matches.length > 1) {
-          let from = 0;
-          for (let i = 1; i < matches.length; i++) {
-            const match = matches[i]!;
-            const idx = strSubject.indexOf(match, from);
-            const slen = match.length;
-            exported.SKIP_RegExp_setRange(ranges, i, idx, idx + slen);
-            from = idx + slen;
-          }
-        }
-        return ranges;
-      }
-      return null;
-    };
-    this.SKIP_RegExp_matchAll = (
-      strSubjectPtr: ptr<Internal.String>,
-      strPatternPtr: ptr<Internal.String>,
-      caseInsensitive: boolean,
-      global: boolean
-    ) => {
-      const strSubject = utils.importString(strSubjectPtr);
-      const strPattern = utils.importString(strPatternPtr);
-      let flags = "";
-      if (global) {
-        flags += "g";
-      }
-      if (caseInsensitive) {
-        flags += "i";
-      }
-      const regExp = new RegExp(strPattern, flags);
-      const matches = [...strSubject.matchAll(regExp)];
-      const vector = exported.SKIP_RegExp_createRangesVector();
-      matches.forEach((match) => {
-        const len = match[0].length;
-        const ranges = exported.SKIP_RegExp_createRangeArray(match.length);
-        exported.SKIP_RegExp_setRange(
-          ranges,
-          0,
-          match.index,
-          match.index + len
-        );
-        if (match.length > 1) {
-          const all = match[0];
-          let from = 0;
-          for (let i = 1; i < match.length; i++) {
-            const elem = match[i]!;
-            const idx = all.indexOf(elem, from);
-            const slen = elem.length;
-            exported.SKIP_RegExp_setRange(
-              ranges,
-              i,
-              match.index + idx,
-              match.index + idx + slen
-            );
-            from = idx + slen;
-          }
-        }
-        exported.SKIP_RegExp_pushRanges(vector, ranges);
-      });
-      return exported.SKIP_RegExp_ranges(vector);
-    };
+    this.utils = utils;
+    this.exported = exports as Exported;
   };
+
+  SKIP_RegExp_check(strPatternPtr: ptr<Internal.String>) {
+    const strPattern = this.utils.importString(strPatternPtr);
+    new RegExp(strPattern);
+  }
+
+  SKIP_RegExp_escape(strPatternPtr: ptr<Internal.String>) {
+    const strPattern = this.utils.importString(strPatternPtr);
+    const strEscaped = strPattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    return this.utils.exportString(strEscaped);
+  }
+
+  SKIP_RegExp_test(
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
+    caseInsensitive: boolean,
+    global: boolean
+  ) {
+    const strSubject = this.utils.importString(strSubjectPtr);
+    const strPattern = this.utils.importString(strPatternPtr);
+    let flags = "";
+    if (global) {
+      flags += "g";
+    }
+    if (caseInsensitive) {
+      flags += "i";
+    }
+    const regExp = new RegExp(strPattern, flags);
+    return regExp.test(strSubject);
+  }
+
+  SKIP_RegExp_match(
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
+    caseInsensitive: boolean,
+    global: boolean
+  ) {
+    const strSubject = this.utils.importString(strSubjectPtr);
+    const strPattern = this.utils.importString(strPatternPtr);
+    let flags = "";
+    if (global) {
+      flags += "g";
+    }
+    if (caseInsensitive) {
+      flags += "i";
+    }
+    const regExp = new RegExp(strPattern, flags);
+    const matches = strSubject.match(regExp);
+    if (matches != null) {
+      const ranges = this.exported.SKIP_RegExp_createRangeArray(matches.length);
+      this.exported.SKIP_RegExp_setRange(ranges, 0, 0, strSubject.length);
+      if (matches.length > 1) {
+        let from = 0;
+        for (let i = 1; i < matches.length; i++) {
+          const match = matches[i]!;
+          const idx = strSubject.indexOf(match, from);
+          const slen = match.length;
+          this.exported.SKIP_RegExp_setRange(ranges, i, idx, idx + slen);
+          from = idx + slen;
+        }
+      }
+      return ranges;
+    }
+    return null;
+  }
+
+  SKIP_RegExp_matchAll(
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
+    caseInsensitive: boolean,
+    global: boolean
+  ) {
+    const strSubject = this.utils.importString(strSubjectPtr);
+    const strPattern = this.utils.importString(strPatternPtr);
+    let flags = "";
+    if (global) {
+      flags += "g";
+    }
+    if (caseInsensitive) {
+      flags += "i";
+    }
+    const regExp = new RegExp(strPattern, flags);
+    const matches = [...strSubject.matchAll(regExp)];
+    const vector = this.exported.SKIP_RegExp_createRangesVector();
+    matches.forEach((match) => {
+      const len = match[0].length;
+      const ranges = this.exported.SKIP_RegExp_createRangeArray(match.length);
+      this.exported.SKIP_RegExp_setRange(
+        ranges,
+        0,
+        match.index,
+        match.index + len
+      );
+      if (match.length > 1) {
+        const all = match[0];
+        let from = 0;
+        for (let i = 1; i < match.length; i++) {
+          const elem = match[i]!;
+          const idx = all.indexOf(elem, from);
+          const slen = elem.length;
+          this.exported.SKIP_RegExp_setRange(
+            ranges,
+            i,
+            match.index + idx,
+            match.index + idx + slen
+          );
+          from = idx + slen;
+        }
+      }
+      this.exported.SKIP_RegExp_pushRanges(vector, ranges);
+    });
+    return this.exported.SKIP_RegExp_ranges(vector);
+  }
 }
 
 class Manager implements ToWasmManager {

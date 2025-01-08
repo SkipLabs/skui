@@ -60,48 +60,45 @@ class Data {
 }
 
 class LinksImpl implements Links, ToWasm {
-  env: Environment;
+  private utils!: Utils;
+  private state;
 
-  constructor(env: Environment) {
-    this.env = env;
+  constructor(private env: Environment) {
+    this.state = new State();
   }
 
-  state = new State();
-
-  SKIP_IO_isExternalBinary!: (id: int) => boolean;
-  SKIP_IO_deleteExternalData!: (id: int) => void;
-  SKIP_IO_getExternalText!: (id: int) => Nullable<ptr<Internal.String>>;
-  SKIP_IO_getExternalBytes!: (
-    id: int
-  ) => Nullable<ptr<Internal.Array<Internal.Byte>>>;
-
-  complete = (utils: Utils, _exports: object) => {
-    this.SKIP_IO_isExternalBinary = (id: int) => {
-      const data = this.state.data.get(id);
-      if (data) {
-        return data.isBinary();
-      }
-      return false;
-    };
-    this.SKIP_IO_deleteExternalData = (id: int) => {
-      this.state.data.delete(id);
-    };
-    this.SKIP_IO_getExternalText = (id: int) => {
-      const data = this.state.data.get(id);
-      if (data) {
-        return data.getText(utils);
-      }
-      return null;
-    };
-    this.SKIP_IO_getExternalBytes = (id: int) => {
-      const data = this.state.data.get(id);
-      if (data) {
-        return data.getBytes(utils.exportBytes);
-      }
-      return null;
-    };
+  complete(utils: Utils, _exports: object) {
+    this.utils = utils;
     this.env.shared.set("common", new CommonShared(this.state.registerData));
-  };
+  }
+
+  SKIP_IO_isExternalBinary(id: int) {
+    const data = this.state.data.get(id);
+    if (data) {
+      return data.isBinary();
+    }
+    return false;
+  }
+
+  SKIP_IO_deleteExternalData(id: int) {
+    this.state.data.delete(id);
+  }
+
+  SKIP_IO_getExternalText(id: int) {
+    const data = this.state.data.get(id);
+    if (data) {
+      return data.getText(this.utils);
+    }
+    return null;
+  }
+
+  SKIP_IO_getExternalBytes(id: int) {
+    const data = this.state.data.get(id);
+    if (data) {
+      return data.getBytes(this.utils.exportBytes);
+    }
+    return null;
+  }
 }
 
 class Manager implements ToWasmManager {

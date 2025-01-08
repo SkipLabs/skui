@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    "./common.js": "./dist/common.js",
-    "./regexp.js": "./dist/regexp.js"
+    "./common.js": "./dist/skui_common.js",
+    "./regexp.js": "./dist/skui_regexp.js"
   },
   "scripts": {
     "build": "tsc",
