@@ -18,26 +18,21 @@ commands:
       - run:
           name: Build compiler
           command: |
-            cd skstore/compiler && make STAGE=0 && make install STAGE=0
-  sknpmsetup:
-    description: "Setup sknpm toolchain"
+            cd skstore/skiplang/compiler && make STAGE=0 && make install STAGE=0
+  cloneskip:
+    description: "Clone skip"
     steps:
       - run:
-          name: Build sknpm
+          name: Clone skip
           command: |
-            cd skstore/sknpm && skargo b -r && cp target/host/release/sknpm /usr/local/bin/
-  cloneskdb:
-    description: "Clone skdb"
+            git clone git@github.com:SkipLabs/skip skstore
+  npmsetup:
+    description: "Build npm chain"
     steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "a5:96:bf:61:22:02:b6:5c:d9:82:14:d7:9b:01:39:61"
       - run:
-          name: Clone skdb
+          name: Build npm chain
           command: |
-            mkdir -p ~/.ssh
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-            git clone git@github.com:SkipLabs/skdb skstore
+            npm i && npm run build && npx playwright install
 jobs:
   skui_common:
     docker:
@@ -45,7 +40,7 @@ jobs:
     steps:
       - systemsetup
       - checkout
-      - cloneskdb
+      - cloneskip
       - skdbsetup
       - run:
           name: Run common tests
@@ -62,7 +57,7 @@ jobs:
     steps:
       - systemsetup
       - checkout
-      - cloneskdb
+      - cloneskip
       - skdbsetup
       - run:
           name: Run font tests
@@ -78,7 +73,7 @@ jobs:
     steps:
       - systemsetup
       - checkout
-      - cloneskdb
+      - cloneskip
       - skdbsetup
       - run:
           name: Run mtsdf tests
@@ -94,15 +89,18 @@ jobs:
     steps:
       - systemsetup
       - checkout
-      - cloneskdb
+      - cloneskip
       - skdbsetup
-      - sknpmsetup
+      - npmsetup
       - run:
           name: Run wasm skui_common tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_common-wasm.xml
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_common && sknpm test -r --junitxml ~/test-results/skui_common-wasm.xml
+            cd skui_common/ts/playwright && npm run test -- --reporter=junit
       - store_test_results:
           path: ~/test-results/skui_common-wasm.xml
   skui_font-wasm:
@@ -111,15 +109,18 @@ jobs:
     steps:
       - systemsetup
       - checkout
-      - cloneskdb
+      - cloneskip
       - skdbsetup
-      - sknpmsetup
+      - npmsetup
       - run:
           name: Run wasm skui_font tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_font-wasm.xml
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_font && sknpm test -r --junitxml ~/test-results/skui_font-wasm.xml
+            cd skui_font/ts/playwright && npm run test -- --reporter=junit
       - store_test_results:
           path: ~/test-results/skui_font-wasm.xml
   skui_mtsdf-wasm:
@@ -128,15 +129,18 @@ jobs:
     steps:
       - systemsetup
       - checkout
-      - cloneskdb
+      - cloneskip
       - skdbsetup
-      - sknpmsetup
+      - npmsetup
       - run:
           name: Run wasm skui_mtsdf tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_mtsdf-wasm.xml
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_mtsdf && sknpm test -r --junitxml ~/test-results/skui_mtsdf-wasm.xml
+            cd skui_mtsdf/ts/playwright && npm run test -- --reporter=junit
       - store_test_results:
           path: ~/test-results/skui_mtsdf-wasm.xml
 
