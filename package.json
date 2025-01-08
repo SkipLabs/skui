@@ -1,0 +1,34 @@
+{
+  "workspaces": [
+    "skstore/eslint-config",
+    "skstore/tsconfig",
+    "skstore/skiplang/prelude/ts/binding",
+    "skstore/skiplang/prelude/ts/wasm",
+    "skui_base/ts",
+    "skui_common/ts/wasm",
+    "skui_common/ts/tests",
+    "skui_common/ts/playwright",
+    "skui_font/ts/tests",
+    "skui_font/ts/playwright",
+    "skui_mtsdf/ts/tests",
+    "skui_mtsdf/ts/playwright"
+  ],
+  "devDependencies": {
+    "@skiplabs/eslint-config": "^0.0.1",
+    "@skiplabs/tsconfig": "^0.0.1",
+    "@types/node": "^22.10.0",
+    "eslint": "9.15.0",
+    "prettier": "^3.4.1",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "install": "npm run prepare --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

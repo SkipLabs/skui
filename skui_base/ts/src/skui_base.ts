@@ -4,20 +4,22 @@ import type {
   Links,
   ToWasmManager,
   Utils,
-} from "#std/sk_types.js";
+} from "@skip-wasm/std";
 
 interface ToWasm {
-  SKIP_JS_timeStamp: () => float;
+  SKIP_JS_timeStamp(): float;
 }
 
 class LinksImpl implements Links, ToWasm {
-  SKIP_JS_timeStamp: () => float;
+  constructor(private env: Environment) {}
 
-  constructor(env: Environment) {
-    this.SKIP_JS_timeStamp = () => (env ? env.timestamp() : 0.0);
+  SKIP_JS_timeStamp() {
+    return this.env.timestamp();
   }
 
-  complete = (utils: Utils, exports: object) => {};
+  complete(_utils: Utils, _exports: object) {
+    return;
+  }
 }
 
 class Manager implements ToWasmManager {
@@ -28,14 +30,13 @@ class Manager implements ToWasmManager {
   }
 
   prepare = (wasm: object) => {
-    let toWasm = wasm as ToWasm;
-    let links = new LinksImpl(this.environment);
-    toWasm.SKIP_JS_timeStamp = () => links.SKIP_JS_timeStamp();
+    const toWasm = wasm as ToWasm;
+    const links = new LinksImpl(this.environment);
+    toWasm.SKIP_JS_timeStamp = links.SKIP_JS_timeStamp.bind(links);
     return links;
   };
 }
 
-/** @sk init */
-export function init(env?: Environment) {
-  return Promise.resolve(new Manager(env!));
+export function init(env: Environment) {
+  return Promise.resolve(new Manager(env));
 }

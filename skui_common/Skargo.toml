@@ -3,10 +3,10 @@ name = "skui_common"
 version = "0.1.0"
 
 [dev-dependencies]
-sktest = { path = "../skstore/sktest" }
+sktest = { path = "../skstore/skiplang/sktest" }
 
 [build-dependencies]
-skbuild = { path = "../skstore/skbuild" }
+skbuild = { path = "../skstore/skiplang/skbuild" }
 
 [dependencies]
 skui_base = { "path" = "../skui_base" }

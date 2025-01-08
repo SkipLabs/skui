@@ -383,14 +383,14 @@ extension base class Handle {
 }
 
 extension class LHandle {
-  static fun lazy<T: File>(
+  static fun lazy(
     keyType: Key ~> K,
-    conv: File ~> T,
+    conv: File ~> V,
     context: mutable Context,
     dirName: DirName,
-    f: (mutable Context, LHandle<K, T>, K) ~> T,
+    f: (mutable Context, LHandle<K, V>, K) ~> V,
     collect: Bool = true,
-  ): LHandle<K, T> {
+  ): LHandle<K, V> {
     static::create(
       keyType,
       conv,
@@ -401,14 +401,14 @@ extension class LHandle {
     )
   }
 
-  static fun optLazy<T: File>(
+  static fun optLazy(
     keyType: Key ~> K,
-    conv: File ~> T,
+    conv: File ~> V,
     context: mutable Context,
     dirName: DirName,
-    f: (mutable Context, LHandle<K, T>, K) ~> ?T,
+    f: (mutable Context, LHandle<K, V>, K) ~> ?V,
     collect: Bool = true,
-  ): LHandle<K, T> {
+  ): LHandle<K, V> {
     static::create(
       keyType,
       conv,

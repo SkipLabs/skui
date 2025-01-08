@@ -8,7 +8,7 @@ fun expectEq<T: frozen>(
   conv: T ~> String = v ~> inspect(v).toString(),
   msg: String = "expected equality",
 ): void {
-  if (inspect(actual) != inspect(expected)) {
+  if (inspect(actual).toString() != inspect(expected).toString()) {
     throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
   }
 }
@@ -29,7 +29,7 @@ fun expectNEq<T: frozen>(
   conv: T ~> String = v ~> inspect(v).toString(),
   msg: String = "expected inequality",
 ): void {
-  if (inspect(actual) == inspect(expected)) {
+  if (inspect(actual).toString() == inspect(expected).toString()) {
     throw SKTest.ExpectationError(msg, conv(expected), conv(actual))
   }
 }
