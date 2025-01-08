@@ -1,0 +1,17 @@
+{
+  "name": "@skui/base",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    "./base.js": "./dist/skui_base.js",
+    "./types.js": "./dist/skui_types.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@skip-wasm/std": "^1.0.4"
+  }
+}
