@@ -5,7 +5,7 @@
     "skstore/skiplang/prelude/ts/binding",
     "skstore/skiplang/prelude/ts/wasm",
     "skui_base/ts",
-    "skui_common/ts"
+    "skui_common/ts/wasm"
   ],
   "devDependencies": {
     "@types/node": "^22.10.0",
