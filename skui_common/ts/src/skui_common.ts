@@ -6,21 +6,23 @@ import type {
   ToWasmManager,
   Shared,
   Environment,
-} from "#std/sk_types.js";
+  Nullable,
+} from "@skip-wasm/std";
+import type * as Internal from "./internal.js";
 
 interface ToWasm {
   SKIP_IO_isExternalBinary: (id: int) => boolean;
   SKIP_IO_deleteExternalData: (id: int) => void;
-  SKIP_IO_getExternalText: (id: int) => ptr | null;
-  SKIP_IO_getExternalBytes: (id: int) => ptr | null;
+  SKIP_IO_getExternalText: (id: int) => Nullable<ptr<Internal.String>>;
+  SKIP_IO_getExternalBytes: (
+    id: int
+  ) => Nullable<ptr<Internal.Array<Internal.Byte>>>;
 }
 
 export class CommonShared implements Shared {
   getName = () => "common";
-  registerData: (data: string | Uint8Array) => void;
-  constructor(registerData: (data: string | Uint8Array) => void) {
-    this.registerData = registerData;
-  }
+
+  constructor(public registerData: (data: string | Uint8Array) => void) {}
 }
 
 class State {
@@ -28,7 +30,7 @@ class State {
   data = new Map<int, Data>();
 
   registerData = (data: string | Uint8Array) => {
-    let id = ++this.dataId;
+    const id = ++this.dataId;
     this.data.set(id, new Data(data));
   };
 }
@@ -40,7 +42,9 @@ class Data {
     this.data = data;
   }
   isBinary = () => this.data instanceof Uint8Array;
-  getBytes = (exportBytes: (view: Uint8Array) => ptr) => {
+  getBytes = (
+    exportBytes: (view: Uint8Array) => ptr<Internal.Array<Internal.Byte>>
+  ) => {
     if (this.data instanceof Uint8Array) {
       return exportBytes(this.data);
     }
@@ -66,12 +70,14 @@ class LinksImpl implements Links, ToWasm {
 
   SKIP_IO_isExternalBinary!: (id: int) => boolean;
   SKIP_IO_deleteExternalData!: (id: int) => void;
-  SKIP_IO_getExternalText!: (id: int) => ptr | null;
-  SKIP_IO_getExternalBytes!: (id: int) => ptr | null;
+  SKIP_IO_getExternalText!: (id: int) => Nullable<ptr<Internal.String>>;
+  SKIP_IO_getExternalBytes!: (
+    id: int
+  ) => Nullable<ptr<Internal.Array<Internal.Byte>>>;
 
-  complete = (utils: Utils, exports: object) => {
+  complete = (utils: Utils, _exports: object) => {
     this.SKIP_IO_isExternalBinary = (id: int) => {
-      let data = this.state.data.get(id);
+      const data = this.state.data.get(id);
       if (data) {
         return data.isBinary();
       }
@@ -81,14 +87,14 @@ class LinksImpl implements Links, ToWasm {
       this.state.data.delete(id);
     };
     this.SKIP_IO_getExternalText = (id: int) => {
-      let data = this.state.data.get(id);
+      const data = this.state.data.get(id);
       if (data) {
         return data.getText(utils);
       }
       return null;
     };
     this.SKIP_IO_getExternalBytes = (id: int) => {
-      let data = this.state.data.get(id);
+      const data = this.state.data.get(id);
       if (data) {
         return data.getBytes(utils.exportBytes);
       }
@@ -106,21 +112,19 @@ class Manager implements ToWasmManager {
   }
 
   prepare = (wasm: object) => {
-    let toWasm = wasm as ToWasm;
-    let links = new LinksImpl(this.env);
-    toWasm.SKIP_IO_isExternalBinary = (id: int) =>
-      links.SKIP_IO_isExternalBinary(id);
-    toWasm.SKIP_IO_deleteExternalData = (id: int) =>
-      links.SKIP_IO_deleteExternalData(id);
-    toWasm.SKIP_IO_getExternalText = (id: int) =>
-      links.SKIP_IO_getExternalText(id);
-    toWasm.SKIP_IO_getExternalBytes = (id: int) =>
-      links.SKIP_IO_getExternalBytes(id);
+    const toWasm = wasm as ToWasm;
+    const links = new LinksImpl(this.env);
+    toWasm.SKIP_IO_isExternalBinary =
+      links.SKIP_IO_isExternalBinary.bind(links);
+    toWasm.SKIP_IO_deleteExternalData =
+      links.SKIP_IO_deleteExternalData.bind(links);
+    toWasm.SKIP_IO_getExternalText = links.SKIP_IO_getExternalText.bind(links);
+    toWasm.SKIP_IO_getExternalBytes =
+      links.SKIP_IO_getExternalBytes.bind(links);
     return links;
   };
 }
 
-/** @sk init */
-export function init(env?: Environment) {
-  return Promise.resolve(new Manager(env!));
+export function init(env: Environment) {
+  return Promise.resolve(new Manager(env));
 }

@@ -5,120 +5,135 @@ import type {
   Utils,
   ToWasmManager,
   Environment,
-} from "#std/sk_types.js";
+  Nullable,
+} from "@skip-wasm/std";
+
+import type * as Internal from "./internal.js";
 
 interface Exported {
-  SKIP_RegExp_createRangeArray: (size: int) => ptr;
+  SKIP_RegExp_createRangeArray: (
+    size: int
+  ) => ptr<Internal.Array<Internal.Range>>;
   SKIP_RegExp_setRange: (
-    skRanges: ptr,
+    skRanges: ptr<Internal.Array<Internal.Range>>,
     index: int,
     start: int,
-    end: int,
+    end: int
   ) => void;
-  SKIP_RegExp_createRangesVector: () => ptr;
-  SKIP_RegExp_pushRanges: (skRangesVec: ptr, skRanges: ptr) => void;
-  SKIP_RegExp_ranges: (skRangesVec: ptr) => ptr;
+  SKIP_RegExp_createRangesVector: () => ptr<Internal.RangesVector>;
+  SKIP_RegExp_pushRanges: (
+    skRangesVec: ptr<Internal.RangesVector>,
+    skRanges: ptr<Internal.Array<Internal.Range>>
+  ) => void;
+  SKIP_RegExp_ranges: (
+    skRangesVec: ptr<Internal.RangesVector>
+  ) => ptr<Internal.RangesArray>;
 }
 
 interface ToWasm {
-  SKIP_RegExp_check: (strPatternPtr: ptr) => void;
-  SKIP_RegExp_escape: (strPatternPtr: ptr) => ptr;
+  SKIP_RegExp_check: (strPatternPtr: ptr<Internal.String>) => void;
+  SKIP_RegExp_escape: (
+    strPatternPtr: ptr<Internal.String>
+  ) => ptr<Internal.String>;
   SKIP_RegExp_test: (
-    strSubjectPtr: ptr,
-    strPatternPtr: ptr,
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean,
+    global: boolean
   ) => boolean;
   SKIP_RegExp_matchAll: (
-    strSubjectPtr: ptr,
-    strPatternPtr: ptr,
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean,
-  ) => ptr | null;
+    global: boolean
+  ) => Nullable<ptr<Internal.RangesArray>>;
   SKIP_RegExp_match: (
-    strSubjectPtr: ptr,
-    strPatternPtr: ptr,
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean,
-  ) => ptr | null;
+    global: boolean
+  ) => Nullable<ptr<Internal.Array<Internal.Range>>>;
 }
 
 class LinksImpl implements Links, ToWasm {
-  SKIP_RegExp_check!: (strPatternPtr: ptr) => void;
-  SKIP_RegExp_escape!: (strPatternPtr: ptr) => ptr;
+  SKIP_RegExp_check!: (strPatternPtr: ptr<Internal.String>) => void;
+  SKIP_RegExp_escape!: (
+    strPatternPtr: ptr<Internal.String>
+  ) => ptr<Internal.String>;
   SKIP_RegExp_test!: (
-    strSubjectPtr: ptr,
-    strPatternPtr: ptr,
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean,
+    global: boolean
   ) => boolean;
   SKIP_RegExp_matchAll!: (
-    strSubjectPtr: ptr,
-    strPatternPtr: ptr,
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean,
-  ) => ptr | null;
+    global: boolean
+  ) => Nullable<ptr<Internal.RangesArray>>;
   SKIP_RegExp_match!: (
-    strSubjectPtr: ptr,
-    strPatternPtr: ptr,
+    strSubjectPtr: ptr<Internal.String>,
+    strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean,
-  ) => ptr | null;
+    global: boolean
+  ) => Nullable<ptr<Internal.Array<Internal.Range>>>;
 
   complete = (utils: Utils, exports: object) => {
-    let exported = exports as Exported;
-    this.SKIP_RegExp_check = (strPatternPtr: ptr) => {
-      let strPattern = utils.importString(strPatternPtr);
+    const exported = exports as Exported;
+    this.SKIP_RegExp_check = (strPatternPtr: ptr<Internal.String>) => {
+      const strPattern = utils.importString(strPatternPtr);
       new RegExp(strPattern);
     };
-    this.SKIP_RegExp_escape = (strPatternPtr: ptr) => {
-      let strPattern = utils.importString(strPatternPtr);
-      let strEscaped = strPattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    this.SKIP_RegExp_escape = (strPatternPtr: ptr<Internal.String>) => {
+      const strPattern = utils.importString(strPatternPtr);
+      const strEscaped = strPattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
       return utils.exportString(strEscaped);
     };
     this.SKIP_RegExp_test = (
-      strSubjectPtr: ptr,
-      strPatternPtr: ptr,
+      strSubjectPtr: ptr<Internal.String>,
+      strPatternPtr: ptr<Internal.String>,
       caseInsensitive: boolean,
-      global: boolean,
+      global: boolean
     ) => {
-      let strSubject = utils.importString(strSubjectPtr);
-      let strPattern = utils.importString(strPatternPtr);
-      var flags = "";
+      const strSubject = utils.importString(strSubjectPtr);
+      const strPattern = utils.importString(strPatternPtr);
+      let flags = "";
       if (global) {
         flags += "g";
       }
       if (caseInsensitive) {
         flags += "i";
       }
-      let regExp = new RegExp(strPattern, flags);
+      const regExp = new RegExp(strPattern, flags);
       return regExp.test(strSubject);
     };
     this.SKIP_RegExp_match = (
-      strSubjectPtr: ptr,
-      strPatternPtr: ptr,
+      strSubjectPtr: ptr<Internal.String>,
+      strPatternPtr: ptr<Internal.String>,
       caseInsensitive: boolean,
-      global: boolean,
+      global: boolean
     ) => {
-      let strSubject = utils.importString(strSubjectPtr);
-      let strPattern = utils.importString(strPatternPtr);
-      var flags = "";
+      const strSubject = utils.importString(strSubjectPtr);
+      const strPattern = utils.importString(strPatternPtr);
+      let flags = "";
       if (global) {
         flags += "g";
       }
       if (caseInsensitive) {
         flags += "i";
       }
-      let regExp = new RegExp(strPattern, flags);
-      let matches = strSubject.match(regExp);
+      const regExp = new RegExp(strPattern, flags);
+      const matches = strSubject.match(regExp);
       if (matches != null) {
-        let ranges = exported.SKIP_RegExp_createRangeArray(matches.length);
+        const ranges = exported.SKIP_RegExp_createRangeArray(matches.length);
         exported.SKIP_RegExp_setRange(ranges, 0, 0, strSubject.length);
         if (matches.length > 1) {
           let from = 0;
           for (let i = 1; i < matches.length; i++) {
-            let idx = strSubject.indexOf(matches[i], from);
-            let slen = matches[i].length;
+            const match = matches[i]!;
+            const idx = strSubject.indexOf(match, from);
+            const slen = match.length;
             exported.SKIP_RegExp_setRange(ranges, i, idx, idx + slen);
             from = idx + slen;
           }
@@ -128,43 +143,44 @@ class LinksImpl implements Links, ToWasm {
       return null;
     };
     this.SKIP_RegExp_matchAll = (
-      strSubjectPtr: ptr,
-      strPatternPtr: ptr,
+      strSubjectPtr: ptr<Internal.String>,
+      strPatternPtr: ptr<Internal.String>,
       caseInsensitive: boolean,
-      global: boolean,
+      global: boolean
     ) => {
-      let strSubject = utils.importString(strSubjectPtr);
-      let strPattern = utils.importString(strPatternPtr);
-      var flags = "";
+      const strSubject = utils.importString(strSubjectPtr);
+      const strPattern = utils.importString(strPatternPtr);
+      let flags = "";
       if (global) {
         flags += "g";
       }
       if (caseInsensitive) {
         flags += "i";
       }
-      let regExp = new RegExp(strPattern, flags);
-      let matches = [...strSubject!.matchAll(regExp)];
-      var vector = exported.SKIP_RegExp_createRangesVector();
+      const regExp = new RegExp(strPattern, flags);
+      const matches = [...strSubject.matchAll(regExp)];
+      const vector = exported.SKIP_RegExp_createRangesVector();
       matches.forEach((match) => {
-        let len = match[0].length;
-        let ranges = exported.SKIP_RegExp_createRangeArray(match.length);
+        const len = match[0].length;
+        const ranges = exported.SKIP_RegExp_createRangeArray(match.length);
         exported.SKIP_RegExp_setRange(
           ranges,
           0,
-          match.index!,
-          match.index! + len,
+          match.index,
+          match.index + len
         );
         if (match.length > 1) {
-          let all = match[0];
+          const all = match[0];
           let from = 0;
           for (let i = 1; i < match.length; i++) {
-            let idx = all.indexOf(match[i], from);
-            let slen = match[i].length;
+            const elem = match[i]!;
+            const idx = all.indexOf(elem, from);
+            const slen = elem.length;
             exported.SKIP_RegExp_setRange(
               ranges,
               i,
-              match.index! + idx,
-              match.index! + idx + slen,
+              match.index + idx,
+              match.index + idx + slen
             );
             from = idx + slen;
           }
@@ -178,52 +194,17 @@ class LinksImpl implements Links, ToWasm {
 
 class Manager implements ToWasmManager {
   prepare = (wasm: object) => {
-    let toWasm = wasm as ToWasm;
-    let links = new LinksImpl();
-    toWasm.SKIP_RegExp_check = (strPtr: ptr) => links.SKIP_RegExp_check(strPtr);
-    toWasm.SKIP_RegExp_escape = (strPtr: ptr) =>
-      links.SKIP_RegExp_escape(strPtr);
-    toWasm.SKIP_RegExp_test = (
-      strSubjectPtr: ptr,
-      strPatternPtr: ptr,
-      caseInsensitive: boolean,
-      global: boolean,
-    ) =>
-      links.SKIP_RegExp_test(
-        strSubjectPtr,
-        strPatternPtr,
-        caseInsensitive,
-        global,
-      );
-    toWasm.SKIP_RegExp_matchAll = (
-      strSubjectPtr: ptr,
-      strPatternPtr: ptr,
-      caseInsensitive: boolean,
-      global: boolean,
-    ) =>
-      links.SKIP_RegExp_matchAll(
-        strSubjectPtr,
-        strPatternPtr,
-        caseInsensitive,
-        global,
-      );
-    toWasm.SKIP_RegExp_match = (
-      strSubjectPtr: ptr,
-      strPatternPtr: ptr,
-      caseInsensitive: boolean,
-      global: boolean,
-    ) =>
-      links.SKIP_RegExp_match(
-        strSubjectPtr,
-        strPatternPtr,
-        caseInsensitive,
-        global,
-      );
+    const toWasm = wasm as ToWasm;
+    const links = new LinksImpl();
+    toWasm.SKIP_RegExp_check = links.SKIP_RegExp_check.bind(links);
+    toWasm.SKIP_RegExp_escape = links.SKIP_RegExp_escape.bind(links);
+    toWasm.SKIP_RegExp_test = links.SKIP_RegExp_test.bind(links);
+    toWasm.SKIP_RegExp_matchAll = links.SKIP_RegExp_matchAll.bind(links);
+    toWasm.SKIP_RegExp_match = links.SKIP_RegExp_match.bind(links);
     return links;
   };
 }
 
-/** @sk init */
-export function init(env?: Environment) {
+export function init(_env: Environment) {
   return Promise.resolve(new Manager());
 }

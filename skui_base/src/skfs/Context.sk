@@ -24,7 +24,7 @@ extension class Context {
       fromContext = gUnsafeContextGet();
       fromTick = fromContext.tick;
       context = Context::fromSaved(fromContext);
-      context.perform(fn, fromContext, fromTick)
+      context.performOnce(fn, fromContext, fromTick)
     }
   }
 
@@ -61,7 +61,7 @@ extension class Context {
   }
 
   @debug
-  private mutable fun perform<T>(
+  private mutable fun performOnce<T>(
     fn: mutable Context ~> T,
     fromContext: Context,
     fromTick: Tick,

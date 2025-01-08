@@ -1,0 +1,17 @@
+{
+  "name": "@skui/common",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    "./common.js": "./dist/common.js",
+    "./regexp.js": "./dist/regexp.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@skui/base": "0.0.1"
+  }
+}
