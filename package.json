@@ -7,7 +7,9 @@
     "skui_base/ts",
     "skui_common/ts/wasm",
     "skui_common/ts/tests",
-    "skui_common/ts/playwright"
+    "skui_common/ts/playwright",
+    "skui_font/ts/tests",
+    "skui_font/ts/playwright"
   ],
   "devDependencies": {
     "@skiplabs/eslint-config": "^0.0.1",

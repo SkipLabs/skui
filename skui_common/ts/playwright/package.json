@@ -1,4 +1,6 @@
-{
+{  
+  "name": "@skui/common-playwright",
+  "version": "0.0.1",
   "type": "module",
   "dependencies": {
     "@skui/common-tests": "0.0.1"
