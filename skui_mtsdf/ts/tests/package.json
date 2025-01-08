@@ -1,0 +1,16 @@
+{
+  "name": "@skui/mtsdf-tests",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && skargo build -r --target wasm32 --tests --out-dir=./dist",
+    "clean": "rm -rf dist",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@skui/common": "0.0.1"
+  }
+}

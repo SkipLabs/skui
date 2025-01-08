@@ -1,7 +1,7 @@
 {
   "workspaces": [
-    "eslint-config",
-    "tsconfig",
+    "skstore/eslint-config",
+    "skstore/tsconfig",
     "skstore/skiplang/prelude/ts/binding",
     "skstore/skiplang/prelude/ts/wasm",
     "skui_base/ts",
@@ -9,7 +9,9 @@
     "skui_common/ts/tests",
     "skui_common/ts/playwright",
     "skui_font/ts/tests",
-    "skui_font/ts/playwright"
+    "skui_font/ts/playwright",
+    "skui_mtsdf/ts/tests",
+    "skui_mtsdf/ts/playwright"
   ],
   "devDependencies": {
     "@skiplabs/eslint-config": "^0.0.1",

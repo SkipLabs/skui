@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SKDB tests</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "@skiplang/std": "/node_modules/@skiplang/std/dist/index.js",
+          "@skip-wasm/std": "/node_modules/@skip-wasm/std/dist/index.js",
+          "/node_modules/@skip-wasm/std/dist/sk_node.js": "/node_modules/@skip-wasm/std/dist/sk_browser.js",
+          "@skip-wasm/std/runtime.js": "/node_modules/@skip-wasm/std/dist/sk_runtime.js",
+          "@skip-wasm/std/posix.js": "/node_modules/@skip-wasm/std/dist/sk_posix.js",
+          "@skip-wasm/std/worker.js": "/node_modules/@skip-wasm/std/dist/sk_worker.js",
+          "@skui/base/base.js": "/node_modules/@skui/base/dist/skui_base.js",
+          "@skui/common/regexp.js": "/node_modules/@skui/common/dist/skui_regexp.js",
+          "@skui/common/common.js": "/node_modules/@skui/common/dist/skui_common.js",
+          "@skui/mtsdf-tests": "/node_modules/@skui/mtsdf-tests/dist/index.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <p>A simple index.html for testing the skdb.js client.</p>
+    <p>Run `npx playwright test` in `sql/js`.</p>
+  </body>
+</html>
