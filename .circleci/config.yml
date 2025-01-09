@@ -7,7 +7,7 @@ commands:
       - run:
           name: Install used libraries
           command: |
-            apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get install -y libpcre3 libpcre3-dev libnss3 libssl-dev
+            apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get install -y libpcre3 libpcre3-dev libnss3 libssl-dev libx11-dev freeglut3-dev libglew-dev libxrandr-dev libxcursor-dev
   skipsetup:
     description: "Setup skip toolchain"
     steps:
@@ -28,7 +28,7 @@ commands:
       - run:
           name: Build npm chain
           command: |
-            npm i && npm run build && npx playwright install
+            npm i && npm run build && npx playwright install-deps && npx playwright install
 jobs:
   skui_common:
     docker:
