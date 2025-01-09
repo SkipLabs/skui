@@ -114,7 +114,7 @@ fun perform(
     Cli.Command("skuiviews")
       .about("SKUI's Viewer")
       .arg(
-        Cli.BoolArg("version")
+        Cli.Arg::bool("version")
           .short("V")
           .long("version")
           .about("Print version info and exit"),

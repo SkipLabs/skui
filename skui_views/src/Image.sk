@@ -7,9 +7,9 @@ fun view(): (
 ) {
   (
     Cli.Command("image")
-      .arg(Cli.BoolArg("small").about("Use the small version of the image."))
+      .arg(Cli.Arg::bool("small").about("Use the small version of the image."))
       .arg(
-        Cli.StringArg("ratio").about(
+        Cli.Arg::string("ratio").about(
           "The aspect ratio if width/height format (default keep image ration)",
         ),
       )

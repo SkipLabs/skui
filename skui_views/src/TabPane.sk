@@ -8,7 +8,7 @@ fun view(): (
   (
     Cli.Command("tabpane")
       .arg(
-        Cli.StringArg("side")
+        Cli.Arg::string("side")
           .short("s")
           .long("side")
           .about("The tabpane size (left | top | right | bottom)")

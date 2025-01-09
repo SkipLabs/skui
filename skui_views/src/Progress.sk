@@ -8,7 +8,7 @@ fun view(): (
   (
     Cli.Command("progress")
       .arg(
-        Cli.StringArg("progress")
+        Cli.Arg::string("progress")
           .short("p")
           .long("progress")
           .about("The progress value [0, 100]"),
