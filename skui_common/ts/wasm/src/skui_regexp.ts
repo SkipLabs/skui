@@ -12,46 +12,46 @@ import type * as Internal from "./internal.js";
 
 interface Exported {
   SKIP_RegExp_createRangeArray: (
-    size: int
+    size: int,
   ) => ptr<Internal.Array<Internal.Range>>;
   SKIP_RegExp_setRange: (
     skRanges: ptr<Internal.Array<Internal.Range>>,
     index: int,
     start: int,
-    end: int
+    end: int,
   ) => void;
   SKIP_RegExp_createRangesVector: () => ptr<Internal.RangesVector>;
   SKIP_RegExp_pushRanges: (
     skRangesVec: ptr<Internal.RangesVector>,
-    skRanges: ptr<Internal.Array<Internal.Range>>
+    skRanges: ptr<Internal.Array<Internal.Range>>,
   ) => void;
   SKIP_RegExp_ranges: (
-    skRangesVec: ptr<Internal.RangesVector>
+    skRangesVec: ptr<Internal.RangesVector>,
   ) => ptr<Internal.RangesArray>;
 }
 
 interface ToWasm {
   SKIP_RegExp_check: (strPatternPtr: ptr<Internal.String>) => void;
   SKIP_RegExp_escape: (
-    strPatternPtr: ptr<Internal.String>
+    strPatternPtr: ptr<Internal.String>,
   ) => ptr<Internal.String>;
   SKIP_RegExp_test: (
     strSubjectPtr: ptr<Internal.String>,
     strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean
+    global: boolean,
   ) => boolean;
   SKIP_RegExp_matchAll: (
     strSubjectPtr: ptr<Internal.String>,
     strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean
+    global: boolean,
   ) => Nullable<ptr<Internal.RangesArray>>;
   SKIP_RegExp_match: (
     strSubjectPtr: ptr<Internal.String>,
     strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean
+    global: boolean,
   ) => Nullable<ptr<Internal.Array<Internal.Range>>>;
 }
 
@@ -79,7 +79,7 @@ class LinksImpl implements Links, ToWasm {
     strSubjectPtr: ptr<Internal.String>,
     strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean
+    global: boolean,
   ) {
     const strSubject = this.utils.importString(strSubjectPtr);
     const strPattern = this.utils.importString(strPatternPtr);
@@ -98,7 +98,7 @@ class LinksImpl implements Links, ToWasm {
     strSubjectPtr: ptr<Internal.String>,
     strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean
+    global: boolean,
   ) {
     const strSubject = this.utils.importString(strSubjectPtr);
     const strPattern = this.utils.importString(strPatternPtr);
@@ -133,7 +133,7 @@ class LinksImpl implements Links, ToWasm {
     strSubjectPtr: ptr<Internal.String>,
     strPatternPtr: ptr<Internal.String>,
     caseInsensitive: boolean,
-    global: boolean
+    global: boolean,
   ) {
     const strSubject = this.utils.importString(strSubjectPtr);
     const strPattern = this.utils.importString(strPatternPtr);
@@ -154,7 +154,7 @@ class LinksImpl implements Links, ToWasm {
         ranges,
         0,
         match.index,
-        match.index + len
+        match.index + len,
       );
       if (match.length > 1) {
         const all = match[0];
@@ -167,7 +167,7 @@ class LinksImpl implements Links, ToWasm {
             ranges,
             i,
             match.index + idx,
-            match.index + idx + slen
+            match.index + idx + slen,
           );
           from = idx + slen;
         }
