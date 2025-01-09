@@ -21,7 +21,7 @@ commands:
       - run:
           name: Clone skip
           command: |
-            git clone git@github.com:SkipLabs/skip skstore
+            git clone -b fix-copybinary --single-branch https://github.com/skiplabsdaniel/skdb.git skstore
   npmsetup:
     description: "Build npm chain"
     steps:
