@@ -27,7 +27,7 @@ fun perform(available: readonly Vector<Example>): void {
     Cli.Command(kName)
       .about("SKUI's Engine example viewer")
       .arg(
-        Cli.BoolArg("version")
+        Cli.Arg::bool("version")
           .short("V")
           .long("version")
           .about("Print version info and exit"),

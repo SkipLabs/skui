@@ -3,7 +3,7 @@ name = "skui_eng"
 version = "0.1.0"
 
 [dependencies]
-skui_views = { "path" = "../skui_views" }
+skui_fwk = { "path" = "../skui_fwk" }
 
 [build-dependencies]
 skbuild = { path = "../skstore/skbuild" } 
