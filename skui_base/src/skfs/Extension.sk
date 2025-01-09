@@ -134,6 +134,70 @@ extension class DirName {
   }
 }
 
+extension base class FixedData {
+  fun getTick(): ?Tick;
+}
+
+extension base class DMap {
+  fun getLastTick(): ?Tick
+  | Nil() -> None()
+  | Node{tick} -> Some(tick.max)
+}
+
+extension base class IFixedDir {
+  fun getTick(): ?Tick {
+    if (this.data.isEmpty()) {
+      None()
+    } else {
+      middle = (this.data.size() - 1) / 2;
+      tickRange = this.decode(this.data[middle]).tag;
+      Some(tickRange.max)
+    }
+  }
+}
+
+extension class FixedDataMap {
+  fun getTick(): ?Tick {
+    optFTick = this.tombs.getTick();
+    optDTick = this.data.getTick();
+    (optFTick, optDTick) match {
+    | (None(), None()) -> None()
+    | (Some(t), None())
+    | (None(), Some(t)) ->
+      Some(t)
+    | (Some(ft), Some(dt)) -> Some(max(ft, dt))
+    }
+  }
+}
+
+extension class DataMap {
+  fun getTick(): ?Tick {
+    optFTick = this.tombs.getLastTick();
+    optDTick = this.data.getLastTick();
+    (optFTick, optDTick) match {
+    | (None(), None()) -> None()
+    | (Some(t), None())
+    | (None(), Some(t)) ->
+      Some(t)
+    | (Some(ft), Some(dt)) -> Some(max(ft, dt))
+    }
+  }
+}
+
+extension class EagerDir {
+  fun getLastTick(): ?Tick {
+    optFTick = this.fixedData.getTick();
+    optDTick = this.data.getTick();
+    (optFTick, optDTick) match {
+    | (None(), None()) -> None()
+    | (Some(t), None())
+    | (None(), Some(t)) ->
+      Some(t)
+    | (Some(ft), Some(dt)) -> Some(max(ft, dt))
+    }
+  }
+}
+
 class UInt32File(value: UInt32) extends File
 
 module end;
