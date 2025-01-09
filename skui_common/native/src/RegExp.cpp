@@ -1,3 +1,4 @@
+#include <cstdint>
 #include "string.h"
 #include <array>
 #include <pcre.h>

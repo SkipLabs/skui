@@ -1,6 +1,7 @@
 #ifndef __SKUI_IO_H__
 #define __SKUI_IO_H__
 
+#include <cstdint>
 #include <string>
 
 namespace skui {
