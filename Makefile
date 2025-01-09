@@ -32,32 +32,10 @@ ENG_PANDOC_FILES=$(addprefix $(ENG_DOCUMENTS_DIR)/,$(ENG_DOCUMENTS))
 
 .PHONY: init
 init:
-	@if [ "$(SKDB)" = "" ]; then\
-        $(error SKDB must be defined.);\
+	@if [ "$(SKIP)" = "" ]; then\
+        $(error SKIP must be defined.);\
   fi
-	ln -s $(realpath $(SKDB)) skstore
-
-.PHONY: conf
-conf: init
-	@echo '{' > .tsconfig.json
-	@echo '  "compilerOptions": {' >> .tsconfig.json
-	@echo '    "target": "ES2021",' >> .tsconfig.json
-	@echo '    "outDir": "js",' >> .tsconfig.json
-	@echo '    "baseUrl": ".",' >> .tsconfig.json
-	@echo '    "strict": true,' >> .tsconfig.json
-	@echo '    "strictNullChecks": true,' >> .tsconfig.json
-	@echo '    "module": "Node16",' >> .tsconfig.json
-	@echo '    "moduleResolution": "Node16",' >> .tsconfig.json
-	@echo '    "verbatimModuleSyntax": true,' >> .tsconfig.json
-	@echo '    "paths": {' >> .tsconfig.json
-	@echo '      "#std/*.js": ["$(SKDB)/prelude/ts/src/*.ts"],' >> .tsconfig.json
-	@echo '      "#skui_base/*.js": ["skui_base/ts/src/*.ts"],' >> .tsconfig.json
-	@echo '      "#skui_opengl/*.js": ["skui_opengl/ts/src/*.ts"],' >> .tsconfig.json
-	@echo '      "#skui_views/*.js": ["skui_views/ts/src/*.ts"]' >> .tsconfig.json,
-	@echo '      "#skui_eng/*.js": ["skui_eng/ts/src/*.ts"]' >> .tsconfig.json,
-	@echo '    }' >> .tsconfig.json
-	@echo '  }' >> .tsconfig.json
-	@echo '}' >> .tsconfig.json
+	ln -s $(realpath $(SKIP)) skstore
 
 .PHONY: test-native
 test-native:
@@ -83,16 +61,8 @@ enginetex:
 
 .PHONY: clean
 clean:
-	cd skui_base; skargo clean
-	cd skui_common; skargo clean
-	cd skui_eng; skargo clean
-	cd skui_engex; skargo clean
-	cd skui_font; skargo clean
-	cd skui_fwk; skargo clean
-	cd skui_mtsdf; skargo clean
-	cd skui_opengl; skargo clean
-	cd skui_views; skargo clean
-	cd skui_x11gl; skargo clean
+	find . -path ./skstore -not -prune -or -name 'Skargo.toml' -print0 | sed 's|Skargo.toml|target|g' | xargs -0 rm -rf
+	npm run clean
 
 .PHONY: fmt-sk
 fmt-sk:

@@ -21,7 +21,7 @@ fun perform(
   command = Cli.Command("skuix11gl")
     .about("Skip UI's GL Shader Viewer")
     .arg(
-      Cli.BoolArg("version")
+      Cli.Arg::bool("version")
         .short("V")
         .long("version")
         .about("Print version info and exit"),

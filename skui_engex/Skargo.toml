@@ -4,6 +4,8 @@ version = "0.1.0"
 
 [dependencies]
 skui_eng = { "path" = "../skui_eng" }
+# TODO depends on skui_x11gl not skui_views
+skui_views = { "path" = "../skui_views" }
 
 [[bin]]
 name = "skuiengex"

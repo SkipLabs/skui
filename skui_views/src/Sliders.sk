@@ -8,14 +8,14 @@ fun view(): (
   (
     Cli.Command("sliders")
       .arg(
-        Cli.StringArg("number")
+        Cli.Arg::string("number")
           .short("n")
           .long("number")
           .about("The number of slider to show [1,5].")
           .default("5"),
       )
       .arg(
-        Cli.BoolArg("vertical")
+        Cli.Arg::bool("vertical")
           .short("vr")
           .long("vertical")
           .about("Show the sliver in vertical direction."),

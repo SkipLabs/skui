@@ -8,7 +8,9 @@ fun view(): (
   (
     Cli.Command("dropdown")
       .arg(
-        Cli.StringArg("number").about("The number of additonal items to show"),
+        Cli.Arg::string("number").about(
+          "The number of additonal items to show",
+        ),
       )
       .about("View that display dropdown view sample."),
     args ~> {

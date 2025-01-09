@@ -8,18 +8,21 @@ fun view(): (
   (
     Cli.Command("text")
       .arg(
-        Cli.StringArg("text")
+        Cli.Arg::string("text")
           .short("t")
           .long("text")
           .about("The text to display")
           .default("Hello World, It's amazing!!!"),
       )
-      .arg(Cli.StringArg("size").about("The font size in pt").default("20"))
+      .arg(Cli.Arg::string("size").about("The font size in pt").default("20"))
       .arg(
-        Cli.BoolArg("bold").short("b").long("bold").about("Display bold text"),
+        Cli.Arg::bool("bold")
+          .short("b")
+          .long("bold")
+          .about("Display bold text"),
       )
       .arg(
-        Cli.BoolArg("italic")
+        Cli.Arg::bool("italic")
           .short("i")
           .long("italic")
           .about("Display italic text"),

@@ -18,14 +18,14 @@ fun init(wId: Int, title: String, args: Cli.ParseResults): void {
 fun complete(command: Cli.Command): Cli.Command {
   command
     .arg(
-      Cli.StringArg("screen")
+      Cli.Arg::string("screen")
         .short("s")
         .long("screen")
         .about("The screen where to open the window")
         .default("0"),
     )
     .arg(
-      Cli.StringArg("fps")
+      Cli.Arg::string("fps")
         .about("The frame per second refresh rate")
         .default("60"),
     )

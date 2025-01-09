@@ -58,7 +58,7 @@ fun faceSupplier(
         );
       predef.maybeGet(typeface.collection) match {
       | Some(p) ->
-        buffer = Base64.decodeString(p.base64);
+        buffer = Base64.decode(p.base64);
         font = TrueType.parse(buffer);
         SKStore.Loaded(typeFace(font))
       | None() ->

@@ -7,32 +7,28 @@ commands:
       - run:
           name: Install used libraries
           command: |
-            apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get install -y libpcre3 libpcre3-dev libnss3 libssl-dev
-  skdbsetup:
+            apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get install -y libpcre3 libpcre3-dev libnss3 libssl-dev libx11-dev freeglut3-dev libglew-dev libxrandr-dev libxcursor-dev
+  skipsetup:
     description: "Setup skip toolchain"
     steps:
       - run:
           name: Fetch submodules
           command: |
             cd skstore && git submodule update --init --recursive
-      - run:
-          name: Build compiler
-          command: |
-            cd skstore/skiplang/compiler && make STAGE=0 && make install STAGE=0
   cloneskip:
     description: "Clone skip"
     steps:
       - run:
           name: Clone skip
           command: |
-            git clone git@github.com:SkipLabs/skip skstore
+            git clone -b fix-copybinary --single-branch https://github.com/skiplabsdaniel/skdb.git skstore
   npmsetup:
     description: "Build npm chain"
     steps:
       - run:
           name: Build npm chain
           command: |
-            npm i && npm run build && npx playwright install
+            npm i && npm run build && npx playwright install-deps && npx playwright install
 jobs:
   skui_common:
     docker:
@@ -41,7 +37,7 @@ jobs:
       - systemsetup
       - checkout
       - cloneskip
-      - skdbsetup
+      - skipsetup
       - run:
           name: Run common tests
           no_output_timeout: 5m
@@ -58,7 +54,7 @@ jobs:
       - systemsetup
       - checkout
       - cloneskip
-      - skdbsetup
+      - skipsetup
       - run:
           name: Run font tests
           no_output_timeout: 5m
@@ -74,7 +70,7 @@ jobs:
       - systemsetup
       - checkout
       - cloneskip
-      - skdbsetup
+      - skipsetup
       - run:
           name: Run mtsdf tests
           no_output_timeout: 5m
@@ -83,6 +79,20 @@ jobs:
             cd skui_mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
       - store_test_results:
           path: ~/test-results/skui_mtsdf.xml
+  skui_views:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - skipsetup
+      - run:
+          name: Check skui_views
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui_views && skargo c
   skui_common-wasm:
     docker:
       - image: skiplabs/skdb-base:latest
@@ -90,7 +100,7 @@ jobs:
       - systemsetup
       - checkout
       - cloneskip
-      - skdbsetup
+      - skipsetup
       - npmsetup
       - run:
           name: Run wasm skui_common tests
@@ -110,7 +120,7 @@ jobs:
       - systemsetup
       - checkout
       - cloneskip
-      - skdbsetup
+      - skipsetup
       - npmsetup
       - run:
           name: Run wasm skui_font tests
@@ -130,7 +140,7 @@ jobs:
       - systemsetup
       - checkout
       - cloneskip
-      - skdbsetup
+      - skipsetup
       - npmsetup
       - run:
           name: Run wasm skui_mtsdf tests
@@ -154,6 +164,9 @@ workflows:
   font:
     jobs:
       - skui_font
+  views:
+    jobs:
+      - skui_views
   font-wasm:
     jobs:
       - skui_font-wasm

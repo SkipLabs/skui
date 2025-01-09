@@ -4,7 +4,7 @@ export type Test = {
   name: string;
   fun: (
     testName: string,
-    main: (args: string[], stdin: string) => string
+    main: (args: string[], stdin: string) => string,
   ) => string;
   check: (res: string) => void;
 };
@@ -19,14 +19,14 @@ export const tests = (main: (args: string[], stdin: string) => string) => {
         name: testName,
         fun: (
           testName: string,
-          main: (args: string[], stdin: string) => string
+          main: (args: string[], stdin: string) => string,
         ) => {
           return main(["--strict", "--json", testName], "");
         },
         check: (res: string) => {
           const lines = res.trim().split("\n");
           expect("Line size: " + lines.length.toString()).toEqual(
-            "Line size: 1"
+            "Line size: 1",
           );
           const result = JSON.parse(lines[0]!);
           expect(result.result).toEqual("success");
