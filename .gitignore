@@ -27,5 +27,9 @@ skipwasm-date
 !skipwasm-date/*
 
 skui-base
+skui-common
+skui-opengl
 !skui-base/*
+!skui-common/*
+!skui-opengl/*
 node_modules

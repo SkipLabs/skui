@@ -1,18 +1,15 @@
 {
   "name": "@skui/opengl",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./dist/skui_webgl.js",
-    "./env.js": "./dist/skui_glenv.js",
-    "./matrix.js": "./dist/skui_matrix.js"
+    ".": "./dist/src/skui_webgl.js",
+    "./env.js": "./dist/src/skui_glenv.js",
+    "./matrix.js": "./dist/src/skui_matrix.js"
   },
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist",
+    "build": "node ../../../skip/prebuild.mjs skiplang-std skipwasm-std && tsc",
+    "clean": "rm -rf dist skiplang-std skipwasm-std",
     "lint": "eslint"
-  },
-  "dependencies": {
-    "@skip-wasm/std": "^1.0.4"
   }
 }

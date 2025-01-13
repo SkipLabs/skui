@@ -11,6 +11,7 @@ const symlinks = {
   "skipwasm-json": "./skip/skiplang/skjson/ts/wasm/src",
   "skui-base": "./skui_base/ts/src",
   "skui-common": "./skui_common/ts/wasm/src",
+  "skui-opengl": "./skui_opengl/ts/src",
 };
 
 const filename = fileURLToPath(import.meta.url);

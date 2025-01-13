@@ -1,20 +1,33 @@
-import { run } from "#std/sk_types.js";
-import type { GLEnv } from "#skui_opengl/skui_glenv.js";
+import { run, type EnvInit, type ModuleInit } from "../skipwasm-std/index.js";
+import type { GLEnv } from "../skui-opengl/skui_glenv.js";
 
-var wasm64 = "/*--NAME--*/";
-// @ts-ignore
-// prettier-ignore
-var modules = [ /*--MODULES--*/];
-var extensions = new Map();
-/*--EXTENSIONS--*/
+import { init as runtimeInit } from "../skipwasm-std/sk_runtime.js";
+import { init as posixInit } from "../skipwasm-std/sk_posix.js";
+import { init as baseInit } from "../skui-base/skui_base.js";
+import { init as regexpInit } from "../skui-common/skui_regexp.js";
+import { init as commonInit } from "../skui-common/skui_common.js";
+import { init as openglInit } from "../skui-opengl/skui_webgl.js";
+import { complete as openglComplete } from "../skui-opengl/skui_glenv.js";
+import { environment as createEnvironment } from "../skipwasm-std/sk_browser.js";
+
+const modules: ModuleInit[] = [
+  runtimeInit,
+  posixInit,
+  baseInit,
+  regexpInit,
+  commonInit,
+  openglInit,
+];
+
+const wasmurl = new URL("./test.wasm", import.meta.url);
+const extensions: EnvInit[] = [openglComplete];
 
 async function launch() {
-  // @ts-ignore
-  let data = await run(wasm64, modules, extensions);
-  let window = (data.environment as GLEnv).window();
-  let search = window.location.search.trim().substring(1);
-  let args = search.split("/").map((t) => decodeURI(t));
+  const data = await run(wasmurl, modules, extensions, createEnvironment);
+  const window = (data.environment as GLEnv).window();
+  const search = window.location.search.trim().substring(1);
+  const args = search.split("/").map((t) => decodeURI(t));
   data.main(args, "");
 }
 
-launch();
+await launch();

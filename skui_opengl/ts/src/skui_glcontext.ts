@@ -5,8 +5,8 @@ import type {
   Environment,
   Utils,
   Nullable,
-} from "@skip-wasm/std";
-import type * as Internal from "@skiplang/std/internal.js";
+} from "../skipwasm-std/index.js";
+import type * as Internal from "../skiplang-std/internal.js";
 import { Loading } from "./skui_glloading.js";
 
 interface Env extends Environment {

@@ -1,4 +1,4 @@
-import type { int } from "@skip-wasm/std";
+import type { int } from "../skipwasm-std/index.js";
 import { Matrix } from "./skui_matrix.js";
 
 export class Loading {
