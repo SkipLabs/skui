@@ -1,0 +1,13 @@
+{
+  "name": "@skui/views",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./dist/src/skui_launch.js"
+  },
+  "scripts": {
+    "build": "node ../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl && tsc",
+    "clean": "rm -rf dist skiplang-std skipwasm-std skui-base skui-common skui-opengl",
+    "lint": "eslint"
+  }
+}

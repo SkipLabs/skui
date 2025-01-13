@@ -1,4 +1,4 @@
-import type { Environment } from "@skip-wasm/std";
+import type { Environment } from "../skipwasm-std/index.js";
 
 export interface GLEnv extends Environment {
   clipboard: () => Clipboard | null | undefined;

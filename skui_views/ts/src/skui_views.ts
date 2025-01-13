@@ -1,11 +1,15 @@
-import {
+import type {
   int,
   ptr,
   Environment,
   Links,
-  Utils,
   ToWasmManager,
-} from "#std/sk_types";
+  Nullable,
+} from "../skipwasm-std/index.js";
+
+import { Utils } from "../skipwasm-std/index.js";
+
+import type * as Internal from "../skiplang-std/internal.js";
 
 type MouseEventManager = (
   wId: int,
@@ -21,14 +25,14 @@ type MouseEventManager = (
   ctrlKey: boolean,
   shiftKey: boolean,
   altKey: boolean,
-  metaKey: boolean,
+  metaKey: boolean
 ) => void;
 
 type KeyboardEventManager = (
   wId: int,
   evtType: int,
-  strCodePtr: ptr,
-  strKeyPtr: ptr,
+  strCodePtr: ptr<Internal.String>,
+  strKeyPtr: ptr<Internal.String>,
   repeat: boolean,
   capsLock: boolean,
   numLock: boolean,
@@ -36,7 +40,7 @@ type KeyboardEventManager = (
   ctrlKey: boolean,
   shiftKey: boolean,
   altKey: boolean,
-  metaKey: boolean,
+  metaKey: boolean
 ) => void;
 
 type WheelEventManager = (
@@ -47,7 +51,7 @@ type WheelEventManager = (
   ctrlKey: boolean,
   shiftKey: boolean,
   altKey: boolean,
-  metaKey: boolean,
+  metaKey: boolean
 ) => void;
 
 interface Env extends Environment {
@@ -69,81 +73,94 @@ export interface Exported {
     wId: int,
     width: int,
     height: int,
-    ratio: int,
+    ratio: int
   ) => void;
-  SKIP_SKUIJS_performPaste: (wId: int, mimeType: ptr, data: ptr) => void;
-  SKIP_SKUIMessage_manage: (skMsg: ptr) => void;
+  SKIP_SKUIJS_performPaste: (
+    wId: int,
+    mimeType: ptr<Internal.String>,
+    data: ptr<Internal.String>
+  ) => void;
+  SKIP_SKUIMessage_manage: (skMsg: ptr<Internal.String>) => void;
 }
 
 interface ToWasm {
   SKIP_SKUIJS_sendMessage: (
     wId: int,
-    message: ptr,
+    message: ptr<Internal.String>,
     async: boolean,
-    delay: int,
+    delay: int
   ) => void;
-  SKIP_SKUIJS_requestClipboard: (wId: int, mimeType: ptr) => void;
-  SKIP_SKUIJS_updateClipboard: (wId: int, mimeType: ptr, data: ptr) => void;
-  SKIP_SKUIJS_init: (wId: int, skTitle: ptr) => void;
+  SKIP_SKUIJS_requestClipboard: (
+    wId: int,
+    mimeType: ptr<Internal.String>
+  ) => void;
+  SKIP_SKUIJS_updateClipboard: (
+    wId: int,
+    mimeType: ptr<Internal.String>,
+    data: ptr<Internal.String>
+  ) => void;
+  SKIP_SKUIJS_init: (wId: int, skTitle: ptr<Internal.String>) => void;
   SKIP_SKUIJS_display: (
-    skOutput: ptr | null,
-    skError: ptr | null,
-    html: boolean,
+    skOutput: Nullable<ptr<Internal.String>>,
+    skError: Nullable<ptr<Internal.String>>,
+    html: boolean
   ) => void;
 }
 
 class LinksImpl implements Links, ToWasm {
-  env: Env | undefined;
+  constructor(private env?: Env) {}
 
-  constructor(env?: Env) {
-    this.env = env;
-  }
-  SKIP_SKUIJS_sendMessage: (
+  SKIP_SKUIJS_sendMessage!: (
     wId: int,
-    message: ptr,
+    message: ptr<Internal.String>,
     async: boolean,
-    delay: int,
+    delay: int
   ) => void;
-  SKIP_SKUIJS_requestClipboard: (wId: int, mimeType: ptr) => void;
-  SKIP_SKUIJS_updateClipboard: (wId: int, mimeType: ptr, data: ptr) => void;
-  SKIP_SKUIJS_init: (wId: int, skTitle: ptr) => void;
-  SKIP_SKUIJS_display: (
-    skOutput: ptr | null,
-    skError: ptr | null,
-    html: boolean,
+  SKIP_SKUIJS_requestClipboard!: (
+    wId: int,
+    mimeType: ptr<Internal.String>
   ) => void;
-  performPaste: (wId: int, mimeType: string, data: string) => void;
-  update: () => void;
-  manageEvents: (wId: int) => void;
-  manageInputEvent: (wId: int, evt: InputEvent) => void;
-  manageKeyboardEvent: (wId: int, evt: KeyboardEvent) => void;
-  manageWheelEvent: (wId: int, evt: WheelEvent) => void;
-  manageMouseEvent: (wId: int, evt: MouseEvent) => void;
+  SKIP_SKUIJS_updateClipboard!: (
+    wId: int,
+    mimeType: ptr<Internal.String>,
+    data: ptr<Internal.String>
+  ) => void;
+  SKIP_SKUIJS_init!: (wId: int, skTitle: ptr<Internal.String>) => void;
+  SKIP_SKUIJS_display!: (
+    skOutput: Nullable<ptr<Internal.String>>,
+    skError: Nullable<ptr<Internal.String>>,
+    html: boolean
+  ) => void;
+  performPaste!: (wId: int, mimeType: string, data: string) => void;
+  update!: () => void;
+  manageEvents!: (wId: int) => void;
+  manageInputEvent!: (wId: int, evt: InputEvent) => void;
+  manageKeyboardEvent!: (wId: int, evt: KeyboardEvent) => void;
+  manageWheelEvent!: (wId: int, evt: WheelEvent) => void;
+  manageMouseEvent!: (wId: int, evt: MouseEvent) => void;
   stopEvent = (evt: Event) => {
     evt.preventDefault();
     if (typeof evt.stopPropagation != "undefined") {
       evt.stopPropagation();
-    } else if (typeof evt.cancelBubble != "undefined") {
-      evt.cancelBubble = true;
     }
   };
   synchronizeWindowSize = (
-    resize: (width: int, height: int, ratio: int) => void,
+    resize: (width: int, height: int, ratio: int) => void
   ) => {
-    let window = this.env ? this.env.window() : null;
-    if (window) {
-      let fWindow = window;
-      let canvas = window.document.getElementById(
-        "skui_canvas",
+    const window = this.env !== undefined ? this.env.window() : null;
+    if (window !== null) {
+      const fWindow = window;
+      const canvas = window.document.getElementById(
+        "skui_canvas"
       ) as HTMLCanvasElement;
-      let resizeFn = () => {
-        let ratio = fWindow.devicePixelRatio || 1;
-        let width = Math.trunc(fWindow.innerWidth);
-        let height = Math.trunc(fWindow.innerHeight);
+      const resizeFn = () => {
+        const ratio = fWindow.devicePixelRatio || 1;
+        const width = Math.trunc(fWindow.innerWidth);
+        const height = Math.trunc(fWindow.innerHeight);
         canvas.width = ratio * width;
         canvas.height = ratio * height;
-        canvas.style.width = width + "px";
-        canvas.style.height = height + "px";
+        canvas.style.width = width.toString() + "px";
+        canvas.style.height = height.toString() + "px";
         resize(width, height, Math.trunc(ratio * 100));
       };
       fWindow.onresize = resizeFn;
@@ -151,19 +168,19 @@ class LinksImpl implements Links, ToWasm {
     }
   };
   complete = (utils: Utils, exports: object) => {
-    let exported = exports as Exported;
+    const exported = exports as Exported;
     this.SKIP_SKUIJS_sendMessage = (
-      wId: int,
-      message: ptr,
-      async: boolean,
-      delay: int,
+      _wId: int,
+      message: ptr<Internal.String>,
+      _async: boolean,
+      delay: int
     ) => {
-      let strMessage = utils.importString(message);
+      const strMessage = utils.importString(message);
       delay = delay ? delay : 0;
       // TODO manage async
-      let manageMessage = (message: string) => {
+      const manageMessage = (message: string) => {
         utils.runWithGc(() =>
-          exported.SKIP_SKUIMessage_manage(utils.exportString(message)),
+          exported.SKIP_SKUIMessage_manage(utils.exportString(message))
         );
       };
       if (this.env) {
@@ -177,32 +194,43 @@ class LinksImpl implements Links, ToWasm {
         exported.SKIP_SKUIJS_performPaste(
           wId,
           utils.exportString(strMimeType),
-          utils.exportString(strData),
+          utils.exportString(strData)
         );
       });
     };
-    this.SKIP_SKUIJS_requestClipboard = (wId: int, mimeType: ptr) => {
-      let clipboard = this.env ? this.env.clipboard() : null;
-      let strMimeType = utils.importString(mimeType);
+    this.SKIP_SKUIJS_requestClipboard = (
+      wId: int,
+      mimeType: ptr<Internal.String>
+    ) => {
+      const clipboard = this.env ? this.env.clipboard() : null;
+      const strMimeType = utils.importString(mimeType);
       if (strMimeType.startsWith("text/plain") && clipboard) {
         clipboard
           .readText()
           .then((clipText) =>
-            setTimeout(this.performPaste, 0, wId, strMimeType, clipText),
-          );
+            setTimeout(this.performPaste, 0, wId, strMimeType, clipText)
+          )
+          .catch((reason: unknown) => console.log(reason));
       } else {
-        let strData = localStorage.getItem("clipboard:" + strMimeType);
+        const strData = localStorage.getItem("clipboard:" + strMimeType);
         if (strData) {
           setTimeout(this.performPaste, 0, wId, strMimeType, strData);
         }
       }
     };
-    this.SKIP_SKUIJS_updateClipboard = (wId: int, mimeType: ptr, data: ptr) => {
-      let clipboard = this.env ? this.env.clipboard() : null;
-      let strMimeType = utils.importString(mimeType);
-      let strData = utils.importString(data);
+    this.SKIP_SKUIJS_updateClipboard = (
+      _wId: int,
+      mimeType: ptr<Internal.String>,
+      data: ptr<Internal.String>
+    ) => {
+      const clipboard = this.env ? this.env.clipboard() : null;
+      const strMimeType = utils.importString(mimeType);
+      const strData = utils.importString(data);
       if (strMimeType.startsWith("text/plain") && clipboard) {
-        clipboard.writeText(strData);
+        clipboard
+          .writeText(strData)
+          .catch((reason: unknown) => console.log(reason));
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!clipboard.readText) {
           localStorage.setItem("clipboard:" + strMimeType, strData);
         }
@@ -212,53 +240,47 @@ class LinksImpl implements Links, ToWasm {
     };
     this.SKIP_SKUIJS_init = (wId, title) => {
       if (this.env) {
-        let strTitle = utils.importString(title);
+        const strTitle = utils.importString(title);
         this.env.window().document.title = strTitle;
         this.manageEvents(wId);
         this.synchronizeWindowSize((width: int, height: int, ratio: int) =>
-          exported.SKIP_SKUIJS_manageResize(wId, width, height, ratio),
+          exported.SKIP_SKUIJS_manageResize(wId, width, height, ratio)
         );
         this.env
           .start(wId)
-          .then((cId) => exported.SKIP_SKUIJS_windowInitialized(wId))
-          .catch((e) => console.error(e));
+          .then((_cId) => exported.SKIP_SKUIJS_windowInitialized(wId))
+          .catch((e: unknown) => console.error(e));
       }
     };
 
     this.SKIP_SKUIJS_display = (
-      skOutput: ptr | null,
-      skError: ptr | null,
-      html: boolean,
+      skOutput: Nullable<ptr<Internal.String>>,
+      skError: Nullable<ptr<Internal.String>>,
+      html: boolean
     ) => {
       if (this.env) {
-        let strOutput = skOutput ? utils.importString(skOutput) : null;
-        let strError = skError ? utils.importString(skError) : null;
-        let window = this.env.window();
-        let container = window.document.getElementById(
-          "skui_container",
-        ) as HTMLElement;
+        const strOutput = skOutput ? utils.importString(skOutput) : null;
+        const strError = skError ? utils.importString(skError) : null;
+        const window = this.env.window();
+        let container = window.document.getElementById("skui_container");
         container = container ? container : document.body;
         if (strError != null) {
-          var div = document.createElement("div");
+          const div = document.createElement("div");
           div.innerHTML = html ? strError : strError.replaceAll("\n", "<br>");
           div.style.fontSize = "16px";
           div.style.fontWeight = "bold";
           div.style.paddingLeft = "30px";
-          document.body.appendChild(div);
+          container.appendChild(div);
         }
         if (strOutput != null) {
-          var div = document.createElement("div");
+          const div = document.createElement("div");
           div.innerHTML = html ? strOutput : strOutput.replaceAll("\n", "<br>");
           div.style.fontSize = "16px";
-          document.body.appendChild(div);
+          container.appendChild(div);
         }
-        let canvas = window.document.getElementById(
-          "skui_canvas",
-        ) as HTMLCanvasElement;
+        const canvas = window.document.getElementById("skui_canvas");
         if (canvas) canvas.style.display = "none";
-        let texthook = window.document.getElementById(
-          "skui_texthook",
-        ) as HTMLCanvasElement;
+        const texthook = window.document.getElementById("skui_texthook");
         if (texthook) texthook.style.display = "none";
       }
     };
@@ -270,39 +292,39 @@ class LinksImpl implements Links, ToWasm {
     };
 
     this.manageEvents = (wId: int) => {
-      let window = this.env ? this.env.window() : null;
+      const window = this.env ? this.env.window() : null;
       if (window) {
-        let texthook = window.document.getElementById("skui_texthook");
+        const texthook = window.document.getElementById("skui_texthook");
         if (texthook) {
           // TODO Manage correctly text area focus
           texthook.focus();
-          texthook.addEventListener("input", (evt: InputEvent) =>
-            this.manageInputEvent(wId, evt),
+          texthook.addEventListener("input", (evt: Event) =>
+            this.manageInputEvent(wId, evt as InputEvent)
           );
         }
         //
         window.addEventListener("keydown", (evt: KeyboardEvent) =>
-          this.manageKeyboardEvent(wId, evt),
+          this.manageKeyboardEvent(wId, evt)
         );
         window.addEventListener("keyup", (evt: KeyboardEvent) =>
-          this.manageKeyboardEvent(wId, evt),
+          this.manageKeyboardEvent(wId, evt)
         );
         window.addEventListener("contextmenu", this.stopEvent);
         //
         window.addEventListener("mousedown", (evt: MouseEvent) =>
-          this.manageMouseEvent(wId, evt),
+          this.manageMouseEvent(wId, evt)
         );
         window.addEventListener("mousemove", (evt: MouseEvent) =>
-          this.manageMouseEvent(wId, evt),
+          this.manageMouseEvent(wId, evt)
         );
         window.addEventListener("mouseup", (evt: MouseEvent) =>
-          this.manageMouseEvent(wId, evt),
+          this.manageMouseEvent(wId, evt)
         );
         //
         window.addEventListener(
           "wheel",
           (evt: WheelEvent) => this.manageWheelEvent(wId, evt),
-          { passive: false },
+          { passive: false }
         );
         window.onfocus = () => exported.SKIP_SKUIJS_clearKeyboardEvent(wId);
       }
@@ -314,7 +336,7 @@ class LinksImpl implements Links, ToWasm {
         evt.inputType == "insertText" ||
         (evt.inputType == "insertCompositionText" && evt.data == "`")
       ) {
-        let backQuoteKey = (type: int) => {
+        const backQuoteKey = (type: int) => {
           utils.runWithGc(() => {
             exported.SKIP_SKUIJS_manageKeyboardEvent(
               wId,
@@ -328,7 +350,7 @@ class LinksImpl implements Links, ToWasm {
               false,
               false,
               false,
-              false,
+              false
             );
           });
         };
@@ -361,8 +383,8 @@ class LinksImpl implements Links, ToWasm {
         default:
           throw new Error("Unsuported KeyboardEvent type: " + evt.type);
       }
-      var key = evt.key;
-      var code = evt.code;
+      let key = evt.key;
+      let code = evt.code;
       if (evt.altKey && key == "L") {
         code = "Digit6";
         key = "|";
@@ -382,7 +404,7 @@ class LinksImpl implements Links, ToWasm {
           evt.ctrlKey,
           evt.shiftKey,
           evt.altKey,
-          evt.metaKey,
+          evt.metaKey
         );
       });
     };
@@ -393,7 +415,7 @@ class LinksImpl implements Links, ToWasm {
       let deltaY = evt.deltaY;
       let deltaZ = evt.deltaZ;
       if (evt.deltaMode == 0x01) {
-        let scrollLineHeight = 16;
+        const scrollLineHeight = 16;
         deltaX *= scrollLineHeight;
         deltaY *= scrollLineHeight;
         deltaZ *= scrollLineHeight;
@@ -406,7 +428,7 @@ class LinksImpl implements Links, ToWasm {
         evt.ctrlKey,
         evt.shiftKey,
         evt.altKey,
-        evt.metaKey,
+        evt.metaKey
       );
     };
     this.manageMouseEvent = (wId: int, evt: MouseEvent) => {
@@ -445,7 +467,7 @@ class LinksImpl implements Links, ToWasm {
           evt.ctrlKey,
           evt.shiftKey,
           evt.altKey,
-          evt.metaKey,
+          evt.metaKey
         );
       }
     };
@@ -462,37 +484,34 @@ class Manager implements ToWasmManager {
   }
 
   prepare = (wasm: object) => {
-    // TODO check why that function is needed
-    wasm["SKIP_SKUIX11_sendMessage"] = (
-      wId: int,
-      message: ptr,
-      async: boolean,
-      delay: int,
-    ) => console.log(["SKIP_SKUIX11_sendMessage", wId, message, async, delay]);
-    let toWasm = wasm as ToWasm;
-    let links = new LinksImpl(this.env);
+    const toWasm = wasm as ToWasm;
+    const links = new LinksImpl(this.env);
     toWasm.SKIP_SKUIJS_sendMessage = (
       wId: int,
-      message: ptr,
+      message: ptr<Internal.String>,
       async: boolean,
-      delay: int,
+      delay: int
     ) => links.SKIP_SKUIJS_sendMessage(wId, message, async, delay);
-    toWasm.SKIP_SKUIJS_requestClipboard = (wId: int, mimeType: ptr) =>
-      links.SKIP_SKUIJS_requestClipboard(wId, mimeType);
-    toWasm.SKIP_SKUIJS_updateClipboard = (wId: int, mimeType: ptr, data: ptr) =>
-      links.SKIP_SKUIJS_updateClipboard(wId, mimeType, data);
+    toWasm.SKIP_SKUIJS_requestClipboard = (
+      wId: int,
+      mimeType: ptr<Internal.String>
+    ) => links.SKIP_SKUIJS_requestClipboard(wId, mimeType);
+    toWasm.SKIP_SKUIJS_updateClipboard = (
+      wId: int,
+      mimeType: ptr<Internal.String>,
+      data: ptr<Internal.String>
+    ) => links.SKIP_SKUIJS_updateClipboard(wId, mimeType, data);
     toWasm.SKIP_SKUIJS_display = (
-      skOutput: ptr | null,
-      skError: ptr | null,
-      html: boolean,
+      skOutput: Nullable<ptr<Internal.String>>,
+      skError: Nullable<ptr<Internal.String>>,
+      html: boolean
     ) => links.SKIP_SKUIJS_display(skOutput, skError, html);
-    toWasm.SKIP_SKUIJS_init = (wId: int, skTitle: ptr) =>
+    toWasm.SKIP_SKUIJS_init = (wId: int, skTitle: ptr<Internal.String>) =>
       links.SKIP_SKUIJS_init(wId, skTitle);
     return links;
   };
 }
 
-/** @sk init */
 export function init(env?: Environment) {
   return Promise.resolve(new Manager(env ? (env as Env) : undefined));
 }
