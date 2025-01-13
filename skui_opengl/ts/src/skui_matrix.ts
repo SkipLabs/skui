@@ -8,7 +8,7 @@ export class Matrix {
 
   /**
    * Initialize an identity projection matrix
-   **/
+   */
   setAsIdentity = () => {
     this.data[0] = 1;
     this.data[1] = 0;
@@ -43,7 +43,7 @@ export class Matrix {
     bottom: number,
     top: number,
     near: number,
-    far: number,
+    far: number
   ) => {
     this.data[0] = 2 / (right - left);
     this.data[1] = 0;
@@ -70,25 +70,25 @@ export class Matrix {
    * @param {number} tz z translation.
    */
   translate = (tx: number, ty: number, tz: number) => {
-    let x00 = this.data[0];
-    let x01 = this.data[1];
-    let x02 = this.data[2];
-    let x03 = this.data[3];
+    const x00 = this.data[0]!;
+    const x01 = this.data[1]!;
+    const x02 = this.data[2]!;
+    const x03 = this.data[3]!;
     //
-    let y00 = this.data[4];
-    let y01 = this.data[5];
-    let y02 = this.data[6];
-    let y03 = this.data[7];
+    const y00 = this.data[4]!;
+    const y01 = this.data[5]!;
+    const y02 = this.data[6]!;
+    const y03 = this.data[7]!;
     //
-    let z00 = this.data[8];
-    let z01 = this.data[9];
-    let z02 = this.data[10];
-    let z03 = this.data[11];
+    const z00 = this.data[8]!;
+    const z01 = this.data[9]!;
+    const z02 = this.data[10]!;
+    const z03 = this.data[11]!;
     //
-    let c00 = this.data[12];
-    let c01 = this.data[13];
-    let c02 = this.data[14];
-    let c03 = this.data[15];
+    const c00 = this.data[12]!;
+    const c01 = this.data[13]!;
+    const c02 = this.data[14]!;
+    const c03 = this.data[15]!;
     this.data[12] = x00 * tx + y00 * ty + z00 * tz + c00;
     this.data[13] = x01 * tx + y01 * ty + z01 * tz + c01;
     this.data[14] = x02 * tx + y02 * ty + z02 * tz + c02;
@@ -101,19 +101,19 @@ export class Matrix {
    * @param {number} sz z scale.
    */
   scale = (sx: number, sy: number, sz: number) => {
-    this.data[0] = sx * this.data[0];
-    this.data[1] = sx * this.data[1];
-    this.data[2] = sx * this.data[2];
-    this.data[3] = sx * this.data[3];
+    this.data[0] = sx * this.data[0]!;
+    this.data[1] = sx * this.data[1]!;
+    this.data[2] = sx * this.data[2]!;
+    this.data[3] = sx * this.data[3]!;
     //
-    this.data[4] = sy * this.data[4];
-    this.data[5] = sy * this.data[5];
-    this.data[6] = sy * this.data[6];
-    this.data[7] = sy * this.data[7];
+    this.data[4] = sy * this.data[4]!;
+    this.data[5] = sy * this.data[5]!;
+    this.data[6] = sy * this.data[6]!;
+    this.data[7] = sy * this.data[7]!;
     //
-    this.data[8] = sz * this.data[8];
-    this.data[9] = sz * this.data[9];
-    this.data[10] = sz * this.data[10];
-    this.data[11] = sz * this.data[11];
+    this.data[8] = sz * this.data[8]!;
+    this.data[9] = sz * this.data[9]!;
+    this.data[10] = sz * this.data[10]!;
+    this.data[11] = sz * this.data[11]!;
   };
 }

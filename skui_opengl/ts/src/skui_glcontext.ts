@@ -1,5 +1,13 @@
-import type { int, float, ptr, Environment, Utils } from "#std/sk_types.js";
-import { Loading } from "#skui_opengl/skui_glloading.js";
+import type {
+  int,
+  float,
+  ptr,
+  Environment,
+  Utils,
+  Nullable,
+} from "@skip-wasm/std";
+import type * as Internal from "@skiplang/std/internal.js";
+import { Loading } from "./skui_glloading.js";
 
 interface Env extends Environment {
   window: () => Window;
@@ -39,18 +47,18 @@ const uniforms = [
 const attributes = ["a_position"];
 
 class State {
-  viewport: Array<number>;
-  color: Array<number>;
+  viewport: number[];
+  color: number[];
   texture: boolean;
   blend: boolean;
   blending: () => void;
 
   constructor(
-    viewport: Array<number>,
-    color: Array<number>,
+    viewport: number[],
+    color: number[],
     texture: boolean,
     blend: boolean,
-    blending: () => void,
+    blending: () => void
   ) {
     this.viewport = viewport;
     this.color = color;
@@ -65,15 +73,17 @@ class State {
       this.color,
       this.texture,
       this.blend,
-      this.blending,
+      this.blending
     );
   };
 }
 
-const nothing = () => {};
+const nothing = () => {
+  return;
+};
 
 const getContext = (canvas: HTMLCanvasElement) => {
-  let gl = canvas.getContext("webgl2", {
+  const gl = canvas.getContext("webgl2", {
     alpha: false,
     depth: false,
     antialias: false,
@@ -87,7 +97,7 @@ const getContext = (canvas: HTMLCanvasElement) => {
 export class Factory {
   utils!: Utils | null;
   private nextId: int = 0;
-  private contexts: Map<int, Context> = new Map();
+  private contexts: Map<int, Context>;
   private env!: Env;
   private loading!: Loading;
   private wId!: int;
@@ -95,18 +105,20 @@ export class Factory {
   render?: (id: int, width: int, height: int, ratio: int) => void;
   setGlContext?: (wId: int, cId: int) => void;
 
-  private constructor() {}
+  private constructor() {
+    this.contexts = new Map();
+  }
 
   static init(environment: Environment): Promise<Factory> {
-    let env = environment as Env;
-    let canvas = env.canvas();
+    const env = environment as Env;
+    const canvas = env.canvas();
     return getContext(canvas).then((gl) => {
-      let factory = new Factory();
+      const factory = new Factory();
       factory.loading = new Loading(
         canvas,
         gl,
         (handler: TimerHandler, timeout: int) =>
-          env.window().setInterval(handler, timeout),
+          env.window().setInterval(handler, timeout)
       );
       factory.loading.start();
       factory.env = env;
@@ -116,11 +128,11 @@ export class Factory {
   }
 
   createContext = (wId: int) => {
-    let id = this.nextId + 1;
+    const id = this.nextId + 1;
     this.nextId++;
     let canvas: HTMLCanvasElement;
     let glPr: Promise<WebGL2RenderingContext>;
-    let loading = this.loading.isActive();
+    const loading = this.loading.isActive();
     if (loading) {
       canvas = this.loading.canvas;
       glPr = Promise.resolve(this.loading.gl);
@@ -130,7 +142,7 @@ export class Factory {
     }
     this.wId = wId;
     return glPr.then((gl) => {
-      let context = new Context(
+      const context = new Context(
         id,
         canvas,
         gl,
@@ -140,7 +152,7 @@ export class Factory {
         this.render,
         this.setGlContext
           ? (cId: int) => this.setGlContext!(wId, cId)
-          : undefined,
+          : undefined
       );
       this.contexts.set(id, context);
       context.start(this.onRestore);
@@ -151,8 +163,9 @@ export class Factory {
     if (ev) {
       ev.preventDefault();
     }
-    this.createContext(this.wId).catch((err) =>
-      this.env.window().alert("Context cannot be restored: " + err),
+    this.createContext(this.wId).catch((err: unknown) =>
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+      this.env.window().alert("Context cannot be restored: " + err)
     );
   };
   onLost = (context: Context, ev?: Event) => {
@@ -166,13 +179,13 @@ export class Factory {
     this.loading.stop();
   };
   doOnContext = <T>(ctxId: int, fn: (glCtx: Context) => T) => {
-    let context = this.utils ? this.contexts.get(ctxId) : null;
+    const context = this.utils ? this.contexts.get(ctxId) : null;
     return context ? fn(context) : null;
   };
 
   activateTextureAt = (texture: int, location: int, index: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) =>
-      ctx.activateTextureAt(texture, location, index),
+      ctx.activateTextureAt(texture, location, index)
     );
   activeTexture = (index: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => ctx.activeTexture(index));
@@ -199,8 +212,8 @@ export class Factory {
     this.doOnContext(ctxId, (ctx) => ctx.compileShader(shader));
   isCompiled: (shader: int, ctxId: int) => boolean = (
     shader: int,
-    ctxId: int,
-  ) => this.doOnContext(ctxId, (ctx) => ctx.isCompiled(shader));
+    ctxId: int
+  ) => this.doOnContext(ctxId, (ctx) => ctx.isCompiled(shader)) ?? false;
   deleteShader = (shader: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => ctx.deleteShader(shader));
   //////////////////////// PROGRAMS ///////////////////////////////
@@ -218,7 +231,7 @@ export class Factory {
     this.doOnContext(ctxId, (ctx) => ctx.useProgram(program));
   isLinked: (program: int, ctxId: int) => boolean | null = (
     program: int,
-    ctxId: int,
+    ctxId: int
   ) => this.doOnContext(ctxId, (ctx) => ctx.isLinked(program));
   //////////////////////// BUFFERS ///////////////////////////////
   createBuffer: (ctxId: int) => int | null = (ctxId: int) =>
@@ -240,10 +253,10 @@ export class Factory {
     size: int,
     normalized: boolean,
     offset: int,
-    ctxId: int,
+    ctxId: int
   ) =>
     this.doOnContext(ctxId, (ctx) =>
-      ctx.vertexFloatAttributePointer(location, size, normalized, offset),
+      ctx.vertexFloatAttributePointer(location, size, normalized, offset)
     );
   /////////////////////////// UNIFORMS ///////////////////////////
   uniformMatrix4fv = (
@@ -265,7 +278,7 @@ export class Factory {
     v14: float,
     v15: float,
     v16: float,
-    ctxId: int,
+    ctxId: int
   ) =>
     this.doOnContext(ctxId, (ctx) =>
       ctx.uniformMatrix4fv(
@@ -286,8 +299,8 @@ export class Factory {
         v13,
         v14,
         v15,
-        v16,
-      ),
+        v16
+      )
     );
   uniform1i = (location: int, v0: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => ctx.uniform1i(location, v0));
@@ -301,7 +314,7 @@ export class Factory {
     v1: number,
     v2: number,
     v3: number,
-    ctxId: int,
+    ctxId: int
   ) =>
     this.doOnContext(ctxId, (ctx) => ctx.uniform4f(location, v0, v1, v2, v3));
   /////////////////////////// DRAW ///////////////////////////
@@ -321,7 +334,7 @@ export class Factory {
     this.doOnContext(ctxId, (ctx) => ctx.bindTextureFrameBuffer());
   framebufferTexture2DColor = (texture: int, level: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) =>
-      ctx.framebufferTexture2DColor(texture, level),
+      ctx.framebufferTexture2DColor(texture, level)
     );
   deleteFramebuffer = (buffer: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => ctx.deleteFramebuffer(buffer));
@@ -359,7 +372,7 @@ export class Factory {
     width: int,
     height: int,
     reverted: boolean,
-    ctxId: int,
+    ctxId: int
   ) =>
     this.doOnContext(ctxId, (ctx) =>
       ctx.copyTexture(
@@ -373,18 +386,28 @@ export class Factory {
         dstY,
         width,
         height,
-        reverted,
-      ),
+        reverted
+      )
     );
-  uniform4fv = (location: int, count: int, valuesPtr: ptr, ctxId: int) =>
+  uniform4fv = (
+    location: int,
+    _count: int,
+    valuesPtr: ptr<Internal.Array<Internal.Float>>,
+    ctxId: int
+  ) =>
     this.doOnContext(ctxId, (ctx) => {
-      let values = this.utils!.importFloats(valuesPtr);
+      const values = this.utils!.importFloats(valuesPtr);
       ctx.uniform4fv(location, Float32Array.from(values));
     });
-  uniform1fv = (location: int, count: int, valuesPtr: ptr, ctxId: int) => {
-    let values = this.utils!.importFloats(valuesPtr);
+  uniform1fv = (
+    location: int,
+    _count: int,
+    valuesPtr: ptr<Internal.Array<Internal.Float>>,
+    ctxId: int
+  ) => {
+    const values = this.utils!.importFloats(valuesPtr);
     this.doOnContext(ctxId, (ctx) =>
-      ctx.uniform1fv(location, Float32Array.from(values)),
+      ctx.uniform1fv(location, Float32Array.from(values))
     );
   };
   setTexture2DRGBASubImage = (
@@ -393,12 +416,12 @@ export class Factory {
     y: int,
     width: int,
     height: int,
-    dataPtr: ptr,
-    ctxId: int,
+    dataPtr: Nullable<ptr<Internal.Array<Internal.Byte>>>,
+    ctxId: int
   ) =>
     this.doOnContext(ctxId, (ctx) => {
       let pixels: Uint8ClampedArray | null = null;
-      if (dataPtr !== undefined && dataPtr !== null && this.utils != null) {
+      if (dataPtr !== null && this.utils != null) {
         pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr, 4));
       }
       ctx.setTexture2DRGBASubImage(level, x, y, width, height, pixels);
@@ -407,37 +430,41 @@ export class Factory {
     level: int,
     width: int,
     height: int,
-    dataPtr: ptr | null | undefined,
-    ctxId: int,
+    dataPtr: Nullable<ptr<Internal.Array<Internal.Byte>>>,
+    ctxId: int
   ) =>
     this.doOnContext(ctxId, (ctx) => {
       let pixels: Uint8ClampedArray | null = null;
-      if (dataPtr !== undefined && dataPtr !== null && this.utils != null) {
+      if (dataPtr !== null && this.utils != null) {
         pixels = new Uint8ClampedArray(this.utils.importBytes(dataPtr, 4));
       }
       ctx.setTexture2DRGBAImage(level, width, height, pixels);
     });
-  shaderSource = (shader: int, source: ptr, ctxId: int) =>
+  shaderSource = (shader: int, source: ptr<Internal.String>, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) =>
-      ctx.shaderSource(shader, this.utils!.importString(source)),
+      ctx.shaderSource(shader, this.utils!.importString(source))
     );
   getShaderInfoLog = (shader: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => {
-      let message = ctx.getShaderInfoLog(shader);
+      const message = ctx.getShaderInfoLog(shader);
       return message ? this.utils!.exportString(message) : null;
     });
-  staticDrawData = (dataPtr: ptr, len: int, ctxId: int) =>
+  staticDrawData = (
+    dataPtr: ptr<Internal.Array<Internal.Float>>,
+    _len: int,
+    ctxId: int
+  ) =>
     this.doOnContext(ctxId, (ctx) => {
-      let values = this.utils!.importFloats(dataPtr);
+      const values = this.utils!.importFloats(dataPtr);
       ctx.staticDrawData(Float32Array.from(values));
     });
   getProgramInfoLog = (program: int, ctxId: int) =>
     this.doOnContext(ctxId, (ctx) => {
-      let message = ctx.getProgramInfoLog(program);
+      const message = ctx.getProgramInfoLog(program);
       return message ? this.utils!.exportString(message) : null;
     });
   imageAsTexture = (ctx: int, image: HTMLImageElement) => {
-    let res = this.doOnContext(ctx, (gl) => gl.textureFromImage(image));
+    const res = this.doOnContext(ctx, (gl) => gl.textureFromImage(image));
     return res ? res : 0;
   };
 }
@@ -450,7 +477,7 @@ export class Context {
   private gKept: Set<number>;
   private gToDelete: Set<number>;
   private gVariableCount = 1;
-  private gStates: Array<State>;
+  private gStates: State[];
   private gState: State;
   private frameBuffer: WebGLFramebuffer | null = null;
   private textureBuffer: WebGLFramebuffer | null = null;
@@ -469,7 +496,7 @@ export class Context {
     lostCall: (context: Context, ev?: Event) => void,
     onMainBinding: () => void,
     render?: (id: int, width: int, height: int, ratio: int) => void,
-    setGlContext?: (id: int) => void,
+    setGlContext?: (id: int) => void
   ) {
     this.id = id;
     this.canvas = canvas;
@@ -486,7 +513,7 @@ export class Context {
       [1, 1, 1, 1],
       true,
       false,
-      nothing,
+      nothing
     );
     this.render = render;
     this.setGlContext = setGlContext;
@@ -498,7 +525,7 @@ export class Context {
       this.setGlContext(this.id);
     }
     this.animationFrameRequest = this.env.requestAnimationFrame(
-      this.onAnimationFrame,
+      this.onAnimationFrame
     );
   };
   stop = (restoreCall: (ev?: Event) => void) => {
@@ -512,31 +539,31 @@ export class Context {
   onAnimationFrame = () => {
     if (!this.gl.isContextLost()) {
       if (this.render) {
-        let devRatio = this.env.window().devicePixelRatio;
-        let ratio = Math.trunc(devRatio * 100);
+        const devRatio = this.env.window().devicePixelRatio;
+        const ratio = Math.trunc(devRatio * 100);
         this.render(
           this.id,
           Math.trunc(this.canvas.width / devRatio),
           Math.trunc(this.canvas.height / devRatio),
-          ratio,
+          ratio
         );
       }
       this.animationFrameRequest = this.env.requestAnimationFrame(
-        this.onAnimationFrame,
+        this.onAnimationFrame
       );
     }
   };
-  getGlObject = (id: int, check: boolean = false) => {
-    let obj = this.gVariables.get(id);
+  getGlObject = <T>(id: int, check: boolean = false) => {
+    const obj = this.gVariables.get(id);
     if (check) {
       console.log([id, obj]);
     }
-    return obj;
+    return obj as T;
   };
-  removeGlObject = (id: int) => {
-    let obj = this.gVariables.get(id);
+  removeGlObject = <T>(id: int) => {
+    const obj = this.gVariables.get(id);
     this.gVariables.delete(id);
-    return obj;
+    return obj as T;
   };
   glValue = (value: int) => {
     switch (value) {
@@ -562,7 +589,7 @@ export class Context {
     }
   };
   create = <T>(fn: (gl: WebGL2RenderingContext) => T) => {
-    let id = this.gVariableCount;
+    const id = this.gVariableCount;
     this.gVariables.set(id, fn(this.gl));
     this.gVariableCount++;
     return id;
@@ -585,40 +612,41 @@ export class Context {
       return;
     }
     this.env.window().setTimeout(() => {
-      let glObject = this.removeGlObject(texture);
+      const glObject = this.removeGlObject<WebGLTexture>(texture);
       this.gl.deleteTexture(glObject);
     }, 0);
   };
   bindTexture2D = (texture: int) => {
-    let glObject = texture != 0 ? this.getGlObject(texture) : null;
+    const glObject =
+      texture != 0 ? this.getGlObject<WebGLTexture>(texture) : null;
     this.gl.bindTexture(this.gl.TEXTURE_2D, glObject);
   };
   setTexture2DMinFilter = (value: int) => {
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_MIN_FILTER,
-      this.glValue(value),
+      this.glValue(value)
     );
   };
   setTexture2DMagFilter = (value: int) => {
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_MAG_FILTER,
-      this.glValue(value),
+      this.glValue(value)
     );
   };
   setTexture2DWrapS = (value: int) => {
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_WRAP_S,
-      this.glValue(value),
+      this.glValue(value)
     );
   };
   setTexture2DWrapT = (value: int) => {
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_WRAP_T,
-      this.glValue(value),
+      this.glValue(value)
     );
   };
   setTexture2DRGBASubImage = (
@@ -627,7 +655,7 @@ export class Context {
     y: int,
     width: int,
     height: int,
-    pixels: Uint8ClampedArray | null,
+    pixels: Uint8ClampedArray | null
   ) => {
     this.gl.texSubImage2D(
       this.gl.TEXTURE_2D,
@@ -638,14 +666,14 @@ export class Context {
       height,
       this.gl.RGBA,
       this.gl.UNSIGNED_BYTE,
-      pixels,
+      pixels
     );
   };
   setTexture2DRGBAImage = (
     level: int,
     width: int,
     height: int,
-    pixels: Uint8ClampedArray | null,
+    pixels: Uint8ClampedArray | null
   ) => {
     this.gl.texImage2D(
       this.gl.TEXTURE_2D,
@@ -656,7 +684,7 @@ export class Context {
       0,
       this.gl.RGBA,
       this.gl.UNSIGNED_BYTE,
-      pixels,
+      pixels
     );
   };
   //////////////////////// SHADERS ///////////////////////////////
@@ -675,8 +703,10 @@ export class Context {
   isCompiled = (shader: int) => {
     return this.gl.getShaderParameter(
       this.getGlObject(shader),
-      this.gl.COMPILE_STATUS,
-    );
+      this.gl.COMPILE_STATUS
+    )
+      ? true
+      : false;
   };
   deleteShader = (shader: int) => {
     this.gl.deleteShader(this.removeGlObject(shader));
@@ -706,7 +736,7 @@ export class Context {
   isLinked = (program: int) => {
     return this.gl.getProgramParameter(
       this.getGlObject(program),
-      this.gl.LINK_STATUS,
+      this.gl.LINK_STATUS
     ) as boolean;
   };
   getProgramInfoLog = (program: int) => {
@@ -741,7 +771,7 @@ export class Context {
     location: int,
     size: int,
     normalized: boolean,
-    offset: int,
+    offset: int
   ) => {
     this.gl.vertexAttribPointer(
       this.getGlObject(location),
@@ -749,7 +779,7 @@ export class Context {
       this.gl.FLOAT,
       normalized,
       0,
-      offset,
+      offset
     );
   };
   /////////////////////////// UNIFORMS ///////////////////////////
@@ -771,9 +801,9 @@ export class Context {
     v13: float,
     v14: float,
     v15: float,
-    v16: float,
+    v16: float
   ) => {
-    let f32s = new Float32Array([
+    const f32s = new Float32Array([
       v1,
       v2,
       v3,
@@ -821,12 +851,12 @@ export class Context {
   /////////////////////////// LOCATIONS ///////////////////////////
   getAttributeLocation = (program: int, index: int) => {
     return this.create((gl) =>
-      gl.getAttribLocation(this.getGlObject(program), attributes[index]),
+      gl.getAttribLocation(this.getGlObject(program), attributes[index]!)
     );
   };
   getUniformLocation = (program: int, index: int) => {
     return this.create((gl) =>
-      gl.getUniformLocation(this.getGlObject(program), uniforms[index]),
+      gl.getUniformLocation(this.getGlObject(program), uniforms[index]!)
     );
   };
   /////////////////////////// FRAME BUFFERS //////////////////////////////
@@ -852,7 +882,7 @@ export class Context {
       this.gl.COLOR_ATTACHMENT0,
       this.gl.TEXTURE_2D,
       this.getGlObject(texture),
-      level,
+      level
     );
   };
   deleteFramebuffer = (buffer: int) => {
@@ -885,7 +915,7 @@ export class Context {
       this.gl.SRC_ALPHA,
       this.gl.ONE_MINUS_SRC_ALPHA,
       this.gl.ONE,
-      this.gl.ONE_MINUS_SRC_ALPHA,
+      this.gl.ONE_MINUS_SRC_ALPHA
     );
   };
   disableBlend = () => {
@@ -909,16 +939,16 @@ export class Context {
     }
     this.gState.blending();
     this.gl.viewport(
-      this.gState.viewport[0],
-      this.gState.viewport[1],
-      this.gState.viewport[2],
-      this.gState.viewport[3],
+      this.gState.viewport[0]!,
+      this.gState.viewport[1]!,
+      this.gState.viewport[2]!,
+      this.gState.viewport[3]!
     );
     this.gl.clearColor(
-      this.gState.color[0],
-      this.gState.color[1],
-      this.gState.color[2],
-      this.gState.color[3],
+      this.gState.color[0]!,
+      this.gState.color[1]!,
+      this.gState.color[2]!,
+      this.gState.color[3]!
     );
   };
   clearState = () => {
@@ -934,26 +964,26 @@ export class Context {
     toPaste: int,
     srcX: int,
     srcY: int,
-    srcWidth: int,
-    srcHeight: int,
+    _srcWidth: int,
+    _srcHeight: int,
     target: int,
     dstX: int,
     dstY: int,
     width: int,
     height: int,
-    reverted: boolean,
+    reverted: boolean
   ) => {
-    var pixels = this.readPixels(toPaste, srcX, srcY, width, height);
+    const pixels = this.readPixels(toPaste, srcX, srcY, width, height);
     if (reverted) {
-      let src = new Uint32Array(pixels.buffer);
-      let buffer = new Uint32Array(width * height);
+      const src = new Uint32Array(pixels.buffer);
+      const buffer = new Uint32Array(width * height);
       for (let line = 0; line < height; line++) {
-        let srcIndex = line * width;
-        let dstIndex = (height - 1 - line) * width;
+        const srcIndex = line * width;
+        const dstIndex = (height - 1 - line) * width;
         buffer.set(src.subarray(srcIndex, width), dstIndex);
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.getGlObject(target));
-      let reverted = new Uint8ClampedArray(buffer.buffer);
+      const reverted = new Uint8ClampedArray(buffer.buffer);
       this.setTexture2DRGBASubImage(0, dstX, dstY, width, height, reverted);
     } else {
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.getGlObject(target));
@@ -962,10 +992,10 @@ export class Context {
     this.gl.bindTexture(this.gl.FRAMEBUFFER, null);
   };
   readPixels = (texture: int, x: int, y: int, width: int, height: int) => {
-    var pixels = new Uint8ClampedArray(width * height * 4);
+    const pixels = new Uint8ClampedArray(width * height * 4);
     // read texture pixels
     // make a framebuffer
-    let fb = this.gl.createFramebuffer();
+    const fb = this.gl.createFramebuffer();
     // make this the current frame buffer
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fb);
     // attach the texture to the framebuffer.
@@ -974,7 +1004,7 @@ export class Context {
       this.gl.COLOR_ATTACHMENT0,
       this.gl.TEXTURE_2D,
       this.getGlObject(texture),
-      0,
+      0
     );
     this.gl.readPixels(
       x,
@@ -983,7 +1013,7 @@ export class Context {
       height,
       this.gl.RGBA,
       this.gl.UNSIGNED_BYTE,
-      pixels,
+      pixels
     );
     // Unbind the framebuffer
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer);
@@ -1003,27 +1033,27 @@ export class Context {
   };
 
   textureFromImage = (image: HTMLImageElement) => {
-    let tex = this.createTexture();
+    const tex = this.createTexture();
     this.bindTexture2D(tex);
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_WRAP_S,
-      this.gl.CLAMP_TO_EDGE,
+      this.gl.CLAMP_TO_EDGE
     );
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_WRAP_T,
-      this.gl.CLAMP_TO_EDGE,
+      this.gl.CLAMP_TO_EDGE
     );
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_MIN_FILTER,
-      this.gl.LINEAR,
+      this.gl.LINEAR
     );
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_MAG_FILTER,
-      this.gl.LINEAR,
+      this.gl.LINEAR
     );
     this.gl.texImage2D(
       this.gl.TEXTURE_2D,
@@ -1031,7 +1061,7 @@ export class Context {
       this.gl.RGBA,
       this.gl.RGBA,
       this.gl.UNSIGNED_BYTE,
-      image,
+      image
     );
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
     return tex;
