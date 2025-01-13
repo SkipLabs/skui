@@ -1,4 +1,4 @@
-import type { Environment } from "#std/sk_types.js";
+import type { Environment } from "@skip-wasm/std";
 
 export interface GLEnv extends Environment {
   clipboard: () => Clipboard | null | undefined;
@@ -9,20 +9,19 @@ export interface GLEnv extends Environment {
   update: () => void;
 }
 
-/** @sk env browser */
 export function complete(env: Environment) {
-  let glenv = env as GLEnv;
-  let global = typeof window == "undefined" ? self : window;
+  const glenv = env as GLEnv;
+  const global = typeof window == "undefined" ? self : window;
   glenv.clipboard = () => navigator.clipboard;
   if ("location" in global) {
-    let win = global as Window;
+    const win = global as Window;
     glenv.window = () => win;
     glenv.requestAnimationFrame = (callback) =>
       win.requestAnimationFrame(callback);
     glenv.cancelAnimationFrame = (handle) => win.cancelAnimationFrame(handle);
-    let window = glenv.window();
-    let document = glenv.window().document;
-    let container = document.getElementById("skui_container") as HTMLElement;
+    const window = glenv.window();
+    const document = glenv.window().document;
+    let container = document.getElementById("skui_container");
     container = container ? container : document.body;
     let texthook = document.getElementById("skui_texthook");
     if (!texthook) {
@@ -30,22 +29,23 @@ export function complete(env: Environment) {
       texthook.id = "skui_texthook";
       container.appendChild(texthook);
     }
-    let canvas = document.getElementById("skui_canvas") as HTMLCanvasElement;
-    if (!canvas) {
-      canvas = document.createElement("canvas");
-      canvas.id = "skui_canvas";
-      container.appendChild(canvas);
+    let elem = document.getElementById("skui_canvas");
+    if (!elem) {
+      elem = document.createElement("canvas");
+      elem.id = "skui_canvas";
+      container.appendChild(elem);
     }
+    const canvas = elem as HTMLCanvasElement;
     canvas.style.overflow = "hidden";
     canvas.style.position = "absolute";
     canvas.style.top = "0px";
     canvas.style.left = "0px";
-    let width = Math.trunc(window.innerWidth);
-    let height = Math.trunc(window.innerHeight);
+    const width = Math.trunc(window.innerWidth);
+    const height = Math.trunc(window.innerHeight);
     canvas.width = width;
     canvas.height = height;
-    canvas.style.width = width + "px";
-    canvas.style.height = height + "px";
+    canvas.style.width = width.toString() + "px";
+    canvas.style.height = height.toString() + "px";
     glenv.canvas = () => canvas;
   }
 }

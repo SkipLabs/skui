@@ -1,5 +1,5 @@
-import type { int } from "#std/sk_types.js";
-import { Matrix } from "#skui_opengl/skui_matrix.js";
+import type { int } from "@skip-wasm/std";
+import { Matrix } from "./skui_matrix.js";
 
 export class Loading {
   win!: Window;
@@ -20,7 +20,7 @@ export class Loading {
   constructor(
     canvas: HTMLCanvasElement,
     gl: WebGL2RenderingContext,
-    setInterval: (handler: TimerHandler, timeout: int) => int,
+    setInterval: (handler: TimerHandler, timeout: int) => int
   ) {
     this.setInterval = setInterval;
     this.positionBuffer = gl.createBuffer();
@@ -30,7 +30,7 @@ export class Loading {
       new Float32Array([
         0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
       ]),
-      gl.STATIC_DRAW,
+      gl.STATIC_DRAW
     );
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     this.step = 0;
@@ -53,15 +53,15 @@ export class Loading {
     color1: Iterable<GLfloat>,
     color2: Iterable<GLfloat>,
     cWidth: number,
-    cHeight: number,
+    cHeight: number
   ) => {
-    let gl = this.gl;
+    const gl = this.gl;
     gl.useProgram(this.program);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     gl.enableVertexAttribArray(this.positionLocation);
     gl.vertexAttribPointer(this.positionLocation, 2, gl.FLOAT, false, 0, 0);
     // this matrix will convert from pixels to clip space
-    let matrix = new Matrix();
+    const matrix = new Matrix();
     matrix.setAsOrthographic(0, cWidth, cHeight, 0, -1, 1);
     // this matrix will translate our quad to dstX, dstY
     matrix.translate(x, y, 0);
@@ -69,10 +69,10 @@ export class Loading {
     matrix.scale(width, height, 1);
     // Set the matrix.
     gl.uniformMatrix4fv(this.matrixLocation, false, matrix.data);
-    gl.uniform4fv(this.color1Location, color1);
-    gl.uniform4fv(this.color2Location, color2);
+    gl.uniform4fv(this.color1Location, Array.from(color1));
+    gl.uniform4fv(this.color2Location, Array.from(color2));
     gl.uniform1i(this.stepLocation, this.step);
-    let len = Math.sqrt(width * width + height * height);
+    const len = Math.sqrt(width * width + height * height);
     gl.uniform1f(this.smoothLocation, 4.2 / len);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.disableVertexAttribArray(this.positionLocation);
@@ -97,7 +97,7 @@ export class Loading {
     this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     // Draw
-    let size = 200;
+    const size = 200;
     this.draw(
       (this.canvas.width - size) / 2.0,
       (this.canvas.height - size) / 2.0,
@@ -106,7 +106,7 @@ export class Loading {
       [0.4, 1, 0.8, 1],
       [0.2, 0.6, 1.0, 1],
       this.canvas.width,
-      this.canvas.height,
+      this.canvas.height
     );
     requestAnimationFrame(this.loading);
   };
@@ -120,7 +120,7 @@ export class Loading {
       this.gl.SRC_ALPHA,
       this.gl.ONE_MINUS_SRC_ALPHA,
       this.gl.ONE,
-      this.gl.ONE_MINUS_SRC_ALPHA,
+      this.gl.ONE_MINUS_SRC_ALPHA
     );
     this.interval = this.setInterval(this.update, 100);
     requestAnimationFrame(this.loading);
@@ -131,26 +131,26 @@ export class Loading {
 }
 
 const makeShader = (gl: WebGLRenderingContext, src: string, type: GLenum) => {
-  var shader = gl.createShader(type)!;
+  const shader = gl.createShader(type)!;
   gl.shaderSource(shader, src);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw Error("Error compiling shader: " + gl.getShaderInfoLog(shader));
+    throw Error("Error compiling shader: " + gl.getShaderInfoLog(shader)!);
   }
   return shader;
 };
 
 const loadindProgram = (gl: WebGLRenderingContext) => {
   // Compile shaders
-  var vertexShader = makeShader(gl, progressVertexShader, gl.VERTEX_SHADER)!;
-  var fragmentShader = makeShader(
+  const vertexShader = makeShader(gl, progressVertexShader, gl.VERTEX_SHADER);
+  const fragmentShader = makeShader(
     gl,
     progressFragmentShader,
-    gl.FRAGMENT_SHADER,
-  )!;
+    gl.FRAGMENT_SHADER
+  );
 
   // Create program
-  var glProgram = gl.createProgram()!;
+  const glProgram = gl.createProgram();
 
   // Attach and link shaders to the program
   gl.attachShader(glProgram, vertexShader);
