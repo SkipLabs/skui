@@ -7,7 +7,7 @@ import type {
   Shared,
   Environment,
   Nullable,
-} from "@skip-wasm/std";
+} from "../skipwasm-std/index.js";
 import type * as Internal from "./internal.js";
 
 interface ToWasm {
@@ -15,7 +15,7 @@ interface ToWasm {
   SKIP_IO_deleteExternalData: (id: int) => void;
   SKIP_IO_getExternalText: (id: int) => Nullable<ptr<Internal.String>>;
   SKIP_IO_getExternalBytes: (
-    id: int,
+    id: int
   ) => Nullable<ptr<Internal.Array<Internal.Byte>>>;
 }
 
@@ -43,7 +43,7 @@ class Data {
   }
   isBinary = () => this.data instanceof Uint8Array;
   getBytes = (
-    exportBytes: (view: Uint8Array) => ptr<Internal.Array<Internal.Byte>>,
+    exportBytes: (view: Uint8Array) => ptr<Internal.Array<Internal.Byte>>
   ) => {
     if (this.data instanceof Uint8Array) {
       return exportBytes(this.data);

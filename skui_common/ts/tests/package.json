@@ -1,16 +1,16 @@
 {
   "name": "@skui/common-tests",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "type": "module",
   "exports": {
     ".": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc && skargo build -r --target wasm32 --tests --out-dir=./dist",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist && skargo clean",
     "lint": "eslint"
   },
   "dependencies": {
-    "@skui/common": "0.0.1"
+    "@skui/common": "0.0.0"
   }
 }

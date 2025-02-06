@@ -1,10 +1,12 @@
-import { run, type ModuleInit } from "@skip-wasm/std";
-
-import { init as runtimeInit } from "@skip-wasm/std/runtime.js";
-import { init as posixInit } from "@skip-wasm/std/posix.js";
-import { init as baseInit } from "@skui/base/base.js";
-import { init as regexpInit } from "@skui/common/regexp.js";
-import { init as commonInit } from "@skui/common/common.js";
+import {
+  run,
+  type ModuleInit,
+  runtimeInit,
+  posixInit,
+  baseInit,
+  regexpInit,
+  commonInit,
+} from "@skui/common";
 
 const modules: ModuleInit[] = [
   runtimeInit,

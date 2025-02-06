@@ -7,13 +7,11 @@
     "skui_base/ts",
     "skui_common/ts/wasm",
     "skui_common/ts/tests",
-    "skui_common/ts/playwright",
     "skui_font/ts/tests",
-    "skui_font/ts/playwright",
-    "skui_mtsdf/ts/tests",
-    "skui_mtsdf/ts/playwright"
+    "skui_mtsdf/ts/tests"
   ],
   "devDependencies": {
+    "@playwright/test": "^1.50.1",
     "@skiplabs/eslint-config": "^0.0.1",
     "@skiplabs/tsconfig": "^0.0.1",
     "@types/node": "^22.10.0",
@@ -27,8 +25,5 @@
     "clean": "npm run clean --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
-  },
-  "dependencies": {
-    "@playwright/test": "^1.49.1"
   }
 }

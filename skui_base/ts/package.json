@@ -7,11 +7,8 @@
     "./types.js": "./dist/skui_types.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node ../../skip/prebuild.mjs skiplang-std skipwasm-std && tsc",
     "clean": "rm -rf dist",
     "lint": "eslint"
-  },
-  "dependencies": {
-    "@skip-wasm/std": "^1.0.4"
   }
 }

@@ -1,0 +1,4 @@
+{
+  "skui-base": "./skui_base/ts/src",
+  "skui-common": "./skui_common/ts/wasm/src"
+}

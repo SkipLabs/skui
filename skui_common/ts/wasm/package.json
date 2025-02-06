@@ -1,17 +1,14 @@
 {
   "name": "@skui/common",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./common.js": "./dist/skui_common.js",
-    "./regexp.js": "./dist/skui_regexp.js"
+    ".": "./dist/src/index.js",
+    "./internal.js": "./dist/src/internal.js"
   },
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist",
+    "build": "node ../../../skip/prebuild.mjs -l ../../../prebuild.json skiplang-std skipwasm-std skui-base && tsc",
+    "clean": "rm -rf dist skiplang-std skipwasm-std skui-base",
     "lint": "eslint"
-  },
-  "dependencies": {
-    "@skui/base": "0.0.1"
   }
 }
