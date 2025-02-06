@@ -1,9 +1,9 @@
 {
   "workspaces": [
-    "skstore/eslint-config",
-    "skstore/tsconfig",
-    "skstore/skiplang/prelude/ts/binding",
-    "skstore/skiplang/prelude/ts/wasm",
+    "skip/eslint-config",
+    "skip/tsconfig",
+    "skip/skiplang/prelude/ts/binding",
+    "skip/skiplang/prelude/ts/wasm",
     "skui_base/ts",
     "skui_common/ts/wasm",
     "skui_common/ts/tests",
