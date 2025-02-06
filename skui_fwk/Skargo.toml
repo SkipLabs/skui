@@ -4,7 +4,7 @@ version = "0.1.0"
 test-harness = "SKUIFwkTest.main"
 
 [build-dependencies]
-skbuild = { path = "../skstore/skbuild" } 
+skbuild = { path = "../skip/skbuild" } 
 
 [dependencies]
 skui_mtsdf = { "path" = "../skui_mtsdf" }

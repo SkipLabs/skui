@@ -7,14 +7,13 @@ import {
   type ModuleInit,
   type ptr,
   type ToWasmManager,
-} from "@skip-wasm/std";
-import type { Array as IArray, Byte } from "@skiplang/std/internal.js";
-
-import { init as runtimeInit } from "@skip-wasm/std/runtime.js";
-import { init as posixInit } from "@skip-wasm/std/posix.js";
-import { init as baseInit } from "@skui/base/base.js";
-import { init as regexpInit } from "@skui/common/regexp.js";
-import { init as commonInit } from "@skui/common/common.js";
+  runtimeInit,
+  posixInit,
+  baseInit,
+  regexpInit,
+  commonInit,
+} from "@skui/common";
+import type { Array as IArray, Byte } from "@skui/common/internal.js";
 
 let modules: ModuleInit[];
 
@@ -32,7 +31,8 @@ const env = await loadEnv([]);
 
 async function myfetch(relPath: string): Promise<Uint8Array> {
   const url = new URL(relPath, import.meta.url);
-  return env.fetch(url);
+  const val = await env.fetch(url);
+  return val instanceof ArrayBuffer ? new Uint8Array(val) : val;
 }
 
 try {

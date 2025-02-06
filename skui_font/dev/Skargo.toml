@@ -3,5 +3,5 @@ name = "skui_font_tests"
 version = "0.1.0"
 
 [build-dependencies]
-skbuild = { path = "../../skstore/skbuild" }
+skbuild = { path = "../../skip/skbuild" }
 

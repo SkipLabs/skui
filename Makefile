@@ -35,7 +35,7 @@ init:
 	@if [ "$(SKIP)" = "" ]; then\
         $(error SKIP must be defined.);\
   fi
-	ln -s $(realpath $(SKIP)) skstore
+	ln -s $(realpath $(SKIP)) skip
 
 .PHONY: test-native
 test-native:
@@ -61,16 +61,16 @@ enginetex:
 
 .PHONY: clean
 clean:
-	find . -path ./skstore -not -prune -or -name 'Skargo.toml' -print0 | sed 's|Skargo.toml|target|g' | xargs -0 rm -rf
+	find . -path ./skip -not -prune -or -name 'Skargo.toml' -print0 | sed 's|Skargo.toml|target|g' | xargs -0 rm -rf
 	npm run clean
 
 .PHONY: fmt-sk
 fmt-sk:
-	find . -path ./skstore -not -prune -or -name \*.sk | parallel skfmt -i :::
+	find . -path ./skip -not -prune -or -name \*.sk | parallel skfmt -i :::
 
 .PHONY: fmt-c
 fmt-c:
-	find . -path ./skstore -not -prune -or -regex '.*\.[ch]\(pp\)*' | parallel clang-format -i :::
+	find . -path ./skip -not -prune -or -regex '.*\.[ch]\(pp\)*' | parallel clang-format -i :::
 
 .PHONY: fmt-js
 fmt-js:

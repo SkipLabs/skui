@@ -6,7 +6,7 @@ version = "0.1.0"
 skui_font = { "path" = "../skui_font" }
 
 [dev-dependencies]
-sktest = { path = "../skstore/sktest" }
+sktest = { path = "../skip/sktest" }
 
 #[[bin]]
 #name = "skuimtsdf"

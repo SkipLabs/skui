@@ -4,14 +4,14 @@ version = "0.1.0"
 test-harness = "SKUIFontTest.main"
 
 [dev-dependencies]
-sktest = { path = "../skstore/sktest" }
+sktest = { path = "../skip/sktest" }
 skui_font_tests = { path = "./dev" }
 
 [dependencies]
 skui_common = { "path" = "../skui_common" }
 
 [build-dependencies]
-skbuild = { path = "../skstore/skbuild" }
+skbuild = { path = "../skip/skbuild" }
 
 #[[bin]]
 #name = "skuifont"

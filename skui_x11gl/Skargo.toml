@@ -4,10 +4,10 @@ version = "0.1.0"
 
 [dependencies]
 skui_opengl = { "path" = "../skui_opengl" }
-cli = { path = "../skstore/cli" }
+cli = { path = "../skip/cli" }
 
 [build-dependencies]
-skbuild = { path = "../skstore/skbuild" }
+skbuild = { path = "../skip/skbuild" }
 
 [[bin]]
 name = "skuix11gl"

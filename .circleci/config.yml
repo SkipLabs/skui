@@ -14,14 +14,14 @@ commands:
       - run:
           name: Fetch submodules
           command: |
-            cd skstore && git submodule update --init --recursive
+            cd skip && git submodule update --init --recursive
   cloneskip:
     description: "Clone skip"
     steps:
       - run:
           name: Clone skip
           command: |
-            git clone -b fix-copybinary --single-branch https://github.com/skiplabsdaniel/skdb.git skstore
+            git clone -b fix-copybinary --single-branch https://github.com/skiplabsdaniel/skdb.git skip
   npmsetup:
     description: "Build npm chain"
     steps:

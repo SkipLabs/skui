@@ -4,7 +4,7 @@ import type {
   Links,
   ToWasmManager,
   Utils,
-} from "@skip-wasm/std";
+} from "../skipwasm-std/index.js";
 
 interface ToWasm {
   SKIP_JS_timeStamp(): float;

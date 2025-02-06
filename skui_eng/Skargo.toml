@@ -6,7 +6,7 @@ version = "0.1.0"
 skui_fwk = { "path" = "../skui_fwk" }
 
 [build-dependencies]
-skbuild = { path = "../skstore/skbuild" } 
+skbuild = { path = "../skip/skbuild" } 
 
 
 [[bin]]

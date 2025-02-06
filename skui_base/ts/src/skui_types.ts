@@ -1,20 +1,20 @@
-import type { ptr, Nullable, Utils } from "@skip-wasm/std";
+import type { ptr, Nullable, Utils } from "../skipwasm-std/index.js";
 import type * as Internal from "./internal.js";
 
 interface Exports {
   SKIP_I18N_text: (
     txtPtr: ptr<Internal.String>,
-    optCat: Nullable<ptr<Internal.String>>,
+    optCat: Nullable<ptr<Internal.String>>
   ) => ptr<Internal.I18NText>;
   SKIP_I18N_raw: (txtPtr: ptr<Internal.String>) => ptr<Internal.I18NText>;
   SKIP_I18N_format: (
     formatPtr: ptr<Internal.I18NText>,
-    parameters: ptr<Internal.Vector<Internal.I18NText>>,
+    parameters: ptr<Internal.Vector<Internal.I18NText>>
   ) => ptr<Internal.I18NText>;
   SKIP_I18N_textVector: () => ptr<Internal.Vector<Internal.I18NText>>;
   SKIP_I18N_pushText: (
     vector: ptr<Internal.Vector<Internal.I18NText>>,
-    txtPtr: ptr<Internal.I18NText>,
+    txtPtr: ptr<Internal.I18NText>
   ) => void;
 }
 
@@ -124,7 +124,7 @@ export class SkuiUtils {
   };
   format = (
     format: ptr<Internal.I18NText>,
-    params: ptr<Internal.I18NText>[],
+    params: ptr<Internal.I18NText>[]
   ) => {
     const vector = this.exports.SKIP_I18N_textVector();
     params.forEach((ptr) => this.exports.SKIP_I18N_pushText(vector, ptr));
@@ -140,7 +140,7 @@ export class SkuiUtils {
       const f = verified as Format;
       return this.format(
         this.exportLocale(f.format),
-        f.parameters.map(this.exportLocale),
+        f.parameters.map(this.exportLocale)
       );
     }
   };
