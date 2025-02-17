@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "node": "./dist/node.js",
+      "default": "./dist/browser.js"
+    }
   },
   "scripts": {
     "build": "tsc && skargo build -r --target wasm32 --tests --out-dir=./dist && cp ../../dev/resources/tests/*.bin ./dist",
