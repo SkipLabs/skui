@@ -7,6 +7,7 @@ import {
   regexpInit,
   commonInit,
 } from "@skui/common";
+import { environment as createEnvironment } from "@skui/common/node.js";
 
 const modules: ModuleInit[] = [
   runtimeInit,
@@ -19,6 +20,6 @@ const modules: ModuleInit[] = [
 const wasmurl = new URL("./test.wasm", import.meta.url);
 
 export async function load() {
-  const data = await run(wasmurl, modules, []);
+  const data = await run(wasmurl, modules, [], createEnvironment);
   return data.main;
 }

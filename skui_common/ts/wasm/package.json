@@ -4,7 +4,9 @@
   "type": "module",
   "exports": {
     ".": "./dist/src/index.js",
-    "./internal.js": "./dist/src/internal.js"
+    "./internal.js": "./dist/src/internal.js",
+    "./node.js": "./dist/skipwasm-std/sk_node.js",
+    "./browser.js": "./dist/skipwasm-std/sk_browser.js"
   },
   "scripts": {
     "build": "node ../../../skip/prebuild.mjs -l ../../../prebuild.json skiplang-std skipwasm-std skui-base && tsc",

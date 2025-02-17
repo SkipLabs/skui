@@ -37,17 +37,45 @@ init:
   fi
 	ln -s $(realpath $(SKIP)) skip
 
+.PHONY: playwright
+playwright:
+	npx playwright install-deps && npx playwright install
+
+.PHONY: setup
+setup:
+	npm i && npm run build
+
+
 .PHONY: test-native
 test-native:
 	cd skui_common; skargo test
 	cd skui_font; skargo test
 	cd skui_mtsdf; skargo test
 
+.PHONY: run-wasm-common-tests
+run-wasm-common-tests:
+	cd skui_common/ts/playwright && npm run test --workspaces=false
+
+.PHONY: run-wasm-font-tests
+run-wasm-font-tests:
+	cd skui_font/ts/playwright && npm run test --workspaces=false
+
+.PHONY: run-wasm-mtsdf-tests
+run-wasm-mtsdf-tests:
+	cd skui_mtsdf/ts/playwright && npm run test --workspaces=false
+
+
+.PHONY: test-wasm-common
+test-wasm-common: playwright setup run-wasm-common-tests
+
+.PHONY: test-wasm-font
+test-wasm-font: playwright setup run-wasm-font-tests
+
+.PHONY: test-wasm-mtsdf
+test-wasm-mtsdf: playwright setup run-wasm-mtsdf-tests
+
 .PHONY: test-wasm
-test-wasm:
-	cd skui_common; sknpm test
-	cd skui_font; sknpm test
-	cd skui_mtsdf; sknpm test
+test-wasm: playwright setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests
 
 .PHONY: enginedoc
 enginedoc:
