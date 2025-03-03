@@ -1,6 +1,6 @@
-#include <cstdint>
 #include "string.h"
 #include <array>
+#include <cstdint>
 #include <pcre.h>
 #include <regex>
 #include <string>

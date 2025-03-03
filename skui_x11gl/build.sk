@@ -1,12 +1,12 @@
 module SkuiX11glBuild;
 
-@skbuild_source_dirs
-fun source_dirs(env: Skbuild.Env): Array<String> {
+@skui_build__source_dirs
+fun source_dirs(env: SkuiBuild.Env): Array<String> {
   if (!env.isWasm32()) Array["native/src"] else Array[]
 }
 
-@skbuild_include_dirs
-fun include_dirs(env: Skbuild.Env): Array<String> {
+@skui_build__include_dirs
+fun include_dirs(env: SkuiBuild.Env): Array<String> {
   if (!env.isWasm32()) {
     Array[
       "native/src/includes",
@@ -18,8 +18,8 @@ fun include_dirs(env: Skbuild.Env): Array<String> {
   }
 }
 
-@skbuild_links
-fun links(env: Skbuild.Env): Array<String> {
+@skui_build__links
+fun links(env: SkuiBuild.Env): Array<String> {
   if (!env.isWasm32()) {
     Array["-lX11", "-lXcursor", "-lXext", "-lXrandr"]
   } else {
@@ -31,7 +31,7 @@ module end;
 
 @debug
 fun main(): void {
-  Skbuild.build() match {
+  SkuiBuild.build() match {
   | Failure(err) -> skipExit(err.code)
   | _ -> void
   }

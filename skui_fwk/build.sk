@@ -1,7 +1,7 @@
 module SkuiFwkBuild;
 
-@skbuild_extra_sources
-fun extra_sources(env: Skbuild.Env): Array<String> {
+@skui_build__extra_sources
+fun extra_sources(env: SkuiBuild.Env): Array<String> {
   path = if (env.isWasm32()) {
     "extra/src/Wasm32.sk"
   } else {
@@ -14,7 +14,7 @@ module end;
 
 @debug
 fun main(): void {
-  Skbuild.build() match {
+  SkuiBuild.build() match {
   | Failure(err) -> skipExit(err.code)
   | _ -> void
   }
