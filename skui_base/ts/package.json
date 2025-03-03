@@ -7,7 +7,7 @@
     "./types.js": "./dist/skui_types.js"
   },
   "scripts": {
-    "build": "node ../../skip/prebuild.mjs skiplang-std skipwasm-std && tsc",
+    "build": "node ../../prebuild.mjs skiplang-std skipwasm-std && tsc",
     "clean": "rm -rf dist",
     "lint": "eslint"
   }

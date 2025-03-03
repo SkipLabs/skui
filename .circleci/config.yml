@@ -21,7 +21,7 @@ commands:
       - run:
           name: Clone skip
           command: |
-            git clone -b fix-copybinary --single-branch https://github.com/skiplabsdaniel/skdb.git skip
+            git clone https://github.com/SkipLabs/skip.git
   npmsetup:
     description: "Build npm chain"
     steps:

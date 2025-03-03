@@ -11,7 +11,7 @@ skui_font_tests = { path = "./dev" }
 skui_common = { "path" = "../skui_common" }
 
 [build-dependencies]
-skbuild = { path = "../skip/skbuild" }
+skui_build = { path = "../skui_build" }
 
 #[[bin]]
 #name = "skuifont"

@@ -6,7 +6,7 @@ version = "0.1.0"
 sktest = { path = "../skip/skiplang/sktest" }
 
 [build-dependencies]
-skbuild = { path = "../skip/skiplang/skbuild" }
+skui_build = { path = "../skui_build" }
 
 [dependencies]
 skui_base = { "path" = "../skui_base" }

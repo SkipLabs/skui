@@ -9,7 +9,7 @@
     "./browser.js": "./dist/skipwasm-std/sk_browser.js"
   },
   "scripts": {
-    "build": "node ../../../skip/prebuild.mjs -l ../../../prebuild.json skiplang-std skipwasm-std skui-base && tsc",
+    "build": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base && tsc",
     "clean": "rm -rf dist skiplang-std skipwasm-std skui-base",
     "lint": "eslint"
   }
