@@ -436,9 +436,10 @@ fun init(
       SKStore.DirName::make(dirName, "withDiscriminant/"),
       (_, writer, _key, it) ~> {
         count = 0;
-        it.each(_ -> !count = count + 1);
+        values = it.toArray();
+        values.each(_ -> !count = count + 1);
         withDiscriminant = SKStore.BoolFile(count > 1);
-        it.each(sf -> writer.set(SKStore.StrID(sf.value), withDiscriminant))
+        values.each(sf -> writer.set(SKStore.StrID(sf.value), withDiscriminant))
       },
     );
   controllersHdl = extractedHdl.map(
@@ -524,7 +525,7 @@ fun init(
     context,
     SKStore.DirName::make(dirName, "computed/"),
     (context, writer, key, it) ~> {
-      sorted = it.collect(Array).sorted();
+      sorted = it.toArray().sorted();
       if (key == SKStore.IID(0)) {
         sorted.eachWithIndex((idx, v) -> {
           writer.set(

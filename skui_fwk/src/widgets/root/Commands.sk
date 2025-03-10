@@ -281,9 +281,11 @@ class HStorage private (
         (_, writer, key, it) ~>
           key match {
           | SKStore.KKeys() ->
-            values = it.collect(Array).map(SKStore.KeyFile::type).map(v ~>
-              Layer::bKeyType(v.value)
-            );
+            values = it
+              .values()
+              .collect(Array)
+              .map(SKStore.KeyFile::type)
+              .map(v ~> Layer::bKeyType(v.value));
             layers = values.sorted();
             keys = Ui.WKeys(layers);
             writer.set(key, keys);
