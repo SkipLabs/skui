@@ -439,8 +439,7 @@ extension class EHandle {
       context,
       dirName,
       (context, writer, key, it) ~> {
-        it.assertUnique();
-        writer.set(key, f(context, key, it.first));
+        writer.set(key, f(context, key, it.assertUnique()));
       },
     )
   }
@@ -465,7 +464,7 @@ extension class EHandle {
       context,
       dirName,
       (context, writer, key, it) ~>
-        writer.set(key, f(context, it.collect(Array)))
+        writer.set(key, f(context, it.toArray()))
       ,
     )
   }
