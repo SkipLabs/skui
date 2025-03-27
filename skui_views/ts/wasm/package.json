@@ -6,8 +6,8 @@
     ".": "./dist/src/skui_launch.js"
   },
   "scripts": {
-    "build": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk && tsc && skargo build -r --target wasm32 --out-dir=./dist/src/ && mkdir -p ./dist/assets &&  cp ../../resources/src/*.bin ./dist/assets ",
-    "clean": "rm -rf dist skiplang-std skipwasm-std skui-base skui-common skui-opengl",
-    "lint": "eslint"
+    "build": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk && tsc && skargo build --target wasm32 --out-dir=./dist/src/ && mkdir -p ./dist/assets &&  cp ../../resources/src/*.bin ./dist/assets ",
+    "clean": "rm -rf dist skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk",
+    "lint": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk && eslint"
   }
 }

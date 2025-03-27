@@ -65,6 +65,9 @@ views: fwk
 start-views: views
 	npm run start -w views
 
+.PHONY: test-views
+test-views: playwright views run-views-tests
+
 .PHONY: common-tests
 common-tests: common
 	npm run build -w @skui/common-tests
@@ -94,6 +97,10 @@ run-wasm-font-tests:
 .PHONY: run-wasm-mtsdf-tests
 run-wasm-mtsdf-tests:
 	cd skui_mtsdf/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
+
+.PHONY: run-views-tests
+run-views-tests:
+	cd skui_views/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 .PHONY: test-wasm-common
 test-wasm-common: playwright common-tests run-wasm-common-tests
@@ -140,3 +147,9 @@ fmt: fmt-sk fmt-c fmt-js
 .PHONY: check-fmt
 check-fmt: fmt
 	if ! git diff --quiet --exit-code; then echo "make fmt changed some files:"; git status --porcelain; exit 1; fi
+
+.PHONY: linter
+linter:	
+	npm i
+	npm run build -w @skiplang/std -w  @skip-wasm/std -w @skui/base -w @skui/common
+	npm run lint -w @skui/base -w @skui/common -w @skui/common-tests  -w @skui/common-tests -w @skui/font-tests -w @skui/mtsdf-tests -w @skui/opengl -w @skui/fwk -w @skui/views

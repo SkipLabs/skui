@@ -22,7 +22,7 @@ export function complete(env: Environment) {
     const window = glenv.window();
     const document = glenv.window().document;
     let container = document.getElementById("skui_container");
-    container = container ? container : document.body;
+    container = container ?? document.body;
     let texthook = document.getElementById("skui_texthook");
     if (!texthook) {
       texthook = document.createElement("textarea");
