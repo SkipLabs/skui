@@ -51,7 +51,7 @@ class HState(handle: SKStore.NotTyped) extends State {
     SKUIMessage.emit(
       context,
       statePath,
-      this.handle.getDirName().toString(),
+      this.handle.dirName.toString(),
       command,
     );
   }

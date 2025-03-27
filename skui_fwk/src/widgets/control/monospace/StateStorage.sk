@@ -32,7 +32,7 @@ class HStorage(
   }
 
   fun getScope(): String {
-    this.handle.getDirName().toString()
+    this.handle.dirName.toString()
   }
 
   fun setTodo(context: mutable SKStore.Context, value: Ui.Executable): void {
@@ -413,7 +413,7 @@ class HState(
       FWKClipboard.Plain(),
       SKUIMessage.Target::forClass(
         statePath,
-        this.storage.getDirName().toString(),
+        this.storage.dirName.toString(),
         "UiMonospace.Paste",
       ),
     )
@@ -520,7 +520,7 @@ class HState(
     SKUIMessage.emit(
       context,
       statePath,
-      this.storage.getDirName().toString(),
+      this.storage.dirName.toString(),
       command,
     )
   }
@@ -530,7 +530,7 @@ class HState(
       !"What is the line number?",
       todo()/*SKUIMessage.Target::forClass(
       statePath,
-      this.storage.getDirName().toString(),
+      this.storage.dirName.toString(),
       "UiMonospace.GoToLine",
       )*/ ,
       true,

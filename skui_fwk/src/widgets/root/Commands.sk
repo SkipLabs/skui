@@ -118,7 +118,7 @@ class HStorage private (
     mouseMenu: Ui.Getter<FWK.MouseState>,
     focusMenu: Ui.Getter<FWK.FocusState>,
   ): SKStore.EHValue<Ui.MainKey, Ui.WidgetFile> {
-    dirName = this.state.getDirName();
+    dirName = this.state.dirName;
     contentHdl = this.content.map(
       k ~> k,
       Ui.WidgetFile::type,
@@ -328,7 +328,7 @@ class HStorage private (
 
   fun closeMenu(context: mutable SKStore.Context): void {
     builtHdl = SKStore.EHandle::notTyped(
-      SKStore.DirName::make(this.state.getDirName(), "widgetsbuild/"),
+      SKStore.DirName::make(this.state.dirName, "widgetsbuild/"),
     );
     if (builtHdl.exists(context)) {
       conv: SKStore.File ~> Ui.Widget = f ~> Ui.WidgetFile::type(f).widget;
@@ -385,7 +385,7 @@ class HStorage private (
     SKUIMessage.emit(
       context,
       statePath,
-      this.state.getDirName().toString(),
+      this.state.dirName.toString(),
       command,
       false,
       optDelay,

@@ -234,14 +234,14 @@ class MetricsCache(
       SKStore.IID::keyType,
       Metrics::type,
       context,
-      this.metricsHdl.getDirName(),
+      this.metricsHdl.dirName,
       (context, _self, key) ~>
         computedHdl
           .get(context, key)
           .checkEnsureVisible(input.state.getEnsureVisible(context))
       ,
     );
-    _ = Ui.nNodesBuffer(context, input, this.nodesHdl.getDirName())
+    _ = Ui.nNodesBuffer(context, input, this.nodesHdl.dirName)
   }
 }
 

@@ -900,8 +900,8 @@ class ListHandle<T: frozen>(
   ): ListHandle<U> {
     ListHandle<U>(
       this.handle.map(
-        this.handle.getKeyType(),
-        this.handle.getType(),
+        this.handle.keyType,
+        this.handle.type,
         context,
         dirName,
         (context, writer, key, it) ~>

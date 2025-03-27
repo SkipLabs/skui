@@ -298,7 +298,7 @@ class Cache(
       vtext.path.toDirName(metricsPath),
       (context, _, _) ~> Metrics::compute(context, vtext.controller),
     );
-    _ = Ui.nNodesBuffer(context, vtext, this.nodesHdl.getDirName())
+    _ = Ui.nNodesBuffer(context, vtext, this.nodesHdl.dirName)
   }
 }
 

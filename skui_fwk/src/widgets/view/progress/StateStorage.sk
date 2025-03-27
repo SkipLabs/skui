@@ -21,7 +21,7 @@ class HStorage(
   }
 
   fun getScope(): String {
-    this.handle.getDirName().toString()
+    this.handle.dirName.toString()
   }
 
   fun setIndeterminate(context: mutable SKStore.Context, optValue: ?Int): void {
@@ -50,7 +50,7 @@ class HState(handle: SKStore.Handle<SKStore.Key, SKStore.File>) extends State {
     SKUIMessage.emit(
       context,
       statePath,
-      this.handle.getDirName().toString(),
+      this.handle.dirName.toString(),
       command,
     );
   }

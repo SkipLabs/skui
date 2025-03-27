@@ -22,7 +22,7 @@ class HStorage(
   }
 
   fun getScope(): String {
-    this.handle.getDirName().toString()
+    this.handle.dirName.toString()
   }
 
   fun setTargeted(context: mutable SKStore.Context, value: Bool): void {
@@ -264,7 +264,7 @@ class HState(
       FWKClipboard.Plain(),
       SKUIMessage.Target::forClass(
         statePath,
-        this.storage.getDirName().toString(),
+        this.storage.dirName.toString(),
         "UiInput.Paste",
       ),
     )
@@ -353,7 +353,7 @@ class HState(
     SKUIMessage.emit(
       context,
       statePath,
-      this.storage.getDirName().toString(),
+      this.storage.dirName.toString(),
       command,
     );
   }
