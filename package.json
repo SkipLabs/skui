@@ -10,7 +10,7 @@
     "skui_font/ts/tests",
     "skui_mtsdf/ts/tests",
     "skui_opengl/ts",
-    "skui_views/ts"
+    "skui_views/ts/wasm"
   ],
   "devDependencies": {
     "@playwright/test": "^1.50.1",
@@ -22,7 +22,6 @@
     "typescript": "^5.7.2"
   },
   "scripts": {
-    "install": "npm run prepare --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
