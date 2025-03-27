@@ -10,7 +10,9 @@
     "skui_font/ts/tests",
     "skui_mtsdf/ts/tests",
     "skui_opengl/ts",
-    "skui_views/ts/wasm"
+    "skui_fwk/ts",
+    "skui_views/ts/wasm",
+    "skui_views/ts/views"
   ],
   "devDependencies": {
     "@playwright/test": "^1.50.1",
