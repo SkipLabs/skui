@@ -27,6 +27,7 @@ jobs:
   skui_common:
     docker:
       - image: skiplabs/skdb-base:latest
+    resource_class: large
     steps:
       - systemsetup
       - checkout
@@ -42,7 +43,7 @@ jobs:
   skui_font:
     docker:
       - image: skiplabs/skdb-base:latest
-    resource_class: xlarge
+    resource_class: large
     steps:
       - systemsetup
       - checkout
@@ -59,6 +60,7 @@ jobs:
   skui_mtsdf:
     docker:
       - image: skiplabs/skdb-base:latest
+    resource_class: large
     steps:
       - systemsetup
       - checkout
@@ -74,6 +76,7 @@ jobs:
   skui_views:
     docker:
       - image: skiplabs/skdb-base:latest
+    resource_class: large
     steps:
       - systemsetup
       - checkout
@@ -87,6 +90,7 @@ jobs:
   skui_common-wasm:
     docker:
       - image: skiplabs/skdb-base:latest
+    resource_class: large
     steps:
       - systemsetup
       - checkout
@@ -105,6 +109,7 @@ jobs:
   skui_font-wasm:
     docker:
       - image: skiplabs/skdb-base:latest
+    resource_class: large
     steps:
       - systemsetup
       - checkout
@@ -123,6 +128,7 @@ jobs:
   skui_mtsdf-wasm:
     docker:
       - image: skiplabs/skdb-base:latest
+    resource_class: large
     steps:
       - systemsetup
       - checkout
@@ -138,26 +144,35 @@ jobs:
             make test-wasm-mtsdf TEST_ARGS="-- --reporter=junit"
       - store_test_results:
           path: ~/test-results/skui_mtsdf-wasm.xml
+  lint:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run linter
+          command: |
+            make linter
 
 workflows:
   common:
     jobs:
       - skui_common
-  common-wasm:
-    jobs:
       - skui_common-wasm
   font:
     jobs:
       - skui_font
+      - skui_font-wasm
   views:
     jobs:
       - skui_views
-  font-wasm:
-    jobs:
-      - skui_font-wasm
   mtsdf:
     jobs:
       - skui_mtsdf
-  mtsdf-wasm:
-    jobs:
       - skui_mtsdf-wasm
+  linter:
+    jobs:
+      - lint

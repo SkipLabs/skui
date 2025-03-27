@@ -465,7 +465,7 @@ export class Factory {
     });
   imageAsTexture = (ctx: int, image: HTMLImageElement) => {
     const res = this.doOnContext(ctx, (gl) => gl.textureFromImage(image));
-    return res ? res : 0;
+    return res ?? 0;
   };
 }
 
@@ -868,9 +868,7 @@ export class Context {
     }
   };
   bindTextureFrameBuffer = () => {
-    if (this.textureBuffer == null) {
-      this.textureBuffer = this.gl.createFramebuffer();
-    }
+    this.textureBuffer ??= this.gl.createFramebuffer();
     if (this.frameBuffer == null) {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.textureBuffer);
       this.frameBuffer = this.textureBuffer;

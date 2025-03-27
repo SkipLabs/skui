@@ -1,0 +1,16 @@
+{
+  "name": "@skui/views-playwright",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@skui/common-tests": "0.0.0"
+  },
+  "scripts": {
+    "test": "rm -rf node_modules && dir=$(realpath ../../../node_modules) && ln -s $dir node_modules && npx playwright test",
+    "clean": "rm -rf playwright-report test-results node_modules",
+    "lint": "eslint"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1"
+  }
+}

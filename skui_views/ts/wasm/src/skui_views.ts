@@ -126,7 +126,6 @@ class LinksImpl implements Links, ToWasm {
     delay: int
   ) {
     const strMessage = this.utils.importString(message);
-    delay = delay ? delay : 0;
     // TODO manage async
     const manageMessage = (message: string) => {
       this.utils.runWithGc(() =>
@@ -210,7 +209,7 @@ class LinksImpl implements Links, ToWasm {
       const strError = skError ? this.utils.importString(skError) : null;
       const window = this.env.window();
       let container = window.document.getElementById("skui_container");
-      container = container ? container : document.body;
+      container = container ?? document.body;
       if (strError != null) {
         const div = document.createElement("div");
         div.innerHTML = html ? strError : strError.replaceAll("\n", "<br>");

@@ -31,9 +31,13 @@ const extensions: EnvInit[] = [openglComplete];
 async function launch() {
   const data = await run(wasmurl, modules, extensions, createEnvironment);
   const window = (data.environment as GLEnv).window();
-  const search = window.location.search.trim().substring(1);
-  const args = search.split("/").map((t) => decodeURIComponent(t));
-  console.log(args);
+  let args: string[] = [];
+  if ("skui_command" in window) {
+    args = window.skui_command as string[];
+  } else {
+    const search = window.location.search.trim().substring(1);
+    args = search.split("/").map((t) => decodeURIComponent(t));
+  }
   data.main(args, "");
 }
 

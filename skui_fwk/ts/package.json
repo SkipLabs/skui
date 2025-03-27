@@ -5,6 +5,6 @@
   "scripts": {
     "build": "node ../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common && tsc",
     "clean": "rm -rf dist skiplang-std skipwasm-std skui-base skui-common",
-    "lint": "eslint"
+    "lint": "node ../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common && eslint"
   }
 }
