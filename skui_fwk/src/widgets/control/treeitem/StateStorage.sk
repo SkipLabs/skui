@@ -18,7 +18,7 @@ class HStorage(name: String, handle: SKStore.INotTyped) extends Storage {
   }
 
   fun getScope(): String {
-    this.handle.getDirName().toString()
+    this.handle.dirName.toString()
   }
 
   fun setArmed(

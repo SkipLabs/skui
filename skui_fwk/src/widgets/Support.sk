@@ -85,7 +85,7 @@ class NodeCache(
     context: mutable SKStore.Context,
     widget: ParameterizedWidget,
   ): void {
-    _ = nNodesBuffer(context, widget, this.nodesHdl.getDirName())
+    _ = nNodesBuffer(context, widget, this.nodesHdl.dirName)
   }
 
   fun getNode(

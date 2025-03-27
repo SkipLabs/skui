@@ -22,7 +22,7 @@ class HStorage(
   }
 
   fun getScope(): String {
-    this.handle.getDirName().toString()
+    this.handle.dirName.toString()
   }
 
   protected fun getHandle(): SKStore.INotTyped {

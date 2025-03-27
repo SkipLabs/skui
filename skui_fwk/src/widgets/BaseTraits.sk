@@ -94,7 +94,7 @@ trait ScrollingState {
     SKUIMessage.emit(
       context,
       this.getStatePath(),
-      this.getHandle().getDirName().toString(),
+      this.getHandle().dirName.toString(),
       command,
     );
   }

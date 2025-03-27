@@ -45,34 +45,52 @@ playwright:
 setup:
 	npm i && npm run build
 
+.PHONY: skip
+skip:
+	npm i && npm run build -w @skiplang/std -w @skip-wasm/std
+
+.PHONY: common
+common: skip
+	npm run build -w @skui/base -w @skui/common
+
+.PHONY: common-tests
+common-tests: common
+	npm run build -w @skui/common-tests
+
+.PHONY: font-tests
+font-tests: common
+	npm run build -w @skui/font-tests
+
+.PHONY: mtsdf-tests
+mtsdf-tests: common
+	npm run build -w @skui/mtsdf-tests
 
 .PHONY: test-native
 test-native:
-	cd skui_common; skargo test
-	cd skui_font; skargo test
-	cd skui_mtsdf; skargo test
+	skargo test --manifest-path=skui_common/Skargo.toml
+	skargo test --manifest-path=skui_font/Skargo.toml
+	skargo test --manifest-path=skui_mtsdf/Skargo.toml
 
 .PHONY: run-wasm-common-tests
 run-wasm-common-tests:
-	cd skui_common/ts/playwright && npm run test --workspaces=false
+	cd skui_common/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 .PHONY: run-wasm-font-tests
 run-wasm-font-tests:
-	cd skui_font/ts/playwright && npm run test --workspaces=false
+	cd skui_font/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 .PHONY: run-wasm-mtsdf-tests
 run-wasm-mtsdf-tests:
-	cd skui_mtsdf/ts/playwright && npm run test --workspaces=false
-
+	cd skui_mtsdf/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 .PHONY: test-wasm-common
-test-wasm-common: playwright setup run-wasm-common-tests
+test-wasm-common: playwright common-tests run-wasm-common-tests
 
 .PHONY: test-wasm-font
-test-wasm-font: playwright setup run-wasm-font-tests
+test-wasm-font: playwright font-tests run-wasm-font-tests
 
 .PHONY: test-wasm-mtsdf
-test-wasm-mtsdf: playwright setup run-wasm-mtsdf-tests
+test-wasm-mtsdf: playwright mtsdf-tests run-wasm-mtsdf-tests
 
 .PHONY: test-wasm
 test-wasm: playwright setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests
