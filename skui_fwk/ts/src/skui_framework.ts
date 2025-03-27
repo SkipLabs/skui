@@ -4,7 +4,7 @@ import type {
   Links,
   Utils,
   ToWasmManager,
-} from "#std/sk_types.js";
+} from "../skipwasm-std/index.js";
 
 interface ToWasm {
   SKIP_FWK_applyCursor: (wId: int, cursor: int) => void;
@@ -17,13 +17,15 @@ interface Env extends Environment {
 }
 
 class LinksImpl implements Links, ToWasm {
-  env: Env | undefined;
+  env?: Env;
 
   constructor(env?: Env) {
     this.env = env;
   }
 
-  SKIP_FWK_applyCursor = (wId: int, code: int) => {
+  complete(_utils: Utils, _exports: object) {}
+
+  SKIP_FWK_applyCursor(_wId: int, code: int) {
     let cursor = "default";
     switch (code) {
       case 0:
@@ -116,38 +118,33 @@ class LinksImpl implements Links, ToWasm {
     } else {
       console.log(["Apply cursor", cursor]);
     }
-  };
-  SKIP_FWK_update!: (wId: int) => void;
+  }
 
-  complete = (utils: Utils, exports: object) => {
-    this.SKIP_FWK_update = (wId: int) => {
-      if (this.env) {
-        this.env.update();
-      } else {
-        console.log("Update");
-      }
-    };
-  };
+  SKIP_FWK_update(_wId: int) {
+    if (this.env) {
+      this.env.update();
+    } else {
+      console.log("Update");
+    }
+  }
 }
 
 class Manager implements ToWasmManager {
-  env: Env | undefined;
+  env?: Env;
 
   constructor(env?: Env) {
     this.env = env;
   }
 
   prepare = (wasm: object) => {
-    let toWasm = wasm as ToWasm;
-    let links = new LinksImpl(this.env);
-    toWasm.SKIP_FWK_applyCursor = (wId: int, code: int) =>
-      links.SKIP_FWK_applyCursor(wId, code);
-    toWasm.SKIP_FWK_update = (wId: int) => links.SKIP_FWK_update(wId);
+    const toWasm = wasm as ToWasm;
+    const links = new LinksImpl(this.env);
+    toWasm.SKIP_FWK_applyCursor = links.SKIP_FWK_applyCursor.bind(links);
+    toWasm.SKIP_FWK_update = links.SKIP_FWK_update.bind(links);
     return links;
   };
 }
 
-/** @sk init */
 export function init(env?: Environment) {
   return Promise.resolve(new Manager(env ? (env as Env) : undefined));
 }

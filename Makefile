@@ -53,6 +53,18 @@ skip:
 common: skip
 	npm run build -w @skui/base -w @skui/common
 
+.PHONY: fwk
+fwk: common
+	npm run build -w @skui/fwk
+
+.PHONY: views
+views: fwk
+	npm run build -w @skui/views
+
+.PHONY: start-views
+start-views: views
+	npm run start -w views
+
 .PHONY: common-tests
 common-tests: common
 	npm run build -w @skui/common-tests
