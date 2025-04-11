@@ -120,12 +120,10 @@ class HState(
     context: mutable SKStore.Context,
     optTab: ?String,
   ): ClosableInfo {
-    this.closableInfos.get(
-      context,
-      optTab
-        .map(tab -> SKStore.Key::unTyped(SKStore.StrID(tab)))
-        .default(SKStore.IID(0)),
-    )
+    key: SKStore.Key = optTab
+      .map(tab -> SKStore.StrID(tab))
+      .default(SKStore.IID(0));
+    this.closableInfos.get(context, key)
   }
 
   fun move(

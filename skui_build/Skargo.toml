@@ -3,4 +3,4 @@ name = "skui_build"
 version = "0.1.0"
 
 [dependencies]
-std = { path = "../skip/skiplang/prelude" }
+cc = { path = "../skip/skiplang/cc" }

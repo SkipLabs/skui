@@ -14,7 +14,7 @@ module end;
 
 @debug
 fun main(): void {
-  SkuiBuild.build() match {
+  SkuiBuild.build("skuifwk") match {
   | Failure(err) -> skipExit(err.code)
   | _ -> void
   }
