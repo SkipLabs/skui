@@ -8,17 +8,15 @@ class Env(
   name: String,
   profile: String,
   optTarget: ?String,
-  // test: Bool,
   verbose: Bool,
 ) {
   static fun create(): Env {
     Env(
-      Environ.var("PCK_DIR"),
+      Environ.var("SKARGO_MANIFEST_DIR"),
       Environ.var("OUT_DIR"),
       Environ.var("NAME"),
       Environ.var("PROFILE"),
       Environ.varOpt("TARGET"),
-      // Environ.var("TEST").lowercase() == "true",
       Environ.var("VERBOSE").lowercase() == "true",
     )
   }
@@ -89,7 +87,7 @@ class Env(
   }
 }
 
-fun build(): Result<Env, IO.Error> {
+fun build(name: String): Result<Env, IO.Error> {
   env = Env::create();
   includeDirs = Array[];
   #forEachFunction (@skui_build__include_dirs, #function, #functionName) {
@@ -121,6 +119,7 @@ fun build(): Result<Env, IO.Error> {
   };
   build_harness(
     env,
+    name,
     includeDirs,
     sourceDirs,
     preambles,
@@ -133,6 +132,7 @@ fun build(): Result<Env, IO.Error> {
 
 fun build_harness(
   env: Env,
+  name: String,
   includeDirs: Array<String>,
   sourceDirs: Array<String>,
   preambles: Array<String>,
@@ -142,62 +142,49 @@ fun build_harness(
   extraSources: Array<String>,
 ): Result<Env, IO.Error> {
   isWasm = env.isWasm32();
-  resourceObjs = Array[];
+  resourceSrcs = Array[];
   if (!isWasm) {
     for (res in resources) {
       resPath = env.resolve(res);
       if (FileSystem.exists(resPath)) {
         buildResource(env, resPath, false) match {
         | Failure(err) -> return Failure(err)
-        | Success(object) -> !resourceObjs = resourceObjs.concat(Array[object])
+        | Success(src) -> !resourceSrcs = resourceSrcs.concat(Array[src])
         }
       }
     };
     for (res in resourceDirs) {
       resPath = env.resolve(res);
       if (FileSystem.exists(resPath)) {
-        resChecker = TimeChecker().add(resPath);
-        name = Path.basename(resPath);
+        print_string(`skargo:rerun-if-changed=${resPath}`);
+        basename = Path.basename(resPath);
         archive = env.targetPath(resPath, ".tar.gz");
-        if (resChecker.isYoungerThan(archive)) {
-          ensureDirectory(Path.dirname(archive), env.verbose);
-          env.run(
-            Array["tar", "-zcvf", archive, name],
-            Some(Path.dirname(resPath)),
-          );
-        };
+        ensureDirectory(Path.dirname(archive), env.verbose);
+        env.run(
+          Array["tar", "-zcvf", archive, basename],
+          Some(Path.dirname(resPath)),
+        );
         buildResource(env, archive, true) match {
         | Failure(err) -> return Failure(err)
-        | Success(object) -> !resourceObjs = resourceObjs.concat(Array[object])
+        | Success(src) -> !resourceSrcs = resourceSrcs.concat(Array[src])
         }
       }
     }
   };
-  includeChecker = TimeChecker();
   !includeDirs = includeDirs.map(id -> {
     if (!Path.isAbsolute(id)) {
       !id = env.resolve(id)
     };
     if (FileSystem.exists(id)) {
-      !includeChecker = includeChecker.add(
+      _ = FileSystem.readFilesRecursive(
         id,
         f ~> f.endsWith(".hpp") || f.endsWith(".h"),
         _f ~> false,
-      )
+      ).each(f -> print_string(`skargo:rerun-if-changed=${f}`))
     };
     id
   });
-  libname = `lib${env.name}.a`;
-  target = env.outpath(libname);
-  buildLibrary(
-    env,
-    isWasm,
-    sourceDirs,
-    target,
-    resourceObjs,
-    includeDirs,
-    includeChecker,
-  ).each(x -> print_library(x));
+  buildLibrary(env, name, isWasm, sourceDirs, resourceSrcs, includeDirs);
   preambles
     .map(p -> {
       if (!Path.isAbsolute(p)) {
@@ -216,13 +203,12 @@ fun build_harness(
 
 fun buildLibrary(
   env: Env,
+  name: String,
   isWasm: Bool,
   sourceDirs: Array<String>,
-  target: String,
   resources: Array<String>,
   includeDirs: Array<String>,
-  includeChecker: TimeChecker,
-): ?String {
+): void {
   sources = sourceDirs.map(sd -> {
     if (!Path.isAbsolute(sd)) {
       !sd = env.resolve(sd)
@@ -234,24 +220,19 @@ fun buildLibrary(
     )
   });
   if (sources.isEmpty() && resources.isEmpty()) {
-    return None()
+    return void;
   };
-  sourcesTime = includeChecker;
-  sources.each(sd -> sd.each(s -> !sourcesTime = sourcesTime.add(s)));
-  resources.each(rcs -> !sourcesTime = sourcesTime.add(rcs));
-  includeOptions = includeDirs.map(i -> `-I${i}`);
-  if (sourcesTime.isYoungerThan(target)) {
-    objects = Array[];
-    sources.each(tsd -> {
-      new_objects = tsd
-        .map(f -> compileFile(env, isWasm, f, includeChecker, includeOptions))
-        .toArray();
-      !objects = objects.concat(new_objects)
-    });
-    cmd = Array["llvm-ar", "rcs", target].concat(objects).concat(resources);
-    run(cmd, env.verbose);
+  sources.each(f -> print_string(`skargo:rerun-if-changed=${f}`));
+  build = Cc.Build().flags(Cc.kRecommendedCflags);
+  if (isWasm) {
+    !build = build.flags(Array["-DSKIP32", "--target=wasm32", "-nostdlibinc"])
+  } else {
+    !build = build.flag("-DSKIP64")
   };
-  Some(target)
+  !build = build.includes(includeDirs);
+  sources.each(srcs -> !build = build.files(srcs.toArray()));
+  !build = build.files(resources);
+  build.compile(name);
 }
 
 fun buildResource(
@@ -259,21 +240,17 @@ fun buildResource(
   file: String,
   relToOut: Bool,
 ): Result<String, IO.Error> {
-  checker = TimeChecker(mtime(file));
-  object = if (relToOut) mvExt(file, ".o") else env.targetPath(file, ".o");
-  if (checker.isYoungerThan(object)) {
-    source = if (relToOut) mvExt(file, ".c") else env.targetPath(file, ".c");
-    ensureDirectory(Path.dirname(object), env.verbose);
-    workDir = if (relToOut) env.outDir else env.refDir;
-    relative = relative(file, workDir).fromSome();
-    name = relative.replace("/", "_").replace(".", "_");
-    copyBinary(name, file, source) match {
-    | Failure(err) -> return Failure(err)
-    | _ -> void
-    };
-    _ = compileFile(env, false, source, TimeChecker(), Array[], Some(object))
+  print_string(`skargo:rerun-if-changed=${file}`);
+  source = if (relToOut) mvExt(file, ".c") else env.targetPath(file, ".c");
+  ensureDirectory(Path.dirname(source), env.verbose);
+  workDir = if (relToOut) env.outDir else env.refDir;
+  relative = relative(file, workDir).fromSome();
+  name = relative.replace("/", "_").replace(".", "_");
+  copyBinary(name, file, source) match {
+  | Failure(err) -> return Failure(err)
+  | _ -> void
   };
-  Success(object)
+  Success(source)
 }
 
 fun mvExt(file: String, suffix: String): String {
@@ -386,62 +363,6 @@ fun copyBinary(
   srcFile.close();
   dstFile.close();
   res
-}
-
-fun compileFile(
-  env: Env,
-  isWasm: Bool,
-  source: String,
-  includesChecker: TimeChecker,
-  includes: Array<String>,
-  optObject: ?String = None(),
-): String {
-  ext = ".o";
-  debug(("0", optObject, source, ext));
-  default = env.targetPath(source, ext);
-  object = optObject.default(default);
-  debug((optObject, object));
-  if (includesChecker.add(source).isYoungerThan(object)) {
-    flags = Array[
-      "-Werror",
-      "-Wall",
-      "-Wextra",
-      "-Wno-sign-conversion",
-      "-Wno-sometimes-uninitialized",
-      "-Wno-c2x-extensions",
-      "-Wsign-compare",
-      "-Wextra-semi-stmt",
-    ];
-
-    ensureDirectory(Path.dirname(object), env.verbose);
-    cmd = (if (source.endsWith(".c")) Array["clang"] else {
-      Array["clang++"]
-    })
-      .concat(
-        if (env.profile == "debug") {
-          Array["-O0", "-g", "-DDEBUG"]
-        } else if (env.profile == "release") {
-          Array["-O3", "-DRELEASE"]
-        } else {
-          Array["-O2", "-g", "-DDEV"]
-        },
-      )
-      .concat(
-        if (isWasm) {
-          Array["-DSKIP32", "--target=wasm32", "-nostdlibinc"].concat(flags)
-        } else {
-          Array["-DSKIP64"].concat(flags)
-        },
-      )
-      .concat(includes)
-      .concat(Array["-o", object, "-c", source]);
-    run(cmd, env.verbose);
-  };
-  object
-}
-
-fun print_library(library: String): void {
-  print_string(`skargo:skc-link-lib=${library}`);
 }
 
 fun print_preamble(preamble: String): void {

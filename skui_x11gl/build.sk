@@ -31,7 +31,7 @@ module end;
 
 @debug
 fun main(): void {
-  SkuiBuild.build() match {
+  SkuiBuild.build("skuix11") match {
   | Failure(err) -> skipExit(err.code)
   | _ -> void
   }

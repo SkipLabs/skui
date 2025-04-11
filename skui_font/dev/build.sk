@@ -26,7 +26,7 @@ module end;
 
 @debug
 fun main(): void {
-  SkuiBuild.build() match {
+  SkuiBuild.build("skuifont") match {
   | Failure(err) -> skipExit(err.code)
   | _ -> void
   }

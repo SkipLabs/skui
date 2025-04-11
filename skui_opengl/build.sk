@@ -19,7 +19,7 @@ module end;
 
 @debug
 fun main(): void {
-  SkuiBuild.build() match {
+  SkuiBuild.build("skuiopengl") match {
   | Failure(err) -> skipExit(err.code)
   | _ -> void
   }
