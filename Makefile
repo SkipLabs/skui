@@ -66,7 +66,7 @@ start-views: views
 	npm run start -w views
 
 .PHONY: test-views
-test-views: playwright views run-views-tests
+test-views: views run-views-tests
 
 .PHONY: common-tests
 common-tests: common
@@ -103,16 +103,16 @@ run-views-tests:
 	cd skui_views/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 .PHONY: test-wasm-common
-test-wasm-common: playwright common-tests run-wasm-common-tests
+test-wasm-common: common-tests run-wasm-common-tests
 
 .PHONY: test-wasm-font
-test-wasm-font: playwright font-tests run-wasm-font-tests
+test-wasm-font: font-tests run-wasm-font-tests
 
 .PHONY: test-wasm-mtsdf
-test-wasm-mtsdf: playwright mtsdf-tests run-wasm-mtsdf-tests
+test-wasm-mtsdf: mtsdf-tests run-wasm-mtsdf-tests
 
 .PHONY: test-wasm
-test-wasm: playwright setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests
+test-wasm: setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests
 
 .PHONY: enginedoc
 enginedoc:

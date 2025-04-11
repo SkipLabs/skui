@@ -94,7 +94,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            make test-wasm-common TEST_ARGS="-- --reporter=junit"
+            make playwright test-wasm-common TEST_ARGS="-- --reporter=junit"
       - store_test_results:
           path: ~/test-results/skui_common-wasm.xml
   skui_font-wasm:
@@ -113,7 +113,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            make test-wasm-font TEST_ARGS="-- --reporter=junit"
+            make playwright test-wasm-font TEST_ARGS="-- --reporter=junit"
       - store_test_results:
           path: ~/test-results/skui_font-wasm.xml
   skui_mtsdf-wasm:
@@ -132,7 +132,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            make test-wasm-mtsdf TEST_ARGS="-- --reporter=junit"
+            make playwright test-wasm-mtsdf TEST_ARGS="-- --reporter=junit"
       - store_test_results:
           path: ~/test-results/skui_mtsdf-wasm.xml
   lint:
