@@ -15,14 +15,6 @@ commands:
           name: Clone skip
           command: |
             git clone --recursive https://github.com/SkipLabs/skip.git
-  compileskc:
-    description: "Compile skc"
-    steps:
-      - run:
-          name: Compile skip bootstraps
-          no_output_timeout: 30m
-          command: |
-            cd skip/skiplang/compiler && make install STAGE=0
 jobs:
   skui_common:
     docker:
@@ -48,7 +40,6 @@ jobs:
       - systemsetup
       - checkout
       - cloneskip
-      - compileskc
       - run:
           name: Run font tests
           no_output_timeout: 5m
