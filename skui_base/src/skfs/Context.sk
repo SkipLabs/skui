@@ -22,7 +22,6 @@ extension class Context {
       getWorkingContext() match {
       | Some(context) -> fn(context)
       | _ ->
-
         fromContext = gUnsafeContextGet();
         fromTick = fromContext.tick;
         context = Context::fromSaved(fromContext);

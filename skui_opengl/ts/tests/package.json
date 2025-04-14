@@ -1,0 +1,19 @@
+{
+  "name": "@skui/opengl-tests",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "node": "./dist/node.js",
+      "default": "./dist/browser.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc && skargo build -r --target wasm32 --tests --out-dir=./dist",
+    "clean": "rm -rf dist && skargo clean",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@skui/common": "0.0.0"
+  }
+}

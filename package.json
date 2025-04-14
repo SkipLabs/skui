@@ -9,7 +9,8 @@
     "skui_common/ts/tests",
     "skui_font/ts/tests",
     "skui_mtsdf/ts/tests",
-    "skui_opengl/ts",
+    "skui_opengl/ts/wasm",
+    "skui_opengl/ts/tests",
     "skui_fwk/ts",
     "skui_views/ts/wasm",
     "skui_views/ts/views"

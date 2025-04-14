@@ -151,6 +151,25 @@ jobs:
             make playwright test-wasm-mtsdf TEST_ARGS="-- --reporter=junit"
       - store_test_results:
           path: ~/test-results/skui_mtsdf-wasm.xml
+  skui_opengl-wasm:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run wasm glsl tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_opengl-wasm.xml
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            make playwright test-wasm-opengl TEST_ARGS="-- --reporter=junit"
+      - store_test_results:
+          path: ~/test-results/skui_opengl-wasm.xml
   lint:
     docker:
       - image: skiplabs/skdb-base:latest
@@ -186,3 +205,4 @@ workflows:
   glsl:
     jobs:
       - skui_opengl
+      - skui_opengl-wasm
