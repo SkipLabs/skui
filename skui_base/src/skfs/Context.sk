@@ -18,13 +18,18 @@ native fun .checkMemory(): void;
 extension class Context {
   //
   static fun withoutGc<T>(fn: mutable Context ~> T): T {
-    getWorkingContext() match {
-    | Some(context) -> fn(context)
-    | _ ->
-      fromContext = gUnsafeContextGet();
-      fromTick = fromContext.tick;
-      context = Context::fromSaved(fromContext);
-      context.performOnce(fn, fromContext, fromTick)
+    if (SKStore.gHasContext() != 0) {
+      getWorkingContext() match {
+      | Some(context) -> fn(context)
+      | _ ->
+
+        fromContext = gUnsafeContextGet();
+        fromTick = fromContext.tick;
+        context = Context::fromSaved(fromContext);
+        context.performOnce(fn, fromContext, fromTick)
+      }
+    } else {
+      invariant_violation("No context");
     }
   }
 

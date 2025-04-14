@@ -32,7 +32,7 @@ void SKIP_SKUIX11_manageResize(uint64_t wId, uint64_t w, uint64_t h,
 void SKIP_SKUIX11_performPaste(uint64_t wId, char *type, char *content);
 void SKIP_SKUIX11_windowInitialized(uint32_t wId);
 void SKIP_SKUIGL_performFrame(uint32_t ctxId, uint32_t width, uint32_t height,
-                              uint32_t ratio);
+                              uint32_t ratio, uint32_t frames);
 void SKIP_SKUIGL_setWindowContext(uint32_t wId, uint32_t ctxId);
 void SKIP_SKUIMessage_manage(char *message);
 void SKIP_SkuiViews_update();
@@ -85,9 +85,9 @@ class SKIPEventManager : public EventManager {
 public:
   SKIPEventManager() {}
   void performFrame(void *, uint32_t ctxId, void *, uint32_t width,
-                    uint32_t height, uint32_t ratio,
+                    uint32_t height, uint32_t ratio, uint32_t frames,
                     std::function<void(void *)> onDone) {
-    SKIP_SKUIGL_performFrame(ctxId, width, height, ratio);
+    SKIP_SKUIGL_performFrame(ctxId, width, height, ratio, frames);
     onDone(nullptr);
   }
 

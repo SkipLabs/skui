@@ -8,8 +8,10 @@ skui::WindowSupplier supplier;
 
 extern "C" {
 uint32_t SKIP_String_byteSize(char *str);
-void *SKIP_SKUIGL_performFrame(uint32_t ctxId, uint32_t width, uint32_t height,
-                               uint32_t ratio, uint32_t count);
+void *SKIP_SkuiX11gl_performFrame(void *enviroment, uint32_t ctxId,
+                                  void *userContext, uint32_t width,
+                                  uint32_t height, uint32_t ratio,
+                                  uint32_t frames);
 }
 
 namespace skui {
@@ -20,9 +22,11 @@ public:
   void resize(uint32_t, uint32_t, uint32_t, uint32_t) {}
   void performFrame(void *enviroment, uint32_t ctxId, void *userContext,
                     uint32_t width, uint32_t height, uint32_t ratio,
-                    uint32_t count, std::function<void(void *)> onDone) {
-    void *nContext =
-        SKIP_SKUIGL_performFrame(ctxId, width, height, ratio, count);
+                    uint32_t frames, std::function<void(void *)> onDone) {
+    (void)enviroment;
+    (void)userContext;
+    void *nContext = SKIP_SkuiX11gl_performFrame(enviroment, ctxId, userContext,
+                                                 width, height, ratio, frames);
     onDone(nContext);
   }
 

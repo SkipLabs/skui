@@ -11,61 +11,56 @@ import type * as Internal from "../skiplang-std/internal.js";
 import { Factory } from "./skui_glcontext.js";
 
 interface Exported {
-  SKIP_SKUIGL_performFrame: (
-    cid: int,
-    width: int,
-    height: int,
-    ratio: int
-  ) => void;
-  SKIP_SKUIGL_setWindowContext: (wId: int, cid: int) => void;
+  SKIP_SKUIGL_performFrame(cid: int, width: int, height: int, ratio: int): void;
+  SKIP_SKUIGL_setWindowContext(wId: int, cid: int): void;
 }
 
 interface ToWasm {
-  SKIP_GL_activateTextureAt: (
+  SKIP_GL_activateTextureAt(
     texture: int,
     location: int,
     index: int,
     ctxId: int
-  ) => void;
-  SKIP_GL_activeTexture: (index: int, ctxId: int) => void;
-  SKIP_GL_createTexture: (ctxId: int) => int | null;
-  SKIP_GL_deleteTexture: (texture: int, ctxId: int) => void;
-  SKIP_GL_bindTexture2D: (texture: int, ctxId: int) => void;
-  SKIP_GL_setTexture2DMinFilter: (value: number, ctxId: int) => void;
-  SKIP_GL_setTexture2DMagFilter: (value: number, ctxId: int) => void;
-  SKIP_GL_setTexture2DWrapS: (value: number, ctxId: int) => void;
-  SKIP_GL_setTexture2DWrapT: (value: number, ctxId: int) => void;
+  ): void;
+  SKIP_GL_activeTexture(index: int, ctxId: int): void;
+  SKIP_GL_createTexture(ctxId: int): Nullable<int>;
+  SKIP_GL_deleteTexture(texture: int, ctxId: int): void;
+  SKIP_GL_bindTexture2D(texture: int, ctxId: int): void;
+  SKIP_GL_setTexture2DMinFilter(value: number, ctxId: int): void;
+  SKIP_GL_setTexture2DMagFilter(value: number, ctxId: int): void;
+  SKIP_GL_setTexture2DWrapS(value: number, ctxId: int): void;
+  SKIP_GL_setTexture2DWrapT(value: number, ctxId: int): void;
   //////////////////////// SHADERS ///////////////////////////////
-  SKIP_GL_createFragmentShader: (ctxId: int) => int | null;
-  SKIP_GL_createVertexShader: (ctxId: int) => int | null;
-  SKIP_GL_compileShader: (shader: int, ctxId: int) => void;
-  SKIP_GL_isCompiled: (shader: int, ctxId: int) => void;
-  SKIP_GL_deleteShader: (shader: int, ctxId: int) => void;
+  SKIP_GL_createFragmentShader(ctxId: int): Nullable<int>;
+  SKIP_GL_createVertexShader(ctxId: int): Nullable<int>;
+  SKIP_GL_compileShader(shader: int, ctxId: int): void;
+  SKIP_GL_isCompiled(shader: int, ctxId: int): void;
+  SKIP_GL_deleteShader(shader: int, ctxId: int): void;
   //////////////////////// PROGRAMS ///////////////////////////////
-  SKIP_GL_createProgram: (ctxId: int) => int | null;
-  SKIP_GL_deleteProgram: (program: int, ctxId: int) => void;
-  SKIP_GL_attachShader: (program: int, shader: int, ctxId: int) => void;
-  SKIP_GL_detachShader: (program: int, shader: int, ctxId: int) => void;
-  SKIP_GL_linkProgram: (program: int, ctxId: int) => void;
-  SKIP_GL_useProgram: (program: int, ctxId: int) => void;
-  SKIP_GL_isLinked: (program: int, ctxId: int) => boolean | null;
+  SKIP_GL_createProgram(ctxId: int): Nullable<int>;
+  SKIP_GL_deleteProgram(program: int, ctxId: int): void;
+  SKIP_GL_attachShader(program: int, shader: int, ctxId: int): void;
+  SKIP_GL_detachShader(program: int, shader: int, ctxId: int): void;
+  SKIP_GL_linkProgram(program: int, ctxId: int): void;
+  SKIP_GL_useProgram(program: int, ctxId: int): void;
+  SKIP_GL_isLinked(program: int, ctxId: int): Nullable<boolean>;
   //////////////////////// BUFFERS ///////////////////////////////
-  SKIP_GL_createBuffer: (ctxId: int) => int | null;
-  SKIP_GL_deleteBuffer: (buffer: int, ctxId: int) => void;
-  SKIP_GL_bindArrayBuffer: (buffer: int, ctxId: int) => void;
-  SKIP_GL_createVertexArray: (ctxId: int) => int | null;
-  SKIP_GL_deleteVertexArray: (array: number, ctxId: int) => void;
-  SKIP_GL_bindVertexArray: (array: number, ctxId: int) => void;
-  SKIP_GL_enableVertexAttributeArray: (location: int, ctxId: int) => void;
-  SKIP_GL_vertexFloatAttributePointer: (
+  SKIP_GL_createBuffer(ctxId: int): Nullable<int>;
+  SKIP_GL_deleteBuffer(buffer: int, ctxId: int): void;
+  SKIP_GL_bindArrayBuffer(buffer: int, ctxId: int): void;
+  SKIP_GL_createVertexArray(ctxId: int): Nullable<int>;
+  SKIP_GL_deleteVertexArray(array: number, ctxId: int): void;
+  SKIP_GL_bindVertexArray(array: number, ctxId: int): void;
+  SKIP_GL_enableVertexAttributeArray(location: int, ctxId: int): void;
+  SKIP_GL_vertexFloatAttributePointer(
     location: int,
     size: int,
     normalized: boolean,
     offset: int,
     ctxId: int
-  ) => void;
+  ): void;
   /////////////////////////// UNIFORMS ///////////////////////////
-  SKIP_GL_uniformMatrix4fv: (
+  SKIP_GL_uniformMatrix4fv(
     location: int,
     transpose: boolean,
     v1: number,
@@ -85,67 +80,62 @@ interface ToWasm {
     v15: number,
     v16: number,
     ctxId: int
-  ) => void;
-  SKIP_GL_uniform1i: (location: int, v0: number, ctxId: int) => void;
-  SKIP_GL_uniform1f: (location: int, v0: number, ctxId: int) => void;
-  SKIP_GL_uniform2f: (
-    location: int,
-    v0: number,
-    v1: number,
-    ctxId: int
-  ) => void;
-  SKIP_GL_uniform4f: (
+  ): void;
+  SKIP_GL_uniform1i(location: int, v0: number, ctxId: int): void;
+  SKIP_GL_uniform1f(location: int, v0: number, ctxId: int): void;
+  SKIP_GL_uniform2f(location: int, v0: number, v1: number, ctxId: int): void;
+  SKIP_GL_uniform4f(
     location: int,
     v0: number,
     v1: number,
     v2: number,
     v3: number,
     ctxId: int
-  ) => void;
+  ): void;
   /////////////////////////// DRAW ///////////////////////////
-  SKIP_GL_drawTriangleStrip: (first: int, count: int, ctxId: int) => void;
-  SKIP_GL_drawTriangles: (first: int, count: int, ctxId: int) => void;
+  SKIP_GL_drawTriangleStrip(first: int, count: int, ctxId: int): void;
+  SKIP_GL_drawTriangles(first: int, count: int, ctxId: int): void;
   /////////////////////////// LOCATIONS ///////////////////////////
-  SKIP_GL_getAttributeLocation: (
+  SKIP_GL_getAttributeLocation(
+    program: int,
+    name: ptr<Internal.String>,
+    ctxId: int
+  ): Nullable<int>;
+  SKIP_GL_getIdxAttributeLocation(
     program: int,
     index: int,
     ctxId: int
-  ) => int | null;
-  SKIP_GL_getUniformLocation: (
+  ): Nullable<int>;
+  SKIP_GL_getUniformLocation(
+    program: int,
+    name: ptr<Internal.String>,
+    ctxId: int
+  ): Nullable<int>;
+  SKIP_GL_getIdxUniformLocation(
     program: int,
     index: int,
     ctxId: int
-  ) => int | null;
+  ): Nullable<int>;
   /////////////////////////// FRAME BUFFERS //////////////////////////////
-  SKIP_GL_bindMainFrameBuffer: (ctxId: int) => void;
-  SKIP_GL_bindTextureFrameBuffer: (ctxId: int) => void;
-  SKIP_GL_framebufferTexture2DColor: (
-    texture: int,
-    level: int,
-    ctxId: int
-  ) => void;
-  SKIP_GL_deleteFramebuffer: (buffer: int, ctxId: int) => void;
+  SKIP_GL_bindMainFrameBuffer(ctxId: int): void;
+  SKIP_GL_bindTextureFrameBuffer(ctxId: int): void;
+  SKIP_GL_framebufferTexture2DColor(texture: int, level: int, ctxId: int): void;
+  SKIP_GL_deleteFramebuffer(buffer: int, ctxId: int): void;
   /////////////////////////// STATE //////////////////////////////
-  SKIP_GL_viewport: (
-    x: int,
-    y: int,
-    width: int,
-    height: int,
-    ctxId: int
-  ) => void;
-  SKIP_GL_clearColor: (r: number, g: int, b: int, a: int, ctxId: int) => void;
-  SKIP_GL_srcAlphaBlendSrcColor: (ctxId: int) => void;
-  SKIP_GL_srcAlphaBlendOneMinus: (ctxId: int) => void;
-  SKIP_GL_oneBlendOneMinus: (ctxId: int) => void;
-  SKIP_GL_straitAlphaBlending: (ctxId: int) => void;
-  SKIP_GL_disableBlend: (ctxId: int) => void;
-  SKIP_GL_enableBlend: (ctxId: int) => void;
-  SKIP_GL_save: (ctxId: int) => void;
-  SKIP_GL_restore: (ctxId: int) => void;
+  SKIP_GL_viewport(x: int, y: int, width: int, height: int, ctxId: int): void;
+  SKIP_GL_clearColor(r: number, g: int, b: int, a: int, ctxId: int): void;
+  SKIP_GL_srcAlphaBlendSrcColor(ctxId: int): void;
+  SKIP_GL_srcAlphaBlendOneMinus(ctxId: int): void;
+  SKIP_GL_oneBlendOneMinus(ctxId: int): void;
+  SKIP_GL_straitAlphaBlending(ctxId: int): void;
+  SKIP_GL_disableBlend(ctxId: int): void;
+  SKIP_GL_enableBlend(ctxId: int): void;
+  SKIP_GL_save(ctxId: int): void;
+  SKIP_GL_restore(ctxId: int): void;
   //////////////////////// UTILS ///////////////////////////////
-  SKIP_GL_flush: (ctxId: int) => void;
-  SKIP_GL_clear: (ctxId: int) => void;
-  SKIP_GL_copyTexture: (
+  SKIP_GL_flush(ctxId: int): void;
+  SKIP_GL_clear(ctxId: int): void;
+  SKIP_GL_copyTexture(
     toPaste: int,
     srcX: int,
     srcY: int,
@@ -158,32 +148,32 @@ interface ToWasm {
     height: int,
     reverted: boolean,
     ctxId: int
-  ) => void;
-  SKIP_GL_uniform4fv: (
+  ): void;
+  SKIP_GL_uniform4fv(
     location: int,
     count: int,
     valuesPtr: ptr<Internal.Array<Internal.Float>>,
     ctxId: int
-  ) => void;
-  SKIP_GL_uniform3fv: (
-    location: int,
-    count: int,
-    valuesPtr: ptr,
-    ctxId: int,
-  ) => void;
-  SKIP_GL_uniform2fv: (
-    location: int,
-    count: int,
-    valuesPtr: ptr,
-    ctxId: int,
-  ) => void;
-  SKIP_GL_uniform1fv: (
+  ): void;
+  SKIP_GL_uniform3fv(
     location: int,
     count: int,
     valuesPtr: ptr<Internal.Array<Internal.Float>>,
     ctxId: int
-  ) => void;
-  SKIP_GL_setTexture2DRGBASubImage: (
+  ): void;
+  SKIP_GL_uniform2fv(
+    location: int,
+    count: int,
+    valuesPtr: ptr<Internal.Array<Internal.Float>>,
+    ctxId: int
+  ): void;
+  SKIP_GL_uniform1fv(
+    location: int,
+    count: int,
+    valuesPtr: ptr<Internal.Array<Internal.Float>>,
+    ctxId: int
+  ): void;
+  SKIP_GL_setTexture2DRGBASubImage(
     level: int,
     x: int,
     y: int,
@@ -191,37 +181,37 @@ interface ToWasm {
     height: int,
     dataPtr: ptr<Internal.Array<Internal.Byte>>,
     ctxId: int
-  ) => void;
-  SKIP_GL_setTexture2DRGBAImage: (
+  ): void;
+  SKIP_GL_setTexture2DRGBAImage(
     level: int,
     width: int,
     height: int,
     dataPtr: Nullable<ptr<Internal.Array<Internal.Byte>>>,
     ctxId: int
-  ) => void;
-  SKIP_GL_shaderSource: (
+  ): void;
+  SKIP_GL_shaderSource(
     shader: int,
     source: ptr<Internal.String>,
     ctxId: int
-  ) => void;
-  SKIP_GL_getShaderInfoLog: (
+  ): void;
+  SKIP_GL_getShaderInfoLog(
     shader: int,
     ctxId: int
-  ) => Nullable<ptr<Internal.String>>;
-  SKIP_GL_staticDrawData: (
+  ): Nullable<ptr<Internal.String>>;
+  SKIP_GL_staticDrawData(
     dataPtr: ptr<Internal.Array<Internal.Float>>,
     len: int,
     ctxId: int
-  ) => void;
-  SKIP_GL_getProgramInfoLog: (
+  ): void;
+  SKIP_GL_getProgramInfoLog(
     program: int,
     ctxId: int
-  ) => Nullable<ptr<Internal.String>>;
+  ): Nullable<ptr<Internal.String>>;
 }
 
 interface Webgl extends Environment {
-  start: (wId: int) => Promise<int>;
-  imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
+  start(wId: int): Promise<int>;
+  imageAsTexture(ctx: int, image: HTMLImageElement): int;
 }
 
 export class LinksImpl implements Links {
@@ -233,16 +223,17 @@ export class LinksImpl implements Links {
     this.env = env;
   }
 
-  complete = (utils: Utils, exports: object) => {
+  complete(utils: Utils, exports: object) {
     const exported = exports as Exported;
     this.factory.utils = utils;
-    this.factory.render = exported.SKIP_SKUIGL_performFrame;
-    this.factory.setGlContext = exported.SKIP_SKUIGL_setWindowContext;
+    this.factory.render = exported.SKIP_SKUIGL_performFrame.bind(exported);
+    this.factory.setGlContext =
+      exported.SKIP_SKUIGL_setWindowContext.bind(exported);
     const env = this.env as Webgl;
     env.start = (wId: int) =>
       this.factory.createContext(wId).then((ctx) => ctx.id);
-    env.imageAsTexture = this.factory.imageAsTexture;
-  };
+    env.imageAsTexture = this.factory.imageAsTexture.bind(this.factory);
+  }
 }
 
 class Manager implements ToWasmManager {
@@ -258,296 +249,151 @@ class Manager implements ToWasmManager {
     const toWasm = wasm as ToWasm;
     const links = new LinksImpl(this.factory, this.env);
     //////////////////////// TEXTURES ///////////////////////////////
-    toWasm.SKIP_GL_activateTextureAt = (
-      texture: int,
-      location: int,
-      index: int,
-      ctxId: int
-    ) => this.factory.activateTextureAt(texture, location, index, ctxId);
-    toWasm.SKIP_GL_activeTexture = (index: int, ctxId: int) =>
-      this.factory.activeTexture(index, ctxId);
-    toWasm.SKIP_GL_createTexture = (ctxId: int) =>
-      this.factory.createTexture(ctxId);
-    toWasm.SKIP_GL_deleteTexture = (texture: int, ctxId: int) =>
-      this.factory.deleteTexture(texture, ctxId);
-    toWasm.SKIP_GL_bindTexture2D = (texture: int, ctxId: int) =>
-      this.factory.bindTexture2D(texture, ctxId);
-    toWasm.SKIP_GL_setTexture2DMinFilter = (value: number, ctxId: int) =>
-      this.factory.setTexture2DMinFilter(value, ctxId);
-    toWasm.SKIP_GL_setTexture2DMagFilter = (value: number, ctxId: int) =>
-      this.factory.setTexture2DMagFilter(value, ctxId);
-    toWasm.SKIP_GL_setTexture2DWrapS = (value: number, ctxId: int) =>
-      this.factory.setTexture2DWrapS(value, ctxId);
-    toWasm.SKIP_GL_setTexture2DWrapT = (value: number, ctxId: int) =>
-      this.factory.setTexture2DWrapT(value, ctxId);
+    toWasm.SKIP_GL_activateTextureAt = this.factory.activateTextureAt.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_activeTexture = this.factory.activeTexture.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_createTexture = this.factory.createTexture.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_deleteTexture = this.factory.deleteTexture.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_bindTexture2D = this.factory.bindTexture2D.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_setTexture2DMinFilter =
+      this.factory.setTexture2DMinFilter.bind(this.factory);
+    toWasm.SKIP_GL_setTexture2DMagFilter =
+      this.factory.setTexture2DMagFilter.bind(this.factory);
+    toWasm.SKIP_GL_setTexture2DWrapS = this.factory.setTexture2DWrapS.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_setTexture2DWrapT = this.factory.setTexture2DWrapT.bind(
+      this.factory
+    );
     //////////////////////// SHADERS ///////////////////////////////
-    toWasm.SKIP_GL_createFragmentShader = (ctxId: int) =>
-      this.factory.createFragmentShader(ctxId);
-    toWasm.SKIP_GL_createVertexShader = (ctxId: int) =>
-      this.factory.createVertexShader(ctxId);
-    toWasm.SKIP_GL_compileShader = (shader: int, ctxId: int) =>
-      this.factory.compileShader(shader, ctxId);
+    toWasm.SKIP_GL_createFragmentShader =
+      this.factory.createFragmentShader.bind(this.factory);
+    toWasm.SKIP_GL_createVertexShader = this.factory.createVertexShader.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_compileShader = this.factory.compileShader.bind(
+      this.factory
+    );
     toWasm.SKIP_GL_isCompiled = (shader: int, ctxId: int) =>
       this.factory.isCompiled(shader, ctxId);
     toWasm.SKIP_GL_deleteShader = (shader: int, ctxId: int) =>
       this.factory.deleteShader(shader, ctxId);
     //////////////////////// PROGRAMS ///////////////////////////////
-    toWasm.SKIP_GL_createProgram = (ctxId: int) =>
-      this.factory.createProgram(ctxId);
-    toWasm.SKIP_GL_deleteProgram = (program: int, ctxId: int) =>
-      this.factory.deleteProgram(program, ctxId);
-    toWasm.SKIP_GL_attachShader = (program: int, shader: int, ctxId: int) =>
-      this.factory.attachShader(program, shader, ctxId);
-    toWasm.SKIP_GL_detachShader = (program: int, shader: int, ctxId: int) =>
-      this.factory.detachShader(program, shader, ctxId);
-    toWasm.SKIP_GL_linkProgram = (program: int, ctxId: int) =>
-      this.factory.linkProgram(program, ctxId);
-    toWasm.SKIP_GL_useProgram = (program: int, ctxId: int) =>
-      this.factory.useProgram(program, ctxId);
-    toWasm.SKIP_GL_isLinked = (program: int, ctxId: int) =>
-      this.factory.isLinked(program, ctxId);
+    toWasm.SKIP_GL_createProgram = this.factory.createProgram.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_deleteProgram = this.factory.deleteProgram.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_attachShader = this.factory.attachShader.bind(this.factory);
+    toWasm.SKIP_GL_detachShader = this.factory.detachShader.bind(this.factory);
+    toWasm.SKIP_GL_linkProgram = this.factory.linkProgram.bind(this.factory);
+    toWasm.SKIP_GL_useProgram = this.factory.useProgram.bind(this.factory);
+    toWasm.SKIP_GL_isLinked = this.factory.isLinked.bind(this.factory);
     //////////////////////// BUFFERS ///////////////////////////////
-    toWasm.SKIP_GL_createBuffer = (ctxId: int) =>
-      this.factory.createBuffer(ctxId);
-    toWasm.SKIP_GL_deleteBuffer = (buffer: int, ctxId: int) =>
-      this.factory.deleteBuffer(buffer, ctxId);
-    toWasm.SKIP_GL_bindArrayBuffer = (buffer: int, ctxId: int) =>
-      this.factory.bindArrayBuffer(buffer, ctxId);
-    toWasm.SKIP_GL_createVertexArray = (ctxId: int) =>
-      this.factory.createVertexArray(ctxId);
-    toWasm.SKIP_GL_deleteVertexArray = (array: number, ctxId: int) =>
-      this.factory.deleteVertexArray(array, ctxId);
-    toWasm.SKIP_GL_bindVertexArray = (array: number, ctxId: int) =>
-      this.factory.bindVertexArray(array, ctxId);
-    toWasm.SKIP_GL_enableVertexAttributeArray = (location: int, ctxId: int) =>
-      this.factory.enableVertexAttributeArray(location, ctxId);
-    toWasm.SKIP_GL_vertexFloatAttributePointer = (
-      location: int,
-      size: int,
-      normalized: boolean,
-      offset: int,
-      ctxId: int
-    ) =>
-      this.factory.vertexFloatAttributePointer(
-        location,
-        size,
-        normalized,
-        offset,
-        ctxId
-      );
+    toWasm.SKIP_GL_createBuffer = this.factory.createBuffer.bind(this.factory);
+    toWasm.SKIP_GL_deleteBuffer = this.factory.deleteBuffer.bind(this.factory);
+    toWasm.SKIP_GL_bindArrayBuffer = this.factory.bindArrayBuffer.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_createVertexArray = this.factory.createVertexArray.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_deleteVertexArray = this.factory.deleteVertexArray.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_bindVertexArray = this.factory.bindVertexArray.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_enableVertexAttributeArray =
+      this.factory.enableVertexAttributeArray.bind(this.factory);
+    toWasm.SKIP_GL_vertexFloatAttributePointer =
+      this.factory.vertexFloatAttributePointer.bind(this.factory);
     /////////////////////////// UNIFORMS ///////////////////////////
-    toWasm.SKIP_GL_uniformMatrix4fv = (
-      location: int,
-      transpose: boolean,
-      v1: number,
-      v2: number,
-      v3: number,
-      v4: number,
-      v5: number,
-      v6: number,
-      v7: number,
-      v8: number,
-      v9: number,
-      v10: number,
-      v11: number,
-      v12: number,
-      v13: number,
-      v14: number,
-      v15: number,
-      v16: number,
-      ctxId: int
-    ) =>
-      this.factory.uniformMatrix4fv(
-        location,
-        transpose,
-        v1,
-        v2,
-        v3,
-        v4,
-        v5,
-        v6,
-        v7,
-        v8,
-        v9,
-        v10,
-        v11,
-        v12,
-        v13,
-        v14,
-        v15,
-        v16,
-        ctxId
-      );
-    toWasm.SKIP_GL_uniform1i = (location: int, v0: int, ctxId: int) =>
-      this.factory.uniform1i(location, v0, ctxId);
-    toWasm.SKIP_GL_uniform1f = (location: int, v0: number, ctxId: int) =>
-      this.factory.uniform1f(location, v0, ctxId);
-    toWasm.SKIP_GL_uniform2f = (
-      location: int,
-      v0: number,
-      v1: number,
-      ctxId: int
-    ) => this.factory.uniform2f(location, v0, v1, ctxId);
-    toWasm.SKIP_GL_uniform4f = (
-      location: int,
-      v0: number,
-      v1: number,
-      v2: number,
-      v3: number,
-      ctxId: int
-    ) => this.factory.uniform4f(location, v0, v1, v2, v3, ctxId);
+    toWasm.SKIP_GL_uniformMatrix4fv = this.factory.uniformMatrix4fv.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_uniform1i = this.factory.uniform1i.bind(this.factory);
+    toWasm.SKIP_GL_uniform1f = this.factory.uniform1f.bind(this.factory);
+    toWasm.SKIP_GL_uniform2f = this.factory.uniform2f.bind(this.factory);
+    toWasm.SKIP_GL_uniform4f = this.factory.uniform4f.bind(this.factory);
     /////////////////////////// DRAW ///////////////////////////
-    toWasm.SKIP_GL_drawTriangleStrip = (first: int, count: int, ctxId: int) =>
-      this.factory.drawTriangleStrip(first, count, ctxId);
-    toWasm.SKIP_GL_drawTriangles = (first: int, count: int, ctxId: int) =>
-      this.factory.drawTriangles(first, count, ctxId);
+    toWasm.SKIP_GL_drawTriangleStrip = this.factory.drawTriangleStrip.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_drawTriangles = this.factory.drawTriangles.bind(
+      this.factory
+    );
     /////////////////////////// LOCATIONS ///////////////////////////
-    toWasm.SKIP_GL_getAttributeLocation = (
-      program: int,
-      index: int,
-      ctxId: int
-    ) => this.factory.getAttributeLocation(program, index, ctxId);
-    toWasm.SKIP_GL_getUniformLocation = (
-      program: int,
-      index: int,
-      ctxId: int
-    ) => this.factory.getUniformLocation(program, index, ctxId);
+    toWasm.SKIP_GL_getIdxAttributeLocation =
+      this.factory.getIdxAttributeLocation.bind(this.factory);
+    toWasm.SKIP_GL_getAttributeLocation =
+      this.factory.getAttributeLocation.bind(this.factory);
+    toWasm.SKIP_GL_getIdxUniformLocation =
+      this.factory.getIdxUniformLocation.bind(this.factory);
+    toWasm.SKIP_GL_getUniformLocation = this.factory.getUniformLocation.bind(
+      this.factory
+    );
     /////////////////////////// FRAME BUFFERS //////////////////////////////
-    toWasm.SKIP_GL_bindMainFrameBuffer = (ctxId: int) =>
-      this.factory.bindMainFrameBuffer(ctxId);
-    toWasm.SKIP_GL_bindTextureFrameBuffer = (ctxId: int) =>
-      this.factory.bindTextureFrameBuffer(ctxId);
-    toWasm.SKIP_GL_framebufferTexture2DColor = (
-      texture: int,
-      level: int,
-      ctxId: int
-    ) => this.factory.framebufferTexture2DColor(texture, level, ctxId);
-    toWasm.SKIP_GL_deleteFramebuffer = (buffer: int, ctxId: int) =>
-      this.factory.deleteFramebuffer(buffer, ctxId);
+    toWasm.SKIP_GL_bindMainFrameBuffer = this.factory.bindMainFrameBuffer.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_bindTextureFrameBuffer =
+      this.factory.bindTextureFrameBuffer.bind(this.factory);
+    toWasm.SKIP_GL_framebufferTexture2DColor =
+      this.factory.framebufferTexture2DColor.bind(this.factory);
+    toWasm.SKIP_GL_deleteFramebuffer = this.factory.deleteFramebuffer.bind(
+      this.factory
+    );
     /////////////////////////// STATE //////////////////////////////
-    toWasm.SKIP_GL_viewport = (
-      x: int,
-      y: int,
-      width: int,
-      height: int,
-      ctxId: int
-    ) => this.factory.viewport(x, y, width, height, ctxId);
-    toWasm.SKIP_GL_clearColor = (
-      r: number,
-      g: int,
-      b: int,
-      a: int,
-      ctxId: int
-    ) => this.factory.clearColor(r, g, b, a, ctxId);
-    toWasm.SKIP_GL_srcAlphaBlendSrcColor = (ctxId: int) =>
-      this.factory.srcAlphaBlendSrcColor(ctxId);
-    toWasm.SKIP_GL_srcAlphaBlendOneMinus = (ctxId: int) =>
-      this.factory.srcAlphaBlendOneMinus(ctxId);
-    toWasm.SKIP_GL_oneBlendOneMinus = (ctxId: int) =>
-      this.factory.oneBlendOneMinus(ctxId);
-    toWasm.SKIP_GL_straitAlphaBlending = (ctxId: int) =>
-      this.factory.straitAlphaBlending(ctxId);
-    toWasm.SKIP_GL_disableBlend = (ctxId: int) =>
-      this.factory.disableBlend(ctxId);
-    toWasm.SKIP_GL_enableBlend = (ctxId: int) =>
-      this.factory.enableBlend(ctxId);
-    toWasm.SKIP_GL_save = (ctxId: int) => this.factory.save(ctxId);
-    toWasm.SKIP_GL_restore = (ctxId: int) => this.factory.restore(ctxId);
+    toWasm.SKIP_GL_viewport = this.factory.viewport.bind(this.factory);
+    toWasm.SKIP_GL_clearColor = this.factory.clearColor.bind(this.factory);
+    toWasm.SKIP_GL_srcAlphaBlendSrcColor =
+      this.factory.srcAlphaBlendSrcColor.bind(this.factory);
+    toWasm.SKIP_GL_srcAlphaBlendOneMinus =
+      this.factory.srcAlphaBlendOneMinus.bind(this.factory);
+    toWasm.SKIP_GL_oneBlendOneMinus = this.factory.oneBlendOneMinus.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_straitAlphaBlending = this.factory.straitAlphaBlending.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_disableBlend = this.factory.disableBlend.bind(this.factory);
+    toWasm.SKIP_GL_enableBlend = this.factory.enableBlend.bind(this.factory);
+    toWasm.SKIP_GL_save = this.factory.save.bind(this.factory);
+    toWasm.SKIP_GL_restore = this.factory.restore.bind(this.factory);
+
     //////////////////////// UTILS ///////////////////////////////
-    toWasm.SKIP_GL_flush = (ctxId: int) => this.factory.flush(ctxId);
-    toWasm.SKIP_GL_clear = (ctxId: int) => this.factory.clear(ctxId);
-    toWasm.SKIP_GL_copyTexture = (
-      toPaste: int,
-      srcX: int,
-      srcY: int,
-      srcWidth: int,
-      srcHeight: int,
-      target: int,
-      dstX: int,
-      dstY: int,
-      width: int,
-      height: int,
-      reverted: boolean,
-      ctxId: int
-    ) =>
-      this.factory.copyTexture(
-        toPaste,
-        srcX,
-        srcY,
-        srcWidth,
-        srcHeight,
-        target,
-        dstX,
-        dstY,
-        width,
-        height,
-        reverted,
-        ctxId
-      );
-    toWasm.SKIP_GL_uniform4fv = (
-      location: int,
-      count: int,
-      valuesPtr: ptr<Internal.Array<Internal.Float>>,
-      ctxId: int
-    ) => this.factory.uniform4fv(location, count, valuesPtr, ctxId);
-    toWasm.SKIP_GL_uniform2fv = (
-      location: int,
-      count: int,
-      valuesPtr: ptr,
-      ctxId: int,
-    ) => this.factory.uniform2fv(location, count, valuesPtr, ctxId);
-    toWasm.SKIP_GL_uniform3fv = (
-      location: int,
-      count: int,
-      valuesPtr: ptr,
-      ctxId: int,
-    ) => this.factory.uniform3fv(location, count, valuesPtr, ctxId);
-    toWasm.SKIP_GL_uniform1fv = (
-      location: int,
-      count: int,
-      valuesPtr: ptr<Internal.Array<Internal.Float>>,
-      ctxId: int
-    ) => this.factory.uniform1fv(location, count, valuesPtr, ctxId);
-    toWasm.SKIP_GL_setTexture2DRGBASubImage = (
-      level: int,
-      x: int,
-      y: int,
-      width: int,
-      height: int,
-      dataPtr: ptr<Internal.Array<Internal.Byte>>,
-      ctxId: int
-    ) =>
-      this.factory.setTexture2DRGBASubImage(
-        level,
-        x,
-        y,
-        width,
-        height,
-        dataPtr,
-        ctxId
-      );
-    toWasm.SKIP_GL_setTexture2DRGBAImage = (
-      level: int,
-      width: int,
-      height: int,
-      dataPtr: Nullable<ptr<Internal.Array<Internal.Byte>>>,
-      ctxId: int
-    ) =>
-      this.factory.setTexture2DRGBAImage(level, width, height, dataPtr, ctxId);
-    toWasm.SKIP_GL_shaderSource = (
-      shader: int,
-      source: ptr<Internal.String>,
-      ctxId: int
-    ) => this.factory.shaderSource(shader, source, ctxId);
-    toWasm.SKIP_GL_getShaderInfoLog = (shader: int, ctxId: int) =>
-      this.factory.getShaderInfoLog(shader, ctxId);
-    toWasm.SKIP_GL_staticDrawData = (
-      dataPtr: ptr<Internal.Array<Internal.Float>>,
-      len: int,
-      ctxId: int
-    ) => this.factory.staticDrawData(dataPtr, len, ctxId);
-    toWasm.SKIP_GL_getProgramInfoLog = (program: int, ctxId: int) =>
-      this.factory.getProgramInfoLog(program, ctxId);
+    toWasm.SKIP_GL_flush = this.factory.flush.bind(this.factory);
+    toWasm.SKIP_GL_clear = this.factory.clear.bind(this.factory);
+    toWasm.SKIP_GL_copyTexture = this.factory.copyTexture.bind(this.factory);
+    toWasm.SKIP_GL_uniform4fv = this.factory.uniform4fv.bind(this.factory);
+    toWasm.SKIP_GL_uniform2fv = this.factory.uniform2fv.bind(this.factory);
+    toWasm.SKIP_GL_uniform3fv = this.factory.uniform3fv.bind(this.factory);
+    toWasm.SKIP_GL_uniform1fv = this.factory.uniform1fv.bind(this.factory);
+    toWasm.SKIP_GL_setTexture2DRGBASubImage =
+      this.factory.setTexture2DRGBASubImage.bind(this.factory);
+    toWasm.SKIP_GL_setTexture2DRGBAImage =
+      this.factory.setTexture2DRGBAImage.bind(this.factory);
+    toWasm.SKIP_GL_shaderSource = this.factory.shaderSource.bind(this.factory);
+    toWasm.SKIP_GL_getShaderInfoLog = this.factory.getShaderInfoLog.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_staticDrawData = this.factory.staticDrawData.bind(
+      this.factory
+    );
+    toWasm.SKIP_GL_getProgramInfoLog = this.factory.getProgramInfoLog.bind(
+      this.factory
+    );
     return links;
   };
 }
@@ -725,18 +571,34 @@ class ToConsole implements ToWasmManager {
     /////////////////////////// LOCATIONS ///////////////////////////
     toWasm.SKIP_GL_getAttributeLocation = (
       program: int,
-      index: int,
+      name: ptr<Internal.String>,
       ctxId: int
     ) => {
-      console.log(["getAttributeLocation", program, index, ctxId]);
-      return index;
+      console.log(["getAttributeLocation", program, name, ctxId]);
+      return name;
     };
-    toWasm.SKIP_GL_getUniformLocation = (
+    toWasm.SKIP_GL_getIdxAttributeLocation = (
       program: int,
       index: int,
       ctxId: int
     ) => {
-      console.log(["getUniformLocation", program, index, ctxId]);
+      console.log(["getIdxAttributeLocation", program, index, ctxId]);
+      return index;
+    };
+    toWasm.SKIP_GL_getUniformLocation = (
+      program: int,
+      name: ptr<Internal.String>,
+      ctxId: int
+    ) => {
+      console.log(["getUniformLocation", program, name, ctxId]);
+      return name;
+    };
+    toWasm.SKIP_GL_getIdxUniformLocation = (
+      program: int,
+      index: int,
+      ctxId: int
+    ) => {
+      console.log(["getIdxUniformLocation", program, index, ctxId]);
       return index;
     };
     /////////////////////////// FRAME BUFFERS //////////////////////////////
