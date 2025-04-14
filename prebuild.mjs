@@ -11,7 +11,7 @@ const symlinks = {
   "skipwasm-json": "./skip/skiplang/skjson/ts/wasm/src",
   "skui-base": "./skui_base/ts/src",
   "skui-common": "./skui_common/ts/wasm/src",
-  "skui-opengl": "./skui_opengl/ts/src",
+  "skui-opengl": "./skui_opengl/ts/wasm/src",
   "skui-fwk": "./skui_fwk/ts/src",
 };
 

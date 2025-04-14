@@ -1,0 +1,4 @@
+{
+  "extends": "@skiplabs/tsconfig",
+  "exclude": ["node_modules", "dist"]
+}

@@ -80,11 +80,16 @@ font-tests: common
 mtsdf-tests: common
 	npm run build -w @skui/mtsdf-tests
 
+.PHONY: opengl-tests
+opengl-tests: common
+	npm run build -w @skui/opengl-tests
+
 .PHONY: test-native
 test-native:
 	skargo test --manifest-path=skui_common/Skargo.toml
 	skargo test --manifest-path=skui_font/Skargo.toml
 	skargo test --manifest-path=skui_mtsdf/Skargo.toml
+	skargo test --manifest-path=skui_opengl/Skargo.toml
 
 .PHONY: run-wasm-common-tests
 run-wasm-common-tests:
@@ -97,6 +102,10 @@ run-wasm-font-tests:
 .PHONY: run-wasm-mtsdf-tests
 run-wasm-mtsdf-tests:
 	cd skui_mtsdf/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
+
+.PHONY: run-wasm-opengl-tests
+run-wasm-opengl-tests:
+	cd skui_opengl/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 .PHONY: run-views-tests
 run-views-tests:
@@ -111,8 +120,11 @@ test-wasm-font: font-tests run-wasm-font-tests
 .PHONY: test-wasm-mtsdf
 test-wasm-mtsdf: mtsdf-tests run-wasm-mtsdf-tests
 
+.PHONY: test-wasm-opengl
+test-wasm-opengl: opengl-tests run-wasm-opengl-tests
+
 .PHONY: test-wasm
-test-wasm: setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests
+test-wasm: setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests run-wasm-opengl-tests
 
 .PHONY: enginedoc
 enginedoc:
@@ -152,4 +164,4 @@ check-fmt: fmt
 linter:	
 	npm i
 	npm run build -w @skiplang/std -w  @skip-wasm/std -w @skui/base -w @skui/common
-	npm run lint -w @skui/base -w @skui/common -w @skui/common-tests  -w @skui/common-tests -w @skui/font-tests -w @skui/mtsdf-tests -w @skui/opengl -w @skui/fwk -w @skui/views
+	npm run lint -w @skui/base -w @skui/common -w @skui/common-tests  -w @skui/common-tests -w @skui/font-tests -w @skui/mtsdf-tests -w @skui/opengl -w @skui/opengl-tests -w @skui/fwk -w @skui/views
