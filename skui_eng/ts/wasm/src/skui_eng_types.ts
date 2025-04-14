@@ -1,12 +1,41 @@
-// prettier-ignore
-import type { int, float, ptr, Text, Opt, Utils, Shared } from "#std/sk_types.js";
+import type {
+  int,
+  float,
+  ptr,
+  Nullable,
+  Utils,
+  Shared,
+} from "../skipwasm-std/index.js";
+
+import type { Text } from "../skui-base/skui_types.js";
+
+import type * as Internal from "./internal.js";
+
+export type Handle<T> = Internal.Opaque<number, { handle_for: T }>;
+export type Json =
+  | boolean
+  | number
+  | string
+  | JsonArray
+  | JsonObject
+  | JSObject
+  | RenderableElement;
+
+export type JsonObject = { [key: string]: Json | null };
+export type JsonArray = (Json | null)[];
+
+export type Combine = (
+  combine: (values: JsonArray) => Json,
+  combinables: Readable[],
+  write?: (value: Json) => void
+) => Property;
 
 export interface Readable {
-  get: () => any;
+  get: () => Nullable<Json>;
 }
 
 export interface Writable {
-  set: (value: any) => void;
+  set: (value: Json) => void;
 }
 
 export interface Property extends Writable, Readable {}
@@ -209,12 +238,12 @@ export class JSObject {
     this.fields = fields;
   }
 
-  toJSON = () => {
+  toJSON(): JsonObject {
     return {
       type: this.type,
-      fields: this.fields,
+      fields: this.fields as JsonObject,
     };
-  };
+  }
 }
 
 export class WidgetElement extends JSObject {}
@@ -237,6 +266,7 @@ export class DialogElement extends JSObject {}
 
 export class RenderableElement {
   renderable: Renderable;
+
   constructor(renderable: Renderable) {
     this.renderable = renderable;
   }
@@ -251,7 +281,7 @@ export type FlexConf = {
 };
 
 export type Flex = {
-  children: Value<Array<Value<Widget>>>;
+  children: Value<Value<Widget>[]>;
   vertical?: Value<boolean>;
   mainreversed?: Value<boolean>;
   corssreversed?: Value<boolean>;
@@ -262,7 +292,7 @@ export type Flex = {
 };
 
 export type Wrap = {
-  children: Value<Array<Value<Widget>>>;
+  children: Value<Value<Widget>[]>;
   vertical?: Value<boolean>;
   mainreversed?: Value<boolean>;
   corssreversed?: Value<boolean>;
@@ -277,7 +307,7 @@ export type Wrap = {
 export type StackConf = { fit?: Fit; opaque?: boolean };
 
 export type Stack = {
-  children: Value<Array<Value<Widget>>>;
+  children: Value<Value<Widget>[]>;
   configuration?: Value<Configuration>;
 };
 
@@ -420,7 +450,7 @@ export type BorderLine = {
 };
 
 export type Nested = {
-  decorations: Array<Decoration>;
+  decorations: Decoration[];
 };
 
 export type Constraints = {
@@ -497,8 +527,8 @@ export type Tab = {
 };
 
 export type Tabs = {
-  tabs?: Value<Array<TabElement>>;
-  actions?: Value<Array<IconedActionElement>>;
+  tabs?: Value<TabElement[]>;
+  actions?: Value<IconedActionElement[]>;
   active?: Value<string>;
   kind?: Value<TabsKind>;
   mode?: Value<TabsMode>;
@@ -515,7 +545,7 @@ export type TreeItem = {
   icon?: IconElement;
   tooltip?: string;
   id?: string;
-  items?: Value<Array<TreeItemElement>>;
+  items?: Value<TreeItemElement[]>;
 };
 
 export type Shortcut = {
@@ -537,7 +567,7 @@ export type DropdownItem = {
   perform: () => void;
 };
 
-export type DropdownSupplier = () => Array<DropdownElement>;
+export type DropdownSupplier = () => DropdownElement[];
 
 export type DropdownMenu = {
   id: string;
@@ -546,22 +576,19 @@ export type DropdownMenu = {
   tooltip?: string;
   disabled: boolean;
   separator: Separator;
-  items: Array<DropdownElement> | DropdownSupplier;
+  items: DropdownElement[] | DropdownSupplier;
 };
 
 export type Tree = {
-  items: Value<Array<TreeItemElement>>;
-  onExpansionChange?: (path: Array<string>, value: boolean) => void;
-  onSelectionChange?: (selection: Array<Array<string>>) => void;
-  onTreePerform?: (
-    current: Array<string>,
-    selection: Array<Array<string>>,
-  ) => void;
-  onTreeDrop?: (from: Array<string>, to: Array<string>, drop: Drop) => void;
+  items: Value<TreeItemElement[]>;
+  onExpansionChange?: (path: string[], value: boolean) => void;
+  onSelectionChange?: (selection: string[][]) => void;
+  onTreePerform?: (current: string[], selection: string[][]) => void;
+  onTreeDrop?: (from: string[][], to: string[], drop: Drop) => void;
   getContextMenu?: (
-    current: Array<string>,
-    selection: Array<Array<string>>,
-  ) => Array<DropdownElement>;
+    current: string[],
+    selection: string[][]
+  ) => DropdownElement[];
   allowMultipleSelection?: Value<boolean>;
   badgeMaxChar?: Value<int>;
   configuration?: Value<Configuration>;
@@ -569,138 +596,152 @@ export type Tree = {
 
 export type Renderable = (scope: Scope) => Widget;
 
-export var flexConf = (conf: FlexConf) => new Configuration("flexConf", conf);
-export var stackConf = (conf: StackConf) =>
+export const flexConf = (conf: FlexConf) => new Configuration("flexConf", conf);
+export const stackConf = (conf: StackConf) =>
   new Configuration("stackConf", conf);
 //
-export var icon = (setting: Icon) => new IconElement("icon", setting);
-export var range = (start: int, end: int) =>
+export const icon = (setting: Icon) => new IconElement("icon", setting);
+export const range = (start: int, end: int) =>
   new RangeElement("range", { start: start, end: end });
-export var inputKind = (setting: InputKind) =>
+export const inputKind = (setting: InputKind) =>
   new InputKindElement("inputKind", setting);
-export var status = (setting: Status) => new StatusElement("status", setting);
-export var separation = (setting: Separation) =>
+export const status = (setting: Status) => new StatusElement("status", setting);
+export const separation = (setting: Separation) =>
   new SeparationElement("separation", setting);
-export var insets = (setting: Insets) => new InsetsElement("insets", setting);
-export var constraints = (setting: Constraints) =>
+export const insets = (setting: Insets) => new InsetsElement("insets", setting);
+export const constraints = (setting: Constraints) =>
   new ConstraintsElement("constraints", setting);
-export var textStyle = (setting: TextStyle) =>
+export const textStyle = (setting: TextStyle) =>
   new TextStyleElement("textStyle", setting);
-export var shortcut = (setting: Shortcut) =>
+export const shortcut = (setting: Shortcut) =>
   new ShorcutElement("shortcut", setting);
 //
-export var background = (setting: Background) =>
+export const background = (setting: Background) =>
   new Decoration("background", setting);
-export var padding = (setting: Padding) => new Decoration("padding", setting);
-export var borderLine = (setting: BorderLine) =>
+export const padding = (setting: Padding) => new Decoration("padding", setting);
+export const borderLine = (setting: BorderLine) =>
   new Decoration("borderLine", setting);
-export var nested = (setting: Nested) => new Decoration("nested", setting);
+export const nested = (setting: Nested) => new Decoration("nested", setting);
 //
-export var iconedAction = (setting: IconedAction) =>
+export const iconedAction = (setting: IconedAction) =>
   new IconedActionElement("iconedAction", setting);
-export var tab = (setting: Tab) => new TabElement("tab", setting);
-export var treeItem = (setting: TreeItem) =>
+export const tab = (setting: Tab) => new TabElement("tab", setting);
+export const treeItem = (setting: TreeItem) =>
   new TreeItemElement("treeItem", setting);
-export var dropdownitem = (setting: DropdownItem) =>
+export const dropdownitem = (setting: DropdownItem) =>
   new DropdownElement("dropdownitem", setting);
-export var dropdownmenu = (setting: DropdownMenu) =>
+export const dropdownmenu = (setting: DropdownMenu) =>
   new DropdownElement("dropdownmenu", setting);
 //
-export var flex = (setting: Flex) => new WidgetElement("flex", setting);
-export var wrap = (setting: Wrap) => new WidgetElement("wrap", setting);
-export var stack = (setting: Stack) => new WidgetElement("stack", setting);
-export var button = (setting: Button) => new WidgetElement("button", setting);
-export var slider = (setting: Slider) => new WidgetElement("slider", setting);
-export var input = (setting: Input) => new WidgetElement("input", setting);
-export var split = (setting: Split) => new WidgetElement("split", setting);
-export var toggle = (setting: Toggle) => new WidgetElement("toggle", setting);
-export var scroll = (setting: Scroll) => new WidgetElement("scroll", setting);
-export var label = (setting: Label) => new WidgetElement("label", setting);
-export var indicator = (setting: Indicator) =>
+export const flex = (setting: Flex) => new WidgetElement("flex", setting);
+export const wrap = (setting: Wrap) => new WidgetElement("wrap", setting);
+export const stack = (setting: Stack) => new WidgetElement("stack", setting);
+export const button = (setting: Button) => new WidgetElement("button", setting);
+export const slider = (setting: Slider) => new WidgetElement("slider", setting);
+export const input = (setting: Input) => new WidgetElement("input", setting);
+export const split = (setting: Split) => new WidgetElement("split", setting);
+export const toggle = (setting: Toggle) => new WidgetElement("toggle", setting);
+export const scroll = (setting: Scroll) => new WidgetElement("scroll", setting);
+export const label = (setting: Label) => new WidgetElement("label", setting);
+export const indicator = (setting: Indicator) =>
   new WidgetElement("indicator", setting);
-export var decorated = (setting: Decorated) =>
+export const decorated = (setting: Decorated) =>
   new WidgetElement("decorated", setting);
-export var constrained = (setting: Constrained) =>
+export const constrained = (setting: Constrained) =>
   new WidgetElement("constrained", setting);
-export var textView = (setting: TextView) =>
+export const textView = (setting: TextView) =>
   new WidgetElement("textview", setting);
-export var tabs = (setting: Tabs) => new WidgetElement("tabs", setting);
-export var tree = (setting: Tree) => new WidgetElement("tree", setting);
+export const tabs = (setting: Tabs) => new WidgetElement("tabs", setting);
+export const tree = (setting: Tree) => new WidgetElement("tree", setting);
 //
-export var insetsAll = (thickness: string) =>
+export const insetsAll = (thickness: string) =>
   insets({
     left: thickness,
     top: thickness,
     right: thickness,
     bottom: thickness,
   });
-export var paddingAll = (thickness: string) =>
+export const paddingAll = (thickness: string) =>
   padding({ padding: insetsAll(thickness) });
 //
-export var renderable = (renderable: Renderable) =>
+export const renderable = (renderable: Renderable) =>
   new RenderableElement(renderable);
 
 export interface Scope {
-  alert: (text: string | Text, title: Opt<string | Text>) => void;
-  dialog: (dialog: JSObject) => void;
-  create: (value?: any) => Property;
-  combine: (
-    combine: (values: Array<any>) => any,
-    combinables: Array<Readable>,
-    onWrite?: (value: any) => void,
-  ) => Property;
+  alert(text: string | Text, title: Nullable<string | Text>): void;
+  dialog(dialog: JSObject): void;
+  create(value?: Json): Property;
+  combine(
+    combine: (values: JsonArray) => Json,
+    combinables: Readable[],
+    write?: (value: Json) => void
+  ): Property;
 }
 
 interface Exports {
-  SKIP_UiEngineJS_register: (id: int, path: Opt<ptr>, type_: ptr) => void;
-  SKIP_UiEngineJS_toJS: (json: ptr) => int;
-  SKIP_JSON_startObject: () => ptr;
-  SKIP_JSON_addToObject: (obj: ptr, name: ptr, value: ptr) => void;
-  SKIP_JSON_endObject: (obj: ptr) => ptr;
-  SKIP_JSON_startArray: () => ptr;
-  SKIP_JSON_addToArray: (arr: ptr, value: ptr) => void;
-  SKIP_JSON_endArray: (arr: ptr) => ptr;
-  SKIP_JSON_createNull: () => ptr;
-  SKIP_JSON_createIntNumber: (v: int) => ptr;
-  SKIP_JSON_createFloatNumber: (v: float) => ptr;
-  SKIP_JSON_createString: (str: ptr) => ptr;
-  SKIP_JSON_createBool: (v: boolean) => ptr;
+  SKIP_UiEngineJS_register(
+    id: int,
+    path: Nullable<ptr<Internal.String>>,
+    type_: ptr<Internal.String>
+  ): void;
+  SKIP_UiEngineJS_toJS(json: ptr<Internal.Json>): Handle<Json>;
+  SKIP_JSON_startObject(): ptr<Internal.PartialJSObj>;
+  SKIP_JSON_addToObject(
+    obj: ptr<Internal.PartialJSObj>,
+    name: ptr<Internal.String>,
+    value: ptr<Internal.Json>
+  ): void;
+  SKIP_JSON_endObject(obj: ptr<Internal.PartialJSObj>): ptr<Internal.JSObject>;
+  SKIP_JSON_startArray(): ptr<Internal.PartialJSArray<Internal.Json>>;
+  SKIP_JSON_addToArray(
+    arr: ptr<Internal.PartialJSArray<Internal.Json>>,
+    value: ptr<Internal.Json>
+  ): void;
+  SKIP_JSON_endArray(
+    arr: ptr<Internal.PartialJSArray<Internal.Json>>
+  ): ptr<Internal.JSArray<Internal.Json>>;
+  SKIP_JSON_createNull(): ptr<Internal.Json>;
+  SKIP_JSON_createIntNumber(v: int): ptr<Internal.Json>;
+  SKIP_JSON_createFloatNumber(v: float): ptr<Internal.Json>;
+  SKIP_JSON_createString(str: ptr<Internal.String>): ptr<Internal.Json>;
+  SKIP_JSON_createBool(v: boolean): ptr<Internal.Json>;
 }
 
+export type Function = <T extends Json, P extends JsonArray>(..._: P) => T;
+
 export class State {
-  valueId = 0;
-  values = new Map<int, any>();
+  private nextID: number = 1;
+  private readonly objects: any[] = [];
+  private readonly freeIDs: number[] = [];
 
-  register = (value: any) => {
-    let id = ++this.valueId;
-    if (value != null && value != undefined) {
-      this.values.set(id, value);
-    }
-    return id;
-  };
+  register<T>(v: T): Handle<T> {
+    const freeID: number | undefined = this.freeIDs.pop();
+    const id = freeID ?? this.nextID++;
+    this.objects[id] = v;
+    return id as Handle<T>;
+  }
 
-  delete = (id: int) => {
-    let value = this.values.get(id);
-    this.values.delete(id);
-    return value;
-  };
+  get<T>(id: Handle<T>): T {
+    return this.objects[id] as T;
+  }
 
-  get = (id: int) => {
-    return this.values.get(id);
-  };
+  apply<R>(id: Handle<(..._: JsonArray) => R>, parameters: JsonArray): R {
+    const fn = this.get(id);
+    return fn.apply(null, parameters);
+  }
 
-  apply = (id: int, paremeter: Array<any>) => {
-    let fn = this.values.get(id);
-    if (fn && typeof fn == "function") {
-      return fn.apply(null, paremeter);
-    }
-    return null;
-  };
+  delete<T>(id: Handle<T>): T {
+    const current = this.get(id);
+    this.objects[id] = null;
+    this.freeIDs.push(id);
+    return current;
+  }
 }
 
 export class EngShared implements Shared {
   getName = () => "skuieng";
   createScope: (data: string) => Scope;
+
   constructor(createScope: (data: string) => Scope) {
     this.createScope = createScope;
   }
@@ -716,7 +757,7 @@ export class SkuiEngUtils {
     utils: Utils,
     exports: any,
     createScope: (name: string) => Scope,
-    state?: State,
+    state?: State
   ) {
     this.state = state ?? new State();
     this.utils = utils;
@@ -724,46 +765,53 @@ export class SkuiEngUtils {
     this.createScope = createScope;
   }
 
-  importValue(value: ptr) {
+  importValue(value: ptr<Internal.Json>) {
     return this.state.delete(this.exports.SKIP_UiEngineJS_toJS(value));
   }
 
-  register(skPath: Opt<ptr>, value: (...args: any[]) => any) {
-    let id = this.state.register(value);
+  register<R, P extends any[]>(
+    skPath: Nullable<ptr<Internal.String>>,
+    value: (..._: P) => R
+  ) {
+    const id = this.state.register(value);
     this.exports.SKIP_UiEngineJS_register(
       id,
       skPath,
-      this.utils.exportString(typeof value),
+      this.utils.exportString(typeof value)
     );
     return id;
   }
 
-  exportValue(path: Opt<string>, skPath: Opt<ptr>, value: any): ptr {
-    let type = typeof value;
-    if (value == null || value == undefined) {
+  exportValue(
+    path: Nullable<string>,
+    skPath: Nullable<ptr<Internal.String>>,
+    value: Json | Function | null
+  ): ptr<Internal.Json> {
+    const type = typeof value;
+    if (value == null) {
       return this.exports.SKIP_JSON_createNull();
     } else if (type == "number") {
-      return this.exports.SKIP_JSON_createFloatNumber(value);
+      return this.exports.SKIP_JSON_createFloatNumber(value as number);
     } else if (type == "boolean") {
-      return this.exports.SKIP_JSON_createBool(value);
+      return this.exports.SKIP_JSON_createBool(value as boolean);
     } else if (type == "string") {
       return this.exports.SKIP_JSON_createString(
-        this.utils.exportString(value),
+        this.utils.exportString(value as string)
       );
     } else if (Array.isArray(value)) {
-      let arr = this.exports.SKIP_JSON_startArray();
+      const arr = this.exports.SKIP_JSON_startArray();
       value.forEach((v) =>
         this.exports.SKIP_JSON_addToArray(
           arr,
-          this.exportValue(path, skPath, v),
-        ),
+          this.exportValue(path, skPath, v)
+        )
       );
       return this.exports.SKIP_JSON_endArray(arr);
     } else if (value instanceof RenderableElement) {
-      let render = (strScope: string) => {
+      const render = (strScope: string) => {
         return value.renderable(this.createScope(strScope));
       };
-      let id = this.register(skPath, render);
+      const id = this.register(skPath, render);
       return this.exportValue(path, skPath, {
         type: "renderable",
         fields: {
@@ -772,21 +820,19 @@ export class SkuiEngUtils {
         },
       });
     } else if (type == "object") {
-      let jso = value;
-      if (value.toJSON) {
-        jso = value.toJSON();
-      }
-      let obj = this.exports.SKIP_JSON_startObject();
-      for (let key in jso) {
+      const jso: JsonObject =
+        value instanceof JSObject ? value.toJSON() : (value as JsonObject);
+      const obj = this.exports.SKIP_JSON_startObject();
+      for (const key of Object.keys(jso)) {
         this.exports.SKIP_JSON_addToObject(
           obj,
           this.utils.exportString(key),
-          this.exportValue(path, skPath, jso[key]),
+          this.exportValue(path, skPath, jso[key]!)
         );
       }
       return this.exports.SKIP_JSON_endObject(obj);
     } else if (type == "function") {
-      let id = this.register(skPath, value);
+      const id = this.register(skPath, value as Function);
       return this.exportValue(path, skPath, {
         type: "function",
         fields: {

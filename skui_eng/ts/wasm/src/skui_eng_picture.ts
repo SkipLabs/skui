@@ -1,7 +1,22 @@
-// prettier-ignore
-import type {int, ptr, Environment, Links, Utils, ToWasmManager, Shared, Text} from "#std/sk_types.js";
-import { l, f, check, Raw } from "#std/sk_types.js";
-import { SkuiUtils } from "#skui_base/skui_types.js";
+import type {
+  int,
+  ptr,
+  Environment,
+  Links,
+  Utils,
+  ToWasmManager,
+  Shared,
+  Nullable,
+} from "../skipwasm-std/index.js";
+import {
+  SkuiUtils,
+  type Text,
+  l,
+  f,
+  check,
+  Raw,
+} from "../skui-base/skui_types.js";
+import type * as Internal from "./internal.js";
 
 interface Exported {
   SKIP_UiEnginePicture_register: (id: int, width: int, height: int) => void;
@@ -11,7 +26,7 @@ interface Exported {
     width: int,
     height: int,
     result: int,
-    error: ptr | null,
+    error: Nullable<ptr<Internal.I18NText>>
   ) => void;
 }
 
@@ -26,21 +41,22 @@ interface Env extends Environment {
   imageAsTexture: (ctx: int, image: HTMLImageElement) => int;
 }
 
-async function resize(
+function resize(
   document: Document,
   image: HTMLImageElement,
   width: int,
   height: int,
   then: (img: HTMLImageElement) => void,
-  otherwise: (msg: Text | string) => void,
+  otherwise: (msg: Text | string) => void
 ) {
-  var canvas = document.createElement("canvas");
+  const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  var ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d");
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (ctx && image != null) {
     ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, width, height);
-    let rImage = new Image();
+    const rImage = new Image();
     rImage.onload = () => then(rImage);
     rImage.onerror = () => otherwise(l("image load failed"));
     rImage.src = canvas.toDataURL();
@@ -53,9 +69,10 @@ export class PictureShared implements Shared {
   getName = () => "picture";
   register: (image: HTMLImageElement) => int;
   unregister: (id: int) => void;
+
   constructor(
     register: (image: HTMLImageElement) => int,
-    unregister: (id: int) => void,
+    unregister: (id: int) => void
   ) {
     this.register = register;
     this.unregister = unregister;
@@ -66,24 +83,24 @@ class State {
   imgId = 0;
   images = new Map<int, HTMLImageElement>();
 
-  register = (image: HTMLImageElement) => {
-    let id = ++this.imgId;
+  register(image: HTMLImageElement) {
+    const id = ++this.imgId;
     this.images.set(id, image);
     return id;
-  };
+  }
 
-  delete = (id: int) => {
+  delete(id: int) {
     this.images.delete(id);
-  };
+  }
 
-  get = (id: int) => {
+  get(id: int) {
     return this.images.get(id);
-  };
+  }
 }
 
 class LinksImpl implements Links, ToWasm {
   state: State;
-  env: Env | undefined;
+  env?: Env;
 
   constructor(env?: Env) {
     this.state = new State();
@@ -94,28 +111,26 @@ class LinksImpl implements Links, ToWasm {
   SKIP_UiEnginePicture_resize!: (id: int, width: int, height: int) => void;
 
   SKIP_UiEnginePicture_asTexture = (id: int, ctx: int) => {
-    let image = this.env ? this.state.get(id) : null;
+    const image = this.env ? this.state.get(id) : null;
     if (image) {
       return this.env!.imageAsTexture(ctx, image);
     }
-    {
-      return 0;
-    }
+    return 0;
   };
 
   complete = (utils: Utils, exports: object) => {
-    let skuiUtils = new SkuiUtils(utils, exports);
-    let exported = exports as Exported;
+    const skuiUtils = new SkuiUtils(utils, exports);
+    const exported = exports as Exported;
     this.SKIP_UiEnginePicture_delete = (id: int) => {
       this.state.delete(id);
     };
     this.SKIP_UiEnginePicture_resize = (id: int, width: int, height: int) => {
-      let notify = (img: int | null, msg: Text | null) => {
+      const notify = (img: int | null, msg: Text | null) => {
         utils.runWithGc(() => {
-          let skError = null;
+          let skError: Nullable<ptr<Internal.I18NText>> = null;
           if (msg) {
-            let format = l("Unable to resize image: {1}.");
-            let message = f(format, [msg]);
+            const format = l("Unable to resize image: {1}.");
+            const message = f(format, [msg]);
             skError = skuiUtils.exportLocale(message);
           }
           exported.SKIP_UiEnginePicture_resized(
@@ -123,12 +138,12 @@ class LinksImpl implements Links, ToWasm {
             width,
             height,
             img ? img : 0,
-            skError,
+            skError
           );
         });
       };
       if (this.env) {
-        let image = this.state.get(id);
+        const image = this.state.get(id);
         if (image) {
           resize(
             this.env.window().document,
@@ -136,20 +151,20 @@ class LinksImpl implements Links, ToWasm {
             width,
             height,
             (img) => {
-              let imgId = this.state.register(img);
+              const imgId = this.state.register(img);
               exported.SKIP_UiEnginePicture_register(
                 imgId,
                 img.width,
-                img.height,
+                img.height
               );
               notify(imgId, null);
             },
             (msg) => {
               notify(null, check(msg));
-            },
+            }
           );
         } else {
-          notify(null, f(l("Image not found {1}"), [new Raw("" + id)]));
+          notify(null, f(l("Image not found {1}"), [new Raw(id.toString())]));
         }
       } else {
         notify(null, l("Environment not initialized"));
@@ -160,18 +175,18 @@ class LinksImpl implements Links, ToWasm {
         "picture",
         new PictureShared(
           (img: HTMLImageElement) => {
-            let imgId = this.state.register(img);
+            const imgId = this.state.register(img);
             exported.SKIP_UiEnginePicture_register(
               imgId,
               img.width,
-              img.height,
+              img.height
             );
             return imgId;
           },
           (id: int) => {
             exported.SKIP_UiEnginePicture_unregister(id);
-          },
-        ),
+          }
+        )
       );
     }
   };
@@ -185,19 +200,18 @@ class Manager implements ToWasmManager {
   }
 
   prepare = (wasm: object) => {
-    let toWasm = wasm as ToWasm;
-    let links = new LinksImpl(this.env);
-    toWasm.SKIP_UiEnginePicture_delete = (id: int) =>
-      links.SKIP_UiEnginePicture_delete(id);
-    toWasm.SKIP_UiEnginePicture_resize = (id: int, width: int, height: int) =>
-      links.SKIP_UiEnginePicture_resize(id, width, height);
-    toWasm.SKIP_UiEnginePicture_asTexture = (id: int, ctx: int) =>
-      links.SKIP_UiEnginePicture_asTexture(id, ctx);
+    const toWasm = wasm as ToWasm;
+    const links = new LinksImpl(this.env);
+    toWasm.SKIP_UiEnginePicture_delete =
+      links.SKIP_UiEnginePicture_delete.bind(links);
+    toWasm.SKIP_UiEnginePicture_resize =
+      links.SKIP_UiEnginePicture_resize.bind(links);
+    toWasm.SKIP_UiEnginePicture_asTexture =
+      links.SKIP_UiEnginePicture_asTexture.bind(links);
     return links;
   };
 }
 
-/** @sk init */
 export function init(env?: Environment) {
   return Promise.resolve(new Manager(env ? (env as Env) : undefined));
 }

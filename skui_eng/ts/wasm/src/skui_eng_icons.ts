@@ -1,4 +1,4 @@
-import { icon } from "#skui_eng/skui_eng_types.js";
+import { icon } from "./skui_eng_types.js";
 
 export const themify = "themify";
 

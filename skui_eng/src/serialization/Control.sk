@@ -271,7 +271,7 @@ extension class Scroll {
     (
       static::identifier,
       Map[
-        "widget" => SOption(this.optWidget),
+        "child" => SOption(this.optWidget),
         "hScroll" => SOption(this.optHScroll),
         "vScroll" => SOption(this.optVScroll),
         "hPolicy" => SOption(this.optHPolicy),
@@ -285,7 +285,7 @@ extension class Scroll {
 
   static fun deserialize(value: Map<String, Serializable>): Scroll {
     Scroll{
-      optWidget => maybeGet(value, "widget"),
+      optWidget => maybeGet(value, "child"),
       optHScroll => maybeGet(value, "hScroll"),
       optVScroll => maybeGet(value, "vScroll"),
       optHPolicy => maybeGet(value, "hPolicy"),
