@@ -4,12 +4,10 @@ version = "0.1.0"
 
 [dependencies]
 skui_fwk = { "path" = "../skui_fwk" }
+skui_mtsdf = { "path" = "../skui_mtsdf" }
+skui_opengl = { "path" = "../skui_opengl" }
 
 [build-dependencies]
 skui_build = { path = "../skui_build" } 
 
-
-[[bin]]
-name = "skuieng"
-main = "SkuiEng.main"
 

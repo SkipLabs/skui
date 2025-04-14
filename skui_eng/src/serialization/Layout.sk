@@ -7,7 +7,7 @@ extension class Wrap extends SObject {
     (
       static::identifier,
       Map[
-        "widgets" => SOption(this.optWidgets),
+        "children" => SOption(this.optWidgets),
         "vertical" => SOption(this.optVertical),
         "rigthToLeft" => SOption(this.optRigthToLeft),
         "downToUp" => SOption(this.optDownToUp),
@@ -23,7 +23,7 @@ extension class Wrap extends SObject {
 
   static fun deserialize(value: Map<String, Serializable>): this {
     Wrap{
-      optWidgets => maybeGet(value, "widgets"),
+      optWidgets => maybeGet(value, "children"),
       optVertical => maybeGet(value, "vertical"),
       optRigthToLeft => maybeGet(value, "rigthToLeft"),
       optDownToUp => maybeGet(value, "downToUp"),
@@ -44,7 +44,7 @@ extension class Flex extends SObject {
     (
       static::identifier,
       Map[
-        "widgets" => SOption(this.optWidgets),
+        "children" => SOption(this.optWidgets),
         "vertical" => SOption(this.optVertical),
         "rigthToLeft" => SOption(this.optRigthToLeft),
         "downToUp" => SOption(this.optDownToUp),
@@ -58,7 +58,7 @@ extension class Flex extends SObject {
 
   static fun deserialize(value: Map<String, Serializable>): this {
     Flex{
-      optWidgets => maybeGet(value, "widgets"),
+      optWidgets => maybeGet(value, "children"),
       optVertical => maybeGet(value, "vertical"),
       optRigthToLeft => maybeGet(value, "rigthToLeft"),
       optDownToUp => maybeGet(value, "downToUp"),
@@ -77,7 +77,7 @@ extension class AspectRatio {
     (
       static::identifier,
       Map[
-        "widget" => SOption(this.optWidget),
+        "child" => SOption(this.optWidget),
         "ratio" => SOption(this.optRatio),
         "centered" => SOption(this.optCentered),
         "configuration" => SOption(this.optConfiguration),
@@ -87,7 +87,7 @@ extension class AspectRatio {
 
   static fun deserialize(value: Map<String, Serializable>): AspectRatio {
     AspectRatio{
-      optWidget => maybeGet(value, "widget"),
+      optWidget => maybeGet(value, "child"),
       optCentered => maybeGet(value, "centered"),
       optRatio => maybeGet(value, "ratio"),
       optConfiguration => maybeGet(value, "configuration"),

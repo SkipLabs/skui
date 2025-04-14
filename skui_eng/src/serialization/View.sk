@@ -54,7 +54,7 @@ extension class Decorated {
       static::identifier,
       Map[
         "decoration" => SOption(this.optDecoration),
-        "widget" => SOption(this.optWidget),
+        "child" => SOption(this.optWidget),
         "rigthToLeft" => SOption(this.optRigthToLeft),
         "configuration" => SOption(this.optConfiguration),
       ],
@@ -64,7 +64,7 @@ extension class Decorated {
   static fun deserialize(value: Map<String, Serializable>): Decorated {
     Decorated{
       optDecoration => maybeGet(value, "decoration"),
-      optWidget => maybeGet(value, "widget"),
+      optWidget => maybeGet(value, "child"),
       optRigthToLeft => maybeGet(value, "rigthToLeft"),
       optConfiguration => maybeGet(value, "configuration"),
     }
@@ -79,7 +79,7 @@ extension class Constrained {
       static::identifier,
       Map[
         "constraints" => SOption(this.optConstraints),
-        "widget" => SOption(this.optWidget),
+        "child" => SOption(this.optWidget),
         "enforced" => SOption(this.optEnforced),
         "configuration" => SOption(this.optConfiguration),
       ],
@@ -89,7 +89,7 @@ extension class Constrained {
   static fun deserialize(value: Map<String, Serializable>): Constrained {
     Constrained{
       optConstraints => maybeGet(value, "constraints"),
-      optWidget => maybeGet(value, "widget"),
+      optWidget => maybeGet(value, "child"),
       optEnforced => maybeGet(value, "enforced"),
       optConfiguration => maybeGet(value, "configuration"),
     }

@@ -187,7 +187,7 @@ class Property extends
       );
     } else {
       combinesDirName = SKStore.DirName::make(
-        this.timedHdl.hdl.getDirName(),
+        this.timedHdl.hdl.dirName,
         "combines/",
       );
       combinesHdl = SKStore.EHandle(

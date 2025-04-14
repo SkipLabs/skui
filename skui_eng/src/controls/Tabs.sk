@@ -219,7 +219,7 @@ class Tabs{
         })
       ,
     );
-    refDir = splitedTabsHdl.getDirName();
+    refDir = splitedTabsHdl.dirName;
     tabsWidgetsHdl = splitedTabsHdl.map(
       SKStore.StrID::keyType,
       WidgetHandle::type,
@@ -289,7 +289,7 @@ class Tabs{
       SKStore.StrID::keyType,
       ActionGetter::type,
       context,
-      SKStore.DirName::make(splitedActionsHdl.getDirName(), "getters/"),
+      SKStore.DirName::make(splitedActionsHdl.dirName, "getters/"),
       (ctx, writer, key, it) ~> writer.set(key, it.first.toGetters(ctx)),
     );
     uiActionsHdl = actionGettersHdl.map(

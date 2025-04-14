@@ -8,7 +8,7 @@ extension class Tab extends UiEngine.SObject {
       static::identifier,
       Map[
         "id" => UiEngine.SString(this.id),
-        "widget" => UiEngine.SOption(this.optWidget),
+        "child" => UiEngine.SOption(this.optWidget),
         "text" => UiEngine.SOption(this.optText),
         "icon" => UiEngine.SOption(this.optIcon),
         "tooltip" => UiEngine.SOption(this.optTooltip),
@@ -24,7 +24,7 @@ extension class Tab extends UiEngine.SObject {
   static fun deserialize(value: Map<String, UiEngine.Serializable>): Tab {
     Tab{
       id => getString(value, "id"),
-      optWidget => maybeGet(value, "widget"),
+      optWidget => maybeGet(value, "child"),
       optText => maybeGet(value, "text"),
       optIcon => maybeGet(value, "icon"),
       optTooltip => maybeGet(value, "tooltip"),
