@@ -27,8 +27,8 @@ fun links(env: SkuiBuild.Env): Array<String> {
   }
 }
 
-@skbuild_resources
-fun resources(_env: Skbuild.Env): Array<String> {
+@skui_build__resources
+fun resources(_env: SkuiBuild.Env): Array<String> {
   Array["resources/textures/steel.rgba", "resources/textures/wood.rgba"]
 }
 

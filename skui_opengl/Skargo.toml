@@ -8,6 +8,9 @@ skui_mtsdf = { "path" = "../skui_mtsdf" }
 [build-dependencies]
 skui_build = { path = "../skui_build" }
 
+[dev-dependencies]
+sktest = { path = "../skip/skiplang/sktest" }
+
 #[[bin]]
 #name = "skuiopengl"
 #main = "SkuiOpengl.main"

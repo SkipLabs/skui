@@ -310,7 +310,7 @@ void SKIP_GL_uniformMatrix4fv(uint32_t location, bool transpose, double v1,
   glUniformMatrix4fv(location, 1, transpose, modelviewmatrix);
 }
 
-void SKIP_GL_uniform1i(uint32_t location, int32_t value, uint32_t ctx) {
+void SKIP_GL_uniform1i(uint32_t location, int32_t value, uint32_t) {
   glUniform1i(location, value);
 }
 
@@ -328,34 +328,34 @@ void SKIP_GL_uniform4f(uint32_t location, double v0, double v1, double v2,
 }
 
 void SKIP_GL_uniform4fv(uint32_t location, uint32_t count, double *data,
-                        uint32_t ctx) {
-  auto len = count * 4;
+                        uint32_t) {
+  size_t len = count * 4;
   std::vector<GLfloat> new_vec(len, 0.0f);
-  for (int i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     new_vec[i] = (GLfloat)data[i];
-  };
+  }
   const GLfloat *ptr = &new_vec[0];
   glUniform4fv(location, count, ptr);
 }
 
 void SKIP_GL_uniform3fv(uint32_t location, uint32_t count, double *data,
-                        uint32_t ctx) {
-  auto len = count * 3;
+                        uint32_t) {
+  size_t len = count * 3;
   std::vector<GLfloat> new_vec(len, 0.0f);
-  for (int i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     new_vec[i] = (GLfloat)data[i];
-  };
+  }
   const GLfloat *ptr = &new_vec[0];
   glUniform3fv(location, count, ptr);
 }
 
 void SKIP_GL_uniform2fv(uint32_t location, uint32_t count, double *data,
-                        uint32_t ctx) {
-  auto len = count * 2;
+                        uint32_t) {
+  size_t len = count * 2;
   std::vector<GLfloat> new_vec(len, 0.0f);
-  for (int i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     new_vec[i] = (GLfloat)data[i];
-  };
+  }
   const GLfloat *ptr = &new_vec[0];
   glUniform2fv(location, count, ptr);
 }
@@ -371,11 +371,11 @@ void SKIP_GL_uniform1fv(uint32_t location, uint32_t count, void *data,
 }
 
 void SKIP_GL_uniform1iv(uint32_t location, uint32_t count, int32_t *data,
-                        uint32_t ctx) {
+                        uint32_t) {
   std::vector<GLint> new_vec(count, 0);
-  for (int i = 0; i < count; i++) {
+  for (uint32_t i = 0; i < count; i++) {
     new_vec[i] = (GLint)data[i];
-  };
+  }
   const GLint *ptr = &new_vec[0];
   glUniform1iv(location, count, ptr);
 }
@@ -388,27 +388,25 @@ void SKIP_GL_drawTriangleStrip(uint32_t first, uint32_t count, uint32_t) {
   glDrawArrays(GL_TRIANGLE_STRIP, first, count);
 }
 
-uint32_t SKIP_GL_getAttributeLocation(uint32_t program, char *name,
-                                      uint32_t ctx) {
+uint32_t SKIP_GL_getAttributeLocation(uint32_t program, char *name, uint32_t) {
   TXT(name, strName);
   const char *cName = strName.c_str();
   return glGetAttribLocation(program, cName);
 }
 
 uint32_t SKIP_GL_getIdxAttributeLocation(uint32_t program, uint32_t index,
-                                         uint32_t ctx) {
+                                         uint32_t) {
   return glGetAttribLocation(program, attributes[index]);
 }
 
-uint32_t SKIP_GL_getUniformLocation(uint32_t program, char *name,
-                                    uint32_t ctx) {
+uint32_t SKIP_GL_getUniformLocation(uint32_t program, char *name, uint32_t) {
   TXT(name, strName);
   const char *cName = strName.c_str();
   return glGetUniformLocation(program, cName);
 }
 
 uint32_t SKIP_GL_getIdxUniformLocation(uint32_t program, uint32_t index,
-                                       uint32_t ctx) {
+                                       uint32_t) {
   return glGetUniformLocation(program, uniforms[index]);
 }
 

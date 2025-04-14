@@ -2,6 +2,16 @@ module alias T = SKTest;
 
 module GLSLTest;
 
+fun expectLike(
+  actual: Float,
+  expected: Float,
+  msg: String = "expected like",
+): void {
+  if (!Math.like(actual, expected)) {
+    throw T.ExpectationError(msg, expected.toString(), actual.toString())
+  }
+}
+
 fun fillShaderCommon(lines: mutable Vector<String>): void {
   Array[
     "precision highp float;",
@@ -600,7 +610,6 @@ fun function1(): void {
   function = mainFunction();
   expected = exMainFunction();
   got = toArray(function);
-  print_debug(got.join("\n"));
   T.expectEq(got, expected)
 }
 
@@ -609,7 +618,6 @@ fun function2(): void {
   function = drawCircleFunction();
   expected = exDrawCircleFunction();
   got = toArray(function);
-  print_debug(got.join("\n"));
   T.expectEq(got, expected)
 }
 
@@ -617,7 +625,6 @@ fun function2(): void {
 fun ellipse(): void {
   ellipse = GLSL.ellipseFn();
   got = toArray(ellipse);
-  debug(got);
   lines = mutable Vector[];
   fillInEllipse(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -627,7 +634,6 @@ fun ellipse(): void {
 fun pxRange(): void {
   pxRange = GLSL.pxRangeFn();
   got = toArray(pxRange);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -645,7 +651,6 @@ fun pxRange(): void {
 fun median(): void {
   median = GLSL.medianFn();
   got = toArray(median);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -660,7 +665,6 @@ fun median(): void {
 fun mtsdfFn(): void {
   mtsdf = GLSL.mtsdfFn();
   got = toArray(mtsdf);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -679,7 +683,6 @@ fun mtsdfFn(): void {
 fun errorApprox4Fn(): void {
   errorApprox = GLSL.errorApproxFn(4);
   got = toArray(errorApprox);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -697,7 +700,6 @@ fun errorApprox4Fn(): void {
 fun boxShadow(): void {
   boxShadow = GLSL.boxShadowFn();
   got = toArray(boxShadow);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -714,7 +716,6 @@ fun boxShadow(): void {
 fun roundedFn(): void {
   rounded = GLSL.roundedFn();
   got = toArray(rounded);
-  debug(got);
   lines = mutable Vector[];
   fillInRounded(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -724,7 +725,6 @@ fun roundedFn(): void {
 fun withAlpha(): void {
   withAlpha = GLSL.withAlphaFn();
   got = toArray(withAlpha);
-  debug(got);
   lines = mutable Vector[];
   fillWithAlpha(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -734,7 +734,6 @@ fun withAlpha(): void {
 fun grayScale(): void {
   grayScale = GLSL.grayScaleFn();
   got = toArray(grayScale);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -750,7 +749,6 @@ fun grayScale(): void {
 fun sepia(): void {
   sepia = GLSL.sepiaFn();
   got = toArray(sepia);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -768,7 +766,6 @@ fun sepia(): void {
 fun roundedTop(): void {
   roundedTop = GLSL.roundedTopFn();
   got = toArray(roundedTop);
-  debug(got);
   lines = mutable Vector[];
   fillInRoundedTop(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -778,7 +775,6 @@ fun roundedTop(): void {
 fun roundedBottom(): void {
   roundedBottom = GLSL.roundedBottomFn();
   got = toArray(roundedBottom);
-  debug(got);
   lines = mutable Vector[];
   fillInRoundedBottom(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -788,7 +784,6 @@ fun roundedBottom(): void {
 fun simpleRoundedTop(): void {
   simpleRoundedTop = GLSL.simpleRoundedTopFn();
   got = toArray(simpleRoundedTop);
-  debug(got);
   lines = mutable Vector[];
   fillInSimpleRoundedTop(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -798,7 +793,6 @@ fun simpleRoundedTop(): void {
 fun simpleRoundedBottom(): void {
   simpleRoundedBottom = GLSL.simpleRoundedBottomFn();
   got = toArray(simpleRoundedBottom);
-  debug(got);
   lines = mutable Vector[];
   fillInSimpleRoundedBottom(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -808,7 +802,6 @@ fun simpleRoundedBottom(): void {
 fun simpleRoundedCenter(): void {
   simpleRoundedCenter = GLSL.simpleRoundedCenterFn();
   got = toArray(simpleRoundedCenter);
-  debug(got);
   lines = mutable Vector[];
   fillInSimpleRoundedCenter(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -818,7 +811,6 @@ fun simpleRoundedCenter(): void {
 fun planeNornalFn(): void {
   planeNornal = GLSL.planeNornalFn();
   got = toArray(planeNornal);
-  debug(got);
   lines = mutable Vector[];
   fillPlaneNornal(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -828,7 +820,6 @@ fun planeNornalFn(): void {
 fun planeDirectionalLight(): void {
   planeDirectionalLight = GLSL.planeDirectionalLightFn();
   got = toArray(planeDirectionalLight);
-  debug(got);
   lines = mutable Vector[];
   fillPlaneDirectionalLight(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -842,11 +833,9 @@ fun testPlaneNornal(): void {
   res = GLSL.planeNornal(p1, p2, p3);
   nornal = res.toSize(3);
   got1 = Array[p1.dot(nornal), p2.dot(nornal), p3.dot(nornal)];
-  debug(got1);
   T.expectEq(got1, Array[res.w(), res.w(), res.w()]);
   z1 = -(nornal.x() * 0.5 + nornal.y() * 0.5) / nornal.z();
   z2 = -(nornal.x() * 0.0 + nornal.y() * 0.5) / nornal.z();
-  debug((z1, z2));
   T.expectEq((z1, z2), (0.5, 0.5));
   sign = Math.sign(nornal.z());
   normalized = nornal.normalize();
@@ -854,8 +843,7 @@ fun testPlaneNornal(): void {
   light0 = (GLSL.VVec(Array[0.7, 0.5, 5.0]) - p0).normalize();
   dot0 = sign.toFloat() * normalized.dot(light0);
   cosTeta0 = Math.max(dot0, 0.0);
-  debug((light0, normalized, dot0, cosTeta0));
-  T.expectEq(cosTeta0, 0.706409437);
+  expectLike(cosTeta0, 0.706409437);
 }
 
 @test
@@ -866,7 +854,6 @@ fun shapeFn(): void {
     Some(GLSL.planeFn()),
   );
   got = toArray(function);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -883,7 +870,6 @@ fun shapeFn(): void {
 fun testMakeEllipsoide(): void {
   relativeEllipsoide = GLSL.relativeEllipsoide();
   got = toArray(relativeEllipsoide);
-  debug(got);
   lines = mutable Vector[];
   fillMakeEllipsoide(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -893,7 +879,6 @@ fun testMakeEllipsoide(): void {
 fun testMakeHCylinder(): void {
   relativeHCylinder = GLSL.relativeHCylinder();
   got = toArray(relativeHCylinder);
-  debug(got);
   lines = mutable Vector[];
   fillMakeHCylinder(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -903,7 +888,6 @@ fun testMakeHCylinder(): void {
 fun testMakeVCylinder(): void {
   relativeVCylinder = GLSL.relativeVCylinder();
   got = toArray(relativeVCylinder);
-  debug(got);
   lines = mutable Vector[];
   fillMakeVCylinder(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -913,7 +897,6 @@ fun testMakeVCylinder(): void {
 fun testMakeFace(): void {
   relativeFace = GLSL.relativeFace();
   got = toArray(relativeFace);
-  debug(got);
   lines = mutable Vector[];
   fillMakeFace(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -923,7 +906,6 @@ fun testMakeFace(): void {
 fun testButton1(): void {
   button1 = GLSL.button1();
   got = toArray(button1);
-  debug(got);
   lines = mutable Vector[];
   fillButton1(lines);
   T.expectEq(got.concat(Array[""]), lines.toArray())
@@ -933,7 +915,6 @@ fun testButton1(): void {
 fun lightsFn(): void {
   function = GLSL.lightsFn(10);
   got = toArray(function);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -1012,7 +993,6 @@ fun lightsFn(): void {
 fun testBuild(): void {
   function = GLSL.buildWithIndex(GLSL.SArray(GLSL.ligthStruct, 1), 0, 16);
   got = toArray(function);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -1028,7 +1008,6 @@ fun testBuild(): void {
 fun testLinearGradient(): void {
   function = GLSL.linearGradientFn(3, 4);
   got = toArray(function);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -1062,7 +1041,6 @@ fun testLinearGradient(): void {
 fun testRadialGradient(): void {
   function = GLSL.radialGradientFn(3, 3);
   got = toArray(function);
-  debug(got);
   T.expectEq(
     got,
     Array[
@@ -1112,7 +1090,6 @@ fun testScene(): void {
   got = vertex
     .toArray(Some(GLSL.es300()))
     .concat(fragment.toArray(Some(GLSL.es300())));
-  debug(got);
   T.expectEq(got, Array[])
 }
 
