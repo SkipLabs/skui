@@ -64,6 +64,22 @@ jobs:
             cd skui_mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
       - store_test_results:
           path: ~/test-results/skui_mtsdf.xml
+  skui_opengl:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run glsl tests
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui_opengl && skargo test --junitxml ~/test-results/skui_opengl.xml
+      - store_test_results:
+          path: ~/test-results/skui_opengl.xml
   skui_views:
     docker:
       - image: skiplabs/skdb-base:latest
@@ -167,3 +183,6 @@ workflows:
   linter:
     jobs:
       - lint
+  glsl:
+    jobs:
+      - skui_opengl
