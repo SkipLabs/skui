@@ -159,7 +159,7 @@ class LinksImpl implements Links {
           id,
           width,
           height,
-          img ? img : 0,
+          img ?? 0,
           skError
         );
       });
