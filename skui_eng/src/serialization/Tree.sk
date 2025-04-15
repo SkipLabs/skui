@@ -34,13 +34,13 @@ extension class Tree {
       static::identifier,
       Map[
         "items" => this.items,
-        "allowMultipleSelection" => SOption(this.optAllowMultipleSelection),
-        "badgeMaxChar" => SOption(this.optBadgeMaxChar),
-        "optMenuGetter" => SOption(this.optMenuGetter),
-        "optSelectionListener" => SOption(this.optSelectionListener),
-        "optExpansionListener" => SOption(this.optExpansionListener),
-        "optTreePerformer" => SOption(this.optTreePerformer),
-        "optTreeDropper" => SOption(this.optTreeDropper),
+        "allow-multiple-selection" => SOption(this.optAllowMultipleSelection),
+        "badge-max-char" => SOption(this.optBadgeMaxChar),
+        "menu-getter" => SOption(this.optMenuGetter),
+        "selection-listener" => SOption(this.optSelectionListener),
+        "expansion-listener" => SOption(this.optExpansionListener),
+        "tree-performer" => SOption(this.optTreePerformer),
+        "tree-dropper" => SOption(this.optTreeDropper),
       ],
     )
   }
@@ -48,13 +48,13 @@ extension class Tree {
   static fun deserialize(value: Map<String, Serializable>): this {
     static{
       items => value.get("items"),
-      optAllowMultipleSelection => maybeGet(value, "allowMultipleSelection"),
-      optBadgeMaxChar => maybeGet(value, "badgeMaxChar"),
-      optMenuGetter => maybeGet(value, "optMenuGetter"),
-      optSelectionListener => maybeGet(value, "optSelectionListener"),
-      optExpansionListener => maybeGet(value, "optExpansionListener"),
-      optTreePerformer => maybeGet(value, "optTreePerformer"),
-      optTreeDropper => maybeGet(value, "optTreeDropper"),
+      optAllowMultipleSelection => maybeGet(value, "allow-multiple-selection"),
+      optBadgeMaxChar => maybeGet(value, "badge-max-char"),
+      optMenuGetter => maybeGet(value, "menu-getter"),
+      optSelectionListener => maybeGet(value, "selection-listener"),
+      optExpansionListener => maybeGet(value, "expansion-listener"),
+      optTreePerformer => maybeGet(value, "tree-performer"),
+      optTreeDropper => maybeGet(value, "tree-dropper"),
     }
   }
 }

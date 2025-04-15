@@ -9,13 +9,13 @@ extension class Wrap extends SObject {
       Map[
         "children" => SOption(this.optWidgets),
         "vertical" => SOption(this.optVertical),
-        "rigthToLeft" => SOption(this.optRigthToLeft),
-        "downToUp" => SOption(this.optDownToUp),
-        "mainAlignment" => SOption(this.optMainAlignment),
-        "crossAlignment" => SOption(this.optCrossAlignment),
-        "runAlignment" => SOption(this.optRunAlignment),
+        "cross-reversed" => SOption(this.optRigthToLeft),
+        "main-reversed" => SOption(this.optDownToUp),
+        "main-alignment" => SOption(this.optMainAlignment),
+        "cross-alignment" => SOption(this.optCrossAlignment),
+        "run-alignment" => SOption(this.optRunAlignment),
         "spacing" => SOption(this.optSpacing),
-        "runSpacing" => SOption(this.optRunSpacing),
+        "run-spacing" => SOption(this.optRunSpacing),
         "configuration" => SOption(this.optConfiguration),
       ],
     )
@@ -25,13 +25,13 @@ extension class Wrap extends SObject {
     Wrap{
       optWidgets => maybeGet(value, "children"),
       optVertical => maybeGet(value, "vertical"),
-      optRigthToLeft => maybeGet(value, "rigthToLeft"),
-      optDownToUp => maybeGet(value, "downToUp"),
-      optMainAlignment => maybeGet(value, "mainAlignment"),
-      optCrossAlignment => maybeGet(value, "crossAlignment"),
-      optRunAlignment => maybeGet(value, "runAlignment"),
+      optRigthToLeft => maybeGet(value, "cross-reversed"),
+      optDownToUp => maybeGet(value, "main-reversed"),
+      optMainAlignment => maybeGet(value, "main-alignment"),
+      optCrossAlignment => maybeGet(value, "cross-alignment"),
+      optRunAlignment => maybeGet(value, "run-alignment"),
       optSpacing => maybeGet(value, "spacing"),
-      optRunSpacing => maybeGet(value, "runSpacing"),
+      optRunSpacing => maybeGet(value, "run-spacing"),
       optConfiguration => maybeGet(value, "configuration"),
     }
   }
@@ -46,11 +46,11 @@ extension class Flex extends SObject {
       Map[
         "children" => SOption(this.optWidgets),
         "vertical" => SOption(this.optVertical),
-        "rigthToLeft" => SOption(this.optRigthToLeft),
-        "downToUp" => SOption(this.optDownToUp),
-        "mainAlignment" => SOption(this.optMainAlignment),
-        "crossAlignment" => SOption(this.optCrossAlignment),
-        "maxSize" => SOption(this.optMaxSize),
+        "cross-reversed" => SOption(this.optRigthToLeft),
+        "main-reversed" => SOption(this.optDownToUp),
+        "main-alignment" => SOption(this.optMainAlignment),
+        "cross-alignment" => SOption(this.optCrossAlignment),
+        "max-size" => SOption(this.optMaxSize),
         "configuration" => SOption(this.optConfiguration),
       ],
     )
@@ -60,11 +60,11 @@ extension class Flex extends SObject {
     Flex{
       optWidgets => maybeGet(value, "children"),
       optVertical => maybeGet(value, "vertical"),
-      optRigthToLeft => maybeGet(value, "rigthToLeft"),
-      optDownToUp => maybeGet(value, "downToUp"),
-      optMainAlignment => maybeGet(value, "mainAlignment"),
-      optCrossAlignment => maybeGet(value, "crossAlignment"),
-      optMaxSize => maybeGet(value, "maxSize"),
+      optRigthToLeft => maybeGet(value, "cross-reversed"),
+      optDownToUp => maybeGet(value, "main-reversed"),
+      optMainAlignment => maybeGet(value, "main-alignment"),
+      optCrossAlignment => maybeGet(value, "cross-alignment"),
+      optMaxSize => maybeGet(value, "max-size"),
       optConfiguration => maybeGet(value, "configuration"),
     }
   }

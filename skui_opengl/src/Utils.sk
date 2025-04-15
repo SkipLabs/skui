@@ -202,3 +202,18 @@ fun createImage(width: Int, height: Int, optData: ?Array<Ui.Pix>): Frame {
 }
 
 module end;
+
+module SKUI;
+
+fun pictureToTexturable(
+  picture: Ui.Picture,
+  linear: Bool = true,
+): ?GL.Texturable {
+  picture match {
+  | img @ Ui.Image _ ->
+    Some(GLTexture.Image(Some(img.data), linear, img.width, img.height))
+  | _ -> None()
+  }
+}
+
+module end;

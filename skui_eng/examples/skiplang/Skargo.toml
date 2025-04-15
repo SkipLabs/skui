@@ -1,0 +1,14 @@
+[package]
+name = "skuieng_examples"
+version = "0.1.0"
+
+[dependencies]
+skui_eng = { "path" = "../.." }
+skui_x11gl = { path = "../../../skui_x11gl" }
+
+[build-dependencies]
+skui_build = { path = "../../../skui_build" }
+
+[[bin]]
+name = "skuieng_examples"
+main = "SkuiEngex.main"

@@ -46,27 +46,27 @@ extension class InputDialog {
         "label" => this.label,
         "action" => UiEngine.SOption(this.optAction),
         "title" => UiEngine.SOption(this.optTitle),
-        "autoClose" => UiEngine.SBool(this.autoClose),
+        "auto-close" => UiEngine.SBool(this.autoClose),
         //
         "kind" => this.settings.kind,
         "icon" => SOption(this.settings.optIcon),
         "prefix" => SOption(this.settings.optPrefix),
         "suffix" => SOption(this.settings.optSuffix),
-        "placeHolder" => SOption(this.settings.optPlaceHolder),
+        "placeholder" => SOption(this.settings.optPlaceHolder),
         "tooltip" => SOption(this.settings.optTooltip),
         "disabled" => SOption(this.settings.optDisabled),
-        "withCounter" => SOption(this.settings.optWithCounter),
-        "withStatus" => SOption(this.settings.optWithStatus),
-        "withClear" => SOption(this.settings.optWithClear),
-        "alignRight" => SOption(this.settings.optAlignRight),
+        "with-counter" => SOption(this.settings.optWithCounter),
+        "with-status" => SOption(this.settings.optWithStatus),
+        "with-clear" => SOption(this.settings.optWithClear),
+        "align-right" => SOption(this.settings.optAlignRight),
         //
         "text" => SOption(this.settings.optText),
         "position" => SOption(this.settings.optPosition),
         "selection" => SOption(this.settings.optSelection),
         "status" => SOption(this.settings.optStatus),
         //
-        "maxChars" => SInt(this.settings.maxChars),
-        "visibleChars" => SInt(this.settings.visibleChars),
+        "max-chars" => SInt(this.settings.maxChars),
+        "visible-chars" => SInt(this.settings.visibleChars),
       ],
     )
   }
@@ -80,14 +80,14 @@ extension class InputDialog {
         .default(!"No text defined."),
       optAction => maybeGet(value, "action").flatMap(optFunction),
       optTitle => maybeGet(value, "title").map(Text::fromSerializable),
-      autoClose => UiEngine.getBool(value, "autoClose"),
+      autoClose => UiEngine.getBool(value, "auto-close"),
       settings => UiEngine.Settings{
         // settings
         kind => maybeGet(value, "kind")
           .map(v -> v as UiInput.Kind _)
           .default(UiInput.Text()),
-        maxChars => maybeGetInt(value, "maxChars").default(64),
-        visibleChars => maybeGetInt(value, "visibleChars").default(10),
+        maxChars => maybeGetInt(value, "max-chars").default(64),
+        visibleChars => maybeGetInt(value, "visible-chars").default(10),
         //
         optText => maybeGet(value, "text"),
         optPosition => maybeGet(value, "position"),
@@ -97,13 +97,13 @@ extension class InputDialog {
         optIcon => maybeGet(value, "icon"),
         optPrefix => maybeGet(value, "prefix"),
         optSuffix => maybeGet(value, "suffix"),
-        optPlaceHolder => maybeGet(value, "placeHolder"),
+        optPlaceHolder => maybeGet(value, "placeholder"),
         optTooltip => maybeGet(value, "tooltip"),
         optDisabled => maybeGet(value, "disabled"),
-        optWithCounter => maybeGet(value, "withCounter"),
-        optWithStatus => maybeGet(value, "withStatus"),
-        optWithClear => maybeGet(value, "withClear"),
-        optAlignRight => maybeGet(value, "alignRight"),
+        optWithCounter => maybeGet(value, "with-counter"),
+        optWithStatus => maybeGet(value, "with-status"),
+        optWithClear => maybeGet(value, "with-clear"),
+        optAlignRight => maybeGet(value, "align-right"),
       },
     }
   }

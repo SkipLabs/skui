@@ -23,7 +23,7 @@ fun main(): void {
 }
 
 fun perform(available: readonly Vector<Example>): void {
-  command = SkuiViews.complete(
+  command = SKUIMain.complete(
     Cli.Command(kName)
       .about("SKUI's Engine example viewer")
       .arg(
@@ -49,11 +49,11 @@ fun perform(available: readonly Vector<Example>): void {
       }
     | None() -> Cli.usage(command, false)
     };
-    SkuiViews.display(None(), Some(`error: ${err.getMessage()}\n${error}`))
+    SKUIMain.display(None(), Some(`error: ${err.getMessage()}\n${error}`))
   | _ ->
     if (args.getBool("version")) {
-      // FIXME
-      SkuiViews.display(Some(kName + " " + "FIXME"))
+      git_commit = #env ("GIT_COMMIT_HASH");
+      SKUIMain.display(Some(`${kName} (${git_commit})`))
     } else {
       args.maybeGetSubcommand() match {
       | Some(subcmd) ->
@@ -63,12 +63,12 @@ fun perform(available: readonly Vector<Example>): void {
             args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
           ) match {
           | Some(cmd) ->
-            SkuiViews.display(Some(Cli.usage(cmd, true, Some(args.cmd))))
+            SKUIMain.display(Some(Cli.usage(cmd, true, Some(args.cmd))))
           | _ ->
             error = optSubcmd
               .map(cmd -> `error: Invalid subcommand ${cmd}`)
               .default("error: No subcommand specified");
-            SkuiViews.display(Some(Cli.usage(args.cmd, true)), Some(error))
+            SKUIMain.display(Some(Cli.usage(args.cmd, true)), Some(error))
           };
         } else {
           available.filter(v -> v.command.name == subcmd).maybeGet(0) match {
@@ -83,11 +83,11 @@ fun perform(available: readonly Vector<Example>): void {
               initEngineWidget(context, args, wId, example);
               context.initPre();
             });
-            SkuiViews.init(wId, title, args)
+            SKUIMain.init(wId, title, args)
           | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
           }
         }
-      | None() -> SkuiViews.display(Some(Cli.usage(args.cmd, true)))
+      | None() -> SKUIMain.display(Some(Cli.usage(args.cmd, true)))
       }
     }
   }
@@ -104,7 +104,7 @@ fun initEngineWidget(
     UiEngine.Deserializer(example.deserializer.i1),
   );
   context.setGlobal("Ui.Properties.Root", SKStore.DirNameFile(rootPath));
-  support = SKUIGL.DrawableSupport(SkuiViews.pictureToTexturable);
+  support = SKUIGL.DrawableSupport(SKUI.pictureToTexturable);
   optPath: ?String = None();
   H.init(context, optPath);
   builder = (ctx, root) ~> {
@@ -117,7 +117,7 @@ fun initEngineWidget(
     hdl = UiEngine.widgetPipeline(ctx, property, root);
     (ctx, _root) ~> hdl.get(ctx).widget
   };
-  SkuiViews.initUi(context, wId, builder, support);
+  SKUI.init(context, wId, builder, support);
 }
 
 module end;

@@ -6,7 +6,7 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc && skargo build --target wasm32 --lib --out-dir=./dist",
+    "build": "tsc && skargo build -r --target wasm32 --lib --out-dir=./dist",
     "clean": "rm -rf dist && skargo clean",
     "lint": "eslint"
   },

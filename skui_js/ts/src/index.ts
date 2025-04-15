@@ -63,7 +63,7 @@ interface Env extends Environment {
 }
 
 export interface Exported {
-  SKIP_SkuiViews_update: () => void;
+  SKUI_update: () => void;
   SKIP_SKUIJS_windowInitialized: (wId: int) => void;
   SKIP_SKUIJS_manageMouseEvent: MouseEventManager;
   SKIP_SKUIJS_manageWheelEvent: WheelEventManager;
@@ -233,7 +233,7 @@ class LinksImpl implements Links, ToWasm {
 
   private update() {
     if (this.env) {
-      this.env.window().setTimeout(this.exported.SKIP_SkuiViews_update, 0);
+      this.env.window().setTimeout(this.exported.SKUI_update, 0);
     }
   }
 

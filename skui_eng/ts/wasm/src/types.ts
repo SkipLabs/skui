@@ -276,31 +276,31 @@ export type Widget = WidgetElement | RenderableElement;
 
 export type FlexConf = {
   flex?: int;
-  fitLoose?: boolean;
-  ignoreCross?: boolean;
+  "fit-loose"?: boolean;
+  "ignore-cross"?: boolean;
 };
 
 export type Flex = {
   children: Value<Value<Widget>[]>;
   vertical?: Value<boolean>;
-  mainreversed?: Value<boolean>;
-  corssreversed?: Value<boolean>;
-  mainalignment?: Value<Alignment>;
-  crossalignment?: Value<FlCrossAlign>;
-  maxsize?: Value<boolean>;
+  "main-reversed"?: Value<boolean>;
+  "cross-reversed"?: Value<boolean>;
+  "main-alignment"?: Value<Alignment>;
+  "cross-alignment"?: Value<FlCrossAlign>;
+  "max-size"?: Value<boolean>;
   configuration?: Value<Configuration>;
 };
 
 export type Wrap = {
   children: Value<Value<Widget>[]>;
   vertical?: Value<boolean>;
-  mainreversed?: Value<boolean>;
-  corssreversed?: Value<boolean>;
-  mainalignment?: Value<Alignment>;
-  crossalignment?: Value<WrCrossAlign>;
-  runalignment?: Value<Alignment>;
+  "main-reversed"?: Value<boolean>;
+  "cross-reversed"?: Value<boolean>;
+  "main-alignment"?: Value<Alignment>;
+  "cross-alignment"?: Value<WrCrossAlign>;
+  "run-alignment"?: Value<Alignment>;
   spacing?: Value<int>;
-  runspacing?: Value<int>;
+  "run-spacing"?: Value<int>;
   configuration?: Value<Configuration>;
 };
 
@@ -324,7 +324,7 @@ export type Icon = {
 };
 
 export type Button = {
-  onFire: (count: int) => void;
+  "on-fire": (count: int) => void;
   kind?: ButtonKind;
   mode?: ButtonMode;
   text?: Value<string | Text>;
@@ -363,25 +363,25 @@ export type Status = {
 
 export type Input = {
   kind?: InputKindElement;
-  maxChars?: int;
-  visibleChars?: int;
-  onAction?: (text: string) => void;
-  onFocusLost?: (text: string) => void;
+  "max-chars"?: int;
+  "visible-chars"?: int;
+  "on-action"?: (text: string) => void;
+  "on-focus-lost"?: (text: string) => void;
   label?: Value<string | Text>;
   icon?: Value<IconElement>;
   prefix?: Value<string | Text>;
   suffix?: Value<string | Text>;
-  placeHolder?: Value<string | Text>;
+  placeholder?: Value<string | Text>;
   tooltip?: Value<string | Text>;
-  actionIcon?: Value<IconElement>;
+  "action-icon"?: Value<IconElement>;
   disabled?: Value<boolean>;
   editable?: Value<boolean>;
-  withCounter?: Value<boolean>;
-  withStatus?: Value<boolean>;
-  withLabel?: Value<boolean>;
-  withClear?: Value<boolean>;
-  alignRight?: Value<boolean>;
-  placeholderAsLabel?: Value<boolean>;
+  "with-counter"?: Value<boolean>;
+  "with-status"?: Value<boolean>;
+  "with-label"?: Value<boolean>;
+  "with-clear"?: Value<boolean>;
+  "align-right"?: Value<boolean>;
+  "placeholder-as-label"?: Value<boolean>;
   //
   text?: Value<string | Text>;
   position?: Value<int>;
@@ -416,10 +416,10 @@ export type Toggle = {
 
 export type Scroll = {
   widget: Value<Widget>;
-  hScroll?: Value<int>;
-  vScroll?: Value<int>;
-  hPolicy?: Value<Policy>;
-  vPolicy?: Value<Policy>;
+  "h-scroll"?: Value<int>;
+  "v-scroll"?: Value<int>;
+  "h-policy"?: Value<Policy>;
+  "v-policy"?: Value<Policy>;
   unit?: Value<int>;
   negative?: Value<boolean>;
   configuration?: Value<Configuration>;
@@ -454,10 +454,10 @@ export type Nested = {
 };
 
 export type Constraints = {
-  minWidth?: string;
-  maxWidth?: string;
-  minHeight?: string;
-  maxHeight?: string;
+  "min-width"?: string;
+  "max-width"?: string;
+  "min-height"?: string;
+  "max-height"?: string;
 };
 
 export type Label = {
@@ -475,7 +475,7 @@ export type Indicator = {
 export type Decorated = {
   decoration: Value<Decoration>;
   child?: Value<Widget>;
-  rigthToLeft?: Value<boolean>;
+  "rigth-to-left"?: Value<boolean>;
   configuration?: Value<Configuration>;
 };
 
@@ -491,9 +491,9 @@ export type TextStyle = {
   size?: string;
   slant?: Slant;
   weight?: Weight;
-  hAlignment?: HAlignment;
-  vAlignment?: VAlignment;
-  lineSpacing?: string;
+  "h-alignment"?: HAlignment;
+  "v-alignment"?: VAlignment;
+  "line-spacing"?: string;
   wrapping?: Wrapping;
   overflow?: Overflow;
   transform?: Transform;
@@ -508,7 +508,7 @@ export type TextView = {
 export type IconedAction = {
   id: string;
   icon: Value<IconElement>;
-  onFire: () => void;
+  "on-fire": () => void;
   tooltip?: Value<string | Text>;
   disabled?: Value<boolean>;
 };
@@ -533,10 +533,10 @@ export type Tabs = {
   kind?: Value<TabsKind>;
   mode?: Value<TabsMode>;
   side?: Value<Side>;
-  placeHolder?: Value<string | Text>;
-  iconOnTop?: Value<boolean>;
-  minWidth?: Value<int> | int;
-  maxWidth?: Value<int> | int;
+  placeholder?: Value<string | Text>;
+  "icon-on-top"?: Value<boolean>;
+  "min-width"?: Value<int> | int;
+  "max-width"?: Value<int> | int;
   configuration?: Value<Configuration>;
 };
 
@@ -581,16 +581,16 @@ export type DropdownMenu = {
 
 export type Tree = {
   items: Value<TreeItemElement[]>;
-  onExpansionChange?: (path: string[], value: boolean) => void;
-  onSelectionChange?: (selection: string[][]) => void;
-  onTreePerform?: (current: string[], selection: string[][]) => void;
-  onTreeDrop?: (from: string[][], to: string[], drop: Drop) => void;
-  getContextMenu?: (
+  "on-expansion-change"?: (path: string[], value: boolean) => void;
+  "on-selection-change"?: (selection: string[][]) => void;
+  "on-tree-perform"?: (current: string[], selection: string[][]) => void;
+  "on-tree-drop"?: (from: string[][], to: string[], drop: Drop) => void;
+  "get-context-menu"?: (
     current: string[],
     selection: string[][]
   ) => DropdownElement[];
-  allowMultipleSelection?: Value<boolean>;
-  badgeMaxChar?: Value<int>;
+  "allow-multiple-selection"?: Value<boolean>;
+  "badge-max-char"?: Value<int>;
   configuration?: Value<Configuration>;
 };
 

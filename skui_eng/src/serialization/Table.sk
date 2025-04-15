@@ -60,10 +60,10 @@ extension class Column extends UiEngine.SObject {
         "icon" => UiEngine.SOption(this.optIcon),
         "tooltip" => UiEngine.SOption(this.optTooltip),
         "size" => UiEngine.SOption(this.optSize),
-        "actionIcon" => UiEngine.SOption(this.optActionIcon),
-        "actionTooltip" => UiEngine.SOption(this.optActionTooltip),
-        "cellAlignment" => UiEngine.SOption(this.optCellAlignment),
-        "columnPerformer" => UiEngine.SOption(this.optColumnPerformer),
+        "action-icon" => UiEngine.SOption(this.optActionIcon),
+        "action-tooltip" => UiEngine.SOption(this.optActionTooltip),
+        "cell-alignment" => UiEngine.SOption(this.optCellAlignment),
+        "column-performer" => UiEngine.SOption(this.optColumnPerformer),
       ],
     )
   }
@@ -75,10 +75,10 @@ extension class Column extends UiEngine.SObject {
       optIcon => maybeGet(value, "icon"),
       optTooltip => maybeGet(value, "tooltip"),
       optSize => maybeGet(value, "size"),
-      optActionIcon => maybeGet(value, "actionIcon"),
-      optActionTooltip => maybeGet(value, "actionTooltip"),
-      optCellAlignment => maybeGet(value, "cellAlignment"),
-      optColumnPerformer => maybeGet(value, "columnPerformer").map(
+      optActionIcon => maybeGet(value, "action-icon"),
+      optActionTooltip => maybeGet(value, "action-tooltip"),
+      optCellAlignment => maybeGet(value, "cell-alignment"),
+      optColumnPerformer => maybeGet(value, "column-performer").map(
         ColumnPerformer::fromSerializable,
       ),
     }

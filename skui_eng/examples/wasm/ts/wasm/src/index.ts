@@ -3,4 +3,6 @@ import { init } from "./examples.js";
 
 const wasmurl = new URL("./libskuieng_examples.wasm", import.meta.url);
 
+console.time("launch");
 await launch("skuieng_examples", wasmurl, [init]);
+console.timeEnd("launch");

@@ -30,7 +30,7 @@ extension class Button extends SObject {
           | UiButton.Fab(mini) -> if (!mini) 6 else 7
           },
         ),
-        "onFire" => SOption(
+        "on-fire" => SOption(
           this.optOnFire.flatMap(f ->
             f match {
             | ha @ H.ActionPerformer _ -> Some(ha.fn)
@@ -74,7 +74,7 @@ extension class Button extends SObject {
           }
         )
         .default(UiButton.Basic()),
-      optOnFire => maybeGet(value, "onFire").flatMap(s ~>
+      optOnFire => maybeGet(value, "on-fire").flatMap(s ~>
         s match {
         | v @ UiEngine.Function _
         | SOption(Some(v @ UiEngine.Function _)) ->
@@ -139,28 +139,28 @@ extension class Input extends SObject {
         "icon" => SOption(this.optIcon),
         "prefix" => SOption(this.optPrefix),
         "suffix" => SOption(this.optSuffix),
-        "placeHolder" => SOption(this.optPlaceHolder),
+        "placeholder" => SOption(this.optPlaceHolder),
         "tooltip" => SOption(this.optTooltip),
         "kind" => this.kind,
-        "onInputAction" => SOption(this.optInputAction),
-        "onFocusLost" => SOption(this.optFocusLost),
-        "actionIcon" => SOption(this.optActionIcon),
+        "on-input-action" => SOption(this.optInputAction),
+        "on-focus-lost" => SOption(this.optFocusLost),
+        "action-icon" => SOption(this.optActionIcon),
         "disabled" => SOption(this.optDisabled),
         "editable" => SOption(this.optEditable),
-        "withCounter" => SOption(this.optWithCounter),
-        "withStatus" => SOption(this.optWithStatus),
-        "withLabel" => SOption(this.optWithLabel),
-        "withClear" => SOption(this.optWithClear),
-        "alignRight" => SOption(this.optAlignRight),
-        "placeholderAsLabel" => SOption(this.optPlaceholderAsLabel),
+        "with-counter" => SOption(this.optWithCounter),
+        "with-status" => SOption(this.optWithStatus),
+        "with-label" => SOption(this.optWithLabel),
+        "with-clear" => SOption(this.optWithClear),
+        "align-right" => SOption(this.optAlignRight),
+        "placeholder-as-label" => SOption(this.optPlaceholderAsLabel),
         //
         "text" => SOption(this.optText),
         "position" => SOption(this.optPosition),
         "selection" => SOption(this.optSelection),
         "status" => SOption(this.optStatus),
         //
-        "maxChars" => SInt(this.maxChars),
-        "visibleChars" => SInt(this.visibleChars),
+        "max-chars" => SInt(this.maxChars),
+        "visible-chars" => SInt(this.visibleChars),
         "configuration" => SOption(this.optConfiguration),
       ],
     )
@@ -171,8 +171,8 @@ extension class Input extends SObject {
       kind => maybeGet(value, "kind")
         .map(v -> v as UiInput.Kind _)
         .default(UiInput.Text()),
-      maxChars => maybeGetInt(value, "maxChars").default(64),
-      visibleChars => maybeGetInt(value, "visibleChars").default(10),
+      maxChars => maybeGetInt(value, "max-chars").default(64),
+      visibleChars => maybeGetInt(value, "visible-chars").default(10),
       //
       optText => maybeGet(value, "text"),
       optPosition => maybeGet(value, "position"),
@@ -180,23 +180,23 @@ extension class Input extends SObject {
       optStatus => maybeGet(value, "status"),
       //
       optIcon => maybeGet(value, "icon"),
-      optActionIcon => maybeGet(value, "actionIcon"),
+      optActionIcon => maybeGet(value, "action-icon"),
       //
-      optInputAction => maybeGet(value, "onInputAction"),
-      optFocusLost => maybeGet(value, "onFocusLost"),
+      optInputAction => maybeGet(value, "on-input-action"),
+      optFocusLost => maybeGet(value, "on-focus-lost"),
       optLabel => maybeGet(value, "label"),
       optPrefix => maybeGet(value, "prefix"),
       optSuffix => maybeGet(value, "suffix"),
-      optPlaceHolder => maybeGet(value, "placeHolder"),
+      optPlaceHolder => maybeGet(value, "placeholder"),
       optTooltip => maybeGet(value, "tooltip"),
       optDisabled => maybeGet(value, "disabled"),
       optEditable => maybeGet(value, "editable"),
-      optWithCounter => maybeGet(value, "withCounter"),
-      optWithStatus => maybeGet(value, "withStatus"),
-      optWithLabel => maybeGet(value, "withLabel"),
-      optWithClear => maybeGet(value, "withClear"),
-      optAlignRight => maybeGet(value, "alignRight"),
-      optPlaceholderAsLabel => maybeGet(value, "placeholderAsLabel"),
+      optWithCounter => maybeGet(value, "with-counter"),
+      optWithStatus => maybeGet(value, "with-status"),
+      optWithLabel => maybeGet(value, "with-label"),
+      optWithClear => maybeGet(value, "with-clear"),
+      optAlignRight => maybeGet(value, "align-right"),
+      optPlaceholderAsLabel => maybeGet(value, "placeholder-as-label"),
       //
       optConfiguration => maybeGet(value, "configuration"),
     }
@@ -272,10 +272,10 @@ extension class Scroll {
       static::identifier,
       Map[
         "child" => SOption(this.optWidget),
-        "hScroll" => SOption(this.optHScroll),
-        "vScroll" => SOption(this.optVScroll),
-        "hPolicy" => SOption(this.optHPolicy),
-        "vPolicy" => SOption(this.optVPolicy),
+        "h-scroll" => SOption(this.optHScroll),
+        "v-scroll" => SOption(this.optVScroll),
+        "h-policy" => SOption(this.optHPolicy),
+        "v-policy" => SOption(this.optVPolicy),
         "unit" => SOption(this.optUnit),
         "negative" => SOption(this.optNegative),
         "configuration" => SOption(this.optConfiguration),
@@ -286,10 +286,10 @@ extension class Scroll {
   static fun deserialize(value: Map<String, Serializable>): Scroll {
     Scroll{
       optWidget => maybeGet(value, "child"),
-      optHScroll => maybeGet(value, "hScroll"),
-      optVScroll => maybeGet(value, "vScroll"),
-      optHPolicy => maybeGet(value, "hPolicy"),
-      optVPolicy => maybeGet(value, "vPolicy"),
+      optHScroll => maybeGet(value, "h-scroll"),
+      optVScroll => maybeGet(value, "v-scroll"),
+      optHPolicy => maybeGet(value, "h-policy"),
+      optVPolicy => maybeGet(value, "v-policy"),
       optUnit => maybeGet(value, "unit"),
       optNegative => maybeGet(value, "vertical"),
       optConfiguration => maybeGet(value, "configuration"),

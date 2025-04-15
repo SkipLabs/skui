@@ -66,4 +66,11 @@ fun init(
   )
 }
 
+@export("SKUI_update")
+fun update(): void {
+  pos = checkObstack();
+  SKStore.Context::withoutGc(context ~> context.updateIfRoot());
+  cleanObstack(pos);
+}
+
 module end;
