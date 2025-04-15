@@ -26,9 +26,13 @@ fun resources(_env: SkuiBuild.Env): Array<String> {
 @skui_build__extra_sources
 fun extra_sources(env: SkuiBuild.Env): Array<String> {
   if (env.isWasm32()) {
-    Array["extra/src/Wasm32.sk", "extra/src/JSEvents.sk"]
+    Array["../skui_js/src/Wasm32.sk", "../skui_js/src/JSEvents.sk"]
   } else {
-    Array["extra/src/Host.sk", "extra/src/X11Events.sk", "extra/src/X11Key.sk"]
+    Array[
+      "../skui_x11gl/extra/Host.sk",
+      "../skui_x11gl/extra/X11Events.sk",
+      "../skui_x11gl/extra/X11Key.sk",
+    ]
   }
 }
 

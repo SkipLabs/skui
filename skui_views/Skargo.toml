@@ -12,3 +12,6 @@ skui_build = { path = "../skui_build" }
 [[bin]]
 name = "skuiviews"
 main = "SkuiViews.main"
+
+[lib]
+type = ["cdylib"]

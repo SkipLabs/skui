@@ -1,4 +1,4 @@
-module SkuiViews;
+module SKUIMain;
 
 fun display(
   optOutput: ?String,

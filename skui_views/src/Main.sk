@@ -1,5 +1,6 @@
 module SkuiViews;
 
+@wasm_export("skui_views")
 fun main(): void {
   available = mutable Vector[
     SKUIViewsButtons.view(),
@@ -11,9 +12,6 @@ fun main(): void {
     SKUIViewsImage.view(),
     SKUIViewsDropdown.view(),
   ];
-  /*#forEachFunction (@skuiview, #function, #functionName) {
-    available.push(#function())
-  };*/
   perform(available);
 }
 
@@ -44,7 +42,7 @@ fun perform(
     (Cli.Command, Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>),
   >,
 ): void {
-  command = complete(
+  command = SKUIMain.complete(
     Cli.Command("skuiviews")
       .about("SKUI's Viewer")
       .arg(
@@ -70,11 +68,11 @@ fun perform(
       }
     | None() -> Cli.usage(command, false)
     };
-    display(None(), Some(`error: ${err.getMessage()}\n${error}`))
+    SKUIMain.display(None(), Some(`error: ${err.getMessage()}\n${error}`))
   | _ ->
     if (args.getBool("version")) {
       // FIXME
-      display(Some("skuiviews " + "FIXME"))
+      SKUIMain.display(Some("skuiviews " + "FIXME"))
     } else {
       args.maybeGetSubcommand() match {
       | Some(subcmd) ->
@@ -83,12 +81,12 @@ fun perform(
           optSubcmd.flatMap(subcmd ->
             args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
           ) match {
-          | Some(cmd) -> display(Some(Cli.usage(cmd, true, Some(args.cmd))))
+          | Some(cmd) -> SKUIMain.display(Some(Cli.usage(cmd, true, Some(args.cmd))))
           | _ ->
             error = optSubcmd
               .map(cmd -> `error: Invalid subcommand ${cmd}`)
               .default("error: No subcommand specified");
-            display(Some(Cli.usage(args.cmd, true)), Some(error))
+            SKUIMain.display(Some(Cli.usage(args.cmd, true)), Some(error))
           };
         } else {
           available.filter(v -> v.i0.name == subcmd).maybeGet(0) match {
@@ -103,18 +101,17 @@ fun perform(
               initUiWidget(context, wId, fn(args));
               context.initPre();
             });
-            init(wId, title, args)
+            SKUIMain.init(wId, title, args)
           | _ -> invariant_violation(`Unknown subcommand ${subcmd}`)
           }
         }
-      | None() -> display(Some(Cli.usage(args.cmd, true)))
+      | None() -> SKUIMain.display(Some(Cli.usage(args.cmd, true)))
       }
     }
   }
 }
 
-@wasm_export("SKIP_SkuiViews_update")
-@cpp_export("SKIP_SkuiViews_update")
+@export("SKIP_SkuiViews_update")
 fun update(): void {
   pos = checkObstack();
   SKStore.Context::withoutGc(context ~> context.updateIfRoot());

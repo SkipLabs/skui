@@ -25,11 +25,17 @@ const modules: ModuleInit[] = [
   viewsInit,
 ];
 
-const wasmurl = new URL("./skuiviews", import.meta.url);
+const wasmurl = new URL("./libskui_views.wasm", import.meta.url);
 const extensions: EnvInit[] = [openglComplete];
 
 async function launch() {
-  const data = await run(wasmurl, modules, extensions, createEnvironment);
+  const data = await run(
+    wasmurl,
+    modules,
+    extensions,
+    createEnvironment,
+    "skui_views"
+  );
   const window = (data.environment as GLEnv).window();
   let args: string[] = [];
   if ("skui_command" in window) {
