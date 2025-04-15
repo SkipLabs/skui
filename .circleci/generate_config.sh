@@ -53,7 +53,7 @@ cat <<EOF
       - check-fmt
 EOF
 
-if ${TS_CHANGED[skui_common]}
+if ${SK_CHANGED[skui_common]}
 then
     cat <<EOF
   common:
@@ -63,7 +63,7 @@ then
 EOF
 fi
 
-if ${TS_CHANGED[skui_font]}
+if ${SK_CHANGED[skui_font]}
 then
     cat <<EOF
   font:
@@ -73,7 +73,7 @@ then
 EOF
 fi
 
-if ${TS_CHANGED[skui_mtsdf]}
+if ${SK_CHANGED[skui_mtsdf]}
 then
     cat <<EOF
   mtsdf:
@@ -83,7 +83,7 @@ then
 EOF
 fi
 
-if ${TS_CHANGED[skui_opengl]}
+if ${SK_CHANGED[skui_opengl]}
 then
     cat <<EOF
   glsl:
@@ -93,7 +93,7 @@ then
 EOF
 fi
 
-if ${TS_CHANGED[skui_eng]}
+if ${SK_CHANGED[skui_eng]}
 then
     cat <<EOF
   engine:
