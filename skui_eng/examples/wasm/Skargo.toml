@@ -1,0 +1,9 @@
+[package]
+name = "skui_eng_examples"
+version = "0.1.0"
+
+[dependencies]
+skui_eng = { "path" = "../.." }
+
+[lib]
+type = ["cdylib"]

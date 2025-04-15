@@ -13,8 +13,9 @@ class Renderer(name: String, optDescription: ?String) uses Show {
   }
 }
 
-fun main(): void {
-  // todo manage execption
+@export("skui_eng_examples")
+fun examples(): void {
+  // TODO: manage exceptions
   pos = SKStore.newObstack();
   renderers = jsExamples()
     .map(jsa ->
@@ -92,7 +93,7 @@ fun initEngineWidget(
     hdl = UiEngine.widgetPipeline(ctx, property, root);
     (ctx, _root) ~> hdl.get(ctx).widget
   };
-  SkuiViews.initUi(context, wId, builder, support);
+  SKUI.init(context, wId, builder, support);
 }
 
 module end;

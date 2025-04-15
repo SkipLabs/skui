@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    ".": "./dist/src/engine.js"
+    ".": "./dist/src/index.js"
   },
   "scripts": {
     "build": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk && tsc && skargo build --target wasm32 --out-dir=./dist/src/",

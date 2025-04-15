@@ -3,7 +3,7 @@ module SkuiEndBuild;
 @skui_build__extra_sources
 fun extra_sources(env: SkuiBuild.Env): Array<String> {
   if (env.isWasm32()) {
-    Array["extra/src/Handle.sk", "extra/src/Picture.sk", "extra/src/Main.sk"]
+    Array["extra/src/Handle.sk", "extra/src/Picture.sk"]
   } else {
     Array[]
   }
