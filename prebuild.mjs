@@ -13,6 +13,7 @@ const symlinks = {
   "skui-common": "./skui_common/ts/wasm/src",
   "skui-opengl": "./skui_opengl/ts/wasm/src",
   "skui-fwk": "./skui_fwk/ts/src",
+  "skui-js": "./skui_js/ts/src",
 };
 
 const filename = fileURLToPath(import.meta.url);

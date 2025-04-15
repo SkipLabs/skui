@@ -1,8 +1,14 @@
-// prettier-ignore
-import type {ptr, Nullable, Utils, Links, ToWasmManager, Environment} from "../skipwasm-std/index.js";
-import * as eng from "./skui_eng_types.js";
-import * as icons from "./skui_eng_icons.js";
-import type * as Internal from "./internal.js";
+import type {
+  ptr,
+  Nullable,
+  Utils,
+  Links,
+  ToWasmManager,
+  Environment,
+} from "@skui/engine";
+import * as eng from "@skui/engine/types.js";
+import * as icons from "@skui/engine/icons.js";
+import type * as Internal from "@skui/engine/internal.js";
 
 function setText(text: eng.Property, strName: string, count: number) {
   const newText = `The '${strName}' button was fired with a click count of ${count}`;

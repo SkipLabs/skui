@@ -460,6 +460,7 @@ class LinksImpl implements Links, ToWasm {
     }
   }
 }
+
 class Manager implements ToWasmManager {
   env: Env | undefined;
 

@@ -1,0 +1,11 @@
+{
+  "name": "engine-examples",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@skui/engine-examples": "^0.0.1"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

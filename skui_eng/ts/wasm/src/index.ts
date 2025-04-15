@@ -8,11 +8,23 @@ import { init as regexpInit } from "../skui-common/skui_regexp.js";
 import { init as commonInit } from "../skui-common/skui_common.js";
 import { init as openglInit } from "../skui-opengl/skui_webgl.js";
 import { init as fwkInit } from "../skui-fwk/skui_framework.js";
+import { init as jsInit } from "../skui-js/index.js";
+import { init as engineInit } from "./engine.js";
+import { init as pictureInit } from "./picture.js";
 import {
   type GLEnv,
   complete as openglComplete,
 } from "../skui-opengl/skui_glenv.js";
 import { environment as createEnvironment } from "../skipwasm-std/sk_browser.js";
+
+export type {
+  ptr,
+  Nullable,
+  Utils,
+  Links,
+  ToWasmManager,
+  Environment,
+} from "../skipwasm-std/index.js";
 
 const modules: ModuleInit[] = [
   runtimeInit,
@@ -22,6 +34,9 @@ const modules: ModuleInit[] = [
   commonInit,
   openglInit,
   fwkInit,
+  jsInit,
+  pictureInit,
+  engineInit,
 ];
 
 const extensions: EnvInit[] = [openglComplete];

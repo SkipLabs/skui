@@ -8,8 +8,10 @@
     "./matrix.js": "./dist/src/skui_matrix.js"
   },
   "scripts": {
-    "build": "node ../../../prebuild.mjs skiplang-std skipwasm-std && tsc",
-    "clean": "rm -rf dist skiplang-std skipwasm-std",
-    "lint": "node ../../../prebuild.mjs skiplang-std skipwasm-std && eslint"
+    "prebuild": "node ../../../prebuild.mjs skiplang-std skipwasm-std",
+    "prelint": "npm run prebuild",
+    "build": "tsc",
+    "lint": "eslint",
+    "clean": "rm -rf dist skiplang-std skipwasm-std"
   }
 }

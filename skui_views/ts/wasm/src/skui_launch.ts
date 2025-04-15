@@ -8,7 +8,7 @@ import { init as regexpInit } from "../skui-common/skui_regexp.js";
 import { init as commonInit } from "../skui-common/skui_common.js";
 import { init as openglInit } from "../skui-opengl/skui_webgl.js";
 import { init as fwkInit } from "../skui-fwk/skui_framework.js";
-import { init as viewsInit } from "./skui_views.js";
+import { init as jsInit } from "../skui-js/index.js";
 import { init as resourceInit } from "./resources.js";
 import { complete as openglComplete } from "../skui-opengl/skui_glenv.js";
 import { environment as createEnvironment } from "../skipwasm-std/sk_browser.js";
@@ -22,7 +22,7 @@ const modules: ModuleInit[] = [
   openglInit,
   fwkInit,
   resourceInit,
-  viewsInit,
+  jsInit,
 ];
 
 const wasmurl = new URL("./libskui_views.wasm", import.meta.url);

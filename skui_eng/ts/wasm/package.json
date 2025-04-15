@@ -3,11 +3,16 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    ".": "./dist/src/index.js"
+    ".": "./dist/src/index.js",
+    "./internal.js": "./dist/src/internal.js",
+    "./types.js": "./dist/src/types.js",
+    "./icons.js": "./dist/src/icons.js"
   },
   "scripts": {
-    "build": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk && tsc && skargo build --target wasm32 --out-dir=./dist/src/",
-    "clean": "rm -rf dist skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk",
-    "lint": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk && eslint"
+    "prebuild": "node ../../../prebuild.mjs skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk skui-js",
+    "prelint": "npm run prebuild",
+    "build": "tsc",
+    "lint": "eslint",
+    "clean": "rm -rf dist skiplang-std skipwasm-std skui-base skui-common skui-opengl skui-fwk skui-js"
   }
 }

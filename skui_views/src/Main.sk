@@ -81,7 +81,8 @@ fun perform(
           optSubcmd.flatMap(subcmd ->
             args.cmd._subcommands.filter(cmd -> cmd.name == subcmd).maybeGet(0)
           ) match {
-          | Some(cmd) -> SKUIMain.display(Some(Cli.usage(cmd, true, Some(args.cmd))))
+          | Some(cmd) ->
+            SKUIMain.display(Some(Cli.usage(cmd, true, Some(args.cmd))))
           | _ ->
             error = optSubcmd
               .map(cmd -> `error: Invalid subcommand ${cmd}`)

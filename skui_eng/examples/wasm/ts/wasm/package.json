@@ -1,0 +1,16 @@
+{
+  "name": "@skui/engine-examples",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && skargo build --target wasm32 --lib --out-dir=./dist",
+    "clean": "rm -rf dist && skargo clean",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@skui/engine": "0.0.1"
+  }
+}

@@ -1,9 +1,10 @@
 [package]
-name = "skui_eng_examples"
+name = "skuieng_examples"
 version = "0.1.0"
 
 [dependencies]
 skui_eng = { "path" = "../.." }
+skui_js = { path = "../../../skui_js" }
 
 [lib]
 type = ["cdylib"]
