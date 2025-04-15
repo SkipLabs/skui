@@ -1,0 +1,184 @@
+version: 2.1
+
+commands:
+  systemsetup:
+    description: "Install used libraries"
+    steps:
+      - run:
+          name: Install used libraries
+          command: |
+            apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get install -y libpcre3 libpcre3-dev libnss3 libssl-dev libx11-dev freeglut3-dev libglew-dev libxrandr-dev libxcursor-dev
+  cloneskip:
+    description: "Clone skip"
+    steps:
+      - run:
+          name: Clone skip
+          command: |
+            git clone --recursive https://github.com/SkipLabs/skip.git
+jobs:
+  skui_common:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run common tests
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui_common && skargo test --junitxml ~/test-results/skui_common.xml
+      - store_test_results:
+          path: ~/test-results/skui_common.xml
+  skui_font:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run font tests
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui_font && skargo test --junitxml ~/test-results/skui_font.xml
+      - store_test_results:
+          path: ~/test-results/skui_font.xml
+  skui_mtsdf:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run mtsdf tests
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui_mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
+      - store_test_results:
+          path: ~/test-results/skui_mtsdf.xml
+  skui_opengl:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run glsl tests
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui_opengl && skargo test --junitxml ~/test-results/skui_opengl.xml
+      - store_test_results:
+          path: ~/test-results/skui_opengl.xml
+  skui_eng:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: xlarge
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Check skui_eng
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            cd skui_eng && skargo c
+  skui_common-wasm:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run wasm skui_common tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_common-wasm.xml
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            make playwright test-wasm-common TEST_ARGS="-- --reporter=junit"
+      - store_test_results:
+          path: ~/test-results/skui_common-wasm.xml
+  skui_font-wasm:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run wasm skui_font tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_font-wasm.xml
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            make playwright test-wasm-font TEST_ARGS="-- --reporter=junit"
+      - store_test_results:
+          path: ~/test-results/skui_font-wasm.xml
+  skui_mtsdf-wasm:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run wasm skui_mtsdf tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_mtsdf-wasm.xml
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            make playwright test-wasm-mtsdf TEST_ARGS="-- --reporter=junit"
+      - store_test_results:
+          path: ~/test-results/skui_mtsdf-wasm.xml
+  skui_opengl-wasm:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run wasm glsl tests
+          environment:
+            PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_opengl-wasm.xml
+          no_output_timeout: 5m
+          command: |
+            mkdir -p ~/test-results
+            make playwright test-wasm-opengl TEST_ARGS="-- --reporter=junit"
+      - store_test_results:
+          path: ~/test-results/skui_opengl-wasm.xml
+  lint:
+    docker:
+      - image: skiplabs/skdb-base:latest
+    resource_class: large
+    steps:
+      - systemsetup
+      - checkout
+      - cloneskip
+      - run:
+          name: Run linter
+          command: |
+            make linter
