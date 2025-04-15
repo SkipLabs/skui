@@ -41,8 +41,18 @@ const modules: ModuleInit[] = [
 
 const extensions: EnvInit[] = [openglComplete];
 
-export async function launch(name: string, wasmurl: URL) {
-  const data = await run(wasmurl, modules, extensions, createEnvironment, name);
+export async function launch(
+  name: string,
+  wasmurl: URL,
+  additional: ModuleInit[]
+) {
+  const data = await run(
+    wasmurl,
+    modules.concat(additional),
+    extensions,
+    createEnvironment,
+    name
+  );
   const window = (data.environment as GLEnv).window();
   let args: string[] = [];
   if ("skui_command" in window) {
