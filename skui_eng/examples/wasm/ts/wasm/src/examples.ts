@@ -73,7 +73,7 @@ const button2 = (scope: eng.Scope) => {
 function buildButton(
   mode: eng.ButtonMode,
   strKind: keyof typeof eng.ButtonKind,
-  text: eng.Property
+  text: eng.Property,
 ) {
   const kind = eng.ButtonKind[strKind] as number;
   return eng.button({
@@ -95,7 +95,7 @@ function buildLine(strMode: keyof typeof eng.ButtonMode, text: eng.Property) {
   for (const strKind in eng.ButtonKind) {
     if (isNaN(Number(strKind))) {
       line.push(
-        buildButton(mode, strKind as keyof typeof eng.ButtonKind, text)
+        buildButton(mode, strKind as keyof typeof eng.ButtonKind, text),
       );
     }
   }
@@ -108,7 +108,7 @@ function buildLine(strMode: keyof typeof eng.ButtonMode, text: eng.Property) {
       text: "Disabled",
       icon: icons.Heart,
       disabled: true,
-    })
+    }),
   );
   return line;
 }
@@ -166,7 +166,7 @@ const buttons = (scope: eng.Scope) => {
 interface ToWasm {
   SKUI_UiEngineJS_examples: () => Nullable<ptr<Internal.JSArray>>;
   SKUI_UiEngineJS_getExample: (
-    name: ptr<Internal.String>
+    name: ptr<Internal.String>,
   ) => Nullable<ptr<Internal.JSArray>>;
 }
 
@@ -211,12 +211,12 @@ class LinksImpl implements Links, ToWasm {
         this.utils,
         this.exports,
         shared.createScope,
-        state
+        state,
       );
       return engUtils.exportValue(
         null,
         null,
-        new eng.RenderableElement(renderable)
+        new eng.RenderableElement(renderable),
       );
     }
     return null;
@@ -230,7 +230,7 @@ class LinksImpl implements Links, ToWasm {
         this.utils,
         this.exports,
         shared.createScope,
-        state
+        state,
       );
       return engUtils.exportValue(null, null, [
         { name: "button", description: "Button example" },

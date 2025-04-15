@@ -456,7 +456,9 @@ extension class Configuration {
       } else {
         Tight()
       },
-      ignoreCross => UiEngine.maybeGetBool(value, "ignore-cross").default(false),
+      ignoreCross => UiEngine.maybeGetBool(value, "ignore-cross").default(
+        false,
+      ),
     }
   }
 }
@@ -590,7 +592,8 @@ extension base class QType extends UiEngine.SObject {
               .default(!"No"),
             UiEngine.maybeGet(value, "neutral").map(Text::fromSerializable),
           )
-        | _ -> YesNo(UiEngine.maybeGetBool(value, "with-neutral").default(false))
+        | _ ->
+          YesNo(UiEngine.maybeGetBool(value, "with-neutral").default(false))
         }
       )
       .default(YesNo());

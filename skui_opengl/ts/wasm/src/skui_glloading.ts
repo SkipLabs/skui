@@ -20,7 +20,7 @@ export class Loading {
   constructor(
     canvas: HTMLCanvasElement,
     gl: WebGL2RenderingContext,
-    setInterval: (handler: TimerHandler, timeout: int) => int
+    setInterval: (handler: TimerHandler, timeout: int) => int,
   ) {
     this.setInterval = setInterval;
     this.positionBuffer = gl.createBuffer();
@@ -30,7 +30,7 @@ export class Loading {
       new Float32Array([
         0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
       ]),
-      gl.STATIC_DRAW
+      gl.STATIC_DRAW,
     );
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     this.step = 0;
@@ -53,7 +53,7 @@ export class Loading {
     color1: Iterable<GLfloat>,
     color2: Iterable<GLfloat>,
     cWidth: number,
-    cHeight: number
+    cHeight: number,
   ) => {
     const gl = this.gl;
     gl.useProgram(this.program);
@@ -106,7 +106,7 @@ export class Loading {
       [0.4, 1, 0.8, 1],
       [0.2, 0.6, 1.0, 1],
       this.canvas.width,
-      this.canvas.height
+      this.canvas.height,
     );
     requestAnimationFrame(this.loading);
   };
@@ -120,7 +120,7 @@ export class Loading {
       this.gl.SRC_ALPHA,
       this.gl.ONE_MINUS_SRC_ALPHA,
       this.gl.ONE,
-      this.gl.ONE_MINUS_SRC_ALPHA
+      this.gl.ONE_MINUS_SRC_ALPHA,
     );
     this.interval = this.setInterval(this.update, 100);
     requestAnimationFrame(this.loading);
@@ -146,7 +146,7 @@ const loadindProgram = (gl: WebGLRenderingContext) => {
   const fragmentShader = makeShader(
     gl,
     progressFragmentShader,
-    gl.FRAGMENT_SHADER
+    gl.FRAGMENT_SHADER,
   );
 
   // Create program

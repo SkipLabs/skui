@@ -27,7 +27,7 @@ export type JsonArray = (Json | null)[];
 export type Combine = (
   combine: (values: JsonArray) => Json,
   combinables: Readable[],
-  write?: (value: Json) => void
+  write?: (value: Json) => void,
 ) => Property;
 
 export interface Readable {
@@ -587,7 +587,7 @@ export type Tree = {
   "on-tree-drop"?: (from: string[][], to: string[], drop: Drop) => void;
   "get-context-menu"?: (
     current: string[],
-    selection: string[][]
+    selection: string[][],
   ) => DropdownElement[];
   "allow-multiple-selection"?: Value<boolean>;
   "badge-max-char"?: Value<int>;
@@ -674,7 +674,7 @@ export interface Scope {
   combine(
     combine: (values: JsonArray) => Json,
     combinables: Readable[],
-    write?: (value: Json) => void
+    write?: (value: Json) => void,
   ): Property;
 }
 
@@ -682,23 +682,23 @@ interface Exports {
   SKIP_UiEngineJS_register(
     id: int,
     path: Nullable<ptr<Internal.String>>,
-    type_: ptr<Internal.String>
+    type_: ptr<Internal.String>,
   ): void;
   SKIP_UiEngineJS_toJS(json: ptr<Internal.Json>): Handle<Json>;
   SKIP_JSON_startObject(): ptr<Internal.PartialJSObj>;
   SKIP_JSON_addToObject(
     obj: ptr<Internal.PartialJSObj>,
     name: ptr<Internal.String>,
-    value: ptr<Internal.Json>
+    value: ptr<Internal.Json>,
   ): void;
   SKIP_JSON_endObject(obj: ptr<Internal.PartialJSObj>): ptr<Internal.JSObject>;
   SKIP_JSON_startArray(): ptr<Internal.PartialJSArray<Internal.Json>>;
   SKIP_JSON_addToArray(
     arr: ptr<Internal.PartialJSArray<Internal.Json>>,
-    value: ptr<Internal.Json>
+    value: ptr<Internal.Json>,
   ): void;
   SKIP_JSON_endArray(
-    arr: ptr<Internal.PartialJSArray<Internal.Json>>
+    arr: ptr<Internal.PartialJSArray<Internal.Json>>,
   ): ptr<Internal.JSArray<Internal.Json>>;
   SKIP_JSON_createNull(): ptr<Internal.Json>;
   SKIP_JSON_createIntNumber(v: int): ptr<Internal.Json>;
@@ -757,7 +757,7 @@ export class SkuiEngUtils {
     utils: Utils,
     exports: any,
     createScope: (name: string) => Scope,
-    state?: State
+    state?: State,
   ) {
     this.state = state ?? new State();
     this.utils = utils;
@@ -771,13 +771,13 @@ export class SkuiEngUtils {
 
   register<R, P extends any[]>(
     skPath: Nullable<ptr<Internal.String>>,
-    value: (..._: P) => R
+    value: (..._: P) => R,
   ) {
     const id = this.state.register(value);
     this.exports.SKIP_UiEngineJS_register(
       id,
       skPath,
-      this.utils.exportString(typeof value)
+      this.utils.exportString(typeof value),
     );
     return id;
   }
@@ -785,7 +785,7 @@ export class SkuiEngUtils {
   exportValue(
     path: Nullable<string>,
     skPath: Nullable<ptr<Internal.String>>,
-    value: Json | Function | null
+    value: Json | Function | null,
   ): ptr<Internal.Json> {
     const type = typeof value;
     if (value == null) {
@@ -796,15 +796,15 @@ export class SkuiEngUtils {
       return this.exports.SKIP_JSON_createBool(value as boolean);
     } else if (type == "string") {
       return this.exports.SKIP_JSON_createString(
-        this.utils.exportString(value as string)
+        this.utils.exportString(value as string),
       );
     } else if (Array.isArray(value)) {
       const arr = this.exports.SKIP_JSON_startArray();
       value.forEach((v) =>
         this.exports.SKIP_JSON_addToArray(
           arr,
-          this.exportValue(path, skPath, v)
-        )
+          this.exportValue(path, skPath, v),
+        ),
       );
       return this.exports.SKIP_JSON_endArray(arr);
     } else if (value instanceof RenderableElement) {
@@ -827,7 +827,7 @@ export class SkuiEngUtils {
         this.exports.SKIP_JSON_addToObject(
           obj,
           this.utils.exportString(key),
-          this.exportValue(path, skPath, jso[key]!)
+          this.exportValue(path, skPath, jso[key]!),
         );
       }
       return this.exports.SKIP_JSON_endObject(obj);

@@ -20,7 +20,7 @@ interface ToWasm {
     texture: int,
     location: int,
     index: int,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_activeTexture(index: int, ctxId: int): void;
   SKIP_GL_createTexture(ctxId: int): Nullable<int>;
@@ -57,7 +57,7 @@ interface ToWasm {
     size: int,
     normalized: boolean,
     offset: int,
-    ctxId: int
+    ctxId: int,
   ): void;
   /////////////////////////// UNIFORMS ///////////////////////////
   SKIP_GL_uniformMatrix4fv(
@@ -79,7 +79,7 @@ interface ToWasm {
     v14: number,
     v15: number,
     v16: number,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_uniform1i(location: int, v0: number, ctxId: int): void;
   SKIP_GL_uniform1f(location: int, v0: number, ctxId: int): void;
@@ -90,7 +90,7 @@ interface ToWasm {
     v1: number,
     v2: number,
     v3: number,
-    ctxId: int
+    ctxId: int,
   ): void;
   /////////////////////////// DRAW ///////////////////////////
   SKIP_GL_drawTriangleStrip(first: int, count: int, ctxId: int): void;
@@ -99,22 +99,22 @@ interface ToWasm {
   SKIP_GL_getAttributeLocation(
     program: int,
     name: ptr<Internal.String>,
-    ctxId: int
+    ctxId: int,
   ): Nullable<int>;
   SKIP_GL_getIdxAttributeLocation(
     program: int,
     index: int,
-    ctxId: int
+    ctxId: int,
   ): Nullable<int>;
   SKIP_GL_getUniformLocation(
     program: int,
     name: ptr<Internal.String>,
-    ctxId: int
+    ctxId: int,
   ): Nullable<int>;
   SKIP_GL_getIdxUniformLocation(
     program: int,
     index: int,
-    ctxId: int
+    ctxId: int,
   ): Nullable<int>;
   /////////////////////////// FRAME BUFFERS //////////////////////////////
   SKIP_GL_bindMainFrameBuffer(ctxId: int): void;
@@ -147,31 +147,31 @@ interface ToWasm {
     width: int,
     height: int,
     reverted: boolean,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_uniform4fv(
     location: int,
     count: int,
     valuesPtr: ptr<Internal.Array<Internal.Float>>,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_uniform3fv(
     location: int,
     count: int,
     valuesPtr: ptr<Internal.Array<Internal.Float>>,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_uniform2fv(
     location: int,
     count: int,
     valuesPtr: ptr<Internal.Array<Internal.Float>>,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_uniform1fv(
     location: int,
     count: int,
     valuesPtr: ptr<Internal.Array<Internal.Float>>,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_setTexture2DRGBASubImage(
     level: int,
@@ -180,32 +180,32 @@ interface ToWasm {
     width: int,
     height: int,
     dataPtr: ptr<Internal.Array<Internal.Byte>>,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_setTexture2DRGBAImage(
     level: int,
     width: int,
     height: int,
     dataPtr: Nullable<ptr<Internal.Array<Internal.Byte>>>,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_shaderSource(
     shader: int,
     source: ptr<Internal.String>,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_getShaderInfoLog(
     shader: int,
-    ctxId: int
+    ctxId: int,
   ): Nullable<ptr<Internal.String>>;
   SKIP_GL_staticDrawData(
     dataPtr: ptr<Internal.Array<Internal.Float>>,
     len: int,
-    ctxId: int
+    ctxId: int,
   ): void;
   SKIP_GL_getProgramInfoLog(
     program: int,
-    ctxId: int
+    ctxId: int,
   ): Nullable<ptr<Internal.String>>;
 }
 
@@ -250,38 +250,38 @@ class Manager implements ToWasmManager {
     const links = new LinksImpl(this.factory, this.env);
     //////////////////////// TEXTURES ///////////////////////////////
     toWasm.SKIP_GL_activateTextureAt = this.factory.activateTextureAt.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_activeTexture = this.factory.activeTexture.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_createTexture = this.factory.createTexture.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_deleteTexture = this.factory.deleteTexture.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_bindTexture2D = this.factory.bindTexture2D.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_setTexture2DMinFilter =
       this.factory.setTexture2DMinFilter.bind(this.factory);
     toWasm.SKIP_GL_setTexture2DMagFilter =
       this.factory.setTexture2DMagFilter.bind(this.factory);
     toWasm.SKIP_GL_setTexture2DWrapS = this.factory.setTexture2DWrapS.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_setTexture2DWrapT = this.factory.setTexture2DWrapT.bind(
-      this.factory
+      this.factory,
     );
     //////////////////////// SHADERS ///////////////////////////////
     toWasm.SKIP_GL_createFragmentShader =
       this.factory.createFragmentShader.bind(this.factory);
     toWasm.SKIP_GL_createVertexShader = this.factory.createVertexShader.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_compileShader = this.factory.compileShader.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_isCompiled = (shader: int, ctxId: int) =>
       this.factory.isCompiled(shader, ctxId);
@@ -289,10 +289,10 @@ class Manager implements ToWasmManager {
       this.factory.deleteShader(shader, ctxId);
     //////////////////////// PROGRAMS ///////////////////////////////
     toWasm.SKIP_GL_createProgram = this.factory.createProgram.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_deleteProgram = this.factory.deleteProgram.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_attachShader = this.factory.attachShader.bind(this.factory);
     toWasm.SKIP_GL_detachShader = this.factory.detachShader.bind(this.factory);
@@ -303,16 +303,16 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_GL_createBuffer = this.factory.createBuffer.bind(this.factory);
     toWasm.SKIP_GL_deleteBuffer = this.factory.deleteBuffer.bind(this.factory);
     toWasm.SKIP_GL_bindArrayBuffer = this.factory.bindArrayBuffer.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_createVertexArray = this.factory.createVertexArray.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_deleteVertexArray = this.factory.deleteVertexArray.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_bindVertexArray = this.factory.bindVertexArray.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_enableVertexAttributeArray =
       this.factory.enableVertexAttributeArray.bind(this.factory);
@@ -320,7 +320,7 @@ class Manager implements ToWasmManager {
       this.factory.vertexFloatAttributePointer.bind(this.factory);
     /////////////////////////// UNIFORMS ///////////////////////////
     toWasm.SKIP_GL_uniformMatrix4fv = this.factory.uniformMatrix4fv.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_uniform1i = this.factory.uniform1i.bind(this.factory);
     toWasm.SKIP_GL_uniform1f = this.factory.uniform1f.bind(this.factory);
@@ -328,10 +328,10 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_GL_uniform4f = this.factory.uniform4f.bind(this.factory);
     /////////////////////////// DRAW ///////////////////////////
     toWasm.SKIP_GL_drawTriangleStrip = this.factory.drawTriangleStrip.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_drawTriangles = this.factory.drawTriangles.bind(
-      this.factory
+      this.factory,
     );
     /////////////////////////// LOCATIONS ///////////////////////////
     toWasm.SKIP_GL_getIdxAttributeLocation =
@@ -341,18 +341,18 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_GL_getIdxUniformLocation =
       this.factory.getIdxUniformLocation.bind(this.factory);
     toWasm.SKIP_GL_getUniformLocation = this.factory.getUniformLocation.bind(
-      this.factory
+      this.factory,
     );
     /////////////////////////// FRAME BUFFERS //////////////////////////////
     toWasm.SKIP_GL_bindMainFrameBuffer = this.factory.bindMainFrameBuffer.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_bindTextureFrameBuffer =
       this.factory.bindTextureFrameBuffer.bind(this.factory);
     toWasm.SKIP_GL_framebufferTexture2DColor =
       this.factory.framebufferTexture2DColor.bind(this.factory);
     toWasm.SKIP_GL_deleteFramebuffer = this.factory.deleteFramebuffer.bind(
-      this.factory
+      this.factory,
     );
     /////////////////////////// STATE //////////////////////////////
     toWasm.SKIP_GL_viewport = this.factory.viewport.bind(this.factory);
@@ -362,10 +362,10 @@ class Manager implements ToWasmManager {
     toWasm.SKIP_GL_srcAlphaBlendOneMinus =
       this.factory.srcAlphaBlendOneMinus.bind(this.factory);
     toWasm.SKIP_GL_oneBlendOneMinus = this.factory.oneBlendOneMinus.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_straitAlphaBlending = this.factory.straitAlphaBlending.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_disableBlend = this.factory.disableBlend.bind(this.factory);
     toWasm.SKIP_GL_enableBlend = this.factory.enableBlend.bind(this.factory);
@@ -386,13 +386,13 @@ class Manager implements ToWasmManager {
       this.factory.setTexture2DRGBAImage.bind(this.factory);
     toWasm.SKIP_GL_shaderSource = this.factory.shaderSource.bind(this.factory);
     toWasm.SKIP_GL_getShaderInfoLog = this.factory.getShaderInfoLog.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_staticDrawData = this.factory.staticDrawData.bind(
-      this.factory
+      this.factory,
     );
     toWasm.SKIP_GL_getProgramInfoLog = this.factory.getProgramInfoLog.bind(
-      this.factory
+      this.factory,
     );
     return links;
   };
@@ -407,7 +407,7 @@ class ToConsole implements ToWasmManager {
       _texture: int,
       location: int,
       index: int,
-      ctxId: int
+      ctxId: int,
     ) =>
       console.log([
         "SKIP_GL_activateTextureAt texture",
@@ -491,7 +491,7 @@ class ToConsole implements ToWasmManager {
       size: int,
       normalized: boolean,
       offset: int,
-      ctxId: int
+      ctxId: int,
     ) =>
       console.log([
         "vertexFloatAttributePointer",
@@ -521,7 +521,7 @@ class ToConsole implements ToWasmManager {
       v14: number,
       v15: number,
       v16: number,
-      ctxId: int
+      ctxId: int,
     ) =>
       console.log([
         "uniformMatrix4fv",
@@ -553,7 +553,7 @@ class ToConsole implements ToWasmManager {
       location: int,
       v0: number,
       v1: number,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["uniform2f", location, v0, v1, ctxId]);
     toWasm.SKIP_GL_uniform4f = (
       location: int,
@@ -561,7 +561,7 @@ class ToConsole implements ToWasmManager {
       v1: number,
       v2: number,
       v3: number,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["uniform4f", location, v0, v1, v2, v3, ctxId]);
     /////////////////////////// DRAW ///////////////////////////
     toWasm.SKIP_GL_drawTriangleStrip = (first: int, count: int, ctxId: int) =>
@@ -572,7 +572,7 @@ class ToConsole implements ToWasmManager {
     toWasm.SKIP_GL_getAttributeLocation = (
       program: int,
       name: ptr<Internal.String>,
-      ctxId: int
+      ctxId: int,
     ) => {
       console.log(["getAttributeLocation", program, name, ctxId]);
       return name;
@@ -580,7 +580,7 @@ class ToConsole implements ToWasmManager {
     toWasm.SKIP_GL_getIdxAttributeLocation = (
       program: int,
       index: int,
-      ctxId: int
+      ctxId: int,
     ) => {
       console.log(["getIdxAttributeLocation", program, index, ctxId]);
       return index;
@@ -588,7 +588,7 @@ class ToConsole implements ToWasmManager {
     toWasm.SKIP_GL_getUniformLocation = (
       program: int,
       name: ptr<Internal.String>,
-      ctxId: int
+      ctxId: int,
     ) => {
       console.log(["getUniformLocation", program, name, ctxId]);
       return name;
@@ -596,7 +596,7 @@ class ToConsole implements ToWasmManager {
     toWasm.SKIP_GL_getIdxUniformLocation = (
       program: int,
       index: int,
-      ctxId: int
+      ctxId: int,
     ) => {
       console.log(["getIdxUniformLocation", program, index, ctxId]);
       return index;
@@ -609,7 +609,7 @@ class ToConsole implements ToWasmManager {
     toWasm.SKIP_GL_framebufferTexture2DColor = (
       texture: int,
       level: int,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["framebufferTexture2DColor", texture, level, ctxId]);
     toWasm.SKIP_GL_deleteFramebuffer = (buffer: int, ctxId: int) =>
       console.log(["deleteFramebuffer", buffer, ctxId]);
@@ -619,14 +619,14 @@ class ToConsole implements ToWasmManager {
       y: int,
       width: int,
       height: int,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["viewport", x, y, width, height, ctxId]);
     toWasm.SKIP_GL_clearColor = (
       r: number,
       g: int,
       b: int,
       a: int,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["clearColor", r, g, b, a, ctxId]);
     toWasm.SKIP_GL_srcAlphaBlendSrcColor = (ctxId: int) =>
       console.log(["srcAlphaBlendSrcColor", ctxId]);
@@ -657,7 +657,7 @@ class ToConsole implements ToWasmManager {
       width: int,
       height: int,
       reverted: boolean,
-      ctxId: int
+      ctxId: int,
     ) =>
       console.log([
         "copyTexture",
@@ -678,13 +678,13 @@ class ToConsole implements ToWasmManager {
       location: int,
       count: int,
       valuesPtr: ptr<Internal.Array<Internal.Float>>,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["uniform4fv", location, count, valuesPtr, ctxId]);
     toWasm.SKIP_GL_uniform1fv = (
       location: int,
       count: int,
       valuesPtr: ptr<Internal.Array<Internal.Float>>,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["uniform1fv", location, count, valuesPtr, ctxId]);
     toWasm.SKIP_GL_setTexture2DRGBASubImage = (
       level: int,
@@ -693,7 +693,7 @@ class ToConsole implements ToWasmManager {
       width: int,
       height: int,
       dataPtr: ptr<Internal.Array<Internal.Byte>>,
-      ctxId: int
+      ctxId: int,
     ) =>
       console.log([
         "setTexture2DRGBASubImage",
@@ -710,7 +710,7 @@ class ToConsole implements ToWasmManager {
       width: int,
       height: int,
       dataPtr: Nullable<ptr<Internal.Array<Internal.Byte>>>,
-      ctxId: int
+      ctxId: int,
     ) =>
       console.log([
         "setTexture2DRGBAImage",
@@ -725,7 +725,7 @@ class ToConsole implements ToWasmManager {
     toWasm.SKIP_GL_staticDrawData = (
       dataPtr: ptr<Internal.Array<Internal.Float>>,
       len: int,
-      ctxId: int
+      ctxId: int,
     ) => console.log(["staticDrawData", dataPtr, len, ctxId]);
     toWasm.SKIP_GL_getShaderInfoLog = (shader: int, ctxId: int) => {
       console.log(["getShaderInfoLog", shader, ctxId]);

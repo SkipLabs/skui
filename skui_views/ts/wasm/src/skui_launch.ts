@@ -34,7 +34,7 @@ async function launch() {
     modules,
     extensions,
     createEnvironment,
-    "skui_views"
+    "skui_views",
   );
   const window = (data.environment as GLEnv).window();
   let args: string[] = [];

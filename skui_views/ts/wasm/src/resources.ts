@@ -29,13 +29,13 @@ class LinksImpl implements Links {
 
   SKIP_skui_views_resources_src_big_bin() {
     return this.utils.exportBytes(
-      this.resources.SKIP_skui_views_resources_src_big_bin
+      this.resources.SKIP_skui_views_resources_src_big_bin,
     );
   }
 
   SKIP_skui_views_resources_src_small_bin() {
     return this.utils.exportBytes(
-      this.resources.SKIP_skui_views_resources_src_small_bin
+      this.resources.SKIP_skui_views_resources_src_small_bin,
     );
   }
 }
@@ -63,11 +63,11 @@ async function fetch_(env: Environment, relPath: string) {
 export const init: ModuleInit = async (env: Environment) => {
   const SKIP_skui_views_resources_src_big_bin = await fetch_(
     env,
-    "../assets/big.bin"
+    "../assets/big.bin",
   );
   const SKIP_skui_views_resources_src_small_bin = await fetch_(
     env,
-    "../assets/small.bin"
+    "../assets/small.bin",
   );
   return new Manager({
     SKIP_skui_views_resources_src_big_bin,

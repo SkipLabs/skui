@@ -26,7 +26,7 @@ interface Exported {
     width: int,
     height: int,
     result: int,
-    error: Nullable<ptr<Internal.I18NText>>
+    error: Nullable<ptr<Internal.I18NText>>,
   ) => void;
 }
 
@@ -47,7 +47,7 @@ function resize(
   width: int,
   height: int,
   then: (img: HTMLImageElement) => void,
-  otherwise: (msg: Text | string) => void
+  otherwise: (msg: Text | string) => void,
 ) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -72,7 +72,7 @@ export class PictureShared implements Shared {
 
   constructor(
     register: (image: HTMLImageElement) => int,
-    unregister: (id: int) => void
+    unregister: (id: int) => void,
   ) {
     this.register = register;
     this.unregister = unregister;
@@ -122,14 +122,14 @@ class LinksImpl implements Links {
             this.exported.SKIP_UiEnginePicture_register(
               imgId,
               img.width,
-              img.height
+              img.height,
             );
             return imgId;
           },
           (id: int) => {
             this.exported.SKIP_UiEnginePicture_unregister(id);
-          }
-        )
+          },
+        ),
       );
     }
   }
@@ -160,7 +160,7 @@ class LinksImpl implements Links {
           width,
           height,
           img ?? 0,
-          skError
+          skError,
         );
       });
     };
@@ -177,13 +177,13 @@ class LinksImpl implements Links {
             this.exported.SKIP_UiEnginePicture_register(
               imgId,
               img.width,
-              img.height
+              img.height,
             );
             notify(imgId, null);
           },
           (msg) => {
             notify(null, check(msg));
-          }
+          },
         );
       } else {
         notify(null, f(l("Image not found {1}"), [new Raw(id.toString())]));

@@ -42,20 +42,16 @@ if ${SK_CHANGED[skui_x11gl]}; then
   SK_CHANGED[skui_views]=true
 fi
 
-check_ts=true
-
 cat .circleci/base.yml
 
 echo "workflows:"
 
-if $check_ts
-then
-    cat <<EOF
-  linter:
+cat <<EOF
+  checks:
     jobs:
       - lint
+      - check-fmt
 EOF
-fi
 
 if ${TS_CHANGED[skui_common]}
 then
