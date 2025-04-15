@@ -43,7 +43,7 @@ export class Matrix {
     bottom: number,
     top: number,
     near: number,
-    far: number
+    far: number,
   ) => {
     this.data[0] = 2 / (right - left);
     this.data[1] = 0;

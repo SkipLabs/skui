@@ -182,3 +182,12 @@ jobs:
           name: Run linter
           command: |
             make linter
+  check-fmt:
+    docker:
+      - image: skiplabs/skip:latest
+    steps:
+      - checkout
+      - run:
+          name: Check code is formatted
+          command: |
+           CHECK_JOBS="-j 4" make check-fmt 

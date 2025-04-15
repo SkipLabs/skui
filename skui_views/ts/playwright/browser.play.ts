@@ -63,7 +63,7 @@ async function check(
   page: Page,
   name: string,
   browserName: string,
-  suffix: string
+  suffix: string,
 ) {
   const file = `${name}-${browserName}-${suffix}.png`;
   const path = `test-results/${file}`;

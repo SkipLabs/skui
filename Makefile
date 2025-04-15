@@ -151,11 +151,11 @@ clean:
 
 .PHONY: fmt-sk
 fmt-sk:
-	find . -path ./skip -not -prune -or -name \*.sk | parallel skfmt -i :::
+	find . -path ./skip -not -prune -or -name \*.sk | parallel $(CHECK_JOBS) skfmt -i {}
 
 .PHONY: fmt-c
 fmt-c:
-	find . -path ./skip -not -prune -or -regex '.*\.[ch]\(pp\)*' | parallel clang-format -i :::
+	find . -path ./node_modules -not -prune -or -path ./skip -not -prune -or -regex '.*\.\(c\|cc\|cpp\|h\|hh\|hpp\)' | parallel clang-format -i {}
 
 .PHONY: fmt-js
 fmt-js:
