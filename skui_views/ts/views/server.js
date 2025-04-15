@@ -43,7 +43,9 @@ const requestListener = function (req, res) {
     } else if (url.pathname.startsWith("/skui-views/")) {
       const mime = url.pathname.endsWith(".js")
         ? "text/javascript"
-        : "application/octet-stream";
+        : url.pathname.endsWith(".ts")
+          ? "text/typescript"
+          : "application/octet-stream";
       fileresponce({
         path: `../../../node_modules/@skui/views/dist/${url.pathname.substring(12)}`,
         mime,

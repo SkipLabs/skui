@@ -13,7 +13,7 @@ class Renderer(name: String, optDescription: ?String) uses Show {
   }
 }
 
-@export("skui_eng_examples")
+@export("skuieng_examples")
 fun examples(): void {
   // TODO: manage exceptions
   pos = SKStore.newObstack();
@@ -34,13 +34,13 @@ fun examples(): void {
 
 fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
   if (examples.isEmpty()) {
-    SkuiViews.display(None(), Some("No renderer available"), false)
+    SKUIMain.display(None(), Some("No renderer available"), false)
   } else {
     available = Set::createFromItems(examples.map(e -> e.name));
     filtered = args.filter(a -> available.contains(a));
     if (filtered.isEmpty()) {
       dExamples = examples.map(e -> e.toString());
-      SkuiViews.display(
+      SKUIMain.display(
         None(),
         Some(
           `Enable to display '${args.join(

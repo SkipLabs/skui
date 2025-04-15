@@ -30,8 +30,10 @@ skui-base
 skui-common
 skui-opengl
 skui-fwk
+skui-js
 !skui-base/*
 !skui-common/*
 !skui-opengl/*
 !skui-fwk/*
+!skui-js/*
 node_modules

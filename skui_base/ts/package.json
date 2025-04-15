@@ -7,8 +7,10 @@
     "./types.js": "./dist/skui_types.js"
   },
   "scripts": {
-    "build": "node ../../prebuild.mjs skiplang-std skipwasm-std && tsc",
-    "clean": "rm -rf dist",
-    "lint": "eslint"
+    "prebuild": "node ../../prebuild.mjs skiplang-std skipwasm-std",
+    "prelint": "npm run prebuild",
+    "build": "tsc",
+    "lint": "eslint",
+    "clean": "rm -rf dist skiplang-std skipwasm-std"
   }
 }

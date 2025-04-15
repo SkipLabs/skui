@@ -68,6 +68,14 @@ start-views: views
 .PHONY: test-views
 test-views: views run-views-tests
 
+.PHONY: engine-examples
+engine-examples: fwk
+	npm run build -w @skui/engine -w  @skui/engine-examples
+
+.PHONY: start-engine-examples
+start-engine-examples: engine-examples
+	npm run start -w engine-examples
+
 .PHONY: common-tests
 common-tests: common
 	npm run build -w @skui/common-tests
@@ -164,4 +172,4 @@ check-fmt: fmt
 linter:	
 	npm i
 	npm run build -w @skiplang/std -w  @skip-wasm/std -w @skui/base -w @skui/common
-	npm run lint -w @skui/base -w @skui/common -w @skui/common-tests  -w @skui/common-tests -w @skui/font-tests -w @skui/mtsdf-tests -w @skui/opengl -w @skui/opengl-tests -w @skui/fwk -w @skui/views
+	npm run lint -w @skui/base -w @skui/common -w @skui/common-tests  -w @skui/common-tests -w @skui/font-tests -w @skui/mtsdf-tests -w @skui/opengl -w @skui/opengl-tests -w @skui/fwk -w @skui/js -w @skui/views -w @skui/engine
