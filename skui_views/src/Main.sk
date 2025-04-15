@@ -22,19 +22,8 @@ fun initUiWidget(
   wId: Int,
   getter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
 ): void {
-  support = SKUIGL.DrawableSupport(pictureToTexturable);
+  support = SKUIGL.DrawableSupport(SKUI.pictureToTexturable);
   SKUI.init(context, wId, (_ctx, _root) ~> getter, support)
-}
-
-fun pictureToTexturable(
-  picture: Ui.Picture,
-  linear: Bool = true,
-): ?GL.Texturable {
-  picture match {
-  | img @ Ui.Image _ ->
-    Some(GLTexture.Image(Some(img.data), linear, img.width, img.height))
-  | _ -> None()
-  }
 }
 
 fun perform(
@@ -71,8 +60,8 @@ fun perform(
     SKUIMain.display(None(), Some(`error: ${err.getMessage()}\n${error}`))
   | _ ->
     if (args.getBool("version")) {
-      // FIXME
-      SKUIMain.display(Some("skuiviews " + "FIXME"))
+      git_commit = #env ("GIT_COMMIT_HASH");
+      SKUIMain.display(Some(`skuiviews (${git_commit})`))
     } else {
       args.maybeGetSubcommand() match {
       | Some(subcmd) ->
@@ -112,11 +101,5 @@ fun perform(
   }
 }
 
-@export("SKIP_SkuiViews_update")
-fun update(): void {
-  pos = checkObstack();
-  SKStore.Context::withoutGc(context ~> context.updateIfRoot());
-  cleanObstack(pos);
-}
 
 module end;

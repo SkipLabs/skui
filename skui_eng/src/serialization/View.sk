@@ -55,7 +55,7 @@ extension class Decorated {
       Map[
         "decoration" => SOption(this.optDecoration),
         "child" => SOption(this.optWidget),
-        "rigthToLeft" => SOption(this.optRigthToLeft),
+        "rigth-to-left" => SOption(this.optRigthToLeft),
         "configuration" => SOption(this.optConfiguration),
       ],
     )

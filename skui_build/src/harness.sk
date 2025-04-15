@@ -88,6 +88,15 @@ class Env(
 }
 
 fun build(name: String): Result<Env, IO.Error> {
+  git_hash = System.subprocess(
+    Array["git", "rev-parse", "--short", "HEAD"],
+  ) match {
+  | Success(p) -> p.stdout
+  | Failure(err) ->
+    print_string(`Error getting git commit hash: ${err}`);
+    skipExit(1)
+  };
+  print_string(`skargo:skc-env=GIT_COMMIT_HASH=${git_hash}`);
   env = Env::create();
   includeDirs = Array[];
   #forEachFunction (@skui_build__include_dirs, #function, #functionName) {

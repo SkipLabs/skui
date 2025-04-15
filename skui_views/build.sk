@@ -38,7 +38,6 @@ fun extra_sources(env: SkuiBuild.Env): Array<String> {
 
 module end;
 
-@debug
 fun main(): void {
   SkuiBuild.build("skuiviews") match {
   | Failure(err) -> skipExit(err.code)

@@ -19,7 +19,7 @@ const button = (_scope: eng.Scope) => {
   return eng.flex({
     children: [
       eng.button({
-        onFire: (count: number) => {
+        "on-fire": (count: number) => {
           console.log(`Click: ${count}`);
         },
         mode: eng.ButtonMode.Basic,
@@ -29,8 +29,8 @@ const button = (_scope: eng.Scope) => {
       }),
     ],
     vertical: true,
-    mainalignment: eng.Alignment.Center,
-    crossalignment: eng.FlCrossAlign.Center,
+    "main-alignment": eng.Alignment.Center,
+    "cross-alignment": eng.FlCrossAlign.Center,
   });
 };
 
@@ -55,7 +55,7 @@ const button2 = (scope: eng.Scope) => {
     children: [
       labelDecoration,
       eng.button({
-        onFire: (count: number) => {
+        "on-fire": (count: number) => {
           setText(text, name, count);
         },
         mode: eng.ButtonMode.Basic,
@@ -65,8 +65,8 @@ const button2 = (scope: eng.Scope) => {
       }),
     ],
     vertical: true,
-    mainalignment: eng.Alignment.Center,
-    crossalignment: eng.FlCrossAlign.Center,
+    "main-alignment": eng.Alignment.Center,
+    "cross-alignment": eng.FlCrossAlign.Center,
   });
 };
 
@@ -77,7 +77,7 @@ function buildButton(
 ) {
   const kind = eng.ButtonKind[strKind] as number;
   return eng.button({
-    onFire: (count: number) => {
+    "on-fire": (count: number) => {
       setText(text, eng.ButtonMode[mode] + " " + strKind, count);
     },
     mode: mode,
@@ -101,7 +101,7 @@ function buildLine(strMode: keyof typeof eng.ButtonMode, text: eng.Property) {
   }
   line.push(
     eng.button({
-      onFire: (count: number) => {
+      "on-fire": (count: number) => {
         setText(text, eng.ButtonMode[mode] + " " + "Disabled", count);
       },
       mode: mode,
@@ -123,8 +123,8 @@ const buttons = (scope: eng.Scope) => {
       const wrap = eng.wrap({
         children: widgets,
         spacing: 20,
-        runspacing: 10,
-        crossalignment: eng.WrCrossAlign.Center,
+        "run-spacing": 10,
+        "cross-alignment": eng.WrCrossAlign.Center,
       });
       const decorated = eng.decorated({
         decoration: eng.paddingAll("6px"),
@@ -137,8 +137,8 @@ const buttons = (scope: eng.Scope) => {
   const flex = eng.flex({
     children: column,
     vertical: true,
-    mainalignment: eng.Alignment.Center,
-    maxsize: true,
+    "main-alignment": eng.Alignment.Center,
+    "max-size": true,
     configuration: eng.flexConf({ flex: 1 }),
   });
   const labelDecoration = eng.decorated({
@@ -158,8 +158,8 @@ const buttons = (scope: eng.Scope) => {
   return eng.flex({
     children: widgets,
     vertical: true,
-    mainalignment: eng.Alignment.Center,
-    crossalignment: eng.FlCrossAlign.Center,
+    "main-alignment": eng.Alignment.Center,
+    "cross-alignment": eng.FlCrossAlign.Center,
   });
 };
 

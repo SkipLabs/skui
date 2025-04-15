@@ -35,7 +35,7 @@ void SKIP_SKUIGL_performFrame(uint32_t ctxId, uint32_t width, uint32_t height,
                               uint32_t ratio, uint32_t frames);
 void SKIP_SKUIGL_setWindowContext(uint32_t wId, uint32_t ctxId);
 void SKIP_SKUIMessage_manage(char *message);
-void SKIP_SkuiViews_update();
+void SKUI_update();
 
 void SKIP_FWK_applyCursor(uint32_t wId, uint32_t cursor) {
   supplier.applyCursor(wId, cursor);
@@ -77,7 +77,7 @@ void manageMessage(uint32_t param1, uint32_t) {
   }
 }
 
-void manageUpdate(uint32_t, uint32_t) { SKIP_SkuiViews_update(); }
+void manageUpdate(uint32_t, uint32_t) { SKUI_update(); }
 
 namespace skui {
 

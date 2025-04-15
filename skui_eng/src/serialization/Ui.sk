@@ -7,16 +7,16 @@ extension class BoxConstraints extends UiEngine.SObject {
     (
       static::identifier,
       Map[
-        "minWidth" => UiEngine.SString(Ui.Px(this.minWidth()).toString()),
-        "maxWidth" => UiEngine.SOption(
+        "min-width" => UiEngine.SString(Ui.Px(this.minWidth()).toString()),
+        "max-width" => UiEngine.SOption(
           if (this.hasBoundedWidth()) {
             Some(UiEngine.SString(Ui.Px(this.maxWidth()).toString()))
           } else {
             None()
           },
         ),
-        "minHeight" => UiEngine.SString(Ui.Px(this.minHeight()).toString()),
-        "maxHeight" => UiEngine.SOption(
+        "min-height" => UiEngine.SString(Ui.Px(this.minHeight()).toString()),
+        "max-height" => UiEngine.SOption(
           if (this.hasBoundedHeight()) {
             Some(UiEngine.SString(Ui.Px(this.maxHeight()).toString()))
           } else {
@@ -39,10 +39,10 @@ extension class BoxConstraints extends UiEngine.SObject {
       )
     };
     BoxConstraints::make{
-      minWidth => optSize("minWidth"),
-      maxWidth => optSize("maxWidth"),
-      minHeight => optSize("minHeight"),
-      maxHeight => optSize("maxHeight"),
+      minWidth => optSize("min-width"),
+      maxWidth => optSize("max-width"),
+      minHeight => optSize("min-height"),
+      maxHeight => optSize("max-height"),
     }
   }
 }
@@ -56,7 +56,7 @@ extension class Size extends UiEngine.SObject {
       Map[
         "width" => UiEngine.SString(this.width.toString()),
         "height" => UiEngine.SString(this.width.toString()),
-        "keepRatio" => UiEngine.SBool(this.keepRatio),
+        "keep-ratio" => UiEngine.SBool(this.keepRatio),
       ],
     )
   }
@@ -65,7 +65,7 @@ extension class Size extends UiEngine.SObject {
     Size(
       Ui.Dim::fromString(UiEngine.getString(value, "width")).fromSome(),
       Ui.Dim::fromString(UiEngine.getString(value, "height")).fromSome(),
-      UiEngine.getBool(value, "keepRatio"),
+      UiEngine.getBool(value, "keep-ratio"),
     )
   }
 }
@@ -440,8 +440,8 @@ extension class Configuration {
       static::identifier,
       Map[
         "flex" => UiEngine.SInt(this.flex),
-        "fitLoose" => UiEngine.SBool(this.fit == Loose()),
-        "ignoreCross" => UiEngine.SBool(this.ignoreCross),
+        "fit-loose" => UiEngine.SBool(this.fit == Loose()),
+        "ignore-cross" => UiEngine.SBool(this.ignoreCross),
       ],
     )
   }
@@ -451,12 +451,12 @@ extension class Configuration {
   ): Configuration {
     Configuration{
       flex => UiEngine.maybeGetInt(value, "flex").default(1),
-      fit => if (UiEngine.maybeGetBool(value, "fitLoose").default(false)) {
+      fit => if (UiEngine.maybeGetBool(value, "fit-loose").default(false)) {
         Loose()
       } else {
         Tight()
       },
-      ignoreCross => UiEngine.maybeGetBool(value, "ignoreCross").default(false),
+      ignoreCross => UiEngine.maybeGetBool(value, "ignore-cross").default(false),
     }
   }
 }
@@ -526,7 +526,7 @@ extension base class QType extends UiEngine.SObject {
       static::identifier,
       Map[
         "kind" => UiEngine.SInt(0),
-        "withNeutral" => UiEngine.SBool(withNeutral),
+        "with-neutral" => UiEngine.SBool(withNeutral),
       ],
     )
   | AcceptDecline(withNeutral) ->
@@ -534,7 +534,7 @@ extension base class QType extends UiEngine.SObject {
       static::identifier,
       Map[
         "kind" => UiEngine.SInt(1),
-        "withNeutral" => UiEngine.SBool(withNeutral),
+        "with-neutral" => UiEngine.SBool(withNeutral),
       ],
     )
   | AgreeDisagree(withNeutral) ->
@@ -542,7 +542,7 @@ extension base class QType extends UiEngine.SObject {
       static::identifier,
       Map[
         "kind" => UiEngine.SInt(2),
-        "withNeutral" => UiEngine.SBool(withNeutral),
+        "with-neutral" => UiEngine.SBool(withNeutral),
       ],
     )
   | ConfirmDismiss(withNeutral) ->
@@ -550,7 +550,7 @@ extension base class QType extends UiEngine.SObject {
       static::identifier,
       Map[
         "kind" => UiEngine.SInt(3),
-        "withNeutral" => UiEngine.SBool(withNeutral),
+        "with-neutral" => UiEngine.SBool(withNeutral),
       ],
     )
   | QCustom(confirm, dismiss, optNeutral) ->
@@ -570,15 +570,15 @@ extension base class QType extends UiEngine.SObject {
         kind match {
         | 1 ->
           AcceptDecline(
-            UiEngine.maybeGetBool(value, "withNeutral").default(false),
+            UiEngine.maybeGetBool(value, "with-neutral").default(false),
           )
         | 2 ->
           AgreeDisagree(
-            UiEngine.maybeGetBool(value, "withNeutral").default(false),
+            UiEngine.maybeGetBool(value, "with-neutral").default(false),
           )
         | 3 ->
           ConfirmDismiss(
-            UiEngine.maybeGetBool(value, "withNeutral").default(false),
+            UiEngine.maybeGetBool(value, "with-neutral").default(false),
           )
         | 4 ->
           QCustom(
@@ -590,7 +590,7 @@ extension base class QType extends UiEngine.SObject {
               .default(!"No"),
             UiEngine.maybeGet(value, "neutral").map(Text::fromSerializable),
           )
-        | _ -> YesNo(UiEngine.maybeGetBool(value, "withNeutral").default(false))
+        | _ -> YesNo(UiEngine.maybeGetBool(value, "with-neutral").default(false))
         }
       )
       .default(YesNo());
