@@ -1,5 +1,7 @@
 module SkuiViews;
 
+const kName: String = "skuiviews";
+
 @wasm_export("skui_views")
 fun main(): void {
   available = mutable Vector[
@@ -32,7 +34,7 @@ fun perform(
   >,
 ): void {
   command = SKUIMain.complete(
-    Cli.Command("skuiviews")
+    Cli.Command(kName)
       .about("SKUI's Viewer")
       .arg(
         Cli.Arg::bool("version")
@@ -61,7 +63,7 @@ fun perform(
   | _ ->
     if (args.getBool("version")) {
       git_commit = #env ("GIT_COMMIT_HASH");
-      SKUIMain.display(Some(`skuiviews (${git_commit})`))
+      SKUIMain.display(Some(`${kName} (${git_commit})`))
     } else {
       args.maybeGetSubcommand() match {
       | Some(subcmd) ->
