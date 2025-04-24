@@ -6,10 +6,13 @@ BASE="$(git merge-base main HEAD)"
 
 shopt -s globstar
 declare -A SK_CHANGED
+do_check=false
+
 for skargo_toml in **/Skargo.toml; do
   dir=$(dirname "$skargo_toml")
-  git diff --quiet HEAD "$BASE" -- "$dir" :^"$dir/ts" \
+  git diff --quiet HEAD "$BASE" -- "$dir" \
     && SK_CHANGED["$dir"]=false || SK_CHANGED["$dir"]=true
+  ${SK_CHANGED["$dir"]} && do_check=true
 done
 
 if ${SK_CHANGED[skui_base]}; then
@@ -46,12 +49,15 @@ cat .circleci/base.yml
 
 echo "workflows:"
 
-cat <<EOF
+if ${do_check}
+then
+    cat <<EOF
   checks:
     jobs:
       - lint
       - check-fmt
 EOF
+fi
 
 if ${SK_CHANGED[skui_common]}
 then
