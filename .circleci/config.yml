@@ -5,11 +5,21 @@ setup: true
 orbs:
   continuation: circleci/continuation@1.1.0
 
+commands:
+  cloneskip-light:
+    description: "Clone skip withou code"
+    steps:
+      - run:
+          name: Clone skip
+          command: |
+            git clone --no-checkout --depth 1 https://github.com/SkipLabs/skip.git
+
 jobs:
   setup:
     executor: continuation/default
     steps:
       - checkout
+      - cloneskip-light
       - run:
           name: Generate config
           command: |
