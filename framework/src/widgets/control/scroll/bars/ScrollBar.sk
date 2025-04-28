@@ -132,7 +132,7 @@ class LockHandler(
     context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): ?FWK.LockHandler {
-    if (!mouse.isPrimaryDown(context.tick)) {
+    if (!mouse.isPrimaryDown(context.getTick())) {
       None()
     } else {
       optNodeInfo = FWKPipeline.maybeGetInfo(context, this.path, true);
@@ -279,7 +279,7 @@ class Bar{
     _childGetter: Ui.Getter<?FWK.LockHandler>,
   ): ?Ui.LockHandlerGetter {
     Some((ctx, mouse, _ni) ~> {
-      if (mouse.isPrimaryPressed(ctx.tick)) {
+      if (mouse.isPrimaryPressed(ctx.getTick())) {
         Some(UiScrollBar.LockHandler(this.path, this.controller))
       } else {
         None()

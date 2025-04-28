@@ -30,7 +30,7 @@ class HStorage(
   }
 
   fun setTodo(context: mutable SKStore.Context, value: Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
   }
 
   fun setHover(context: mutable SKStore.Context, optHover: ?Hover): void {
@@ -111,7 +111,7 @@ fun init(
   stateHdl = context.makeNotTyped(
     dirName,
     Array<(SKStore.Key, SKStore.File)>[
-      (Ui.todoProp, Ui.Todo(Init(), context.tick)),
+      (Ui.todoProp, Ui.Todo(Init(), context.getTick())),
     ],
   );
   preFilteredHdl = context.makeNotTypedPre(filteredDirName, Array[]);
@@ -195,17 +195,17 @@ fun execute(
   | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
   | Init() -> void
   | ManageScrolling(incr, _) ->
-    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.getTick())))
   | ManageVisible(value) ->
-    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.getTick())))
   | GoTo(target, _, _) ->
     target match {
     | Before() ->
-      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(-1, context.tick)))
+      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(-1, context.getTick())))
     | After() ->
-      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(1, context.tick)))
+      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(1, context.getTick())))
     | Index(value) ->
-      values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.tick)))
+      values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.getTick())))
     }
   }
 }

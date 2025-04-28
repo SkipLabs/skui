@@ -31,7 +31,7 @@ fun manageMouseEvent(
         FWKMouse.Location(
           Geometry.Offset(clientX, clientY),
           context.systemTimeStamp(),
-          context.tick,
+          context.getTick(),
         ),
       );
     } else if (evtType == 1 || evtType == 2) {
@@ -46,7 +46,7 @@ fun manageMouseEvent(
           },
           evtType == 1,
           context.systemTimeStamp(),
-          context.tick,
+          context.getTick(),
         ),
       );
     };
@@ -71,7 +71,11 @@ fun manageWheelEvent(
   fn = context ~> {
     FWKMouse.execute(
       context,
-      FWKMouse.Wheel(-deltaY.toInt(), context.systemTimeStamp(), context.tick),
+      FWKMouse.Wheel(
+        -deltaY.toInt(),
+        context.systemTimeStamp(),
+        context.getTick(),
+      ),
     );
     context.updateIfRoot();
   };
@@ -107,7 +111,7 @@ fun clearKeyboardEvent(_wId: UInt32): void {
   SKStore.Context::withoutGc(context ~> {
     FWKKeys.execute(
       context,
-      FWKKeys.Clear(System.TimeStamp(0, 0), context.tick),
+      FWKKeys.Clear(System.TimeStamp(0, 0), context.getTick()),
     );
     context.updateIfRoot();
   });
@@ -149,13 +153,13 @@ fun manageKeyboardEvent(
             Some(UiEvent.Strict(scrollLock)),
           ),
           context.systemTimeStamp(),
-          context.tick,
+          context.getTick(),
         ),
       );
     } else {
       FWKKeys.execute(
         context,
-        FWKKeys.KeyReleased(code, context.systemTimeStamp(), context.tick),
+        FWKKeys.KeyReleased(code, context.systemTimeStamp(), context.getTick()),
       );
     };
     context.updateIfRoot();

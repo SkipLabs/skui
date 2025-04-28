@@ -44,7 +44,7 @@ class Decorated{
     cache: NodeCache,
     optConfiguration: ?Getter<Configuration> = None(),
   ): this {
-    static{path, controller, optConfiguration, cache, tick => context.tick}
+    static{path, controller, optConfiguration, cache, tick => context.getTick()}
   }
 
   fun layout(

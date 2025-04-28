@@ -171,7 +171,7 @@ class Wrap protected {
       optHoverHandler => params.optHoverHandler,
       optConfiguration,
       cache,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

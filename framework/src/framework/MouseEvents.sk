@@ -83,7 +83,7 @@ fun initMouse(
         mouse = FWKMouse.getMouse(context);
         current = previousMouseStateHdl.getValue(context, Ui.MainKey(), true);
         node = nodeGetter(context, widget.path, true);
-        wheel = mouse.getWheelValue(context.tick);
+        wheel = mouse.getWheelValue(context.getTick());
         current.optDragHandler match {
         | Some(dragHandler) ->
           if (wheel == 0) {
@@ -94,7 +94,7 @@ fun initMouse(
               | None() -> oDph.exit(context)
               }
             );
-            if (!mouse.isPrimaryDown(context.tick)) {
+            if (!mouse.isPrimaryDown(context.getTick())) {
               proposed = if (FWK.isControlDown(context)) {
                 FWK.TrCopy()
               } else if (FWK.isShiftDown(context)) {
@@ -201,15 +201,19 @@ fun initMouse(
           }
         };
         if (!result.consumed && current.optHoverHandler.isSome()) {
-          isMenuPressed = mouse.mouse.isSecondaryButtonPressed(context.tick);
-          isMenuReleased = mouse.mouse.isSecondaryButtonReleased(context.tick);
+          isMenuPressed = mouse.mouse.isSecondaryButtonPressed(
+            context.getTick(),
+          );
+          isMenuReleased = mouse.mouse.isSecondaryButtonReleased(
+            context.getTick(),
+          );
           if (current.optArmedMenu.isSome() && isMenuReleased) {
             if (
               current.optArmedMenu.map(m -> m.getIdentifier()) ==
               current.optHoverHandler.map(hh -> hh.getIdentifier())
             ) {
               !current.optMenuSupplier = current.optHoverHandler.map(hh ->
-                (mouse.offset(), hh, context.tick)
+                (mouse.offset(), hh, context.getTick())
               );
             } else {
               !current.optMenuSupplier = None()

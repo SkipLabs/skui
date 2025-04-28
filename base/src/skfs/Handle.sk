@@ -203,7 +203,7 @@ extension base class Handle {
     dirName = this.dirName;
     if (!isUntracked) {
       path = Path::create(dirName, key);
-      context.addDep(path);
+      context.addRead(path);
     };
     this.uGetArray(context, key).default(Array[]);
   }

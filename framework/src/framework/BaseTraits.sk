@@ -43,7 +43,7 @@ trait Shortcuts {
           this.getIdentifier().toString(),
         ).default(info.shortcut);
         for (stroke in shortCut.keyStrokes) {
-          if (stroke.test(keys, context.tick)) {
+          if (stroke.test(keys, context.getTick())) {
             !consumed = this.performAction(
               context,
               info.name,

@@ -3,11 +3,11 @@ name = "skui_eng"
 version = "0.1.0"
 
 [dependencies]
-skui_fwk = { "path" = "../skui_fwk" }
-skui_mtsdf = { "path" = "../skui_mtsdf" }
-skui_opengl = { "path" = "../skui_opengl" }
+skui_fwk = { "path" = "../framework" }
+skui_mtsdf = { "path" = "../mtsdf" }
+skui_opengl = { "path" = "../opengl" }
 
 [build-dependencies]
-skui_build = { path = "../skui_build" } 
+skui_build = { path = "../builder" } 
 
 

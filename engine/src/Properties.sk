@@ -183,7 +183,7 @@ class Property extends
       static::toIHandle(this.timedHdl.hdl).write(
         context,
         this.timedHdl.key,
-        static::timed(optValue, context.tick.next(), source),
+        static::timed(optValue, context.getTick().next(), source),
       );
     } else {
       combinesDirName = SKStore.DirName::make(
@@ -247,7 +247,7 @@ class Property extends
         optValue = combinesHdl.maybeGet(context, key).map(combine ->
           combine.combine(context, path)
         );
-        static::timed(optValue, context.tick, 0)
+        static::timed(optValue, context.getTick(), 0)
       },
     );
     _ = combinesHdl

@@ -3,7 +3,7 @@ name = "skui_mtsdf"
 version = "0.1.0"
 
 [dependencies]
-skui_font = { "path" = "../skui_font" }
+skui_font = { "path" = "../font" }
 
 [dev-dependencies]
 sktest = { path = "../skip/sktest" }

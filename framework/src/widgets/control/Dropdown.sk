@@ -268,7 +268,7 @@ class Dropdown protected {
               path => subPath.makeChild("separator"),
               optSize => None(),
               optConfiguration,
-              tick => context.tick,
+              tick => context.getTick(),
             },
           ];
           writer.set(
@@ -323,7 +323,7 @@ class Dropdown protected {
       optConfiguration,
       cache,
       widgetsHdl,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

@@ -141,7 +141,7 @@ class TextLine protected {
       reference => params.reference,
       optConfiguration,
       cache,
-      tick => context.tick,
+      tick => context.getTick(),
       visibleTokens => (ctx, iu) ~> visibleTokensHdl.getValue(ctx, mainKey, iu),
       hover => ctx ~> hoverHdl.get(ctx, mainKey).value,
       selection => (ctx, iu) ~>

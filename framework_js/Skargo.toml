@@ -3,5 +3,5 @@ name = "skui_js"
 version = "0.1.0"
 
 [dependencies]
-skui_fwk = { "path" = "../skui_fwk" }
+skui_fwk = { "path" = "../framework" }
 cli = { path = "../skip/cli" }

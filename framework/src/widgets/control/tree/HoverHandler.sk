@@ -17,7 +17,7 @@ class HoverHandler(tree: Ui.Tree, bar: Bool) extends Ui.HoverHandlerWrapper {
     context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
-    wheel = mouse.getWheelValue(context.tick);
+    wheel = mouse.getWheelValue(context.getTick());
     FWK.Result(
       if (wheel != 0) {
         incr = Math.sign(-wheel).toInt();

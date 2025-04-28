@@ -29,7 +29,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_common && skargo test --junitxml ~/test-results/skui_common.xml
+            cd common && skargo test --junitxml ~/test-results/skui_common.xml
       - store_test_results:
           path: ~/test-results/skui_common.xml
   skui_font:
@@ -45,7 +45,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_font && skargo test --junitxml ~/test-results/skui_font.xml
+            cd font && skargo test --junitxml ~/test-results/skui_font.xml
       - store_test_results:
           path: ~/test-results/skui_font.xml
   skui_mtsdf:
@@ -61,7 +61,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
+            cd mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
       - store_test_results:
           path: ~/test-results/skui_mtsdf.xml
   skui_opengl:
@@ -77,7 +77,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_opengl && skargo test --junitxml ~/test-results/skui_opengl.xml
+            cd opengl && skargo test --junitxml ~/test-results/skui_opengl.xml
       - store_test_results:
           path: ~/test-results/skui_opengl.xml
   skui_eng:
@@ -93,7 +93,7 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd skui_eng && skargo c
+            cd engine && skargo c
   skui_common-wasm:
     docker:
       - image: skiplabs/skdb-base:latest

@@ -12,7 +12,7 @@ fun example(): SkuiEngex.Example {
 class ActionPerformer() extends UiEngine.ActionPerformer uses HasClassName {
   //
   fun perform(context: mutable SKStore.Context, count: Int): void {
-    debug(`Button clicked[${context.tick}]: count ${count}`)
+    debug(`Button clicked[${context.getTick()}]: count ${count}`)
   }
 
   fun serialize(): (String, Map<String, UiEngine.Serializable>) {

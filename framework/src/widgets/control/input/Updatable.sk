@@ -12,7 +12,7 @@ fun undoRedo(
   values.get(Ui.historyProp).map(History::type).each(history -> {
     action = selector(history);
     verifier = mutable Verifier(values, source);
-    (!history, _) = action(verifier, context.tick);
+    (!history, _) = action(verifier, context.getTick());
     values.set(Ui.historyProp, Some(history))
   })
 }
@@ -82,7 +82,10 @@ fun ensureVisible(
   context: mutable SKStore.Context,
   values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
 ): void {
-  values.set(Ui.ensureVisibleProp, Some(Pos(getPosition(values), context.tick)))
+  values.set(
+    Ui.ensureVisibleProp,
+    Some(Pos(getPosition(values), context.getTick())),
+  )
 }
 
 fun insert(

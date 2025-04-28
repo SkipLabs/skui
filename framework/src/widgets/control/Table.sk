@@ -152,7 +152,7 @@ class Table protected {
         ),
       optConfiguration,
       cache,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

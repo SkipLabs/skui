@@ -21,11 +21,11 @@ class HoverHandler(
     _optPrevious: ?FWK.HoverHandler,
   ): FWK.Result {
     FWK.Result(
-      if (mouse.isPrimaryPressed(context.tick)) {
+      if (mouse.isPrimaryPressed(context.getTick())) {
         this.state.emitArmed(context, this.expand, true);
         true
       } else if (
-        mouse.isPrimaryReleased(context.tick) &&
+        mouse.isPrimaryReleased(context.getTick()) &&
         this.state.getArmed(context) == Some(this.expand)
       ) {
         this.state.emitArmed(context, this.expand, false);

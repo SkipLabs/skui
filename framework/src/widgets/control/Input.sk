@@ -34,7 +34,7 @@ class Input protected {
       state => params.state,
       optConfiguration,
       cache,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 
@@ -272,7 +272,7 @@ class Input protected {
           UiInput.Viewport{
             path => this.path.makeChild("viewport"),
             input => this,
-            tick => context.tick,
+            tick => context.getTick(),
           },
         ),
         Array[],

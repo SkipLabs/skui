@@ -351,11 +351,11 @@ mutable class Updater(
     position = optPosition.default(this.getPosition());
     this.values.set(
       Ui.hEnsureVisibleProp,
-      Some(Ui.Pos(position.column, context.tick)),
+      Some(Ui.Pos(position.column, context.getTick())),
     );
     this.values.set(
       Ui.vEnsureVisibleProp,
-      Some(Ui.Pos(position.line, context.tick)),
+      Some(Ui.Pos(position.line, context.getTick())),
     )
   }
 
@@ -754,7 +754,7 @@ mutable class Updater(
   ): void {
     this.values.get(Ui.historyProp).map(History::type).each(history -> {
       action = selector(history);
-      (!history, _) = action(this, context.tick);
+      (!history, _) = action(this, context.getTick());
       this.values.set(Ui.historyProp, Some(history))
     })
   }

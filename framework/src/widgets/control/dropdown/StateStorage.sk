@@ -196,7 +196,7 @@ fun init(
   dirName = Ui.controllerDirName(path);
   stateHdl = context.makeNotTyped(
     dirName,
-    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick()))],
   );
   computedDirName = SKStore.DirName::make(dirName, "computed/");
   computedHdl = SKStore.derive(
@@ -261,7 +261,7 @@ fun execute(
   | Ui.Multiple(cmds) ->
     cmds.each(cmd -> execute(context, cmd, values, controller))
   | ManageScrolling(incr, _) ->
-    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.getTick())))
   | Goto(stop) ->
     stop match {
     | Backward() ->
@@ -293,7 +293,10 @@ fun execute(
       }
     | Idx(idx) -> Math.clamp(idx, 0, currentNumber - 1)
     };
-    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(newSelected, context.tick)));
+    values.set(
+      Ui.ensureVisibleProp,
+      Some(Ui.Pos(newSelected, context.getTick())),
+    );
     values.set(
       Selected(None(), current.optPath),
       Some(SKStore.IntFile(newSelected)),

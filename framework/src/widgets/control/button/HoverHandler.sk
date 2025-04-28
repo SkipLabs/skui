@@ -20,12 +20,12 @@ class HoverHandler(button: Ui.Button) extends FWK.HoverHandler {
       return FWK.Result(false);
     };
     FWK.Result(
-      if (mouse.isPrimaryPressed(context.tick)) {
+      if (mouse.isPrimaryPressed(context.getTick())) {
         SystemProperties.setRequireFocus(context, this.button.path);
         this.button.state.emitArmed(context, true);
         true
       } else if (
-        mouse.isPrimaryReleased(context.tick) &&
+        mouse.isPrimaryReleased(context.getTick()) &&
         this.button.state.isArmed(context)
       ) {
         this.button.state.emitArmed(context, false);

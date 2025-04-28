@@ -21,12 +21,12 @@ class HoverHandler(toggle: Ui.Toggle) extends FWK.HoverHandler {
       return FWK.Result(false)
     };
     FWK.Result(
-      if (mouse.isPrimaryPressed(context.tick)) {
+      if (mouse.isPrimaryPressed(context.getTick())) {
         SystemProperties.setRequireFocus(context, this.toggle.path);
         this.toggle.state.emitArmed(context, true);
         true
       } else if (
-        mouse.isPrimaryReleased(context.tick) &&
+        mouse.isPrimaryReleased(context.getTick()) &&
         this.toggle.state.isArmed(context)
       ) {
         this.toggle.controller.getIndeterminateProp(context, true).each(prop ->

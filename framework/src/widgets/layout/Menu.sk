@@ -68,7 +68,7 @@ class HoverHandler(
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
     FWK.Result(
-      if (mouse.isPrimaryPressed(context.tick)) {
+      if (mouse.isPrimaryPressed(context.getTick())) {
         this.perform(context);
         true
       } else {
@@ -101,7 +101,7 @@ class MenuLayout protected {
       controller => params,
       cache,
       optConfiguration,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

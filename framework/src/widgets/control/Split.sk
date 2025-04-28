@@ -14,7 +14,7 @@ class Split protected {
     cache: NodeCache,
     optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
   ): this {
-    static{path, controller, cache, optConfiguration, tick => context.tick}
+    static{path, controller, cache, optConfiguration, tick => context.getTick()}
   }
 
   fun layout(
@@ -238,7 +238,7 @@ class Split protected {
       if (optChildHandler.isSome()) {
         optChildHandler
       } else if (
-        mouse.isPrimaryPressed(ctx.tick) &&
+        mouse.isPrimaryPressed(ctx.getTick()) &&
         this.isHoverSeparator(mouse.offset(), ni)
       ) {
         Some(UiSplit.LockHandler(this))

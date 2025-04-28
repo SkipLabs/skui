@@ -6,7 +6,7 @@ class LockHandler(tree: Ui.Tree) extends FWK.LockHandler {
     context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): ?FWK.LockHandler {
-    if (!mouse.isPrimaryDown(context.tick)) {
+    if (!mouse.isPrimaryDown(context.getTick())) {
       None()
     } else {
       FWKPipeline.gNodeInfo.maybeGetValue(

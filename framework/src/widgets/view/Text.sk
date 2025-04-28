@@ -338,7 +338,7 @@ class VText protected {
       pxRange => params.pxRange,
       optConfiguration,
       cache,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

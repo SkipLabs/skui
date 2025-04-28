@@ -236,7 +236,7 @@ class TabPane protected {
       optConfiguration,
       cache,
       widgetHdl => SKStore.EHValue(widgetHdl, SKStore.IID(0)),
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

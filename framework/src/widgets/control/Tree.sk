@@ -103,12 +103,12 @@ class Tree protected {
       optConfiguration,
       cache,
       widget => ctx ~> widgetHdl.get(ctx, SKStore.IID(0)).widget,
-      tick => context.tick,
+      tick => context.getTick(),
       bar => UiTree.Bar{
         path => path.makeChild("bar"),
         reference => path,
         state => params.state,
-        tick => context.tick,
+        tick => context.getTick(),
       },
     }
   }
@@ -227,7 +227,7 @@ class Tree protected {
   ): ?LockHandlerGetter {
     Some((ctx, mouse, ni) ~> {
       offset = mouse.offset();
-      inBar = if (mouse.isPrimaryPressed(ctx.tick)) {
+      inBar = if (mouse.isPrimaryPressed(ctx.getTick())) {
         drawInfo = ni.optDrawInfo.map(di ~> di as UiTree.DrawInfo _).fromSome();
         drawInfo.optBar match {
         | Some(bar) -> bar.i1.contains(offset)

@@ -29,7 +29,7 @@ class HoverHandler(
     context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
-    wheel = mouse.getWheelValue(context.tick);
+    wheel = mouse.getWheelValue(context.getTick());
     if (wheel != 0) {
       if (this.slider.controller.isRange(context) && FWK.isShiftDown(context)) {
         this.slider.state.emitGoTo(context, Max(), wheel < 0);
@@ -47,7 +47,7 @@ class HoverHandler(
     commands = mutable Vector<Command>[];
     commands.push(SetHover(Some(thumb)));
     armed = this.slider.state.isArmed(context);
-    res = if (mouse.isPrimaryPressed(context.tick)) {
+    res = if (mouse.isPrimaryPressed(context.getTick())) {
       SystemProperties.setRequireFocus(
         context,
         thumb match {
@@ -57,10 +57,10 @@ class HoverHandler(
       );
       commands.push(SetArmed(true));
       FWK.Result(true, Some(true))
-    } else if (mouse.isPrimaryReleased(context.tick) && armed) {
+    } else if (mouse.isPrimaryReleased(context.getTick()) && armed) {
       commands.push(SetArmed(false));
       FWK.Result(true, Some(false))
-    } else if (mouse.isPrimaryDown(context.tick) && armed) {
+    } else if (mouse.isPrimaryDown(context.getTick()) && armed) {
       commands.push(SetProportion(thumb, (proportion * factor).toInt()));
       FWK.Result(true, Some(true))
     } else {

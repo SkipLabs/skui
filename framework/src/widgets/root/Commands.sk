@@ -322,7 +322,7 @@ class HStorage private (
 
   fun isMenuClosed(context: mutable SKStore.Context): Bool {
     this.state.maybeGetInt(context, Ui.closedProp)
-      .map(v -> v == context.tick.value)
+      .map(v -> v == context.getTick().value)
       .default(false);
   }
 
@@ -346,7 +346,7 @@ class HStorage private (
     this.state.write(
       context,
       Ui.closedProp,
-      SKStore.IntFile(context.tick.value + 1),
+      SKStore.IntFile(context.getTick().value + 1),
     )
   }
 

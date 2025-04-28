@@ -65,7 +65,7 @@ fun initKeys(
           focusablesMap.maybeGet(required)
         );
         keys = FWKKeys.getKeys(context);
-        if (UiEvent.exit().test(keys, context.tick)) {
+        if (UiEvent.exit().test(keys, context.getTick())) {
           SystemProperties.exit(context)
         } else if (optFocused.isNone()) {
           !optFocused = if (focusables.value.isEmpty()) {
@@ -109,9 +109,9 @@ fun initKeys(
                 Some(fh)
               }
             | _ ->
-              if (keys.isTab(context.tick)) {
+              if (keys.isTab(context.getTick())) {
                 Some(focusables.value.first());
-              } else if (keys.isShiftTab(context.tick)) {
+              } else if (keys.isShiftTab(context.getTick())) {
                 Some(focusables.value.last());
               } else {
                 None()
@@ -137,15 +137,15 @@ fun initKeys(
         };
         !focusState.optFocused = optFocused;
         if (!consumed && focusState.optFocused.isSome()) {
-          isMenuPressed = keys.isMenuPressed(context.tick);
-          isMenuReleased = keys.isMenuReleased(context.tick);
+          isMenuPressed = keys.isMenuPressed(context.getTick());
+          isMenuReleased = keys.isMenuReleased(context.getTick());
           if (focusState.optArmedMenu.isSome() && isMenuReleased) {
             if (
               focusState.optArmedMenu.map(m -> m.getIdentifier()) ==
               focusState.optFocused.map(hh -> hh.getIdentifier())
             ) {
               !focusState.optMenuSupplier = focusState.optFocused.map(fs ->
-                (fs, context.tick)
+                (fs, context.getTick())
               );
             } else {
               !focusState.optMenuSupplier = None();

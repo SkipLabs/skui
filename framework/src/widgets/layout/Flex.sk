@@ -192,7 +192,7 @@ class Flex protected {
       optHoverHandler => params.optHoverHandler,
       cache,
       optConfiguration,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

@@ -52,7 +52,7 @@ class Dialogs protected {
       cache,
       optConfiguration,
       supplier => ctx ~> builderHdl.get(ctx, SKStore.IID(0)).widget,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

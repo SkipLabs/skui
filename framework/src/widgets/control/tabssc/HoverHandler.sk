@@ -22,7 +22,7 @@ class HoverHandler(
     context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
-    wheel = mouse.getWheelValue(context.tick);
+    wheel = mouse.getWheelValue(context.getTick());
     FWK.Result(
       if (wheel != 0) {
         incr = Math.sign(-wheel).toInt();
@@ -30,7 +30,7 @@ class HoverHandler(
         true
       } else if (
         this.optHover.isSome() &&
-        mouse.isPrimaryPressed(context.tick)
+        mouse.isPrimaryPressed(context.getTick())
       ) {
         optRepeat = mouse.mouse.toMouseRepeat(context);
         this.scroll.state.emitGoTo(

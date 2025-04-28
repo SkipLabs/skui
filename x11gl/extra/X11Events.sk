@@ -57,7 +57,7 @@ private fun manageMouseLocation(
       FWKMouse.Location(
         Geometry.Offset(x.toFloat(), y.toFloat()),
         context.systemTimeStamp(),
-        context.tick,
+        context.getTick(),
       ),
     );
     context.updateIfRoot();
@@ -82,7 +82,7 @@ private fun manageMouseButton(_wId: Int, button: Int, pressed: Bool): void {
         },
         pressed,
         context.systemTimeStamp(),
-        context.tick,
+        context.getTick(),
       ),
     );
     context.updateIfRoot();
@@ -142,7 +142,7 @@ private fun manageKeyPressed(
             },
           ),
           context.systemTimeStamp(),
-          context.tick,
+          context.getTick(),
         ),
       );
       context.updateIfRoot()
@@ -160,7 +160,7 @@ fun manageKeyReleased(_wId: Int, keyCode: Int): void {
     | Some(code) ->
       FWKKeys.execute(
         context,
-        FWKKeys.KeyReleased(code, context.systemTimeStamp(), context.tick),
+        FWKKeys.KeyReleased(code, context.systemTimeStamp(), context.getTick()),
       )
     | _ -> debug(`Unknown symbol ${keyCode}`)
     };

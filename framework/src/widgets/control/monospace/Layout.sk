@@ -19,7 +19,7 @@ class Layout protected {
       widgets => params.widgets,
       cache,
       optConfiguration,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

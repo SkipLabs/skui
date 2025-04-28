@@ -45,7 +45,7 @@ class HStorage(name: String, handle: SKStore.INotTyped) extends Storage {
   }
 
   fun setTodo(context: mutable SKStore.Context, value: Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
   }
 
   fun setScroll(context: mutable SKStore.Context, optScroll: ?Ui.Scroll): void {
@@ -258,7 +258,9 @@ fun init(
   dirName = Ui.controllerDirName(path);
   stateHdl = context.makeNotTyped(
     dirName,
-    Array<(SKStore.Key, Ui.Todo)>[(Ui.todoProp, Ui.Todo(Init(), context.tick))],
+    Array<(SKStore.Key, Ui.Todo)>[
+      (Ui.todoProp, Ui.Todo(Init(), context.getTick())),
+    ],
   );
   toReallyDoHdl = stateHdl.map(
     k ~> k,
@@ -271,7 +273,7 @@ fun init(
         /*modification: SKStore.IntFile = .todo();
         todo = Ui.Todo::type(file);
         if (modification.value > todo.tick.value) {
-          writer.write(key, Ui.Todo(Init(), context.tick))
+          writer.write(key, Ui.Todo(Init(), context.getTick()))
         } else {
           writer.write(key, file)
         }*/
@@ -460,13 +462,13 @@ fun execute(
   | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values, info))
   | Init() -> void
   | ManageScrolling(incr, _) ->
-    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.getTick())))
   | ManageVisible(visible) ->
-    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(visible, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(visible, context.getTick())))
   | ManageGoto(optTarget, _, _) ->
     target(values, Ui.currentProp, info.items(context), optTarget).each(
       index ->
-        values.set(Ui.ensureVisibleProp, Some(Ui.Pos(index, context.tick)))
+        values.set(Ui.ensureVisibleProp, Some(Ui.Pos(index, context.getTick())))
       ,
     )
   | ManageSelect(target, _, _) ->
@@ -538,7 +540,7 @@ fun execute(
       !selection = selectionModel.selectNext(selection, items, true, keep)
     };
     selection.optMain.flatMap(items.indexOf).each(index ->
-      values.set(Ui.ensureVisibleProp, Some(Ui.Pos(index, context.tick)))
+      values.set(Ui.ensureVisibleProp, Some(Ui.Pos(index, context.getTick())))
     );
     values.set(Ui.selectionProp, Some(Items(selection.multiple)));
     values.set(Ui.currentProp, selection.optMain)

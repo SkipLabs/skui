@@ -422,12 +422,12 @@ class Monospace protected {
       widget => ctx ~> widgetHdl.get(ctx, SKStore.IID(0)).widget,
       numbers => ctx ~>
         numbersHdl.maybeGet(ctx, SKStore.IID(0)).map(f ~> f.widget),
-      tick => context.tick,
+      tick => context.getTick(),
       bars => UiMonospace.Bars{
         path => path.makeChild("bars"),
         reference => path,
         state => params.state,
-        tick => context.tick,
+        tick => context.getTick(),
       },
       indicator,
     }
@@ -621,7 +621,7 @@ class Monospace protected {
   ): ?LockHandlerGetter {
     Some((ctx, mouse, ni) ~> {
       offset = mouse.offset();
-      (inHBar, inVBar) = if (mouse.isPrimaryPressed(ctx.tick)) {
+      (inHBar, inVBar) = if (mouse.isPrimaryPressed(ctx.getTick())) {
         drawInfo = ni.optDrawInfo
           .map(di ~> di as UiMonospace.DrawInfo _)
           .fromSome();

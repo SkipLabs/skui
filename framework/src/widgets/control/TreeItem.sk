@@ -25,7 +25,7 @@ class TreeItem protected {
       state => params.state,
       optConfiguration,
       cache,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

@@ -191,9 +191,9 @@ fun init(context: mutable SKStore.Context): void {
       modifiersPath,
       (ctx, writer, _, it) ~> {
         file = it.first;
-        ctrlDown = file.isControlDown(ctx.tick);
-        shiftDown = file.isShiftDown(ctx.tick);
-        altDown = file.isAltDown(ctx.tick);
+        ctrlDown = file.isControlDown(ctx.getTick());
+        shiftDown = file.isShiftDown(ctx.getTick());
+        altDown = file.isAltDown(ctx.getTick());
         writer.set(ctrlKey, SKStore.BoolFile(ctrlDown));
         writer.set(shiftKey, SKStore.BoolFile(shiftDown));
         writer.set(altKey, SKStore.BoolFile(altDown));
@@ -234,7 +234,7 @@ fun execute(context: mutable SKStore.Context, command: Command): void {
   command match {
   | Next() -> kfHandle.write(context, propKey, keysFile.next())
   | event @ Event _ ->
-    kfHandle.write(context, propKey, event.compute(keysFile, context.tick))
+    kfHandle.write(context, propKey, event.compute(keysFile, context.getTick()))
   }
 }
 

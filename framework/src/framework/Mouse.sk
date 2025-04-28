@@ -204,7 +204,7 @@ fun execute(context: mutable SKStore.Context, command: Command): void {
   mouseFile = mfHandle.get(context, propKey);
   nMouseFile = command match {
   | Next() -> mouseFile.next()
-  | event @ Event _ -> event.compute(mouseFile, context.tick)
+  | event @ Event _ -> event.compute(mouseFile, context.getTick())
   };
   mfHandle.write(context, propKey, nMouseFile)
 }

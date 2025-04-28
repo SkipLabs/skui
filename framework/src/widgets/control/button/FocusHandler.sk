@@ -31,7 +31,7 @@ class FocusHandler{
     source: Ui.Path,
   ): ?Bool {
     if (source == this.getIdentifier()) {
-      Some(!this.button.state.isArmed(context) && keys.isTab(context.tick))
+      Some(!this.button.state.isArmed(context) && keys.isTab(context.getTick()))
     } else {
       None()
     }
@@ -43,7 +43,10 @@ class FocusHandler{
     source: Ui.Path,
   ): ?Bool {
     if (source == this.getIdentifier()) {
-      Some(!this.button.state.isArmed(context) && keys.isShiftTab(context.tick))
+      Some(
+        !this.button.state.isArmed(context) &&
+          keys.isShiftTab(context.getTick()),
+      )
     } else {
       None()
     }

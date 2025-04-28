@@ -27,7 +27,7 @@ class KeyStrokeFC(
     context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool {
-    tick = context.tick;
+    tick = context.getTick();
     this.gotoNext.any(stroke -> stroke.test(keys, tick));
   }
 
@@ -35,7 +35,7 @@ class KeyStrokeFC(
     context: mutable SKStore.Context,
     keys: UiEvent.KeysFile,
   ): Bool {
-    this.gotoPrevious.any(stroke -> stroke.test(keys, context.tick));
+    this.gotoPrevious.any(stroke -> stroke.test(keys, context.getTick()));
   }
 }
 
@@ -84,7 +84,7 @@ base class TabFocusHandler extends FWK.FocusHandler {
     source: Ui.Path,
   ): ?Bool {
     if (source == this.getIdentifier()) {
-      Some(keys.isTab(context.tick))
+      Some(keys.isTab(context.getTick()))
     } else {
       None()
     }
@@ -96,7 +96,7 @@ base class TabFocusHandler extends FWK.FocusHandler {
     source: Ui.Path,
   ): ?Bool {
     if (source == this.getIdentifier()) {
-      Some(keys.isShiftTab(context.tick))
+      Some(keys.isShiftTab(context.getTick()))
     } else {
       None()
     }
@@ -147,9 +147,9 @@ base class F2FocusHandler extends FWK.FocusHandler {
   ): ?Bool {
     if (source == this.getIdentifier()) {
       if (this.isEditable(context)) {
-        Some(keys.isF2(context.tick))
+        Some(keys.isF2(context.getTick()))
       } else {
-        Some(keys.isTab(context.tick))
+        Some(keys.isTab(context.getTick()))
       }
     } else {
       None()
@@ -163,9 +163,9 @@ base class F2FocusHandler extends FWK.FocusHandler {
   ): ?Bool {
     if (source == this.getIdentifier()) {
       if (this.isEditable(context)) {
-        Some(keys.isShiftF2(context.tick))
+        Some(keys.isShiftF2(context.getTick()))
       } else {
-        Some(keys.isShiftTab(context.tick))
+        Some(keys.isShiftTab(context.getTick()))
       }
     } else {
       None()

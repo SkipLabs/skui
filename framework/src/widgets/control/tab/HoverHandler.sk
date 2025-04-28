@@ -26,12 +26,12 @@ class HoverHandler(
       return FWK.Result(false)
     };
     FWK.Result(
-      if (mouse.isPrimaryPressed(context.tick)) {
+      if (mouse.isPrimaryPressed(context.getTick())) {
         SystemProperties.setRequireFocus(context, this.path);
         this.state.setArmed(context, this.close, true);
         true
       } else if (
-        mouse.isPrimaryReleased(context.tick) &&
+        mouse.isPrimaryReleased(context.getTick()) &&
         this.state.getArmed(context) == Some(this.close)
       ) {
         this.state.setArmed(context, this.close, false);

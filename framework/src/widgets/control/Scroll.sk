@@ -85,7 +85,7 @@ class ScrollPane{
         opposite => ctx ~> visibleHdl.getBool(ctx, vKey),
         focused => ctx ~> ctx.isFocused(path),
       },
-      tick => context.tick,
+      tick => context.getTick(),
     };
     vBar = UiScroll.Bar{
       path => inner.makeChild("vBar"),
@@ -101,7 +101,7 @@ class ScrollPane{
         opposite => ctx ~> visibleHdl.getBool(ctx, hKey),
         focused => ctx ~> ctx.isFocused(path),
       },
-      tick => context.tick,
+      tick => context.getTick(),
     };
     bars = UiScroll.Bars{
       path => inner.makeChild("bars"),
@@ -117,7 +117,7 @@ class ScrollPane{
         } else {
           None()
         },
-      tick => context.tick,
+      tick => context.getTick(),
     };
     viewport = UiScroll.Viewport::create(context, vpPath, controller);
     static{
@@ -128,7 +128,7 @@ class ScrollPane{
       sizesHdl,
       optConfiguration,
       cache,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

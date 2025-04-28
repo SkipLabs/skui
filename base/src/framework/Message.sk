@@ -142,9 +142,7 @@ fun performMessage(
     | _ ->
       //TODO manage missed message log ???
       print_error(
-        `Missed message[${
-          context.tick
-        }]: (No message support) for ${strModule} ${strScope}`,
+        `Missed message[${context.getTick()}]: (No message support) for ${strModule} ${strScope}`,
       )
     }
   }
@@ -170,7 +168,7 @@ fun executeMessage(context: mutable SKStore.Context, jsv: JSON.Value): void {
       )
     | _ ->
       print_error(
-        `Missed message[${context.tick}]: (Unknown internal message) ${v}`,
+        `Missed message[${context.getTick()}]: (Unknown internal message) ${v}`,
       )
     }
   | _ -> SKStore.cast_violation("JSON.Object | JSON.IntNumber", jsv)
@@ -192,9 +190,7 @@ fun cancelMessage(context: mutable SKStore.Context, message: String): void {
     | _ ->
       //TODO manage missed message log ???
       print_error(
-        `Missed cancelation[${
-          context.tick
-        }]: (No message support) for ${strModule} ${strScope}`,
+        `Missed cancelation[${context.getTick()}]: (No message support) for ${strModule} ${strScope}`,
       )
     }
   }
@@ -208,7 +204,7 @@ fun manage(message: String): void {
       () -> JSON.decode(message),
       e -> {
         print_error(
-          `Missed message[${context.tick}]: (${e.getMessage()}) ${if (
+          `Missed message[${context.getTick()}]: (${e.getMessage()}) ${if (
             message.length() > 256
           ) message.sub(message.getIter(), 256) + "..." else {
             message
@@ -224,7 +220,7 @@ fun manage(message: String): void {
         e ->
           //TODO manage missed message log ???
           print_error(
-            `Missed message[${context.tick}]: (${e.getMessage()}) ${if (
+            `Missed message[${context.getTick()}]: (${e.getMessage()}) ${if (
               message.length() > 256
             ) message.sub(message.getIter(), 256) + "..." else {
               message
@@ -250,9 +246,7 @@ fun messageFailure(message: String): void {
         e ->
           //TODO manage missed message log ???
           print_error(
-            `Missed cancelation[${
-              context.tick
-            }]: (${e.getMessage()}) ${message}`,
+            `Missed cancelation[${context.getTick()}]: (${e.getMessage()}) ${message}`,
           )
         ,
       )
@@ -515,7 +509,7 @@ fun debugJSON(context: mutable SKStore.Context, command: JSON.Value): void {
   if (chars.size() > 128) {
     !chars = chars.slice(0, 128);
   };
-  debug(`emit[${context.tick}]: ${String::fromChars(chars.toArray())}`);
+  debug(`emit[${context.getTick()}]: ${String::fromChars(chars.toArray())}`);
 }
 
 fun emit(
@@ -558,9 +552,7 @@ fun emit(
         context.addPendingMessage(message)
       } else {
         print_error(
-          `Unsent message[${
-            context.tick
-          }]: ${name} ${scope} ${command.toJSON()}`,
+          `Unsent message[${context.getTick()}]: ${name} ${scope} ${command.toJSON()}`,
         )
       }
     }

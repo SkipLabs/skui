@@ -119,7 +119,7 @@ base class PropertyFile<
     static::init(
       context,
       optPath,
-      values.map(v -> (v.i0, static::timed(v.i1, context.tick, 0))),
+      values.map(v -> (v.i0, static::timed(v.i1, context.getTick(), 0))),
     )
   }
 
@@ -279,7 +279,7 @@ base class PropertyFile<
       static::toIHandle(this.timedHdl.hdl).write(
         context,
         this.timedHdl.key,
-        static::timed(optValue, context.tick.next(), source),
+        static::timed(optValue, context.getTick().next(), source),
       );
     }
   }
@@ -308,7 +308,7 @@ base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
     context: mutable SKStore.Context,
     optValue: ?T = None(),
   ): this {
-    static(static::timed(optValue, context.tick))
+    static(static::timed(optValue, context.getTick()))
   }
 
   fun getPath(): ?String {

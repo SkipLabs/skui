@@ -24,7 +24,7 @@ extension class Context {
       | _ ->
         fromContext = gUnsafeContextGet();
         fromTick = fromContext.tick;
-        context = Context::fromSaved(fromContext);
+        context = fromContext.mclone();
         context.performOnce(fn, fromContext, fromTick)
       }
     } else {

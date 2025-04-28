@@ -8,10 +8,10 @@ sktest = { path = "../skip/sktest" }
 skui_font_tests = { path = "./dev" }
 
 [dependencies]
-skui_common = { "path" = "../skui_common" }
+skui_common = { "path" = "../common" }
 
 [build-dependencies]
-skui_build = { path = "../skui_build" }
+skui_build = { path = "../builder" }
 
 #[[bin]]
 #name = "skuifont"

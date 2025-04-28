@@ -95,7 +95,7 @@ base class ForStorage
           | _ -> void
           };
           if (scrolling) {
-            tick = context.tick;
+            tick = context.getTick();
             storage.setScrolling(context, Some(tick));
             SKUIMessage.emit(
               context,

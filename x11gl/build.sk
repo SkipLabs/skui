@@ -10,8 +10,8 @@ fun include_dirs(env: SkuiBuild.Env): Array<String> {
   if (!env.isWasm32()) {
     Array[
       "native/src/includes",
-      "../skui_opengl/native/src/includes",
-      "../skui_base/native/src/includes",
+      "../opengl/native/src/includes",
+      "../base/native/src/includes",
     ]
   } else {
     Array[]

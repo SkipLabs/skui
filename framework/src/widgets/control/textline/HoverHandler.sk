@@ -31,7 +31,7 @@ class HoverHandler(
       this.nodeInfo,
       true,
     );
-    res = if (mouse.isPrimaryPressed(context.tick)) {
+    res = if (mouse.isPrimaryPressed(context.getTick())) {
       if (count == 0) {
         tcm.manageAcquire(context);
         inSelection = this.textline.selection(context, true)
@@ -59,7 +59,11 @@ class HoverHandler(
       } else {
         FWK.Result(false)
       }
-    } else if (mouse.isPrimaryReleased(context.tick) && count <= 1 && armed) {
+    } else if (
+      mouse.isPrimaryReleased(context.getTick()) &&
+      count <= 1 &&
+      armed
+    ) {
       isMoveSelection = controller.isMoveSelection(context, true);
       inSelection = this.textline.selection(context, true)
         .map(selection ->
@@ -72,7 +76,7 @@ class HoverHandler(
       commands.push(tcm.getSetMoveSelectionCommand(false));
       commands.push(tcm.getSetArmedCommand(false));
       FWK.Result(inSelection, Some(false))
-    } else if (mouse.isPrimaryDown(context.tick) && count == 0 && armed) {
+    } else if (mouse.isPrimaryDown(context.getTick()) && count == 0 && armed) {
       //_ = this.textline.controller.isScrolling(context);
       displayPosition = this.textline.getDisplayPostionFor(
         context,

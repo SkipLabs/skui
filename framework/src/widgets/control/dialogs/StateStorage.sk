@@ -90,7 +90,7 @@ fun init(context: mutable SKStore.Context, path: Ui.Path): State {
     SKStore.StrID::keyType,
     Ui.Todo::type,
     dirName,
-    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick()))],
   );
   storage = SKStore.IHandle::notTyped(dirName);
   computedDirName = SKStore.DirName::make(dirName, "computed/");

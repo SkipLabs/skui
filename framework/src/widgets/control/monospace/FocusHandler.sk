@@ -45,7 +45,7 @@ class FocusHandler{
     keys: UiEvent.KeysFile,
   ): Bool {
     if (this.monospace.controller.isEditable(context, true)) {
-      keys.getChar(false, false, context.tick) match {
+      keys.getChar(false, false, context.getTick()) match {
       | Some(info) ->
         info match {
         | UiEvent.Unicode(char) ->

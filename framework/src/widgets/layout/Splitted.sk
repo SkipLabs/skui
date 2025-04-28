@@ -83,7 +83,7 @@ class Splitted protected {
       optHoverHandler => params.optHoverHandler,
       cache,
       optConfiguration,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 

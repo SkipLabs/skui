@@ -76,11 +76,11 @@ trait ScrollingState {
       };
     this.getComputed()
       .maybeGetProp(context, Ui.ensureVisibleProp, conv)
-      .flatMap(v -> if (v.tick == context.tick) Some(v) else None());
+      .flatMap(v -> if (v.tick == context.getTick()) Some(v) else None());
   }
 
   fun emitScrolling(context: mutable SKStore.Context, value: Int): void {
-    this.emit(context, this.manageScrollingCmd(value, context.tick));
+    this.emit(context, this.manageScrollingCmd(value, context.getTick()));
   }
 
   fun emitScroll(context: mutable SKStore.Context, value: ?Ui.Scroll): void {

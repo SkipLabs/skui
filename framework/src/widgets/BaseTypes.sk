@@ -763,7 +763,7 @@ fun setTodo(
     optExecutable = handle
       .uMaybeGet(ctx, Ui.todoProp)
       .map(Ui.Todo::type)
-      .flatMap(t -> if (t.tick == ctx.tick) Some(t.command) else None());
+      .flatMap(t -> if (t.tick == ctx.getTick()) Some(t.command) else None());
     Array[
       Ui.Todo(
         optExecutable match {
@@ -774,7 +774,7 @@ fun setTodo(
           }
         | _ -> value
         },
-        ctx.tick,
+        ctx.getTick(),
       ),
     ]
   };

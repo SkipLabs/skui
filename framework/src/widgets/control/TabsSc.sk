@@ -54,7 +54,7 @@ class TabsSc protected {
       optConfiguration,
       cache,
       widget => ctx ~> widgetHdl.get(ctx, SKStore.IID(0)).widget,
-      tick => context.tick,
+      tick => context.getTick(),
     }
   }
 
@@ -134,7 +134,7 @@ class TabsSc protected {
           UiTabs.Viewport{
             path => this.path.makeChild("viewport"),
             scroll => this,
-            tick => context.tick,
+            tick => context.getTick(),
           },
         ),
         Array[],

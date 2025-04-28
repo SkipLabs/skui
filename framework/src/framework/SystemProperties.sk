@@ -191,7 +191,7 @@ class TPath(path: Ui.Path, tick: SKStore.Tick) extends SKStore.File {
 
 fun getRequiredFocus(context: mutable SKStore.Context): ?Ui.Path {
   handle.maybeGetValue(context, requiredFocus).map(TPath::type).flatMap(td ->
-    if (td.tick == context.tick) {
+    if (td.tick == context.getTick()) {
       Some(td.path)
     } else {
       None()
@@ -209,7 +209,7 @@ fun getHorizontalDirection(
 }
 
 fun setRequireFocus(context: mutable SKStore.Context, path: Ui.Path): void {
-  handle.write(context, requiredFocus, TPath(path, context.tick));
+  handle.write(context, requiredFocus, TPath(path, context.getTick()));
 }
 
 fun setHorizontalDirection(

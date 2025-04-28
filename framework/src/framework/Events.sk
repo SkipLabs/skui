@@ -21,15 +21,15 @@ base class Repeat(
   | KeysRepeat(keys, ctrl, shift, alt) ->
     keysFile = FWKKeys.getKeys(context);
     modifier = UiEvent.Modifier(ctrl, shift, alt);
-    (valid, _count) = modifier.test(keysFile, context.tick);
+    (valid, _count) = modifier.test(keysFile, context.getTick());
     if (valid) {
       !valid = for (keyDown in keys) {
         if (
           !keysFile
             .getForSymbol(keyDown.symbol)
             .map(key ->
-              (key.state.isPressed(context.tick) ||
-                key.state.isDown(context.tick)) &&
+              (key.state.isPressed(context.getTick()) ||
+                key.state.isDown(context.getTick())) &&
                 key.state.tick == keyDown.tick
             )
             .default(false)
@@ -44,7 +44,7 @@ base class Repeat(
   | MouseRepeat(buttons, ctrl, shift, alt) ->
     keysFile = FWKKeys.getKeys(context);
     modifier = UiEvent.Modifier(ctrl, shift, alt);
-    (valid, _count) = modifier.test(keysFile, context.tick);
+    (valid, _count) = modifier.test(keysFile, context.getTick());
     if (valid) {
       mouseFile = FWKMouse.getMouse(context);
       !valid = for (button in buttons) {

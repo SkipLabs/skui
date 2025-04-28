@@ -36,7 +36,7 @@ class HStorage(
   }
 
   fun setTodo(context: mutable SKStore.Context, value: Ui.Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
   }
 
   fun setHScroll(
@@ -175,13 +175,13 @@ class HState(
   fun getHEnsureVisible(context: mutable SKStore.Context): ?Ui.Visible {
     this.computed.maybeGetProp(context, Ui.hEnsureVisibleProp, f ~>
       f as Ui.Visible _
-    ).flatMap(v -> if (v.tick == context.tick) Some(v) else None());
+    ).flatMap(v -> if (v.tick == context.getTick()) Some(v) else None());
   }
 
   fun getVEnsureVisible(context: mutable SKStore.Context): ?Ui.Visible {
     this.computed.maybeGetProp(context, Ui.vEnsureVisibleProp, f ~>
       f as Ui.Visible _
-    ).flatMap(v -> if (v.tick == context.tick) Some(v) else None());
+    ).flatMap(v -> if (v.tick == context.getTick()) Some(v) else None());
   }
 
   fun getLines(context: mutable SKStore.Context): Vector<Line> {
@@ -449,11 +449,11 @@ class HState(
   }
 
   fun emitHScrolling(context: mutable SKStore.Context, value: Int): void {
-    this.emit(context, ManageHScrolling(value, context.tick));
+    this.emit(context, ManageHScrolling(value, context.getTick()));
   }
 
   fun emitVScrolling(context: mutable SKStore.Context, value: Int): void {
-    this.emit(context, ManageVScrolling(value, context.tick));
+    this.emit(context, ManageVScrolling(value, context.getTick()));
   }
 
   fun emitCancelScrolling(
@@ -635,7 +635,7 @@ fun init(
   );
   stateHdl = context.makeNotTyped(
     dirName,
-    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.tick))],
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick()))],
   );
   dv = SKStore.IntFile(0);
   toReallyDoHdl = stateHdl.map(
@@ -880,13 +880,13 @@ fun init(
           if (stateHdl.getBool(context, Ui.blinkingProp)) {
             writer.set(
               caretVisibleTimeProp,
-              SKStore.IntFile(context.tick.value),
+              SKStore.IntFile(context.getTick().value),
             );
             SKUIMessage.emit(
               context,
               statePath,
               dirName.toString(),
-              ToggleHidden(context.tick),
+              ToggleHidden(context.getTick()),
               false,
               Some(500),
             );
@@ -1000,18 +1000,24 @@ fun execute(
   | Upper() -> updater.modify(Unicode.toUpper)
   | Lower() -> updater.modify(Unicode.toLower)
   | ManageHScrolling(incr, _) ->
-    updater.values.set(Ui.hEnsureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+    updater.values.set(
+      Ui.hEnsureVisibleProp,
+      Some(Ui.Incr(incr, context.getTick())),
+    )
   | ManageVScrolling(incr, _) ->
-    updater.values.set(Ui.vEnsureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+    updater.values.set(
+      Ui.vEnsureVisibleProp,
+      Some(Ui.Incr(incr, context.getTick())),
+    )
   | ManageHVisible(visible) ->
     updater.values.set(
       Ui.hEnsureVisibleProp,
-      Some(Ui.Pos(visible, context.tick)),
+      Some(Ui.Pos(visible, context.getTick())),
     )
   | ManageVVisible(visible) ->
     updater.values.set(
       Ui.vEnsureVisibleProp,
-      Some(Ui.Pos(visible, context.tick)),
+      Some(Ui.Pos(visible, context.getTick())),
     )
   | GoToLine(optLineNumber) ->
     optLineNumber.each(lineNumber ->

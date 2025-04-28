@@ -9,9 +9,9 @@ fun source_dirs(env: SkuiBuild.Env): Array<String> {
 fun include_dirs(env: SkuiBuild.Env): Array<String> {
   if (!env.isWasm32()) {
     Array[
-      "../skui_opengl/native/src/includes",
-      "../skui_base/native/src/includes",
-      "../skui_x11gl/native/src/includes",
+      "../opengl/native/src/includes",
+      "../base/native/src/includes",
+      "../x11gl/native/src/includes",
     ]
   } else {
     Array[]
@@ -26,12 +26,12 @@ fun resources(_env: SkuiBuild.Env): Array<String> {
 @skui_build__extra_sources
 fun extra_sources(env: SkuiBuild.Env): Array<String> {
   if (env.isWasm32()) {
-    Array["../skui_js/src/Wasm32.sk", "../skui_js/src/JSEvents.sk"]
+    Array["../framework_js/src/Wasm32.sk", "../framework_js/src/JSEvents.sk"]
   } else {
     Array[
-      "../skui_x11gl/extra/Host.sk",
-      "../skui_x11gl/extra/X11Events.sk",
-      "../skui_x11gl/extra/X11Key.sk",
+      "../x11gl/extra/Host.sk",
+      "../x11gl/extra/X11Events.sk",
+      "../x11gl/extra/X11Key.sk",
     ]
   }
 }

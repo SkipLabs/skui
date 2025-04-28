@@ -43,7 +43,7 @@ class AspectRatio{
     cache: NodeCache,
     optConfiguration: ?Getter<Configuration> = None(),
   ): this {
-    static{path, controller, optConfiguration, cache, tick => context.tick}
+    static{path, controller, optConfiguration, cache, tick => context.getTick()}
   }
 
   fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {

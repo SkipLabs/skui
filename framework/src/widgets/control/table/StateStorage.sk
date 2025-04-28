@@ -57,7 +57,7 @@ class HStorage(name: String, handle: SKStore.INotTyped) extends Storage {
   }
 
   fun setTodo(context: mutable SKStore.Context, value: Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
   }
 
   // GETTERS
@@ -117,9 +117,9 @@ fun execute(
   | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values, info))
   | Init() -> void
   | ManageScrolling(incr, _) ->
-    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.getTick())))
   | ManageVisible(value) ->
-    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.getTick())))
   | Fire(optRow) ->
     optCurrent = if (optRow.isSome()) {
       optRow

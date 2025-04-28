@@ -50,7 +50,7 @@ class HStorage(
   }
 
   fun setTodo(context: mutable SKStore.Context, value: Executable): void {
-    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.tick))
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
   }
 
   fun setScroll(context: mutable SKStore.Context, optScroll: ?Scroll): void {
@@ -143,7 +143,7 @@ class HState(
   fun getEnsureVisible(context: mutable SKStore.Context): ?Visible {
     this.after.maybeGetProp(context, Ui.ensureVisibleProp, f ~>
       f as Visible _
-    ).flatMap(v -> if (v.tick == context.tick) Some(v) else None());
+    ).flatMap(v -> if (v.tick == context.getTick()) Some(v) else None());
   }
 
   fun getSize(context: mutable SKStore.Context): Int {
@@ -329,7 +329,7 @@ class HState(
   }
 
   fun emitScrolling(context: mutable SKStore.Context, value: Int): void {
-    this.emit(context, ManageScrolling(value, context.tick));
+    this.emit(context, ManageScrolling(value, context.getTick()));
   }
 
   fun emitCancelScrolling(
@@ -413,7 +413,7 @@ fun init(
   stateHdl = context.makeNotTyped(
     dirName,
     Array<(SKStore.Key, SKStore.File)>[
-      (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
+      (Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick())),
     ],
   );
   filteredDirName = SKStore.DirName::make(dirName, "filtered/");
@@ -641,12 +641,15 @@ fun init(
     (context, writer, key, it) ~> {
       if (key == Ui.positionProp) {
         if (stateHdl.getBool(context, Ui.blinkingProp)) {
-          writer.set(Ui.caretVisibleProp, SKStore.IntFile(context.tick.value));
+          writer.set(
+            Ui.caretVisibleProp,
+            SKStore.IntFile(context.getTick().value),
+          );
           SKUIMessage.emit(
             context,
             statePath,
             dirName.toString(),
-            ToggleHidden(context.tick),
+            ToggleHidden(context.getTick()),
             false,
             Some(500),
           );
@@ -803,7 +806,7 @@ fun execute(
     values.set(Ui.selectionProp, Some(SourcedSel(optValue, src)))
   | ManageTarget(optTarget, _) ->
     optTarget.each(t ->
-      values.set(Ui.ensureVisibleProp, Some(Pos(t, context.tick)))
+      values.set(Ui.ensureVisibleProp, Some(Pos(t, context.getTick())))
     );
     values.set(Ui.targetProp, optTarget.map(v -> SKStore.IntFile(v)))
   | Undo _ ->
@@ -813,7 +816,7 @@ fun execute(
     undoRedo(context, values, h ~> h.redo, source);
     !check = false
   | ManageScrolling(incr, _) ->
-    values.set(Ui.ensureVisibleProp, Some(Incr(incr, context.tick)))
+    values.set(Ui.ensureVisibleProp, Some(Incr(incr, context.getTick())))
   | Copy() -> _ = copy(context, values)
   | Cut() ->
     cut(context, values, source);

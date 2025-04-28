@@ -28,8 +28,8 @@ class IVHoverHandler(
       return FWK.Result(false);
     };
     FWK.Result(
-      if (mouse.isPrimaryPressed(context.tick)) true else if (
-        mouse.isPrimaryReleased(context.tick)
+      if (mouse.isPrimaryPressed(context.getTick())) true else if (
+        mouse.isPrimaryReleased(context.getTick())
       ) {
         this.item match {
         | i @ Item _ ->
@@ -67,7 +67,7 @@ class HoverHandler(path: Ui.Path, state: State) extends Ui.HoverHandlerWrapper {
     context: mutable SKStore.Context,
     mouse: UiEvent.MouseFile,
   ): FWK.Result {
-    wheel = mouse.getWheelValue(context.tick);
+    wheel = mouse.getWheelValue(context.getTick());
     FWK.Result(
       if (wheel != 0) {
         incr = Math.sign(-wheel).toInt();

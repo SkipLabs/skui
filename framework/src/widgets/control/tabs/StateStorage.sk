@@ -104,7 +104,7 @@ class HState(
     this.handle.write(
       context,
       Ui.todoProp,
-      Ui.Todo(ManagePinned(tab, value), context.tick),
+      Ui.Todo(ManagePinned(tab, value), context.getTick()),
     );
   }
 
@@ -152,7 +152,7 @@ fun init(
   stateHdl = context.makeNotTyped(
     dirName,
     Array<(SKStore.Key, SKStore.File)>[
-      (Ui.todoProp, Ui.Todo(Ui.Init(), context.tick)),
+      (Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick())),
     ],
   );
   storage = SKStore.toIHandle(stateHdl);
@@ -249,7 +249,7 @@ fun init(
         );
       };
       writer.set(HistoryKey(), SKStore.Strings(history));
-      writer.set(ModifiedKey(), SKStore.IntFile(context.tick.value));
+      writer.set(ModifiedKey(), SKStore.IntFile(context.getTick().value));
       writer.set(PinnedKey(), pinned);
     },
   );
@@ -273,7 +273,7 @@ fun init(
           verifiedHdl.get(context, ModifiedKey()),
         );
         if (modification.value > todo.tick.value) {
-          writer.set(key, Ui.Todo(Ui.Init(), context.tick))
+          writer.set(key, Ui.Todo(Ui.Init(), context.getTick()))
         } else {
           writer.set(key, todo)
         }

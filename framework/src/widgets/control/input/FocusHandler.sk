@@ -39,7 +39,7 @@ class FocusHandler{
     keys: UiEvent.KeysFile,
   ): Bool {
     if (this.input.controller.isEditable(context)) {
-      keys.getChar(false, false, context.tick) match {
+      keys.getChar(false, false, context.getTick()) match {
       | Some(info) ->
         info match {
         | UiEvent.Unicode(char) ->
