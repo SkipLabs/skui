@@ -1,0 +1,393 @@
+module Ui;
+
+class Tabs protected {
+  controller: UiTabs.Controller,
+  state: UiTabs.State,
+  widgetHdl: SKStore.EHValue<SKStore.IID, WidgetFile>,
+} extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
+  //
+  type Params = UiTabs.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Path,
+    params: UiTabs.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Getter<Configuration> = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
+      UiTabs.actionsDirName(path.makeChild("source")),
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
+    );
+    actionsKey = SKStore.StrID("actions");
+    fixedKey = SKStore.StrID("fixed");
+    pinnedKey = SKStore.StrID("pinned");
+    tabsKey = SKStore.StrID("tabs");
+    childrenHdl = context.makeDir(
+      SKStore.StrID::keyType,
+      SKStore.IntFile::type,
+      UiTabs.widgetsDirName(path.makeChild("source")),
+      Array[
+        (pinnedKey, SKStore.IntFile(0)),
+        (tabsKey, SKStore.IntFile(0)),
+        (actionsKey, SKStore.IntFile(0)),
+        (fixedKey, SKStore.IntFile(0)),
+      ],
+    );
+    actionsHdl = mainHdl.map(
+      SKStore.KIndexed::bKeyType,
+      f ~> f,
+      context,
+      UiTabs.actionsDirName(path),
+      (context, writer, _key, _file) ~> {
+        count = params.controller.getNumberOfActions(context);
+        keys = mutable Vector<SKStore.StrID>[];
+        for (idx in Range(0, count)) {
+          action = params.controller.getAction(context, idx);
+          writer.set(SKStore.KIdx(SKStore.StrID(action.id)), action);
+          keys.push(SKStore.StrID(action.id))
+        };
+        writer.set(SKStore.KKeys(), WKeys(keys.toArray()));
+        writer.set(SKStore.KSize(), WSize(count));
+      },
+    );
+    actionsWidgetsHdl = actionsHdl.map(
+      SKStore.KIndexed::bKeyType,
+      WInfo::btype,
+      context,
+      UiTabs.actionsWidgetsDirName(path),
+      (context, writer, key, it) ~> {
+        key match {
+        | SKStore.KKeys() -> writer.set(key, WKeys::type(it.first))
+        | SKStore.KSize() -> writer.set(key, WSize::type(it.first))
+        | _ ->
+          writer.set(
+            key,
+            WElem((it.first as UiTabs.Action _).build(context, path)),
+          )
+        };
+      },
+    );
+    collect = (context, writer, getNumber, getAt) ~> {
+      count = getNumber(context);
+      keys = mutable Vector<SKStore.StrID>[];
+      for (idx in Range(0, count)) {
+        identified = getAt(context, idx);
+        sId = SKStore.StrID(identified.id);
+        writer.set(SKStore.KIdx(sId), identified.controller);
+        keys.push(sId)
+      };
+      writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
+      writer.set(SKStore.KSize(), SKStore.IntFile(keys.size()));
+    };
+    tabsHdl = mainHdl.map(
+      SKStore.KIndexed::bKeyType,
+      f ~> f,
+      context,
+      UiTabs.tabsDirName(path),
+      (context, writer, _key, _file) ~>
+        collect(
+          context,
+          writer,
+          params.state.getNumberOfTabs,
+          params.state.getTab,
+        )
+      ,
+    );
+    buildTab = (context, writer, key, file, pinned) ~> {
+      key match {
+      | SKStore.KKeys() -> writer.set(key, WKeys::type(file))
+      | SKStore.KSize() -> writer.set(key, WSize::type(file))
+      | _ ->
+        controller = (file as UiTab.Controller _);
+        tabPath = path
+          .makeChild("tabs")
+          .makeChild(if (pinned) "left" else "right")
+          .makeChild(key.toString());
+        widget = Tab::create(
+          context,
+          tabPath,
+          UiTab.Parameters(path, controller, UiTab.init(context, tabPath)),
+          if (pinned) {
+            Some(Ui.default(UiFlex.Configuration{flex => 1}))
+          } else {
+            params.controller.getKind(context) match {
+            | UiTabs.Fixed() ->
+              Some(Ui.default(UiFlex.Configuration{flex => 1}))
+            | UiTabs.Scrollable() -> None()
+            }
+          },
+        );
+        writer.set(key, WElem(widget))
+      };
+    };
+    buildPinned = (context, writer, key, it) ~>
+      buildTab(context, writer, key, it.first, true);
+    buildNotPinned = (context, writer, key, it) ~>
+      buildTab(context, writer, key, it.first, false);
+
+    tabsWidgetsHdl = tabsHdl.map(
+      SKStore.KIndexed::bKeyType,
+      WInfo::btype,
+      context,
+      UiTabs.tabsWidgetsDirName(path),
+      buildNotPinned,
+    );
+    pinnedTabsHdl = mainHdl.map(
+      SKStore.KIndexed::bKeyType,
+      f ~> f,
+      context,
+      UiTabs.pinnedTabsDirName(path),
+      (context, writer, _key, _file) ~>
+        collect(
+          context,
+          writer,
+          params.state.getNumberOfPinned,
+          params.state.getPinned,
+        )
+      ,
+    );
+    pinnedTabsWidgetsHdl = pinnedTabsHdl.map(
+      SKStore.KIndexed::bKeyType,
+      WInfo::btype,
+      context,
+      UiTabs.pinnedTabsWidgetsDirName(path),
+      buildPinned,
+    );
+    actionsCollection = KIndexedCollection(actionsWidgetsHdl);
+    tabsCollection = KIndexedCollection(tabsWidgetsHdl);
+    pinnedCollection = KIndexedCollection(pinnedTabsWidgetsHdl);
+    allCollection = MergeCollection(pinnedCollection, tabsCollection);
+    widgetsPath = UiTabs.widgetsDirName(path);
+    widgetsHdl = childrenHdl.map(
+      SKStore.StrID::keyType,
+      WidgetFile::type,
+      context,
+      widgetsPath,
+      (context, writer, key, _) ~> {
+        subPath = path.makeChild("widgets").makeChild(key.toString());
+        if (key == pinnedKey) {
+          params.controller.getKind(context) match {
+          | UiTabs.Scrollable() ->
+            writer.set(
+              key,
+              WidgetFile(
+                Flex::createForController(
+                  context,
+                  subPath,
+                  UiFlex.LamController{
+                    widgets => pinnedCollection,
+                    direction => params.controller.getDirection,
+                    crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                  },
+                ),
+              ),
+            )
+          | _ -> void
+          }
+        } else if (key == tabsKey) {
+          kind = params.controller.getKind(context);
+          if (kind == UiTabs.Scrollable()) {
+            writer.set(
+              key,
+              WidgetFile(
+                TabsSc::create(
+                  context,
+                  subPath,
+                  UiTabsSc.init(
+                    context,
+                    subPath,
+                    UiTabsSc.LamController{
+                      widgets => tabsCollection,
+                      direction => params.controller.getDirection,
+                    },
+                    path,
+                  ),
+                ),
+              ),
+            )
+          }
+        } else if (key == actionsKey) {
+          if (actionsCollection.getSize(context) > 0) {
+            (widget, optConf) = params.controller.getDirection(context) match {
+            | HorizontalAxis() ->
+              (
+                Flex::createForController(
+                  context,
+                  subPath,
+                  UiFlex.LamController{
+                    widgets => actionsCollection,
+                    mainAxisAlignment => _ctx ~> UiFlex.SpaceBetween(),
+                    crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                  },
+                ),
+                None(),
+              )
+            | VerticalAxis() ->
+              (
+                Wrap::createForController(
+                  context,
+                  subPath,
+                  UiWrap.LamController{
+                    runSpacing => _ctx ~> 8.0,
+                    widgets => actionsCollection,
+                    crossAxisAlignment => _ctx ~> UiWrap.Center(),
+                  },
+                ),
+                Some(Ui.default(UiFlex.Configuration{ignoreCross => true})),
+              )
+            };
+            writer.set(
+              key,
+              WidgetFile(
+                Decorated::create(
+                  context,
+                  subPath.makeChild("padding"),
+                  UiDecorated.LamController{
+                    decoration => _ctx ~> Padding(Geometry.Insets::all(2.0)),
+                    widget => _ctx ~> Some(widget),
+                  },
+                  optConf,
+                ),
+              ),
+            )
+          }
+        } else if (key == fixedKey) {
+          params.controller.getKind(context) match {
+          | UiTabs.Fixed() ->
+            writer.set(
+              key,
+              WidgetFile(
+                Flex::createForController(
+                  context,
+                  subPath,
+                  UiFlex.LamController{
+                    widgets => allCollection,
+                    direction => params.controller.getDirection,
+                    crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+                  },
+                ),
+              ),
+            )
+          | _ -> void
+          }
+        }
+      },
+    );
+    getFixed = ctx ~> widgetsHdl.get(ctx, fixedKey).widget;
+    getPinned = ctx ~> widgetsHdl.get(ctx, pinnedKey).widget;
+    getTabs = ctx ~> widgetsHdl.get(ctx, tabsKey).widget;
+    getActions = ctx ~> widgetsHdl.get(ctx, actionsKey).widget;
+    widgetPath = UiTabs.widgetDirName(path);
+    widgetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
+      context,
+      widgetPath,
+      (context, writer, key, _) ~> {
+        subPath = path.makeChild("widgets").makeChild("main");
+        numberOfPinneds = pinnedCollection.getSize(context);
+        numberOfActions = actionsCollection.getSize(context);
+        main = params.controller.getKind(context) match {
+        | UiTabs.Fixed() ->
+          if (numberOfActions > 0) {
+            Configured::create(
+              context,
+              subPath.makeChild("configured"),
+              UiConfigured.LamController{widget => getFixed},
+              Some(Ui.default(UiFlex.Configuration{flex => 1})),
+            )
+          } else {
+            getFixed(context)
+          }
+        | UiTabs.Scrollable() ->
+          if (numberOfPinneds > 0) {
+            Splitted::createForController(
+              context,
+              subPath.makeChild("splitted"),
+              UiSplitted.LamController{
+                direction => params.controller.getDirection,
+                firstWidget => getPinned,
+                secondWidget => getTabs,
+              },
+              if (numberOfActions > 0) {
+                Some(Ui.default(UiFlex.Configuration{flex => 1}))
+              } else {
+                None()
+              },
+            );
+          } else {
+            if (numberOfActions > 0) {
+              Configured::create(
+                context,
+                subPath.makeChild("configured"),
+                UiConfigured.LamController{widget => getTabs},
+                Some(Ui.default(UiFlex.Configuration{flex => 1})),
+              )
+            } else {
+              getTabs(context)
+            }
+          }
+        };
+        root = if (numberOfActions > 0) {
+          Flex::createForController(
+            context,
+            subPath,
+            UiFlex.LamController{
+              widgets => UiTabs.MainCollection(
+                main,
+                getActions,
+                params.controller.getDirection,
+              ),
+              direction => params.controller.getDirection,
+              crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+            },
+          )
+        } else {
+          main
+        };
+        writer.set(key, WidgetFile(root))
+      },
+    );
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      widgetHdl => SKStore.EHValue(widgetHdl, SKStore.IID(0)),
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    widget = this.widgetHdl.get(context).widget;
+    node = widget.getNode(context, constraints);
+    Node(
+      this,
+      node.size,
+      Array[CNode(node, Geometry.Offset::zero, constraints)],
+    );
+  }
+
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
+    this.widgetHdl.get(context).widget.getViewportDefinition(context);
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKStore.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((context, _, _) ~>
+      Some(UiTabs.HoverHandler(this, childGetter(context)))
+    )
+  }
+}
+
+module end;

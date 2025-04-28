@@ -1,0 +1,207 @@
+module UiSplitted;
+
+base class Controller {
+  /** The direction to use as the main axis. */
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis;
+  fun getFirstWidget(context: mutable SKStore.Context): Ui.Widget;
+  fun getSecondWidget(context: mutable SKStore.Context): Ui.Widget;
+  fun getMaxSeparation(context: mutable SKStore.Context): Int;
+}
+
+class LamController{
+  direction: mutable SKStore.Context ~> Ui.Axis = _ctx ~> Ui.HorizontalAxis(),
+  firstWidget: mutable SKStore.Context ~> Ui.Widget,
+  secondWidget: mutable SKStore.Context ~> Ui.Widget,
+  maxSeparation: mutable SKStore.Context ~> Int = _ctx ~> 50,
+} extends Controller {
+  //
+  fun getDirection(context: mutable SKStore.Context): Ui.Axis {
+    this.direction(context)
+  }
+
+  fun getFirstWidget(context: mutable SKStore.Context): Ui.Widget {
+    this.firstWidget(context)
+  }
+
+  fun getSecondWidget(context: mutable SKStore.Context): Ui.Widget {
+    this.secondWidget(context)
+  }
+
+  fun getMaxSeparation(context: mutable SKStore.Context): Int {
+    this.maxSeparation(context)
+  }
+}
+
+class Parameters{
+  controller: Controller,
+  optFocusManager: ?Ui.FocusManager = None(),
+  optDragHandler: ?Ui.Getter<?Ui.DragHandlerGetter> = None(),
+  optDropHandler: ?Ui.Getter<?Ui.DropHandlerGetter> = None(),
+  optHoverHandler: ?Ui.GetterOne<
+    ?Ui.HoverHandlerGetter,
+    Ui.Getter<?FWK.HoverHandler>,
+  > = None(),
+} extends Ui.Parameters {}
+
+module end;
+
+module Ui;
+
+class Splitted protected {
+  controller: UiSplitted.Controller,
+}
+  extends
+    StrictWidget,
+    WithHoverHandler,
+    WithDragHandler,
+    WithDropHandler,
+    WithFocusManager,
+
+
+  uses WithNodeCache, WithViewports {
+  //
+  type Params = UiSplitted.Parameters;
+  type Buffer = NodeCache;
+
+  fun getHoverHandler from WithHoverHandler;
+  fun getDragHandler from WithDragHandler;
+  fun getDropHandler from WithDropHandler;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    params: UiSplitted.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{
+      path,
+      controller => params.controller,
+      optFocusManager => params.optFocusManager,
+      optDragHandler => params.optDragHandler,
+      optDropHandler => params.optDropHandler,
+      optHoverHandler => params.optHoverHandler,
+      cache,
+      optConfiguration,
+      tick => context.getTick(),
+    }
+  }
+
+  static fun createForController(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    controller: UiSplitted.Controller,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static::create(
+      context,
+      path,
+      UiSplitted.Parameters{controller},
+      optConfiguration,
+    )
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    direction = this.controller.getDirection(context);
+    firstWidget = this.controller.getFirstWidget(context);
+    secondWidget = this.controller.getSecondWidget(context);
+    maxSeparation =
+      Math.clamp(this.controller.getMaxSeparation(context), 0, 100).toFloat() /
+      100.0;
+    (size, childArray) = direction match {
+    | Ui.HorizontalAxis() ->
+      (firstConstraints, firstNode, secondConstraints, secondNode) = if (
+        constraints.hasBoundedWidth()
+      ) {
+        firstConstraints = constraints.freeWidth();
+        firstNode = firstWidget.getNode(context, firstConstraints);
+        maxWidth = Math.floor(constraints.maxWidth() * maxSeparation);
+        if (firstNode.size.width > maxWidth) {
+          !firstConstraints = constraints.withMaxWidth(maxWidth);
+          !firstNode = firstWidget.getNode(context, firstConstraints);
+        };
+        secondConstraints = constraints.withMaxWidth(
+          constraints.maxWidth() - firstNode.size.width,
+        );
+        secondNode = secondWidget.getNode(context, secondConstraints);
+        (firstConstraints, firstNode, secondConstraints, secondNode)
+      } else {
+        firstNode = firstWidget.getNode(context, constraints);
+        secondNode = secondWidget.getNode(context, constraints);
+        (constraints, firstNode, constraints, secondNode)
+      };
+      size = firstNode.size.horizontal(secondNode.size);
+      (
+        size,
+        Array[
+          CNode(
+            firstNode,
+            Geometry.Offset(0.0, (size.height - firstNode.size.height) / 2.0),
+            firstConstraints,
+          ),
+          CNode(
+            secondNode,
+            Geometry.Offset(
+              firstNode.size.width,
+              (size.height - secondNode.size.height) / 2.0,
+            ),
+            secondConstraints,
+          ),
+        ],
+      )
+    | Ui.VerticalAxis() ->
+      (firstConstraints, firstNode, secondConstraints, secondNode) = if (
+        constraints.hasBoundedHeight()
+      ) {
+        firstConstraints = constraints.freeHeight();
+        firstNode = firstWidget.getNode(context, firstConstraints);
+        maxHeight = Math.floor(constraints.maxHeight() * maxSeparation);
+        if (firstNode.size.height > maxHeight) {
+          !firstConstraints = constraints.withMaxHeight(maxHeight);
+          !firstNode = firstWidget.getNode(context, firstConstraints);
+        };
+        secondConstraints = constraints.withMaxHeight(
+          constraints.maxHeight() - firstNode.size.height,
+        );
+        secondNode = secondWidget.getNode(context, secondConstraints);
+        (firstConstraints, firstNode, secondConstraints, secondNode)
+      } else {
+        firstNode = firstWidget.getNode(context, constraints);
+        secondNode = secondWidget.getNode(context, constraints);
+        (constraints, firstNode, constraints, secondNode)
+      };
+      size = firstNode.size.vertical(secondNode.size);
+      (
+        size,
+        Array[
+          CNode(
+            firstNode,
+            Geometry.Offset((size.width - firstNode.size.width) / 2.0, 0.0),
+            firstConstraints,
+          ),
+          CNode(
+            secondNode,
+            Geometry.Offset(
+              (size.width - secondNode.size.width) / 2.0,
+              firstNode.size.height,
+            ),
+            secondConstraints,
+          ),
+        ],
+      )
+    };
+    Node(this, size, childArray);
+  }
+
+  protected fun getWidgets(context: mutable SKStore.Context): Array<Widget> {
+    Array[
+      this.controller.getFirstWidget(context),
+      this.controller.getSecondWidget(context),
+    ]
+  }
+}
+
+module end;

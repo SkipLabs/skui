@@ -1,0 +1,449 @@
+module Ui;
+
+class TextLine protected {
+  controller: UiTextLine.Controller,
+  reference: Ui.Path,
+  visibleTokens: Ui.GetterOne<UiTextLine.Tokens, Bool>,
+  hover: Ui.Getter<Bool>,
+  selection: Ui.GetterOne<?Range, Bool>,
+  position: Ui.GetterOne<?Int, Bool>,
+  target: Ui.GetterOne<?Int, Bool>,
+  active: Ui.Getter<Bool>,
+} extends StrictWidget uses WithNodeCache, NoViewports {
+  //
+  type Params = UiTextLine.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    params: UiTextLine.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    mainKey = SKStore.IID(0);
+    mainHdl = context.makeDir(
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
+      UiTextLine.widgetDirName(path.makeChild("source")),
+      Array[(mainKey, SKStore.IntFile(0))],
+    );
+    tokenHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      Ui.Tokens::type,
+      context,
+      UiTextLine.widgetDirName(path.makeChild("tokens")),
+      (context, writer, key, _) ~> {
+        writer.set(key, params.controller.getTokens(context))
+      },
+    );
+    hoverHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      SKStore.BoolFile::type,
+      context,
+      UiTextLine.widgetDirName(path.makeChild("hover")),
+      (context, writer, key, _) ~> {
+        hover = if (FWKPipeline.hasMouseState(context)) {
+          mouseState = FWKPipeline.mouseState(context);
+          mouseState.optHoverHandler
+            .map(hh -> hh.getIdentifier() == path)
+            .default(false)
+        } else {
+          false
+        };
+        writer.set(key, SKStore.BoolFile(hover))
+      },
+    );
+    visibleTokensPath = UiTextLine.widgetDirName(
+      path.makeChild("tokens").makeChild("visible"),
+    );
+    visibleTokensHdl = tokenHdl.map(
+      SKStore.IID::keyType,
+      UiTextLine.Tokens::type,
+      context,
+      visibleTokensPath,
+      (_, writer, key, it) ~> {
+        tokens = it.first;
+        displayToText = tokens.indexes();
+        textToDisplay = if (!displayToText.isEmpty()) {
+          optFirst: ?Int = None();
+          vec = mutable Vector<Int>[];
+          current = 0;
+          displayToText.eachWithIndex((idx, index) -> {
+            if (optFirst.isNone()) {
+              !optFirst = Some(index);
+              vec.push(idx);
+            } else if (index != current) {
+              vec.push(idx);
+            };
+            !current = index;
+          });
+          unsafe_chill_trust_me(vec)
+        } else {
+          Vector[]
+        };
+        writer.set(
+          key,
+          UiTextLine.Tokens(tokens, displayToText, textToDisplay, 0),
+        )
+      },
+    );
+    selectionHdl = visibleTokensHdl.map(
+      SKStore.IID::keyType,
+      SKStore.RangeFile::type,
+      context,
+      UiTextLine.widgetDirName(path.makeChild("selection")),
+      (context, writer, key, it) ~> {
+        tokens = it.first;
+        params.controller.getSelection(context).each(selection ->
+          tokens.toDisplay(selection).each(verified ->
+            writer.set(key, SKStore.RangeFile(verified))
+          )
+        )
+      },
+    );
+    positionHdl = visibleTokensHdl.map(
+      k ~> k,
+      f ~> f,
+      context,
+      UiTextLine.widgetDirName(path.makeChild("position")),
+      (context, writer, key, it) ~> {
+        tokens = it.first;
+        optPosition = params.controller.getPosition(context);
+        optPosition.each(position ->
+          tokens.toDisplayPosition(position).each(verified ->
+            if (params.controller.isCaretVisible(context)) {
+              writer.set(key, SKStore.IntFile(verified))
+            }
+          )
+        );
+        writer.set(Ui.activeProp, SKStore.BoolFile(optPosition.isSome()))
+      },
+    );
+    targetHdl = visibleTokensHdl.map(
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
+      context,
+      UiTextLine.widgetDirName(path.makeChild("target")),
+      (context, writer, key, it) ~> {
+        tokens = it.first;
+        optTarget = params.controller.getTarget(context);
+        optTarget.each(target ->
+          tokens.toDisplayPosition(target).each(verified ->
+            writer.set(key, SKStore.IntFile(verified))
+          )
+        )
+      },
+    );
+    static{
+      path,
+      controller => params.controller,
+      reference => params.reference,
+      optConfiguration,
+      cache,
+      tick => context.getTick(),
+      visibleTokens => (ctx, iu) ~> visibleTokensHdl.getValue(ctx, mainKey, iu),
+      hover => ctx ~> hoverHdl.get(ctx, mainKey).value,
+      selection => (ctx, iu) ~>
+        selectionHdl.maybeGetValue(ctx, mainKey, iu).map(f ~> f.value),
+      position => (ctx, iu) ~> positionHdl.maybeGetInt(ctx, mainKey, iu),
+      target => (ctx, iu) ~> targetHdl.maybeGetInt(ctx, mainKey, iu),
+      active => ctx ~> positionHdl.getBool(ctx, Ui.activeProp),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    _constraints: BoxConstraints,
+  ): Node {
+    padding = context.getThemeThickness(UiTheme.MonospacePadding());
+    fontSize = this.controller.getFontSize(context);
+    count = this.controller.getCount(context);
+    size = Geometry.Size(
+      count.toFloat() * fontSize.width,
+      Math.ceil(fontSize.height()) + (2 * padding).toFloat(),
+    );
+    Node(this, size);
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKStore.Context,
+    _support: Ui.DrawableSupport,
+    relative: Geometry.Offset,
+    _nodeSum: Ui.NodeSum,
+    _optUserData: ?UserData,
+  ): ?DrawInfo {
+    drawables = mutable Vector<Ui.Drawable>[];
+    top = context.getThemeThickness(UiTheme.MonospacePadding()).toFloat();
+    fontSize = this.controller.getFontSize(context);
+    tokens = this.visibleTokens(context, false);
+    left = 0.0;
+    isSpacesVisible = this.controller.isSpacesVisible(context);
+    faceId = context.getThemeFont(UiTheme.Monospace());
+    color = context.getThemeColor(UiTheme.Regular());
+    wpColor = context.getThemeColor(UiTheme.WhiteSpace());
+    textSupport = context.getTextSupport();
+    tokens.tokens.value.each(token -> {
+      width = token.info.count.toFloat() * fontSize.width;
+      if (token.info.kind != Text.KWhiteSpace() || isSpacesVisible) {
+        fill = token.optColor match {
+        | Some(c) -> c
+        | _ -> if (token.info.kind == Text.KWhiteSpace()) wpColor else color
+        };
+        tOffset = Geometry.Offset(relative.dx + left, relative.dy + top);
+        textSupport
+          .getDrawables(context, token.info.text, Text.Display(faceId, fill))
+          .each(ds -> ds.each(d -> drawables.push(d.translate(tOffset))))
+      };
+      !left = left + width;
+    });
+    Some(UiTextLine.DrawInfo(drawables.toArray()))
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKStore.Context,
+    _childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((_, _, ni) ~> Some(UiTextLine.HoverHandler(this.path, this, ni)))
+  }
+
+  fun checkFocusHandlers(
+    _context: mutable SKStore.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    //TODO
+    handlers.chill()
+  }
+
+  fun computeLayer(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | MainLayer() ->
+      di = node.optDrawInfo.map(di ~> di as UiTextLine.DrawInfo _).fromSome();
+      offset = this.controller.getOffset(context);
+      fontSize = this.controller.getFontSize(context);
+      di.drawables.map(d -> {
+        floor = absolute
+          .translateX(offset.offset - offset.index.toFloat() * fontSize.width)
+          .floor();
+        d.translate(floor)
+      })
+    | BackgroundLayer() ->
+      this.computeBackground(context, support, absolute, node.size())
+    | ForegroundLayer() ->
+      this.computeForeground(context, support, absolute, node.size())
+    };
+  }
+
+  private fun computeBackground(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+  ): Array<Ui.Drawable> {
+    default = Array[];
+    this.selection(context, false)
+      .map(selection -> {
+        if (selection.size() > 0) {
+          offset = this.controller.getOffset(context);
+          fontSize = this.controller.getFontSize(context);
+          Array[
+            support.rectangle(
+              absolute.translateX(
+                fontSize.width * selection.start.toFloat() + offset.offset,
+              ),
+              Geometry.Size(
+                fontSize.width * selection.size().toFloat(),
+                size.height,
+              ),
+              context.getThemeColor(UiTheme.Primary()).scaleAlpha(0.2),
+            ),
+          ]
+        } else {
+          default
+        }
+      })
+      .default(default);
+  }
+
+  private fun computeForeground(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+  ): Array<Ui.Drawable> {
+    drawables = mutable Vector<Ui.Drawable>[];
+    color = context.getThemeColor(UiTheme.Regular()).scaleAlpha(0.2);
+    if (this.active(context)) {
+      drawables.push(
+        support.rectangle(absolute, Geometry.Size(size.width, 2.0), color),
+      );
+      drawables.push(
+        support.rectangle(
+          absolute.translateY(size.height - 2.0),
+          Geometry.Size(size.width, 2.0),
+          color,
+        ),
+      )
+    };
+    this.position(context, false).each(position -> {
+      offset = this.controller.getOffset(context);
+      fontSize = this.controller.getFontSize(context);
+      caretColor = if (this.controller.isEditable(context)) {
+        context.getThemeColor(UiTheme.Primary())
+      } else {
+        context.getThemeColor(UiTheme.Information())
+      };
+      drawables.push(
+        support.rectangle(
+          absolute.translateX(
+            offset.offset +
+              (position - offset.index).toFloat() * fontSize.width,
+          ),
+          Geometry.Size(2.0, size.height),
+          caretColor,
+        ),
+      )
+    });
+    this.target(context, false).each(target -> {
+      offset = this.controller.getOffset(context);
+      fontSize = this.controller.getFontSize(context);
+      caretColor = context.getThemeColor(UiTheme.Target());
+      drawables.push(
+        support.rectangle(
+          absolute.translateX(
+            offset.offset + (target - offset.index).toFloat() * fontSize.width,
+          ),
+          Geometry.Size(2.0, size.height),
+          caretColor,
+        ),
+      )
+    });
+    if (this.hover(context)) {
+      drawables.push(support.rectangle(absolute, size, color))
+    };
+    drawables.toArray();
+  }
+
+  fun getTextPostionFor(
+    context: mutable SKStore.Context,
+    absolute: Geometry.Offset,
+    relative: Bool,
+    nodeInfo: Ui.NodeInfo,
+    isUntraked: Bool,
+  ): Ui.Position {
+    lineIdx = this.controller.getLine(context, isUntraked);
+    rOffset = if (!relative) {
+      viewport = nodeInfo.getWindowOffset(context, isUntraked, isUntraked);
+      absolute - viewport;
+    } else {
+      absolute
+    };
+    tokens = this.visibleTokens(context, isUntraked);
+    offset = this.controller.getOffset(context);
+    fontSize = this.controller.getFontSize(context);
+    current = offset.offset;
+    column = if (rOffset.dx >= 0.0) {
+      index =
+        offset.index +
+        if (current + fontSize.width > rOffset.dx) {
+          0
+        } else {
+          1 +
+            ((rOffset.dx - (current + fontSize.width)) / fontSize.width).toInt()
+        };
+      tokens.displayToText.maybeGet(index).default(tokens.tokens.size);
+    } else {
+      first = tokens.displayToText
+        .maybeGet(offset.index)
+        .default(tokens.tokens.size);
+      if (rOffset.dx > current) {
+        first
+      } else {
+        Math.max(
+          first - (Math.abs(rOffset.dx - current) / fontSize.width).toInt(),
+          0,
+        )
+      }
+    };
+    Ui.Position(lineIdx, column)
+  }
+
+  fun getDisplayPostionFor(
+    context: mutable SKStore.Context,
+    absolute: Geometry.Offset,
+    nodeInfo: Ui.NodeInfo,
+    isUntraked: Bool,
+  ): Ui.Position {
+    viewport = nodeInfo.getWindowOffset(context, isUntraked, isUntraked);
+    rOffset = absolute - viewport;
+    offset = this.controller.getOffset(context);
+    fontSize = this.controller.getFontSize(context, isUntraked);
+    current = offset.offset;
+    column = if (rOffset.dx >= 0.0) {
+      offset.index +
+        if (current + fontSize.width > rOffset.dx) {
+          0
+        } else {
+          1 +
+            ((rOffset.dx - (current + fontSize.width)) / fontSize.width).toInt()
+        };
+    } else {
+      if (rOffset.dx > current) {
+        offset.index
+      } else {
+        offset.index - (Math.abs(rOffset.dx - current) / fontSize.width).toInt()
+      }
+    };
+    line = this.controller.getLine(context, isUntraked);
+    height = nodeInfo.size().height;
+    idx = Math.floor(rOffset.dy / height).toInt();
+    Ui.Position(line + idx, column, true)
+  }
+
+  fun getDragHandler(
+    context: mutable SKStore.Context,
+    _childGetter: Getter<?FWK.DragHandler>,
+  ): ?DragHandlerGetter {
+    isMoveSelection = this.controller.isMoveSelection(context, true);
+    if (isMoveSelection) {
+      Some((context, offset, ni) ~> {
+        position = this.getTextPostionFor(context, offset, true, ni, true);
+        optSelection = this.controller.getSelection(context, true);
+        optSelection match {
+        | Some(selection) ->
+          if (
+            selection.contains(position.column) ||
+            selection.optEnd == Some(position.column)
+          ) {
+            optClipboardContent = this.controller.computeClipboardContent(
+              context,
+              true,
+            );
+            Some(UiTextLine.DragHandler{textline => this, optClipboardContent})
+          } else {
+            None()
+          }
+        | _ -> None()
+        }
+      })
+    } else {
+      None()
+    }
+  }
+
+  fun getDropHandler(
+    _context: mutable SKStore.Context,
+    _childGetter: Getter<?FWK.DropHandler>,
+  ): ?DropHandlerGetter {
+    Some((_, _, ni) ~> Some(UiTextLine.DropHandler(this, ni)))
+  }
+}
+
+module end;

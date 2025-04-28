@@ -1,0 +1,58 @@
+module SKUIEngExButton;
+
+@skuiengex
+fun example(): SkuiEngex.Example {
+  SkuiEngex.Example(
+    Cli.Command("button").about("Button example"),
+    _args ~> Renderable(),
+    ("SKUIEngExButton.Renderable", Renderable::deserialize),
+  )
+}
+
+class ActionPerformer() extends UiEngine.ActionPerformer uses HasClassName {
+  //
+  fun perform(context: mutable SKStore.Context, count: Int): void {
+    debug(`Button clicked[${context.getTick()}]: count ${count}`)
+  }
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (this.getClassName(), Map[])
+  }
+
+  static fun deserialize(_value: Map<String, UiEngine.Serializable>): this {
+    ActionPerformer()
+  }
+}
+
+class Renderable() extends UiEngine.Renderable uses HasClassName {
+  fun getId(): String {
+    this.getClassName()
+  }
+
+  fun render(_context: mutable SKStore.Context): ?UiEngine.Description {
+    button = UiEngine.Button{
+      //
+      optOnFire => Some(ActionPerformer()),
+      optText => Some(!"My Button"),
+      optIcon => Some(UiIcon.Description(UiIcon.KCategory("themify"), "heart")),
+    };
+    Some(
+      UiEngine.Flex{
+        optWidgets => Some(UiEngine.SArray(Array[button])),
+        optVertical => Some(UiEngine.SBool(true)),
+        optMainAlignment => Some(UiEngine.SInt(2)),
+        optCrossAlignment => Some(UiEngine.SInt(2)),
+      },
+    )
+  }
+
+  fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    (this.getClassName(), Map[])
+  }
+
+  static fun deserialize(_value: Map<String, UiEngine.Serializable>): this {
+    Renderable()
+  }
+}
+
+module end;

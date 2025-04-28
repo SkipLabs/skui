@@ -1,0 +1,104 @@
+module UiTable;
+
+class VpParams(
+  rows: Ui.WidgetsCollection,
+  withSeparators: Ui.Getter<Bool>,
+) extends Ui.Parameters
+
+class VpUserData(unity: Float) extends Ui.UserData
+
+class Viewport{
+  rows: Ui.WidgetsCollection,
+  withSeparators: Ui.Getter<Bool>,
+}
+  extends Ui.StrictWidget
+  uses Ui.WithNodeCache, FWK.NoFocusHandler, Ui.NoViewports {
+  //
+  type Params = VpParams;
+  type Buffer = Ui.NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    params: VpParams,
+    cache: Ui.NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{
+      path,
+      rows => params.rows,
+      withSeparators => params.withSeparators,
+      optConfiguration,
+      cache,
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    _constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    width = 0.0;
+    top = 0.0;
+    unity = 0.0;
+    noConstraints = Ui.BoxConstraints::new();
+    childVector = mutable Vector<Ui.NChild>[];
+    this.rows.all(context).each(row -> {
+      node = row.getNode(context, noConstraints);
+      if (unity > 1.0 && !Math.like(unity, node.size.height)) {
+        print_error(
+          `Invalid row height: current ${unity}, next ${node.size.height}`,
+        );
+      };
+      childVector.push(
+        Ui.CNode(node, Geometry.Offset(0.0, top), noConstraints),
+      );
+      !unity = node.size.height;
+      !top = top + unity;
+      !width = Math.max(width, node.size.width);
+    });
+    Ui.Node(
+      this,
+      Geometry.Size(width, top),
+      childVector.toArray(),
+      Ui.constUserData(Some(VpUserData(unity))),
+    );
+  }
+
+  fun computeLayer(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | Ui.MainLayer()
+    | Ui.BackgroundLayer() ->
+      Array[]
+    | Ui.ForegroundLayer() ->
+      drawables = mutable Vector<Ui.Drawable>[];
+      if (this.withSeparators(context)) {
+        node.optUserData
+          .map(ud -> ud as VpUserData _)
+          .each(vud -> {
+            foreground = context
+              .getThemeColor(UiTheme.Primary())
+              .scaleAlpha(0.5);
+            top = -1.0;
+            size = Geometry.Size(node.size().width, 2.0);
+            count = this.rows.getSize(context);
+            for (_idx in Range(0, count)) {
+              drawables.push(
+                support.rectangle(absolute.translateY(top), size, foreground),
+              );
+              !top = top + vud.unity;
+            }
+          })
+      };
+      drawables.toArray()
+    }
+  }
+}
+
+module end;

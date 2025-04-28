@@ -1,0 +1,13 @@
+[package]
+name = "skui_mtsdf"
+version = "0.1.0"
+
+[dependencies]
+skui_font = { "path" = "../font" }
+
+[dev-dependencies]
+sktest = { path = "../skip/sktest" }
+
+#[[bin]]
+#name = "skuimtsdf"
+#main = "SkuiMtsdf.main"

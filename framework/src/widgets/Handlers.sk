@@ -1,0 +1,589 @@
+module Ui;
+
+base class FocusManager {
+  fun checkFocusHandlers(
+    context: mutable SKStore.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler>;
+}
+
+base class FocusController {
+  fun isGotoNext(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+  ): Bool;
+  fun isGotoPrevious(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+  ): Bool;
+}
+
+class KeyStrokeFC(
+  gotoNext: Array<UiEvent.KeyStroke>,
+  gotoPrevious: Array<UiEvent.KeyStroke>,
+) extends FocusController {
+  fun isGotoNext(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+  ): Bool {
+    tick = context.getTick();
+    this.gotoNext.any(stroke -> stroke.test(keys, tick));
+  }
+
+  fun isGotoPrevious(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+  ): Bool {
+    this.gotoPrevious.any(stroke -> stroke.test(keys, context.getTick()));
+  }
+}
+
+class NoFocusController() extends FocusController {
+  fun isGotoNext(
+    _context: mutable SKStore.Context,
+    _keys: UiEvent.KeysFile,
+  ): Bool {
+    false
+  }
+  fun isGotoPrevious(
+    _context: mutable SKStore.Context,
+    _keys: UiEvent.KeysFile,
+  ): Bool {
+    false
+  }
+}
+
+base class TabFocusHandler extends FWK.FocusHandler {
+  //
+  protected fun onKeys(
+    context: mutable SKStore.Context,
+    keyFile: UiEvent.KeysFile,
+  ): Bool;
+
+  fun fillSources(path: mutable FWK.SSet<Ui.Path>): void {
+    path.set(this.getIdentifier())
+  }
+
+  fun getSource(sources: SortedSet<Ui.Path>): ?Ui.Path {
+    identifier = this.getIdentifier();
+    if (sources.contains(identifier)) {
+      Some(identifier)
+    } else {
+      None()
+    }
+  }
+
+  fun hasSource(source: Ui.Path): Bool {
+    this.getIdentifier() == source;
+  }
+
+  fun isGotoNext(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    if (source == this.getIdentifier()) {
+      Some(keys.isTab(context.getTick()))
+    } else {
+      None()
+    }
+  }
+
+  fun isGotoPrevious(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    if (source == this.getIdentifier()) {
+      Some(keys.isShiftTab(context.getTick()))
+    } else {
+      None()
+    }
+  }
+
+  fun manage(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): Bool {
+    if (source != this.getIdentifier()) {
+      return false;
+    };
+    this.onKeys(context, keys);
+  }
+}
+
+base class F2FocusHandler extends FWK.FocusHandler {
+  //
+  protected fun isEditable(context: mutable SKStore.Context): Bool;
+
+  protected fun onKeys(
+    context: mutable SKStore.Context,
+    keyFile: UiEvent.KeysFile,
+  ): Bool;
+
+  fun fillSources(path: mutable FWK.SSet<Ui.Path>): void {
+    path.set(this.getIdentifier())
+  }
+
+  fun getSource(sources: SortedSet<Ui.Path>): ?Ui.Path {
+    identifier = this.getIdentifier();
+    if (sources.contains(identifier)) {
+      Some(identifier)
+    } else {
+      None()
+    }
+  }
+
+  fun hasSource(source: Ui.Path): Bool {
+    this.getIdentifier() == source;
+  }
+
+  fun isGotoNext(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    if (source == this.getIdentifier()) {
+      if (this.isEditable(context)) {
+        Some(keys.isF2(context.getTick()))
+      } else {
+        Some(keys.isTab(context.getTick()))
+      }
+    } else {
+      None()
+    }
+  }
+
+  fun isGotoPrevious(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    if (source == this.getIdentifier()) {
+      if (this.isEditable(context)) {
+        Some(keys.isShiftF2(context.getTick()))
+      } else {
+        Some(keys.isShiftTab(context.getTick()))
+      }
+    } else {
+      None()
+    }
+  }
+
+  fun manage(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): Bool {
+    if (source != this.getIdentifier()) {
+      return false;
+    };
+    this.onKeys(context, keys);
+  }
+}
+
+base class FocusHandlerWrapper{
+  optFocusHandler: ?FWK.FocusHandler,
+  focusController: FocusController = KeyStrokeFC(
+    Array[UiEvent.key(UiEvent.KeyInfo::tab)],
+    Array[UiEvent.shift(UiEvent.KeyInfo::tab)],
+  ),
+  parentBefore: Bool = true,
+} extends FWK.FocusHandler uses HasClassName {
+  //
+  protected fun getMainIdentifier(): Ui.Path;
+
+  fun getIdentifier(): Ui.Path {
+    this.optFocusHandler.map(fh -> fh.getIdentifier()).default(
+      this.getMainIdentifier(),
+    )
+  }
+
+  fun enter(context: mutable SKStore.Context): void {
+    if (this.onEnter(context)) {
+      this.optFocusHandler.each(fh -> fh.enter(context))
+    }
+  }
+
+  fun exit(context: mutable SKStore.Context): void {
+    if (this.onExit(context)) {
+      this.optFocusHandler.each(fh -> fh.exit(context));
+    }
+  }
+
+  overridable fun noMore(context: mutable SKStore.Context): void {
+    this.optFocusHandler.each(fh -> fh.noMore(context))
+  }
+
+  fun fillSources(path: mutable FWK.SSet<Ui.Path>): void {
+    path.set(this.getMainIdentifier());
+    this.optFocusHandler.each(fh -> fh.fillSources(path));
+  }
+
+  fun getSource(sources: SortedSet<Ui.Path>): ?Ui.Path {
+    this.optFocusHandler.flatMap(fh -> fh.getSource(sources)) match {
+    | Some(identifier) -> Some(identifier)
+    | _ ->
+      identifier = this.getMainIdentifier();
+      if (sources.contains(identifier)) {
+        Some(identifier)
+      } else {
+        None()
+      }
+    }
+  }
+
+  fun hasSource(source: Ui.Path): Bool {
+    this.getMainIdentifier() == source ||
+      this.optFocusHandler.map(fh -> fh.hasSource(source)).default(false)
+  }
+
+  fun isGotoNext(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    isGotoNext = () ->
+      if (source == this.getMainIdentifier()) {
+        Some(this.focusController.isGotoNext(context, keys))
+      } else {
+        None()
+      };
+    this.optFocusHandler match {
+    | Some(fh) ->
+      fh.isGotoNext(context, keys, source) match {
+      | Some(res) -> Some(res)
+      | _ -> isGotoNext()
+      }
+    | _ -> isGotoNext()
+    }
+  }
+
+  fun isGotoPrevious(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): ?Bool {
+    isGotoPrevious = () ->
+      if (source == this.getMainIdentifier()) {
+        Some(this.focusController.isGotoPrevious(context, keys))
+      } else {
+        None()
+      };
+    this.optFocusHandler match {
+    | Some(fh) ->
+      fh.isGotoPrevious(context, keys, source) match {
+      | Some(res) -> Some(res)
+      | _ -> isGotoPrevious()
+      }
+    | _ -> isGotoPrevious()
+    }
+  }
+
+  fun manage(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+    source: Ui.Path,
+  ): Bool {
+    identifier = this.getMainIdentifier();
+    if (this.parentBefore || source == identifier) {
+      if (this.onKeys(context, keys)) {
+        true
+      } else {
+        source != identifier &&
+          this.optFocusHandler match {
+          | Some(fh) -> fh.manage(context, keys, source)
+          | _ -> false
+          }
+      }
+    } else {
+      this.optFocusHandler match {
+      | Some(fh) ->
+        consumed = fh.manage(context, keys, source);
+        if (!consumed) {
+          !consumed = this.onKeys(context, keys)
+        };
+        consumed
+      | _ -> this.onKeys(context, keys)
+      }
+    }
+  }
+
+  protected fun onKeys(
+    context: mutable SKStore.Context,
+    keyFile: UiEvent.KeysFile,
+  ): Bool;
+
+  protected overridable fun onEnter(_context: mutable SKStore.Context): Bool {
+    true
+  }
+
+  protected overridable fun onExit(_context: mutable SKStore.Context): Bool {
+    true
+  }
+}
+
+fun wrappedFocusHandlers(
+  handlers: readonly Vector<FWK.FocusHandler>,
+  supplier: (?FWK.FocusHandler) -> ?FWK.FocusHandler,
+  include: Bool = false,
+): Vector<FWK.FocusHandler> {
+  if (handlers.isEmpty()) {
+    supplier(None()) match {
+    | Some(fh) -> Vector[fh]
+    | _ -> handlers.chill()
+    }
+  } else {
+    res = mutable Vector<FWK.FocusHandler>[];
+    handlers.each(focusable -> supplier(Some(focusable)).each(res.push));
+    if (include) {
+      supplier(None()).each(res.push)
+    };
+    unsafe_chill_trust_me(res);
+  }
+}
+
+fun wrappedFocusHandlersWithIndex(
+  handlers: readonly Vector<FWK.FocusHandler>,
+  supplier: (Int, FWK.FocusHandler) -> ?FWK.FocusHandler,
+): Vector<FWK.FocusHandler> {
+  res = mutable Vector<FWK.FocusHandler>[];
+  handlers.eachWithIndex((idx, focusable) ->
+    supplier(idx, focusable).each(res.push)
+  );
+  unsafe_chill_trust_me(res);
+}
+
+class FocusHandlerWithShortcuts{
+  identifier: Ui.Path,
+  shortcuts: mutable SKStore.Context ~> Array<FWK.ShortcutAction>,
+} extends FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  protected fun getMainIdentifier(): Ui.Path {
+    this.identifier;
+  }
+
+  protected fun getShortcuts(
+    context: mutable SKStore.Context,
+  ): Array<FWK.ShortcutAction> {
+    this.shortcuts(context)
+  }
+}
+
+base class HoverHandlerWrapper(
+  optHoverHandler: ?FWK.HoverHandler = None(),
+  optTooltip: ?Ui.Getter<Text> = None(),
+) extends FWK.HoverHandler {
+  //
+  protected fun onMouse(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+  ): FWK.Result;
+
+  overridable protected fun isParentBefore(): Bool {
+    true
+  }
+
+  overridable protected fun onEnter(_context: mutable SKStore.Context): void {
+    void
+  }
+
+  overridable protected fun onExit(_context: mutable SKStore.Context): void {
+    void
+  }
+
+  overridable protected fun onCheckMouse(
+    _context: mutable SKStore.Context,
+    _mouse: UiEvent.MouseFile,
+  ): void {
+    void
+  }
+
+  fun enter(context: mutable SKStore.Context): void {
+    this.onEnter(context);
+    this.optHoverHandler.each(hh -> hh.enter(context));
+  }
+
+  fun manage(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+    optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    result = FWK.Result(false);
+    if (this.isParentBefore()) {
+      if (!result.consumed) {
+        !result = this.onMouse(context, mouse);
+      };
+      !result = this.check(context, mouse, optPrevious, result);
+    } else {
+      !result = this.check(context, mouse, optPrevious, result);
+      if (!result.consumed) {
+        !result = this.onMouse(context, mouse);
+      }
+    };
+    result
+  }
+
+  fun exit(context: mutable SKStore.Context): void {
+    this.optHoverHandler.each(hh -> hh.exit(context));
+    this.onExit(context);
+  }
+
+  protected fun check(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+    optPrevious: ?FWK.HoverHandler,
+    result: FWK.Result,
+  ): FWK.Result {
+    optPrevious match {
+    | Some(previous) ->
+      previous match {
+      | hhw @ HoverHandlerWrapper _ ->
+        if (hhw.optHoverHandler != this.optHoverHandler) {
+          hhw.optHoverHandler.each(hh -> hh.exit(context));
+          this.optHoverHandler match {
+          | Some(hh) -> hh.enter(context)
+          | _ -> this.onCheckMouse(context, mouse)
+          }
+        };
+        if (!result.consumed) {
+          !result = this.optHoverHandler.map(hh ->
+            hh.manage(context, mouse, hhw.optHoverHandler)
+          ).default(result with {consumed => false})
+        }
+      | _ ->
+        if (!result.consumed) {
+          !result = this.optHoverHandler.map(hh ->
+            hh.manage(context, mouse, None())
+          ).default(result with {consumed => false})
+        }
+      }
+    | _ ->
+      if (!result.consumed) {
+        !result = this.optHoverHandler.map(hh ->
+          hh.manage(context, mouse, None())
+        ).default(result with {consumed => false})
+      }
+    };
+    result;
+  }
+
+  overridable fun getTooltip(
+    context: mutable SKStore.Context,
+  ): ?FWK.SourcedWidget {
+    this.optTooltip match {
+    | Some(getTooltip) ->
+      Ui.buildTooltip(context, this.getIdentifier(), ctx ~>
+        Some(getTooltip(ctx))
+      )
+    | _ -> this.optHoverHandler.flatMap(hh -> hh.getTooltip(context))
+    }
+  }
+
+  overridable fun isHover(path: Ui.Path): Bool {
+    this.getIdentifier() == path ||
+      this.optHoverHandler.map(hh -> hh.isHover(path)).default(false)
+  }
+
+  overridable fun browse(browser: Ui.Path -> void): void {
+    this.optHoverHandler.each(hh -> hh.browse(browser));
+    browser(this.getIdentifier());
+  }
+
+  overridable fun toString(): String {
+    this.optHoverHandler match {
+    | Some(hh) ->
+      `${this.getClassName()}: ${this.getIdentifier()} => ${hh.toString()}`
+    | _ -> `${this.getClassName()}: ${this.getIdentifier()}`
+    }
+  }
+}
+
+class DummyHHW extends HoverHandlerWrapper {
+  fun getIdentifier(): Ui.Path {
+    dummy()
+  }
+
+  protected fun onMouse(
+    _context: mutable SKStore.Context,
+    _mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    dummy()
+  }
+}
+
+base class WithFocusManager protected {
+  optFocusManager: ?FocusManager = None(),
+} {
+  fun checkFocusHandlers(
+    context: mutable SKStore.Context,
+    nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    this.optFocusManager match {
+    | Some(focusManager) ->
+      focusManager.checkFocusHandlers(context, nodeInfo, handlers)
+    | _ -> handlers.chill()
+    }
+  }
+}
+
+base class WithHoverHandler protected {
+  optHoverHandler: ?(
+    mutable SKStore.Context,
+    Getter<?FWK.HoverHandler>,
+  ) ~> ?HoverHandlerGetter = None(),
+} {
+  fun getHoverHandler(
+    context: mutable SKStore.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    this.optHoverHandler.flatMap(hhs -> hhs(context, childGetter))
+  }
+}
+
+base class WithDragHandler protected {
+  optDragHandler: ?(mutable SKStore.Context) ~> ?DragHandlerGetter = None(),
+} {
+  fun getDragHandler(
+    context: mutable SKStore.Context,
+    _childGetter: Getter<?FWK.DragHandler>,
+  ): ?DragHandlerGetter {
+    this.optDragHandler.flatMap(dhs -> dhs(context))
+  }
+}
+
+base class WithDropHandler protected {
+  optDropHandler: ?(mutable SKStore.Context) ~> ?DropHandlerGetter = None(),
+} {
+  fun getDropHandler(
+    context: mutable SKStore.Context,
+    _childGetter: Getter<?FWK.DropHandler>,
+  ): ?DropHandlerGetter {
+    this.optDropHandler.flatMap(dhs -> dhs(context))
+  }
+}
+
+trait LeafFocusHandler {
+  fun getIdentifier(): Ui.Path;
+
+  fun fillSources(path: mutable FWK.SSet<Ui.Path>): void {
+    path.set(this.getIdentifier())
+  }
+
+  fun getSource(sources: SortedSet<Ui.Path>): ?Ui.Path {
+    identifier = this.getIdentifier();
+    if (sources.contains(identifier)) {
+      Some(identifier)
+    } else {
+      None()
+    }
+  }
+
+  fun hasSource(source: Ui.Path): Bool {
+    this.getIdentifier() == source;
+  }
+}
+
+module end;

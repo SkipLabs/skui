@@ -1,0 +1,670 @@
+/**
+ * @file harness.sk
+ * @brief Build system harness for managing compilation and linking processes.
+ */
+
+module SkuiBuild;
+
+/** @brief Buffer length used for file operations. */
+const kBUFFER_LEN: Int = 256 * 1024;
+
+/**
+ * @class Env
+ * @brief Represents the build environment, including paths, configurations, and verbosity settings.
+ */
+class Env(
+  refDir: String, /**< Reference directory for the build. */
+  outDir: String, /**< Output directory for build artifacts. */
+  name: String, /**< Name of the build target. */
+  profile: String, /**< Build profile (e.g., debug or release). */
+  optTarget: ?String, /**< Optional target architecture (e.g., wasm32). */
+  verbose: Bool/**< Verbosity flag for logging. */ ,
+) {
+  /**
+   * @brief Creates a new build environment by reading environment variables.
+   * @return A new instance of the Env class.
+   */
+  static fun create(): Env {
+    Env(
+      Environ.var("SKARGO_MANIFEST_DIR"),
+      Environ.var("OUT_DIR"),
+      Environ.var("NAME"),
+      Environ.var("PROFILE"),
+      Environ.varOpt("TARGET"),
+      Environ.var("VERBOSE").lowercase() == "true",
+    )
+  }
+
+  /**
+   * @brief Checks if the target architecture is WebAssembly (wasm32).
+   * @return True if the target is wasm32, false otherwise.
+   */
+  fun isWasm32(): Bool {
+    this.optTarget.map(t -> t.startsWith("wasm32")).default(false)
+  }
+
+  /**
+   * @brief Resolves a relative path to an absolute path based on the reference directory.
+   * @param path The relative path to resolve.
+   * @return The resolved absolute path.
+   */
+  fun resolve(path: String): String {
+    Path.resolve(this.refDir, path)
+  }
+
+  /**
+   * @brief Constructs an output path for a given file.
+   * @param path The file path relative to the output directory.
+   * @return The full output path.
+   */
+  fun outpath(path: String): String {
+    Path.join(this.outDir, path)
+  }
+
+  /**
+   * @brief Computes the relative path of a file with respect to the reference directory.
+   * @param path The absolute path of the file.
+   * @return The relative path.
+   */
+  fun relative(path: String): String {
+    relative(path, this.refDir).default(path)
+  }
+
+  /**
+   * @brief Constructs a target path for a file with a specific extension.
+   * @param path The file path.
+   * @param ext The desired file extension.
+   * @return The constructed target path.
+   */
+  fun targetPath(path: String, ext: String): String {
+    targetPath(this.outDir, this.relative(path), ext)
+  }
+
+  /**
+   * @brief Constructs a resource path for a file with a specific extension.
+   * @param path The file path.
+   * @param ext The desired file extension.
+   * @return The constructed resource path.
+   */
+  fun resourcePath(path: String, ext: String): String {
+    targetPath(
+      this.outDir,
+      this.name + "_" + this.relative(path).replace("/", "_"),
+      ext,
+    )
+  }
+
+  /**
+   * @brief Prints a string to the console if verbosity is enabled.
+   * @param str The string to print.
+   */
+  fun printString(str: String): void {
+    if (this.verbose) {
+      print_string(str)
+    };
+  }
+
+  /**
+   * @brief Prints an error message to the console if verbosity is enabled.
+   * @param error The error message to print.
+   */
+  fun printError(error: String): void {
+    if (this.verbose) {
+      print_error(error)
+    };
+  }
+
+  /**
+   * @brief Executes a system command with optional directory context.
+   * @param args The command and its arguments.
+   * @param inDir Optional directory to execute the command in.
+   * @throws RuntimeException if the command fails.
+   */
+  fun run(args: Array<String>, inDir: ?String = None()): void {
+    if (this.verbose) {
+      // TODO: colors
+      print_error(`>> ${args.join(" ")}`)
+    };
+    optCurrent = inDir.map(dir -> {
+      current = Environ.current_dir();
+      Environ.set_current_dir(dir);
+      current
+    });
+    p = System.subprocess(
+      args,
+      this.printString,
+      this.printError,
+    ).fromSuccess();
+    optCurrent.each(c -> Environ.set_current_dir(c));
+    if (!p.success()) {
+      if (!this.verbose) {
+        print_raw(p.stdout);
+        print_error_raw(p.stderr);
+      };
+      throw RuntimeException(p.exitcode())
+    };
+  }
+}
+
+/**
+ * @brief Builds the specified target by orchestrating the build environment and resources.
+ * @param name The name of the target to build.
+ * @return A Result containing the build environment or an error.
+ */
+fun build(name: String): Result<Env, IO.Error> {
+  git_hash = System.subprocess(
+    Array["git", "rev-parse", "--short", "HEAD"],
+  ) match {
+  | Success(p) -> p.stdout
+  | Failure(err) ->
+    print_string(`Error getting git commit hash: ${err}`);
+    skipExit(1)
+  };
+  print_string(`skargo:skc-env=GIT_COMMIT_HASH=${git_hash}`);
+  env = Env::create();
+  includeDirs = Array[];
+  #forEachFunction (@skui_build__include_dirs, #function, #functionName) {
+    !includeDirs = includeDirs.concat(#function(env));
+  };
+  links = Array[];
+  #forEachFunction (@skui_build__links, #function, #functionName) {
+    !links = links.concat(#function(env));
+  };
+  sourceDirs = Array[];
+  #forEachFunction (@skui_build__source_dirs, #function, #functionName) {
+    !sourceDirs = sourceDirs.concat(#function(env));
+  };
+  preambles = Array[];
+  #forEachFunction (@skui_build__preambles, #function, #functionName) {
+    !preambles = preambles.concat(#function(env));
+  };
+  resources = Array[];
+  #forEachFunction (@skui_build__resources, #function, #functionName) {
+    !resources = resources.concat(#function(env));
+  };
+  resourceDirs = Array[];
+  #forEachFunction (@skui_build__resource_dirs, #function, #functionName) {
+    !resourceDirs = resourceDirs.concat(#function(env));
+  };
+  extraSources = Array[];
+  #forEachFunction (@skui_build__extra_sources, #function, #functionName) {
+    !extraSources = extraSources.concat(#function(env));
+  };
+  build_harness(
+    env,
+    name,
+    includeDirs,
+    sourceDirs,
+    preambles,
+    links,
+    resources,
+    resourceDirs,
+    extraSources,
+  );
+}
+
+/**
+ * @brief Orchestrates the build process for the specified target.
+ *
+ * This function handles the inclusion of directories, resources, and extra sources,
+ * and compiles the target library. It also processes WebAssembly-specific configurations.
+ *
+ * @param env The build environment containing paths and configurations.
+ * @param name The name of the target to build.
+ * @param includeDirs An array of directories containing header files.
+ * @param sourceDirs An array of directories containing source files.
+ * @param preambles An array of preamble strings to include in the build.
+ * @param links An array of linker arguments.
+ * @param resources An array of resource files to include in the build.
+ * @param resourceDirs An array of directories containing resource files.
+ * @param extraSources An array of additional source files to include in the build.
+ * @return A Result containing the build environment or an error.
+ */
+fun build_harness(
+  env: Env,
+  name: String,
+  includeDirs: Array<String>,
+  sourceDirs: Array<String>,
+  preambles: Array<String>,
+  links: Array<String>,
+  resources: Array<String>,
+  resourceDirs: Array<String>,
+  extraSources: Array<String>,
+): Result<Env, IO.Error> {
+  isWasm = env.isWasm32(); /**< Check if the target is WebAssembly. */
+  resourceSrcs = Array[]; /**< Array to store processed resource source files. */
+
+  // Process resources if the target is not WebAssembly
+  if (!isWasm) {
+    for (res in resources) {
+      resPath = env.resolve(res); /**< Resolve the resource path. */
+      if (FileSystem.exists(resPath)) {
+        buildResource(env, resPath, false) match {
+        | Failure(err) ->
+          return Failure(err) /**< Return error if resource processing fails. */
+        | Success(src) ->
+          !resourceSrcs = resourceSrcs.concat(
+            Array[src],
+          ) /**< Add processed resource. */
+        }
+      }
+    };
+
+    // Process resource directories
+    for (res in resourceDirs) {
+      resPath = env.resolve(res); /**< Resolve the resource directory path. */
+      if (FileSystem.exists(resPath)) {
+        print_string(
+          `skargo:rerun-if-changed=${resPath}`,
+        ); /**< Notify build system of changes. */
+        basename = Path.basename(
+          resPath,
+        ); /**< Get the base name of the directory. */
+        archive = env.targetPath(
+          resPath,
+          ".tar.gz",
+        ); /**< Create a target archive path. */
+        ensureDirectory(
+          Path.dirname(archive),
+          env.verbose,
+        ); /**< Ensure the archive directory exists. */
+        env.run(
+          Array[
+            "tar",
+            "-zcvf",
+            archive,
+            basename,
+          ], /**< Create a tar.gz archive of the directory. */
+          Some(Path.dirname(resPath)),
+        );
+        buildResource(env, archive, true) match {
+        | Failure(err) ->
+          return Failure(err) /**< Return error if resource archiving fails. */
+        | Success(src) ->
+          !resourceSrcs = resourceSrcs.concat(
+            Array[src],
+          ) /**< Add processed archive. */
+        }
+      }
+    }
+  };
+
+  // Resolve and process include directories
+  !includeDirs = includeDirs.map(id -> {
+    if (!Path.isAbsolute(id)) {
+      !id = env.resolve(id); /**< Resolve relative paths to absolute paths. */
+    };
+    if (FileSystem.exists(id)) {
+      _ = FileSystem.readFilesRecursive(
+        id,
+        f ~>
+          f.endsWith(".hpp") ||
+            f.endsWith(".h"), /**< Include only header files. */
+        _f ~> false,
+      ).each(f ->
+        print_string(`skargo:rerun-if-changed=${f}`)
+      ); /**< Notify build system of changes. */
+    };
+    id
+  });
+
+  // Compile the library
+  buildLibrary(env, name, isWasm, sourceDirs, resourceSrcs, includeDirs);
+
+  // Process preambles
+  preambles
+    .map(p -> {
+      if (!Path.isAbsolute(p)) {
+        !p = env.resolve(p); /**< Resolve preamble paths. */
+      };
+      p
+    })
+    .each(print_preamble); /**< Print each preamble. */
+
+  // Process linker arguments
+  links.each(print_link); /**< Print each linker argument. */
+
+  // Process extra sources
+  for (source in extraSources) {
+    sourcePath = env.resolve(source); /**< Resolve extra source paths. */
+    print_string(
+      `skargo:skc-extra-source=${sourcePath}`,
+    ); /**< Notify build system of extra sources. */
+  };
+
+  Success(env); /**< Return the successfully built environment. */
+}
+
+/**
+ * @brief Compiles the source files and resources into a library.
+ *
+ * This function handles the compilation of source files and resources into a library.
+ * It applies appropriate flags for the target architecture (e.g., WebAssembly or native)
+ * and includes the specified directories and resources.
+ *
+ * @param env The build environment containing paths and configurations.
+ * @param name The name of the library to compile.
+ * @param isWasm A boolean indicating whether the target is WebAssembly.
+ * @param sourceDirs An array of directories containing source files.
+ * @param resources An array of resource files to include in the library.
+ * @param includeDirs An array of directories containing header files.
+ */
+fun buildLibrary(
+  env: Env,
+  name: String,
+  isWasm: Bool,
+  sourceDirs: Array<String>,
+  resources: Array<String>,
+  includeDirs: Array<String>,
+): void {
+  /**
+   * @brief Collect all source files from the specified directories.
+   *
+   * This step resolves relative paths to absolute paths and recursively reads
+   * `.cpp` and `.c` files from the source directories.
+   */
+  sources = sourceDirs.map(sd -> {
+    if (!Path.isAbsolute(sd)) {
+      !sd = env.resolve(sd); /**< Resolve relative paths to absolute paths. */
+    };
+    FileSystem.readFilesRecursive(
+      sd,
+      f ~>
+        f.endsWith(".cpp") ||
+          f.endsWith(".c"), /**< Include only `.cpp` and `.c` files. */
+      _f ~> false,
+    )
+  });
+
+  /**
+   * @brief Exit early if there are no source files or resources to compile.
+   */
+  if (sources.isEmpty() && resources.isEmpty()) {
+    return void;
+  };
+
+  /**
+   * @brief Notify the build system to re-run if any source file changes.
+   */
+  sources.each(f -> print_string(`skargo:rerun-if-changed=${f}`));
+
+  /**
+   * @brief Initialize the build process with recommended flags.
+   *
+   * The `-fPIC` flag is added to generate position-independent code.
+   */
+  build = Cc.Build().flags(Cc.kRecommendedCflags).flag("-fPIC");
+
+  /**
+   * @brief Add target-specific flags.
+   *
+   * If the target is WebAssembly, additional flags are added for compatibility.
+   * Otherwise, a flag for 64-bit architecture is added.
+   */
+  if (isWasm) {
+    !build = build.flags(Array["-DSKIP32", "--target=wasm32", "-nostdlibinc"]);
+  } else {
+    !build = build.flag("-DSKIP64");
+  };
+
+  /**
+   * @brief Add include directories to the build configuration.
+   */
+  !build = build.includes(includeDirs);
+
+  /**
+   * @brief Add source files to the build configuration.
+   */
+  sources.each(srcs -> !build = build.files(srcs.toArray()));
+
+  /**
+   * @brief Add resource files to the build configuration.
+   */
+  !build = build.files(resources);
+
+  /**
+   * @brief Compile the library with the specified name.
+   */
+  build.compile(name);
+}
+
+/**
+ * @brief Processes a resource file and generates a corresponding C source file.
+ *
+ * This function converts a binary resource file into a C source file that can be
+ * included in the build process. It ensures the output directory exists and handles
+ * relative paths based on the build environment.
+ *
+ * @param env The build environment containing paths and configurations.
+ * @param file The path to the resource file to process.
+ * @param relToOut A boolean indicating whether the output path should be relative to the output directory.
+ * @return A Result containing the path to the generated C source file or an error.
+ */
+fun buildResource(
+  env: Env,
+  file: String,
+  relToOut: Bool,
+): Result<String, IO.Error> {
+  // Notify the build system to re-run if the resource file changes
+  print_string(`skargo:rerun-if-changed=${file}`);
+
+  // Determine the output path for the generated C source file
+  source = if (relToOut) mvExt(file, ".c") else env.targetPath(file, ".c");
+
+  // Ensure the directory for the output file exists
+  ensureDirectory(Path.dirname(source), env.verbose);
+
+  // Determine the relative path of the resource file
+  workDir = if (relToOut) env.outDir else env.refDir;
+  relative = relative(file, workDir).fromSome();
+
+  // Generate a valid C variable name based on the resource file's relative path
+  name = relative.replace("/", "_").replace(".", "_");
+
+  // Convert the binary resource file into a C source file
+  copyBinary(name, file, source) match {
+  | Failure(err) ->
+    return Failure(err) /**< Return an error if the conversion fails. */
+  | _ -> void
+  };
+
+  // Return the path to the generated C source file
+  Success(source)
+}
+
+/**
+ * @brief Changes the file extension of a given file path.
+ *
+ * This function replaces the extension of a file with the specified suffix.
+ *
+ * @param file The original file path.
+ * @param suffix The new file extension (e.g., ".c").
+ * @return The file path with the new extension.
+ */
+fun mvExt(file: String, suffix: String): String {
+  dirname = Path.dirname(file);
+  ext = Path.extname(file);
+  basename = Path.basename(file);
+  !basename = basename.take(basename.length() - ext.length());
+  Path.join(dirname, `${basename}${suffix}`);
+}
+
+/**
+ * @brief Constructs a target path for a file with a specific extension.
+ *
+ * This function generates a new file path in the specified directory, preserving
+ * the original directory structure and replacing the file extension.
+ *
+ * @param dir The target directory.
+ * @param file The original file path.
+ * @param suffix The new file extension (e.g., ".c").
+ * @return The constructed target file path.
+ */
+fun targetPath(dir: String, file: String, suffix: String): String {
+  dirname = Path.dirname(file);
+  ext = Path.extname(file);
+  basename = Path.basename(file);
+  !basename = basename.take(basename.length() - ext.length());
+  Path.join(dir, Path.join(dirname, `${basename}${suffix}`));
+}
+
+/**
+ * @brief Computes the relative path of a file with respect to a base directory.
+ *
+ * This function calculates the relative path of a file, ensuring the base directory
+ * ends with a slash for proper comparison.
+ *
+ * @param path The absolute path of the file.
+ * @param to The base directory.
+ * @return An optional string containing the relative path, or None if the file is not within the base directory.
+ */
+fun relative(path: String, to: String): ?String {
+  if (!to.endsWith("/")) {
+    !to = to + "/";
+  };
+  if (path.startsWith(to)) {
+    Some(path.sub(path.getIter().drop(to.chars().size()), path.chars().size()))
+  } else {
+    None()
+  }
+}
+
+/**
+ * @class RuntimeException
+ * @brief Represents a runtime exception with an error code.
+ */
+class RuntimeException(code: Int) extends Exception {
+  /**
+   * @brief Retrieves the error message for the exception.
+   * @return A string describing the runtime error.
+   */
+  fun getMessage(): String {
+    `Runtime error with code ${this.code}`
+  }
+}
+
+/**
+ * @brief Executes a system command.
+ *
+ * This function runs a system command and throws an exception if the command fails.
+ *
+ * @param args The command and its arguments.
+ * @param verbose A boolean indicating whether to print verbose output.
+ * @throws RuntimeException if the command fails.
+ */
+fun run(args: Array<String>, verbose: Bool): void {
+  if (verbose) {
+    print_error(`>> ${args.join(" ")}`);
+  };
+  p = System.subprocess(args).fromSuccess();
+  if (!p.success()) {
+    print_raw(p.stdout);
+    print_error_raw(p.stderr);
+    throw RuntimeException(p.exitcode());
+  };
+}
+
+/**
+ * @brief Ensures that a directory exists.
+ *
+ * This function creates the specified directory if it does not already exist.
+ *
+ * @param path The path of the directory to ensure.
+ * @param verbose A boolean indicating whether to print verbose output.
+ */
+fun ensureDirectory(path: String, verbose: Bool): void {
+  if (!FileSystem.exists(path)) {
+    run(Array["mkdir", "-p", path], verbose);
+  }
+}
+
+/**
+ * @brief Converts a binary file into a C source file.
+ *
+ * This function reads a binary file and generates a corresponding C source file
+ * containing the binary data as a byte array.
+ *
+ * @param name The name of the C variable to store the binary data.
+ * @param src The path to the binary file.
+ * @param target The path to the generated C source file.
+ * @return A Result indicating success or an error.
+ */
+fun copyBinary(
+  name: String,
+  src: String,
+  target: String,
+): Result<void, IO.Error> {
+  srcFile = IO.File::open(src, IO.OpenOptions{read => true});
+  dstFile = IO.File::open(
+    target,
+    IO.OpenOptions{write => true, create => true},
+  );
+  _ = dstFile.write(`unsigned char ${name}[] = {`.bytes());
+  count = 0;
+  write = buf -> {
+    strs = buf.map(byte -> {
+      prefix = if (count == 0) {
+        "\n  "
+      } else if (count % 12 == 0) {
+        ",\n  "
+      } else {
+        ",  "
+      };
+      !count = count + 1;
+      `${prefix}0x${Chars.intToHexDigits(byte.toInt(), 2)}`
+    });
+    return dstFile.write(strs.join("").bytes());
+  };
+  buf = Array::mfill(kBUFFER_LEN, UInt8::truncate(0)).mbytes();
+  res = loop {
+    obstack = SKStore.newObstack();
+    res = srcFile.read(buf) match {
+    | Failure(err) -> Some(Failure(err))
+    | Success(nbytes) ->
+      if (nbytes == 0) Some(Success(void)) else if (nbytes < kBUFFER_LEN) {
+        write(buf.slice(0, nbytes)) match {
+        | Failure(err) -> Some(Failure(err))
+        | Success _ -> None()
+        }
+      } else {
+        write(buf) match {
+        | Failure(err) -> Some(Failure(err))
+        | Success _ -> None()
+        }
+      }
+    };
+    SKStore.destroyObstackWithValue(obstack, List[res]).getHead() match {
+    | Some(f @ Failure _) -> break f
+    | Some(s @ Success _) -> break s
+    | _ -> void
+    }
+  };
+  res match {
+  | Success _ ->
+    _ = dstFile.write(`\n};\nunsigned int ${name}_len = ${count};\n`.bytes())
+  | Failure _ -> void
+  };
+  srcFile.close();
+  dstFile.close();
+  res
+}
+
+/**
+ * @brief Prints a preamble string for the build system.
+ *
+ * @param preamble The preamble string to print.
+ */
+fun print_preamble(preamble: String): void {
+  print_string(`skargo:skc-preamble=${preamble}`);
+}
+
+/**
+ * @brief Prints a linker argument for the build system.
+ *
+ * @param link The linker argument to print.
+ */
+fun print_link(link: String): void {
+  print_string(`skargo:skc-link-arg=${link}`);
+}
+
+module end;

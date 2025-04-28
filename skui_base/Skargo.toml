@@ -1,9 +1,0 @@
-[package]
-name = "skui_base"
-version = "0.1.0"
-
-[build-dependencies]
-skui_build = { path = "../skui_build" } 
-
-[dependencies]
-std = { path = "../skip/skiplang/prelude" }

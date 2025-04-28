@@ -1,0 +1,138 @@
+module UiTextLine;
+
+class HoverHandler(
+  path: Ui.Path,
+  textline: Ui.TextLine,
+  nodeInfo: Ui.NodeInfo,
+) extends FWK.HoverHandler {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.path
+  }
+
+  fun enter(_context: mutable SKStore.Context): void {
+    void
+  }
+
+  fun manage(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    commands = mutable Vector<SKUIMessage.Command>[];
+    controller = this.textline.controller;
+    tcm = controller.getTextCommandsManager(context, true);
+    count = mouse.getPrimaryClickCount();
+    armed = controller.isArmed(context, true);
+    position = this.textline.getTextPostionFor(
+      context,
+      mouse.offset(),
+      false,
+      this.nodeInfo,
+      true,
+    );
+    res = if (mouse.isPrimaryPressed(context.getTick())) {
+      if (count == 0) {
+        tcm.manageAcquire(context);
+        inSelection = this.textline.selection(context, true)
+          .map(selection -> contains(selection, position.column))
+          .default(false);
+        if (FWK.isShiftDown(context, true)) {
+          commands.push(tcm.getSelectToPosCommand(position));
+        } else if (!inSelection) {
+          commands.push(tcm.getGoToPosCommand(position));
+        } else {
+          // Mark position
+          commands.push(tcm.getSetMoveSelectionCommand(true));
+        };
+        commands.push(tcm.getSetArmedCommand(true));
+        FWK.Result(true, Some(true))
+      } else if (count == 1) {
+        commands.push(tcm.getSelectGroupCommand());
+        FWK.Result(true)
+      } else if (count == 2) {
+        commands.push(tcm.getSelectLineCommand());
+        FWK.Result(true)
+      } else if (count == 3) {
+        commands.push(tcm.getSelectAllCommand());
+        FWK.Result(true)
+      } else {
+        FWK.Result(false)
+      }
+    } else if (
+      mouse.isPrimaryReleased(context.getTick()) &&
+      count <= 1 &&
+      armed
+    ) {
+      isMoveSelection = controller.isMoveSelection(context, true);
+      inSelection = this.textline.selection(context, true)
+        .map(selection ->
+          contains(selection, position.column, !isMoveSelection)
+        )
+        .default(false);
+      if (inSelection && isMoveSelection) {
+        commands.push(tcm.getGoToPosCommand(position));
+      };
+      commands.push(tcm.getSetMoveSelectionCommand(false));
+      commands.push(tcm.getSetArmedCommand(false));
+      FWK.Result(inSelection, Some(false))
+    } else if (mouse.isPrimaryDown(context.getTick()) && count == 0 && armed) {
+      //_ = this.textline.controller.isScrolling(context);
+      displayPosition = this.textline.getDisplayPostionFor(
+        context,
+        mouse.offset(),
+        this.nodeInfo,
+        true,
+      );
+      moveSelection = controller.isMoveSelection(context, true);
+      optSelection = this.textline.selection(context, true);
+      FWK.Result(
+        if (!moveSelection) {
+          if (displayPosition.line != position.line) {
+            commands.push(tcm.getSelectToPosCommand(displayPosition));
+          } else {
+            optCurrent = this.textline.position(context, true);
+            optSelection match {
+            | Some(sel) ->
+              if (position.column != sel.start && position.column != sel.end) {
+                commands.push(tcm.getSelectToPosCommand(position));
+              }
+            | _ ->
+              if (optCurrent != Some(position.column)) {
+                commands.push(tcm.getSelectToPosCommand(position));
+              }
+            };
+          };
+          true
+        } else {
+          false
+        },
+        Some(true),
+      )
+    } else {
+      FWK.Result(false)
+    };
+    if (!commands.isEmpty()) {
+      tcm.emitAll(context, commands);
+    };
+    res
+  }
+
+  fun exit(_context: mutable SKStore.Context): void {
+    void
+  }
+
+  fun getTooltip(_context: mutable SKStore.Context): ?FWK.SourcedWidget {
+    None()
+  }
+}
+
+fun contains(range: Range, position: Int, exclusive: Bool = false): Bool {
+  if (exclusive) {
+    range.start < position && range.end > position
+  } else {
+    range.start <= position && range.end > position
+  }
+}
+
+module end;

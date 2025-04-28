@@ -1,0 +1,370 @@
+module Ui;
+
+const rootPath: SKStore.DirName = SKStore.DirName::create("/");
+
+base class Property<T: frozen> uses HasClassName {
+  fun getName(): String;
+  fun getPath(): ?String;
+
+  fun maybeGet(context: mutable SKStore.Context, isUntracked: Bool = false): ?T;
+  fun set(context: mutable SKStore.Context, optValue: ?T, source: Int): void;
+
+  fun maybeGetTimed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?(?T, SKStore.Tick, Int);
+
+  overridable fun get(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): T {
+    this.maybeGet(context, isUntracked).fromSome()
+  }
+
+  overridable fun getTimed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): (T, SKStore.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked)
+      .map(v -> (v.i0.fromSome(), v.i1, v.i2))
+      .fromSome()
+  }
+}
+
+base class BoolProperty extends Property<Bool> {
+  fun toggle(context: mutable SKStore.Context, source: Int): void;
+}
+
+base class StringProperty extends Property<String>
+base class TextProperty extends Property<Text>
+base class IntProperty extends Property<Int>
+base class FloatProperty extends Property<Float>
+base class RangeProperty extends Property<Range>
+base class StatusProperty extends Property<Status>
+base class PositionProperty extends Property<Position>
+base class PortionProperty extends Property<Portion>
+base class IndentationProperty extends Property<Indentation>
+base class EndLineProperty extends Property<EndLine>
+base class SeparationProperty extends Property<Separation>
+base class IconProperty extends Property<UiIcon.Description>
+base class DecorationProperty extends Property<Ui.Decoration>
+//base class JSONProperty extends Property<JSON.Value>
+
+base class TimedFile<T: frozen>(
+  optValue: ?T,
+  tick: SKStore.Tick,
+  source: Int,
+) extends SKStore.File {
+  //
+  overridable static fun type(_file: SKStore.File): this {
+    useless()
+  }
+
+  fun toTuple(): (?T, SKStore.Tick, Int) {
+    (this.optValue, this.tick, this.source)
+  }
+}
+
+fun toDirName(
+  context: readonly SKStore.Context,
+  optPath: ?String,
+): SKStore.DirName {
+  root = context
+    .getGlobal("Ui.Properties.Root")
+    .map(SKStore.DirNameFile::type)
+    .map(f ~> f.value)
+    .default(Ui.rootPath);
+  optPath
+    .map(p -> SKStore.DirName::make(root, `${SKStore.normalize(p, true)}/`))
+    .default(root)
+}
+
+base class PropertyFile<
+  T: frozen,
+  TT: TimedFile<T>,
+  FT: SKStore.File,
+> private final (
+  timedHdl: SKStore.EHValue<SKStore.StrID, TT>,
+  valueHdl: SKStore.EHValue<SKStore.StrID, FT>,
+  optPath: ?String,
+) extends Ui.Property<T> {
+  protected static fun timedFromFile(file: SKStore.File): TT;
+  protected static fun valueFromFile(file: SKStore.File): T;
+  protected static fun valueToFile(value: T): FT;
+  protected static fun timed(optV: ?T, tick: SKStore.Tick, source: Int): TT;
+  protected static fun getDefaultValue(): T;
+  static fun toIHandle(
+    hdl: SKStore.EHandle<SKStore.StrID, TT>,
+  ): SKStore.IHandle<SKStore.StrID, TT>;
+
+  deferred protected static fun fileValueFromFile(file: SKStore.File): FT;
+
+  macro static fun sClassName(): String {
+    #thisClassName
+  }
+
+  overridable deferred static fun init(
+    context: mutable SKStore.Context,
+    optPath: ?String,
+    values: Array<(SKStore.StrID, TT)> = Array[],
+  ): void {
+    _ = static::internalInit(context, optPath, values)
+  }
+
+  deferred static fun initValues(
+    context: mutable SKStore.Context,
+    optPath: ?String,
+    values: Array<(SKStore.StrID, ?T)> = Array[],
+  ): void {
+    static::init(
+      context,
+      optPath,
+      values.map(v -> (v.i0, static::timed(v.i1, context.getTick(), 0))),
+    )
+  }
+
+  deferred protected static fun internalInit(
+    context: mutable SKStore.Context,
+    optPath: ?String,
+    values: Array<(SKStore.StrID, TT)> = Array[],
+  ): SKStore.EHandle<SKStore.StrID, FT> {
+    dirName = toDirName(context, optPath);
+    className = SKStore.normalize(static::sClassName().lowercase());
+    timedDirName = SKStore.DirName::make(dirName, `${className}/`);
+    valueDirName = SKStore.DirName::make(timedDirName, "value/");
+    context
+      .makeDir(
+        SKStore.StrID::keyType,
+        static::timedFromFile,
+        timedDirName,
+        values,
+      )
+      .map(
+        SKStore.StrID::keyType,
+        static::fileValueFromFile,
+        context,
+        valueDirName,
+        (_ctx, writer, key, it) ~>
+          it.first.optValue.each(v -> writer.set(key, static::valueToFile(v)))
+        ,
+      );
+  }
+
+  deferred static fun create(
+    context: mutable SKStore.Context,
+    optPath: ?String,
+    optValue: ?T = None(),
+  ): this {
+    dirName = toDirName(context, optPath);
+    className = SKStore.normalize(static::sClassName().lowercase());
+    timedDirName = SKStore.DirName::make(dirName, `${className}/`);
+    valueDirName = SKStore.DirName::make(timedDirName, "value/");
+    timedHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::timedFromFile,
+      timedDirName,
+    );
+    valueHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::fileValueFromFile,
+      valueDirName,
+    );
+    key = SKStore.StrID(`prop${context.timeStamp().value}`);
+    res = static(
+      SKStore.EHValue(timedHdl, key),
+      SKStore.EHValue(valueHdl, key),
+      optPath,
+    );
+    optValue.each(_ -> res.set(context, optValue, 0));
+    res;
+  }
+
+  fun subscribe(
+    context: mutable SKStore.Context,
+    f: (mutable SKStore.Context, optValue: ?T, source: Int) ~> void,
+  ): void {
+    _ = this.timedHdl.mapContext(
+      SKStore.IntFile::type,
+      context,
+      SKStore.DirName::make(
+        this.timedHdl.getDirName(),
+        `subscribed_${context.timeStamp()}/`,
+      ),
+      (ctx, timed) ~> {
+        f(ctx, timed.optValue, timed.source);
+        SKStore.IntFile(timed.tick.value)
+      },
+    );
+  }
+
+  deferred static fun forStrID(
+    context: readonly SKStore.Context,
+    optPath: ?String,
+    key: SKStore.StrID,
+  ): this {
+    dirName = toDirName(context, optPath);
+    className = SKStore.normalize(static::sClassName().lowercase());
+    timedDirName = SKStore.DirName::make(dirName, `${className}/`);
+    valueDirName = SKStore.DirName::make(timedDirName, "value/");
+    timedHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::timedFromFile,
+      timedDirName,
+    );
+    valueHdl = SKStore.EHandle(
+      SKStore.StrID::keyType,
+      static::fileValueFromFile,
+      valueDirName,
+    );
+    static(
+      SKStore.EHValue(timedHdl, key),
+      SKStore.EHValue(valueHdl, key),
+      optPath,
+    );
+  }
+
+  deferred static fun forName(
+    context: readonly SKStore.Context,
+    optPath: ?String,
+    name: String,
+  ): this {
+    static::forStrID(context, optPath, SKStore.StrID(name))
+  }
+
+  fun getName(): String {
+    this.valueHdl.key.value
+  }
+
+  fun getPath(): ?String {
+    this.optPath
+  }
+
+  fun maybeGet(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?T {
+    this.valueHdl.maybeGet(context, isUntracked).map(static::valueFromFile)
+  }
+
+  fun get(context: mutable SKStore.Context, isUntracked: Bool = false): T {
+    this.maybeGet(context, isUntracked) match {
+    | Some(v) -> v
+    | _ -> static::getDefaultValue()
+    }
+  }
+
+  fun maybeGetTimed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?(?T, SKStore.Tick, Int) {
+    this.timedHdl.maybeGet(context, isUntracked).map(v -> v.toTuple())
+  }
+
+  fun getTimed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): (T, SKStore.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked) match {
+    | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
+    | _ -> (static::getDefaultValue(), SKStore.Tick(0), 0)
+    }
+  }
+
+  overridable fun set(
+    context: mutable SKStore.Context,
+    optValue: ?T,
+    source: Int,
+  ): void {
+    if (this.timedHdl.hdl.isWritable(context)) {
+      static::toIHandle(this.timedHdl.hdl).write(
+        context,
+        this.timedHdl.key,
+        static::timed(optValue, context.getTick().next(), source),
+      );
+    }
+  }
+}
+
+base class FPropertyFile<T: SKStore.File, TT: TimedFile<T>> extends
+  PropertyFile<T, TT, T>,
+{
+  deferred protected static fun fileValueFromFile(file: SKStore.File): T {
+    static::valueFromFile(file)
+  }
+
+  protected static fun valueToFile(value: T): T {
+    value
+  }
+}
+
+base class PropertyConst<T: frozen, TT: TimedFile<T>> private final (
+  value: TT,
+) extends Ui.Property<T> {
+  //
+  protected static fun timed(optV: ?T, tick: SKStore.Tick): TT;
+  protected static fun getDefaultValue(): T;
+
+  deferred static fun create(
+    context: mutable SKStore.Context,
+    optValue: ?T = None(),
+  ): this {
+    static(static::timed(optValue, context.getTick()))
+  }
+
+  fun getPath(): ?String {
+    None()
+  }
+
+  fun getName(): String {
+    this.value.tick.toString()
+  }
+
+  fun maybeGet(
+    _context: mutable SKStore.Context,
+    _isUntracked: Bool = false,
+  ): ?T {
+    this.value.optValue
+  }
+
+  fun get(context: mutable SKStore.Context, isUntracked: Bool = false): T {
+    this.maybeGet(context, isUntracked) match {
+    | Some(v) -> v
+    | _ -> static::getDefaultValue()
+    }
+  }
+
+  fun maybeGetTimed(
+    _context: mutable SKStore.Context,
+    _isUntracked: Bool = false,
+  ): ?(?T, SKStore.Tick, Int) {
+    Some(this.value.toTuple())
+  }
+
+  fun getTimed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): (T, SKStore.Tick, Int) {
+    this.maybeGetTimed(context, isUntracked) match {
+    | Some(v) -> (v.i0.default(static::getDefaultValue()), v.i1, v.i2)
+    | _ -> (static::getDefaultValue(), SKStore.Tick(0), 0)
+    }
+  }
+
+  fun emitSet(
+    _context: mutable SKStore.Context,
+    _optValue: ?T,
+    _source: Int,
+  ): void {
+    void
+  }
+
+  fun set(
+    _context: mutable SKStore.Context,
+    _optValue: ?T,
+    _source: Int,
+  ): void {
+    void
+  }
+}
+
+module end;

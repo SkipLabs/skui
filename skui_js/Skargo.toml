@@ -1,7 +1,0 @@
-[package]
-name = "skui_js"
-version = "0.1.0"
-
-[dependencies]
-skui_fwk = { "path" = "../skui_fwk" }
-cli = { path = "../skip/cli" }

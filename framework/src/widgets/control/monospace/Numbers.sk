@@ -1,0 +1,107 @@
+module UiMonospace;
+
+class Numbers{
+  controller: NumbersController,
+}
+  extends Ui.StrictWidget
+  uses Ui.WithNodeCache, Ui.NoViewports, FWK.NoFocusHandler {
+  //
+  type Params = NumbersController;
+  type Buffer = Ui.NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    controller: NumbersController,
+    cache: Ui.NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{path, controller, optConfiguration, cache, tick => context.getTick()}
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    _constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    if (this.controller.isFontLoading(context)) {
+      Ui.Node(this, Geometry.Size(0.0, 0.0), Array[])
+    } else {
+      numberOfLines = this.controller.getNumberOfLines(context);
+      range = this.controller.getRange(context);
+      padding = context.getThemeThickness(UiTheme.MonospacePadding());
+      fontSize = this.controller.getFontSize(context);
+      count = Math.max(numberOfLines.toString().chars().size(), 3);
+      size = Geometry.Size(
+        count.toFloat() * fontSize.width + (2 * padding).toFloat(),
+        range.size().toFloat() * Math.ceil(fontSize.height()) +
+          (2 * padding).toFloat(),
+      );
+      Ui.Node(this, size);
+    }
+  }
+
+  fun computeLayer(
+    _context: mutable SKStore.Context,
+    _support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | Ui.MainLayer() ->
+      di = node.optDrawInfo.map(di ~> di as NumbersDrawInfo _).fromSome();
+      floor = absolute.floor();
+      di.drawables.map(d -> d.translate(floor))
+    | Ui.BackgroundLayer()
+    | Ui.ForegroundLayer() ->
+      Array[]
+    };
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    relative: Geometry.Offset,
+    nodeSum: Ui.NodeSum,
+    _optUserData: ?Ui.UserData,
+  ): ?Ui.DrawInfo {
+    drawables = mutable Vector<Ui.Drawable>[];
+    padding = context.getThemeThickness(UiTheme.MonospacePadding());
+    fontSize = this.controller.getFontSize(context);
+    range = this.controller.getRange(context);
+    activeLine = this.controller.getActiveLine(context);
+    top = 0.0;
+    left = padding.toFloat();
+    faceId = context.getThemeFont(UiTheme.Monospace());
+    textSupport = context.getTextSupport();
+    color = context.getThemeColor(UiTheme.Accent());
+    active = context.getThemeColor(UiTheme.Primary());
+    size = Geometry.Size(
+      nodeSum.size.width - (2 * padding).toFloat(),
+      Math.ceil(fontSize.height()),
+    );
+    for (lineIdx in range) {
+      !top = top + padding.toFloat();
+      str = (lineIdx + 1).toString();
+      fill = if (activeLine == lineIdx) active else color;
+      Ui.drawConstrainedText(
+        context,
+        support,
+        textSupport,
+        str,
+        Geometry.Rect::fromOffsetSize(
+          Geometry.Offset(relative.dx + left, relative.dy + top),
+          size,
+        ),
+        fill,
+        faceId,
+        drawables,
+        Text.Right(),
+      );
+      !top = top + size.height + padding.toFloat();
+    };
+    Some(NumbersDrawInfo(drawables.toArray()))
+  }
+}
+
+module end;

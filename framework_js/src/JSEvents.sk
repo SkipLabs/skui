@@ -1,0 +1,217 @@
+module SKUIJS;
+
+@wasm_export("SKIP_SKUIJS_manageMouseEvent")
+fun manageMouseEvent(
+  _wId: UInt32,
+  evtType: UInt32,
+  button: UInt32,
+  _clickCount: UInt32,
+  clientX: Float,
+  clientY: Float,
+  _screenX: Float,
+  _screenY: Float,
+  _movementX: Float,
+  _movementY: Float,
+  _ctrlKey: Bool,
+  _shiftKey: Bool,
+  _altKey: Bool,
+  _metaKey: Bool,
+): void {
+  pos = SKStore.newObstack();
+  fn = context ~> {
+    // button 0: Main button pressed, usually the left button or the un-initialized state
+    // button 1: Auxiliary button pressed, usually the wheel button or the middle button (if present)
+    // button 2: Secondary button pressed, usually the right button
+    // evtType 0 : mousemove
+    // evtType 1 : mousedown
+    // evtType 2 : mouseup
+    if (evtType == 0) {
+      FWKMouse.execute(
+        context,
+        FWKMouse.Location(
+          Geometry.Offset(clientX, clientY),
+          context.systemTimeStamp(),
+          context.getTick(),
+        ),
+      );
+    } else if (evtType == 1 || evtType == 2) {
+      FWKMouse.execute(
+        context,
+        FWKMouse.Button(
+          button.toInt() match {
+          | 0 -> FWK.Primary()
+          | 1 -> FWK.Middle()
+          | 2 -> FWK.Secondary()
+          | _ -> FWK.Unknown(button.toInt())
+          },
+          evtType == 1,
+          context.systemTimeStamp(),
+          context.getTick(),
+        ),
+      );
+    };
+    context.updateIfRoot();
+  };
+  SKStore.Context::withoutGc(fn);
+  SKStore.destroyObstack(pos);
+}
+
+@wasm_export("SKIP_SKUIJS_manageWheelEvent")
+fun manageWheelEvent(
+  _wId: UInt32,
+  _deltaX: Float,
+  deltaY: Float,
+  _deltaZ: Float,
+  _ctrlKey: Bool,
+  _shiftKey: Bool,
+  _altKey: Bool,
+  _metaKey: Bool,
+): void {
+  pos = SKStore.newObstack();
+  fn = context ~> {
+    FWKMouse.execute(
+      context,
+      FWKMouse.Wheel(
+        -deltaY.toInt(),
+        context.systemTimeStamp(),
+        context.getTick(),
+      ),
+    );
+    context.updateIfRoot();
+  };
+  SKStore.Context::withoutGc(fn);
+  SKStore.destroyObstack(pos);
+}
+
+@wasm_export("SKIP_SKUIJS_manageResize")
+fun manageResize(
+  wId: UInt32,
+  width: UInt32,
+  height: UInt32,
+  ratio: UInt32,
+): void {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    context.getGlobal("FWK.Window.Size").map(FWK.Sizer::type).each(sizer ->
+      sizer.value(
+        context,
+        wId.toInt(),
+        width.toInt(),
+        height.toInt(),
+        ratio.toFloat() / 100.0,
+      )
+    );
+    context.updateIfRoot();
+  });
+  SKStore.destroyObstack(pos);
+}
+
+@wasm_export("SKIP_SKUIJS_clearKeyboardEvent")
+fun clearKeyboardEvent(_wId: UInt32): void {
+  SKStore.Context::withoutGc(context ~> {
+    FWKKeys.execute(
+      context,
+      FWKKeys.Clear(System.TimeStamp(0, 0), context.getTick()),
+    );
+    context.updateIfRoot();
+  });
+}
+
+@wasm_export("SKIP_SKUIJS_manageKeyboardEvent")
+fun manageKeyboardEvent(
+  _wId: UInt32,
+  evtType: UInt32,
+  code: String,
+  key: String,
+  repeat: Bool,
+  capsLock: Bool,
+  numLock: Bool,
+  scrollLock: Bool,
+  _ctrlKey: Bool,
+  _shiftKey: Bool,
+  _altKey: Bool,
+  _metaKey: Bool,
+): void {
+  SKStore.Context::withoutGc(context ~> {
+    /*
+      evtType 0 : keydown
+      evtType 1 : keypress
+      evtType 2 : keyup
+      */
+    if (repeat || evtType == 1) {
+      void
+    } else if (evtType != 2) {
+      FWKKeys.execute(
+        context,
+        FWKKeys.KeyPressed(
+          code,
+          code,
+          Some(key),
+          UiEvent.Locks(
+            Some(UiEvent.Strict(capsLock)),
+            Some(UiEvent.Strict(numLock)),
+            Some(UiEvent.Strict(scrollLock)),
+          ),
+          context.systemTimeStamp(),
+          context.getTick(),
+        ),
+      );
+    } else {
+      FWKKeys.execute(
+        context,
+        FWKKeys.KeyReleased(code, context.systemTimeStamp(), context.getTick()),
+      );
+    };
+    context.updateIfRoot();
+  });
+}
+
+@wasm_export("SKIP_SKUIJS_windowInitialized")
+fun windowInitialized(wId: UInt32): void {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    context.setGlobal(
+      "SKUIMessage.Sender",
+      SKUIMessage.Sender((_ctx, message, asyncMode, delay) ~> {
+        sendMessage(wId, message, asyncMode, delay);
+        true
+      }),
+    );
+    context.checkPendingMessages();
+    context.updateIfRoot();
+  });
+  SKStore.destroyObstack(pos);
+}
+
+@wasm_export("SKIP_SKUIJS_performPaste")
+fun performPaste(wid: Int, mimeType: String, data: String): void {
+  SKStore.Context::withoutGc(context ~> {
+    type = FWKClipboard.Type::fromMime(mimeType);
+    content = FWKClipboard.Content(Map[type => IO.Text(data)]);
+    debug(("TODO: Manage on paste event", wid, type, content));
+    context.updateIfRoot();
+  });
+}
+
+@debug
+@cpp_extern("SKIP_SKUIJS_sendMessage")
+native fun sendMessage(
+  wId: UInt32,
+  message: String,
+  asyncMode: Bool,
+  delay: UInt32,
+): void;
+
+@cpp_extern("SKIP_SKUIJS_requestClipboard")
+native fun requestClipboard(wid: UInt32, mimeType: String): void;
+
+@cpp_extern("SKIP_SKUIJS_updateClipboard")
+native fun updateClipboard(wid: UInt32, mimeType: String, data: String): void;
+
+@cpp_extern("SKIP_SKUIJS_init")
+native fun init(wid: UInt32, title: String): void;
+
+@cpp_extern("SKIP_SKUIJS_display")
+native fun display(optOutput: ?String, optError: ?String, html: Bool): void;
+
+module end;

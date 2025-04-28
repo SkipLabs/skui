@@ -1,0 +1,205 @@
+module FWKPipeline;
+
+const keysStateBeforePath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/fwk/state/keys/before/",
+);
+
+fun prepareKeys(
+  context: mutable SKStore.Context,
+): SKStore.EHValue<Ui.MainKey, FWK.FocusState> {
+  previousKeysStateHdl = context.makePreDir(
+    Ui.MainKey::keyType,
+    FWK.FocusState::type,
+    FWK.keysStatePath,
+    Array[(Ui.MainKey(), FWK.FocusState())],
+  );
+  SKStore.EHValue(previousKeysStateHdl, Ui.MainKey())
+}
+
+fun initKeys(
+  context: mutable SKStore.Context,
+  widgetHdl: SKStore.EHValue<Ui.MainKey, Ui.WidgetFile>,
+  nodeInfoGetter: Ui.NodeInfoGetter,
+  nodeGetter: Ui.NodeGetter,
+  root: UiRoot.Storage,
+): void {
+  fsu = FocusStateUtils(nodeInfoGetter, nodeGetter);
+  ksKey = Ui.MainKey();
+  previousKeysStateHdl = SKStore.EHandle(
+    Ui.MainKey::keyType,
+    FWK.FocusState::type,
+    FWK.keysStatePath.pre(),
+  );
+  context.initFocused();
+  focusablesHdl = widgetHdl.mapContext(
+    FWK.Focusables::type,
+    context,
+    FWK.focusablesPath,
+    (context, wf) ~> {
+      widget = wf.widget;
+      focusables = mutable Vector<FWK.FocusHandler>[];
+      node = nodeGetter(context, widget.path, true);
+      fsu.fillFocusables(context, node, focusables);
+      FWK.Focusables(focusables.toArray());
+    },
+  );
+  _ = focusablesHdl
+    .mapContext(
+      FWK.FocusState::type,
+      context,
+      keysStateBeforePath,
+      (context, focusables) ~> {
+        optFocusState: ?FWK.FocusState = None();
+        consumed = false;
+        optRequired = SystemProperties.getRequiredFocus(context);
+        tmp: mutable FWK.SMap<Ui.Path, FWK.FocusHandler> = mutable FWK.SMap[];
+        tmp2: mutable FWK.SSet<Ui.Path> = mutable FWK.SSet[];
+        focusables.value.each(focusable -> {
+          tmp.add(focusable.getIdentifier(), focusable);
+          focusable.fillSources(tmp2);
+        });
+        focusablesMap = tmp.smap;
+        sources = tmp2.sset;
+        focusState = previousKeysStateHdl.get(context, ksKey);
+        optFocused = optRequired.flatMap(required ->
+          focusablesMap.maybeGet(required)
+        );
+        keys = FWKKeys.getKeys(context);
+        if (UiEvent.exit().test(keys, context.getTick())) {
+          SystemProperties.exit(context)
+        } else if (optFocused.isNone()) {
+          !optFocused = if (focusables.value.isEmpty()) {
+            None()
+          } else {
+            focusState.optFocused.flatMap(focused ->
+              focused.getSource(sources)
+            ) match {
+            | Some(focused) ->
+              fh = focusablesMap
+                .maybeGet(focused)
+                .default(focusState.optFocused.fromSome());
+              if (fh.isGotoNext(context, keys, focused).default(false)) {
+                next = false;
+                for (focusable in focusables.value) {
+                  if (next) {
+                    break Some(focusable)
+                  };
+                  !next = focusable.getIdentifier() == focused;
+                } else {
+                  if (next) {
+                    Some(focusables.value.first())
+                  } else {
+                    None()
+                  }
+                }
+              } else if (
+                fh.isGotoPrevious(context, keys, focused).default(false)
+              ) {
+                previous = focusables.value.last();
+                for (focusable in focusables.value) {
+                  if (focusable.getIdentifier() == focused) {
+                    break Some(previous)
+                  };
+                  !previous = focusable;
+                } else {
+                  None()
+                }
+              } else {
+                !consumed = fh.manage(context, keys, focused);
+                Some(fh)
+              }
+            | _ ->
+              if (keys.isTab(context.getTick())) {
+                Some(focusables.value.first());
+              } else if (keys.isShiftTab(context.getTick())) {
+                Some(focusables.value.last());
+              } else {
+                None()
+              }
+            };
+          };
+        };
+        optFocused match {
+        | Some(focused) ->
+          focusState.optFocused match {
+          | Some(previous) ->
+            if (previous.getIdentifier() != focused.getIdentifier()) {
+              previous.exit(context);
+              focused.enter(context);
+            }
+          | _ -> focused.enter(context)
+          }
+        | _ ->
+          focusState.optFocused.each(f -> {
+            f.exit(context);
+            f.noMore(context)
+          })
+        };
+        !focusState.optFocused = optFocused;
+        if (!consumed && focusState.optFocused.isSome()) {
+          isMenuPressed = keys.isMenuPressed(context.getTick());
+          isMenuReleased = keys.isMenuReleased(context.getTick());
+          if (focusState.optArmedMenu.isSome() && isMenuReleased) {
+            if (
+              focusState.optArmedMenu.map(m -> m.getIdentifier()) ==
+              focusState.optFocused.map(hh -> hh.getIdentifier())
+            ) {
+              !focusState.optMenuSupplier = focusState.optFocused.map(fs ->
+                (fs, context.getTick())
+              );
+            } else {
+              !focusState.optMenuSupplier = None();
+            };
+            !focusState.optArmedMenu = None();
+          } else if (isMenuPressed) {
+            !focusState.optArmedMenu = focusState.optFocused;
+            !focusState.optMenuSupplier = None();
+          }
+        };
+        !optFocusState = Some(focusState);
+        FWKKeys.execute(context, FWKKeys.Next());
+        optFocusState.fromSome();
+      },
+    )
+    .mapContext(
+      FWK.FocusState::type,
+      context,
+      FWK.keysStatePath,
+      (context, focusState) ~> {
+        focusState.optMenuSupplier.each(_mh -> {
+          if (root.isMenuClosed(context)) {
+            !focusState.optArmedMenu = None();
+            !focusState.optMenuSupplier = None();
+          };
+        });
+        focusState
+      },
+    )
+}
+
+class FocusStateUtils(
+  nodeInfoGetter: Ui.NodeInfoGetter,
+  nodeGetter: Ui.NodeGetter,
+) {
+  fun fillFocusables(
+    context: mutable SKStore.Context,
+    node: Ui.Node,
+    focusables: mutable Vector<FWK.FocusHandler>,
+  ): void {
+    subFocusables = mutable Vector<FWK.FocusHandler>[];
+    for (subNode in node.getEventsNode()) {
+      (cNode, opaque) = subNode.getKeysNode(context, this.nodeGetter);
+      this.fillFocusables(context, cNode, subFocusables);
+      if (opaque) {
+        break void
+      }
+    };
+    getNodeInfo: Ui.Getter<Ui.NodeInfo> = ctx ~>
+      this.nodeInfoGetter(ctx, node.widget.path, false);
+    node.widget
+      .checkFocusHandlers(context, getNodeInfo, subFocusables)
+      .each(focusable -> focusables.push(focusable))
+  }
+}
+
+module end;

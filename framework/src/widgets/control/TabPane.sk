@@ -1,0 +1,261 @@
+module Ui;
+
+class TabPane protected {
+  controller: UiTabPane.Controller,
+  widgetHdl: SKStore.EHValue<SKStore.IID, WidgetFile>,
+} extends StrictWidget uses WithNodeCache, FWK.NoFocusHandler {
+  //
+  type Params = UiTabPane.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Path,
+    controller: UiTabPane.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Getter<Configuration> = None(),
+  ): this {
+    mainHdl = context.makeDir(
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
+      UiTabPane.itemsDirName(path.makeChild("source")),
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
+    );
+    tabsKey = SKStore.StrID("k0_tabs");
+    contentKey = SKStore.StrID("k2_content");
+    placeHolderKey = SKStore.StrID("k1_placeholder");
+    childrenHdl = context.makeDir(
+      SKStore.StrID::keyType,
+      SKStore.IntFile::type,
+      UiTabPane.widgetsDirName(path.makeChild("source")),
+      Array[
+        (tabsKey, SKStore.IntFile(0)),
+        (contentKey, SKStore.IntFile(0)),
+        (placeHolderKey, SKStore.IntFile(0)),
+      ],
+    );
+    builtHdl = mainHdl
+      .map(
+        SKStore.KIndexed::bKeyType,
+        f ~> f,
+        context,
+        UiTabPane.itemsDirName(path),
+        (context, writer, _key, _it) ~> {
+          tabs = controller.getTabs(context);
+          keys = mutable Vector<SKStore.StrID>[];
+          for (tab in tabs) {
+            id = SKStore.StrID(tab);
+            writer.set(SKStore.KIdx(id), SKStore.StringFile(tab));
+            keys.push(id);
+          };
+          writer.set(SKStore.KKeys(), SKStore.Keys(keys.toArray()));
+          writer.set(SKStore.KSize(), SKStore.IntFile(keys.size()));
+        },
+      )
+      .map(
+        SKStore.KIndexed::bKeyType,
+        f ~> f,
+        context,
+        UiTabPane.itemsDirName(path.makeChild("built")),
+        (context, writer, key, it) ~> {
+          key match {
+          | SKStore.KKeys()
+          | SKStore.KSize() ->
+            writer.set(key, it.first)
+          | _ ->
+            tab = SKStore.StringFile::type(it.first).value;
+            writer.set(key, controller.getTab(context, tab))
+          };
+        },
+      )
+      .map(
+        SKStore.KIndexed::bKeyType,
+        f ~> f,
+        context,
+        UiTabPane.itemsDirName(path.makeChild("tabs")),
+        (_context, writer, key, it) ~> {
+          key match {
+          | SKStore.KKeys()
+          | SKStore.KSize() ->
+            writer.set(key, it.first)
+          | _ ->
+            id = key.toString();
+            tabInfo = UiTabPane.Tab::type(it.first);
+            // TODO intermediate tables to break dependencies
+            tab = UiTabs.Tab{
+              disabled => ctx ~> controller.isDisabled(ctx, id),
+              closable => ctx ~> controller.isClosable(ctx, id),
+              text => _ctx ~> tabInfo.optText,
+              discriminant => _ctx ~> tabInfo.optDiscriminant,
+              tooltip => _ctx ~> tabInfo.optTooltip,
+              icon => _ctx ~> tabInfo.optIcon,
+              iconOnTop => controller.isIconOnTop,
+              badge => ctx ~> controller.getBadge(ctx, id),
+              progress => ctx ~> controller.getProgress(ctx, id),
+            };
+            writer.set(key, tab)
+          };
+        },
+      );
+    beforeHdl = childrenHdl.map(
+      SKStore.StrID::keyType,
+      f ~> f,
+      context,
+      UiTabPane.widgetsDirName(path.makeChild("before")),
+      (context, writer, key, it) ~> {
+        subPath = path.makeChild("widgets").makeChild(key.toString());
+        if (key == tabsKey) {
+          tabsController = UiTabs.LamController{
+            tabs => controller.getTabs,
+            tab => (ctx, id) ~> {
+              tkey = SKStore.StrID(id);
+              UiTabs.Tab::type(builtHdl.get(ctx, SKStore.KIdx(tkey)));
+            },
+            numberOfActions => ctx ~> controller.getActions(ctx).size(),
+            actions => (ctx, idx) ~> {
+              controller.getAction(ctx, controller.getActions(ctx)[idx])
+            },
+            active => controller.getActive,
+            kind => controller.getKind,
+            mode => controller.getMode,
+            side => controller.getSide,
+            minWidth => controller.getMinWidth,
+            maxWidth => controller.getMaxWidth,
+            onChange_ => controller.onChange,
+            onClose_ => controller.onClose,
+          };
+          writer.set(key, UiTabs.init(context, subPath, tabsController))
+        } else if (key == placeHolderKey) {
+          writer.set(
+            key,
+            WidgetFile(
+              Label::create(
+                context,
+                subPath,
+                UiLabel.LamController{
+                  text => ctx ~> Some(controller.getPlaceHolder(ctx)),
+                  textFont => _ctx ~> UiTheme.PanePlaceHolder(),
+                },
+              ),
+            ),
+          )
+        } else {
+          writer.set(key, it.first)
+        }
+      },
+    );
+    widgetsHdl = beforeHdl.map(
+      SKStore.StrID::keyType,
+      WidgetFile::type,
+      context,
+      UiTabPane.widgetsDirName(path),
+      (context, writer, key, it) ~> {
+        subPath = path.makeChild("widgets").makeChild(key.toString());
+        if (key == tabsKey) {
+          tabsParams = UiTabs.Parameters::type(it.first);
+          writer.set(
+            key,
+            WidgetFile(Tabs::create(context, subPath, tabsParams)),
+          )
+        } else if (key == contentKey) {
+          optWidget = beforeHdl
+            .maybeGetProp(context, tabsKey, UiTabs.Parameters::type)
+            .flatMap(tabsParams -> {
+              tabsParams.state.getActive(context) match {
+              | Some(active) ->
+                controller.getWidget(context, active) match {
+                | Some(widget) -> Some(widget)
+                | _ -> None()
+                }
+              | _ ->
+                beforeHdl.maybeGetProp(context, placeHolderKey, f ~>
+                  WidgetFile::type(f).widget
+                )
+              }
+            });
+          widget = optWidget match {
+          | Some(widget) -> widget
+          | _ ->
+            indPath = path.makeChild("widgets").makeChild("indicator");
+            Indicator::create(
+              context,
+              indPath,
+              UiProgress.parameters(
+                context,
+                indPath,
+                UiProgress.LamController{},
+              ),
+            )
+          };
+          writer.set(
+            key,
+            WidgetFile(
+              Configured::create(
+                context,
+                path.makeChild("widgets").makeChild("configured"),
+                UiConfigured.LamController{widget => _ctx ~> widget},
+                Some(Ui.default(UiFlex.Configuration{flex => 1})),
+              ),
+            ),
+          )
+        }
+      },
+    );
+    widgetHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
+      context,
+      UiTabPane.widgetDirName(path),
+      (context, writer, key, _) ~> {
+        subPath = path.makeChild("widgets").makeChild("main");
+        (direction, widgets) = controller.getSide(context) match {
+        | UiSide.Left() -> (HorizontalAxis(), Array[tabsKey, contentKey])
+        | UiSide.Top() -> (VerticalAxis(), Array[tabsKey, contentKey])
+        | UiSide.Right() -> (HorizontalAxis(), Array[contentKey, tabsKey])
+        | UiSide.Bottom() -> (VerticalAxis(), Array[contentKey, tabsKey])
+        };
+        writer.set(
+          key,
+          WidgetFile(
+            Flex::createForController(
+              context,
+              subPath,
+              UiFlex.LamController{
+                widgets => UiTabPane.MainCollection(widgetsHdl, widgets),
+                direction => _ctx ~> direction,
+                crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+              },
+            ),
+          ),
+        )
+      },
+    );
+    static{
+      path,
+      controller,
+      optConfiguration,
+      cache,
+      widgetHdl => SKStore.EHValue(widgetHdl, SKStore.IID(0)),
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    widget = this.widgetHdl.get(context).widget;
+    node = widget.getNode(context, constraints);
+    Node(
+      this,
+      node.size,
+      Array[CNode(node, Geometry.Offset::zero, constraints)],
+    );
+  }
+
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
+    this.widgetHdl.get(context).widget.getViewportDefinition(context);
+  }
+}
+
+module end;

@@ -1,0 +1,482 @@
+module UiInput;
+
+fun undoRedo(
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  selector: History ~> (mutable Verifier, tick: SKStore.Tick) ~> (
+    History,
+    Bool,
+  ),
+  source: Int,
+): void {
+  values.get(Ui.historyProp).map(History::type).each(history -> {
+    action = selector(history);
+    verifier = mutable Verifier(values, source);
+    (!history, _) = action(verifier, context.getTick());
+    values.set(Ui.historyProp, Some(history))
+  })
+}
+
+fun copy(
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+): ?Range {
+  text = getText(values);
+  (toCopy, optSelection) = getSelection(values) match {
+  | Some(r) ->
+    (String::fromChars(text.chars().slice(r.start, r.end).toArray()), Some(r))
+  | _ -> (text, None())
+  };
+  if (!toCopy.isEmpty()) {
+    FWKClipboard.copy(context, FWKClipboard.Content::plain(toCopy))
+  };
+  optSelection
+}
+
+fun cut(
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  source: Int,
+): void {
+  copy(context, values) match {
+  | Some(r) -> delete(values, r, source)
+  | _ ->
+    setText(values, "", source);
+    setPosition(values, 0, source)
+  };
+  setSelection(values, None(), source);
+}
+
+fun paste(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  content: FWKClipboard.Content,
+  charFilter: Char ~> Bool,
+  source: Int,
+): void {
+  content.getPlain().each(plain ->
+    if (!plain.isEmpty()) {
+      insert(values, charFilter, plain, source)
+    }
+  )
+}
+
+fun delete(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  range: Range,
+  source: Int,
+): void {
+  n = mutable Vector<Char>[];
+  optPos: ?Int = None();
+  getText(values).chars().eachWithIndex((idx, c) ->
+    if (!(idx >= range.start && idx < range.end)) {
+      n.push(c)
+    } else if (optPos.isNone()) {
+      !optPos = Some(idx)
+    }
+  );
+  setText(values, String::fromChars(n.toArray()), source);
+  optPos.each(p -> setPosition(values, p, source));
+}
+
+fun ensureVisible(
+  context: mutable SKStore.Context,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+): void {
+  values.set(
+    Ui.ensureVisibleProp,
+    Some(Pos(getPosition(values), context.getTick())),
+  )
+}
+
+fun insert(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  charFilter: Char ~> Bool,
+  text: String,
+  source: Int,
+  ignoreSelection: Bool = false,
+  optPosition: ?Int = None(),
+): void {
+  array = text.chars().filter(charFilter).toArray();
+  !array = getDiacritic(values) match {
+  | Some(diacritic) ->
+    if (array.size() == 1) {
+      char = array[0];
+      checked = UiEvent.checkDiacritical(diacritic);
+      (Unicode.combine(char, checked) match {
+      | Some(combined) -> Array[combined]
+      | _ -> Array[diacritic, char]
+      }).filter(Unicode.isGraphic)
+    } else {
+      array
+    }
+  | _ -> array
+  };
+  setDiacritic(values, None());
+  toInsert = String::fromChars(array);
+  position = optPosition.default(getPosition(values));
+  if (!ignoreSelection) {
+    getSelection(values).each(r -> {
+      delete(values, r, source);
+      if (r.end <= position) {
+        !position = position - r.size()
+      } else if (r.start <= position) {
+        !position = r.start
+      }
+    })
+  };
+  if (!toInsert.isEmpty()) {
+    doInsert(values, toInsert, position, source)
+  };
+  setSelection(values, None(), source)
+}
+
+fun doInsert(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  txt: String,
+  position: Int,
+  source: Int,
+): void {
+  text = getText(values);
+  prefix = text.take(position);
+  suffix = text.substring(text.getIter().drop(position));
+  setText(values, `${prefix}${txt}${suffix}`, source);
+  setPosition(values, position + txt.chars().size(), source);
+}
+
+fun modify(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  m: Char ~> Char,
+  source: Int,
+): void {
+  text = getText(values);
+  chars = text.chars();
+  range = getSelection(values) match {
+  | Some(r) -> r
+  | _ -> Range(0, chars.size())
+  };
+  !text = String::fromChars(
+    chars
+      .mapWithIndex((idx, c) -> {
+        if (idx >= range.start && idx < range.end) {
+          m(c)
+        } else {
+          c
+        }
+      })
+      .toArray(),
+  );
+  setText(values, text, source);
+}
+
+fun manageGoTo(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  target: Target,
+  source: Int,
+): void {
+  getSelection(values) match {
+  | Some(r) ->
+    target match {
+    | TColumn(next) ->
+      setPosition(values, if (next) r.end else r.start, source);
+      setSelection(values, None(), source);
+      return void
+    | _ -> void
+    }
+  | _ -> void
+  };
+  computeTarget(values, target).each(tuple -> {
+    (pos, _) = tuple;
+    setPosition(values, pos, source);
+    setSelection(values, None(), source);
+  });
+}
+
+fun manageSelectTo(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  target: Target,
+  source: Int,
+): void {
+  position = getPosition(values);
+  computeTarget(values, target) match {
+  | Some(tuple) ->
+    (toPosition, _) = tuple;
+    if (toPosition != position) {
+      setSelection(
+        values,
+        getSelection(values) match {
+        | Some(s) ->
+          range = if (s.start == position) {
+            if (toPosition > s.end) {
+              .Range(s.end, toPosition);
+            } else {
+              .Range(toPosition, s.end);
+            }
+          } else if (s.end == position) {
+            if (toPosition < s.start) {
+              .Range(toPosition, s.start);
+            } else {
+              .Range(s.start, toPosition);
+            }
+          } else {
+            .Range(
+              Math.min(toPosition, position),
+              Math.max(toPosition, position),
+            )
+          };
+          if (range.start != range.end) {
+            Some(range)
+          } else {
+            None()
+          }
+        | _ ->
+          Some(
+            .Range(
+              Math.min(toPosition, position),
+              Math.max(toPosition, position),
+            ),
+          )
+        },
+        source,
+      );
+      setPosition(values, toPosition, source);
+    }
+  | _ ->
+    text = getText(values);
+    chars = text.chars();
+    target match {
+    | TGroup _ ->
+      groupRange(chars, position).each(range -> {
+        setSelection(values, Some(range), source);
+        setPosition(values, range.end, source)
+      })
+    | TLine _ ->
+      length = chars.size();
+      setSelection(values, Some(.Range(0, length)), source);
+      setPosition(values, length, source)
+    | _ -> void
+    }
+  }
+}
+
+fun manageDeleteTo(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  target: Target,
+  source: Int,
+): void {
+  (getSelection(values) match {
+  | Some(r) -> Some(r)
+  | _ ->
+    computeTarget(values, target) match {
+    | Some(tuple) ->
+      position = getPosition(values);
+      (toPosition, _) = tuple;
+      if (toPosition != position) {
+        Some(
+          .Range(
+            Math.min(toPosition, position),
+            Math.max(toPosition, position),
+          ),
+        )
+      } else {
+        None()
+      }
+    | _ ->
+      target match {
+      | TLine _ ->
+        length = getText(values).chars().size();
+        Some(.Range(0, length))
+      | _ -> None()
+      }
+    }
+  }).each(r -> delete(values, r, source));
+  setSelection(values, None(), source)
+}
+
+fun manageDiacritic(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  charFilter: Char ~> Bool,
+  char: Char,
+  source: Int,
+): Bool {
+  inserted = false;
+  setDiacritic(
+    values,
+    getDiacritic(values) match {
+    | Some(diacritic) ->
+      chars = if (diacritic == char) {
+        Array[char]
+      } else {
+        Array[diacritic, char]
+      };
+      !chars = chars.filter(Unicode.isGraphic);
+      if (!chars.isEmpty()) {
+        insert(values, charFilter, String::fromChars(chars), source);
+        !inserted = true;
+      };
+      None()
+    | _ -> Some(char)
+    },
+  );
+  inserted
+}
+
+fun manageUnicode(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  charFilter: Char ~> Bool,
+  optValue: ?Int,
+  source: Int,
+): Bool {
+  inserted = false;
+  optUnicode = getUnicode(values);
+  setUnicode(
+    values,
+    optValue match {
+    | Some(value) ->
+      Some(
+        optUnicode match {
+        | Some(unicode) -> (unicode * 10) + value
+        | _ -> value
+        },
+      )
+    | _ ->
+      optUnicode.each(unicode ->
+        vtry<void>(
+          () -> {
+            char = Char::fromCode(UInt32::truncate(unicode).toInt());
+            if (Unicode.isGraphic(char)) {
+              insert(values, charFilter, char.toString(), source);
+              !inserted = true;
+            }
+          },
+          _e -> void,
+        )
+      );
+      None()
+    },
+  );
+  inserted
+}
+
+fun computeTarget(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  target: Target,
+): ?(Int, ?Bool) {
+  text = getText(values);
+  chars = text.chars();
+  position = getPosition(values);
+  length = chars.size();
+  (target match {
+  | TColumn(next) ->
+    Some((if (next) position + 1 else position - 1, Some(next)))
+  | TGroup(optNext) ->
+    optNext.map(next ->
+      (
+        if (next) nextGroup(chars, position) else {
+          previousGroup(chars, position)
+        },
+        Some(next),
+      )
+    )
+  | TLine(optNext) -> optNext.map(next -> (if (next) length else 0, Some(next)))
+  | TPos(optPos) -> optPos.map(p -> (p, None()))
+  }).map(pos -> (Math.clamp(pos.i0, 0, length), pos.i1))
+}
+
+fun nextGroup(chars: Vector<Char>, pos: Int): Int {
+  chars.maybeGet(pos) match {
+  | Some(c) ->
+    k = kind(c);
+    if (k != 0) {
+      loop {
+        !pos = pos + 1;
+        chars.maybeGet(pos) match {
+        | Some(c1) ->
+          if (kind(c1) != k) {
+            break void;
+          }
+        | _ -> return pos
+        }
+      }
+    };
+    if (k == 0) {
+      loop {
+        !pos = pos + 1;
+        chars.maybeGet(pos) match {
+        | Some(c1) ->
+          if (kind(c1) != k) {
+            break void;
+          }
+        | _ -> return pos
+        }
+      }
+    }
+  | _ -> void
+  };
+  pos
+}
+
+fun previousGroup(chars: Vector<Char>, pos: Int): Int {
+  chars.maybeGet(pos - 1) match {
+  | Some(c) ->
+    k = kind(c);
+    if (k != 0) {
+      loop {
+        !pos = pos - 1;
+        chars.maybeGet(pos - 1) match {
+        | Some(c1) ->
+          if (kind(c1) != k) {
+            break void;
+          }
+        | _ -> return pos
+        }
+      }
+    };
+    if (k == 0) {
+      loop {
+        !pos = pos - 1;
+        chars.maybeGet(pos - 1) match {
+        | Some(c1) ->
+          if (kind(c1) != k) {
+            break void;
+          }
+        | _ -> return pos
+        }
+      }
+    }
+  | _ -> void
+  };
+  pos
+}
+
+fun groupRange(chars: Vector<Char>, pos: Int): ?.Range {
+  chars.maybeGet(pos).map(c -> {
+    k = kind(c);
+    end_ = loop {
+      !pos = pos + 1;
+      chars.maybeGet(pos) match {
+      | Some(c1) -> if (kind(c1) != k) break pos
+      | _ -> break pos
+      }
+    };
+    start = loop {
+      chars.maybeGet(pos - 1) match {
+      | Some(c1) -> if (kind(c1) != k) break pos
+      | _ -> break pos
+      };
+      !pos = pos - 1;
+    };
+    Range(start, end_)
+  })
+}
+
+fun kind(c: Char): Int {
+  if (Char.isAlphaNumeric(c) || c == '_') {
+    0
+  } else if (Char.isWhitespace(c)) {
+    1
+  } else {
+    2
+  }
+}
+
+module end;

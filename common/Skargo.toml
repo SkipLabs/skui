@@ -1,0 +1,12 @@
+[package]
+name = "skui_common"
+version = "0.1.0"
+
+[dev-dependencies]
+sktest = { path = "../skip/skiplang/sktest" }
+
+[build-dependencies]
+skui_build = { path = "../builder" }
+
+[dependencies]
+skui_base = { "path" = "../base" }

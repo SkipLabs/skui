@@ -1,0 +1,10 @@
+[package]
+name = "skuieng_examples"
+version = "0.1.0"
+
+[dependencies]
+skui_eng = { "path" = "../.." }
+skui_js = { path = "../../../framework_js" }
+
+[lib]
+type = ["cdylib"]

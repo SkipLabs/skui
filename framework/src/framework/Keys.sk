@@ -1,0 +1,245 @@
+module FWKKeys;
+
+const statePath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/system/keys/state/",
+);
+const modifiersPath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/system/keys/modifiers/",
+);
+
+const propKey: SKStore.IID = SKStore.IID(0);
+const ctrlKey: SKStore.IID = SKStore.IID(0);
+const shiftKey: SKStore.IID = SKStore.IID(1);
+const altKey: SKStore.IID = SKStore.IID(2);
+
+const kfHandle: SKStore.IHandle<
+  SKStore.IID,
+  UiEvent.KeysFile,
+> = SKStore.IHandle(SKStore.IID::keyType, UiEvent.KeysFile::type, statePath);
+
+const mdHandle: SKStore.EHandle<
+  SKStore.IID,
+  SKStore.BoolFile,
+> = SKStore.EHandle(
+  SKStore.IID::keyType,
+  SKStore.BoolFile::type,
+  modifiersPath,
+);
+
+base class Command {
+  children =
+  | Next()
+}
+
+base class Event(
+  timeStamp: System.TimeStamp,
+  tick: SKStore.Tick,
+) extends Command {
+  fun compute(keysFile: UiEvent.KeysFile, tick: SKStore.Tick): UiEvent.KeysFile;
+}
+
+base class Shortcut {
+  children =
+  | Default()
+  | NotDefault()
+  | Specified(text: Text)
+}
+
+fun getShortcut(
+  _context: mutable SKStore.Context,
+  _action: String,
+  _category: String,
+  _identifier: String,
+): ?FWK.Shortcut {
+  None()
+}
+
+fun getMenuShortcut(
+  _context: mutable SKStore.Context,
+  _action: String,
+  _category: String,
+  _identifier: String,
+): Shortcut {
+  Default()
+}
+
+class KeyPressed(
+  code: String,
+  symbol: String,
+  optKeyValue: ?String,
+  locks: UiEvent.Locks,
+) extends Event {
+  fun compute(
+    keysFile: UiEvent.KeysFile,
+    tick: SKStore.Tick,
+  ): UiEvent.KeysFile {
+    nKeysFile = keysFile;
+    optKeyValue = this.optKeyValue;
+    if (
+      nKeysFile.isAltDown(tick) &&
+      nKeysFile.isControlDown(tick) &&
+      optKeyValue == Some("è")
+    ) {
+      !optKeyValue = Some("`")
+    } else if (
+      nKeysFile.isAltDown(tick) &&
+      nKeysFile.isControlDown(tick) &&
+      optKeyValue == Some("é")
+    ) {
+      !optKeyValue = Some("~")
+    };
+    present = false;
+    keys = nKeysFile.keys
+      .map(key ->
+        if (key.code == this.code) {
+          !present = true;
+          UiEvent.Key(
+            key.code,
+            key.info,
+            key.state.derive(true, this.timeStamp, tick),
+          )
+        } else {
+          key.next()
+        }
+      )
+      .filter(key -> !key.state.isUp(tick));
+    !nKeysFile.keys = if (!present) {
+      keyInfo = UiEvent.KeyInfo::fromCodeAndValue(this.symbol, optKeyValue);
+      Arrays.add(
+        keys,
+        UiEvent.Key(
+          this.code,
+          keyInfo,
+          UiEvent.KeyPressed(this.timeStamp, tick),
+        ),
+      );
+    } else {
+      keys
+    };
+    this.locks.optCapsLock.each(capsLock ->
+      capsLock match {
+      | UiEvent.Strict(value) -> !nKeysFile.capsLock = value
+      | UiEvent.Toggle() -> !nKeysFile.capsLock = !nKeysFile.capsLock
+      }
+    );
+    this.locks.optNumLock.each(numLock ->
+      numLock match {
+      | UiEvent.Strict(value) -> !nKeysFile.numLock = value
+      | UiEvent.Toggle() -> !nKeysFile.numLock = !nKeysFile.numLock
+      }
+    );
+    this.locks.optScrollLock.each(scrollLock ->
+      scrollLock match {
+      | UiEvent.Strict(value) -> !nKeysFile.scrollLock = value
+      | UiEvent.Toggle() -> !nKeysFile.scrollLock = !nKeysFile.scrollLock
+      }
+    );
+    if (this.code == UiEvent.KeyInfo::insert) {
+      !nKeysFile.insert = !nKeysFile.insert;
+    };
+    nKeysFile
+  }
+}
+
+class KeyReleased(code: String) extends Event {
+  fun compute(
+    keysFile: UiEvent.KeysFile,
+    tick: SKStore.Tick,
+  ): UiEvent.KeysFile {
+    nKeysFile = keysFile;
+    !nKeysFile.keys = nKeysFile.keys
+      .map(key -> {
+        if (key.code == this.code) {
+          UiEvent.Key(
+            key.code,
+            key.info,
+            key.state.derive(false, this.timeStamp, tick),
+          )
+        } else {
+          key.next()
+        }
+      })
+      .filter(key -> !key.state.isUp(tick));
+    nKeysFile
+  }
+}
+
+class Clear() extends Event {
+  fun compute(
+    keysFile: UiEvent.KeysFile,
+    _tick: SKStore.Tick,
+  ): UiEvent.KeysFile {
+    nKeysFile = keysFile;
+    !nKeysFile.keys = Array[];
+    nKeysFile
+  }
+}
+
+@skuiinitializer
+fun init(context: mutable SKStore.Context): void {
+  _ = context
+    .makeDir(
+      SKStore.IID::keyType,
+      UiEvent.KeysFile::type,
+      statePath,
+      Array[(propKey, UiEvent.KeysFile(Array[], false, false, false, false))],
+    )
+    .map(
+      SKStore.IID::keyType,
+      SKStore.BoolFile::type,
+      context,
+      modifiersPath,
+      (ctx, writer, _, it) ~> {
+        file = it.first;
+        ctrlDown = file.isControlDown(ctx.getTick());
+        shiftDown = file.isShiftDown(ctx.getTick());
+        altDown = file.isAltDown(ctx.getTick());
+        writer.set(ctrlKey, SKStore.BoolFile(ctrlDown));
+        writer.set(shiftKey, SKStore.BoolFile(shiftDown));
+        writer.set(altKey, SKStore.BoolFile(altDown));
+      },
+    )
+}
+
+fun getKeys(
+  context: mutable SKStore.Context,
+  isUntracked: Bool = false,
+): UiEvent.KeysFile {
+  kfHandle.getValue(context, propKey, isUntracked);
+}
+
+fun isControlDown(
+  context: mutable SKStore.Context,
+  isUntracked: Bool = false,
+): Bool {
+  mdHandle.getBool(context, ctrlKey, isUntracked);
+}
+
+fun isShiftDown(
+  context: mutable SKStore.Context,
+  isUntracked: Bool = false,
+): Bool {
+  mdHandle.getBool(context, shiftKey, isUntracked);
+}
+
+fun isAltDown(
+  context: mutable SKStore.Context,
+  isUntracked: Bool = false,
+): Bool {
+  mdHandle.getBool(context, altKey, isUntracked);
+}
+
+fun execute(context: mutable SKStore.Context, command: Command): void {
+  keysFile = kfHandle.get(context, propKey);
+  command match {
+  | Next() -> kfHandle.write(context, propKey, keysFile.next())
+  | event @ Event _ ->
+    kfHandle.write(context, propKey, event.compute(keysFile, context.getTick()))
+  }
+}
+
+fun setKeys(context: mutable SKStore.Context, keys: UiEvent.KeysFile): void {
+  kfHandle.write(context, propKey, keys)
+}
+
+module end;

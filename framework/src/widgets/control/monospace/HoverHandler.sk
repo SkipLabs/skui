@@ -1,0 +1,52 @@
+module UiMonospace;
+
+class HoverHandler(
+  monospace: Ui.Monospace,
+  optHBar: ?Bool,
+) extends Ui.HoverHandlerWrapper {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.optHBar.map(hBar ->
+      this.monospace.path.makeChild(if (hBar) "hBar" else "vBar")
+    ).default(this.monospace.path)
+  }
+
+  protected fun onEnter(context: mutable SKStore.Context): void {
+    this.optHBar.each(hBar -> {
+      this.monospace.state.emitHover(
+        context,
+        Some(if (hBar) HHBar() else HVBar()),
+      );
+      FWKPointer.setCursor(context, Ui.HandCursor());
+    })
+  }
+
+  protected fun onMouse(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    wheel = mouse.getWheelValue(context.getTick());
+    FWK.Result(
+      if (wheel != 0) {
+        incr = Math.sign(-wheel).toInt();
+        if (FWK.isShiftDown(context, true)) {
+          this.monospace.state.emitHScrolling(context, 5 * incr)
+        } else {
+          this.monospace.state.emitVScrolling(context, 5 * incr)
+        };
+        true
+      } else {
+        false
+      },
+    );
+  }
+
+  protected fun onExit(context: mutable SKStore.Context): void {
+    if (this.optHBar.isSome()) {
+      FWKPointer.resetCursor(context);
+      this.monospace.state.emitHover(context, None());
+    }
+  }
+}
+
+module end;

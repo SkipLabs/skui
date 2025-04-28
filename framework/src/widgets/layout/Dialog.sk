@@ -1,0 +1,481 @@
+module Ui;
+
+class Dialog protected {
+  controller: UiDialog.Controller,
+  private supplier: mutable SKStore.Context ~> Widget,
+} extends StrictWidget uses WithNodeCache {
+  //
+  type Params = UiDialog.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Path,
+    controller: UiDialog.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Getter<Configuration> = None(),
+  ): this {
+    intermediateHdl = context.makeDir(
+      SKStore.StrID::keyType,
+      SKStore.IntFile::type,
+      UiDialog.widgetsDirName(path.makeChild("source")),
+      Array[
+        (SKStore.StrID("title"), SKStore.IntFile(0)),
+        (SKStore.StrID("action"), SKStore.IntFile(0)),
+      ],
+    );
+    mainHdl = context.makeDir(
+      SKStore.IID::keyType,
+      SKStore.IntFile::type,
+      UiDialog.widgetDirName(path.makeChild("source")),
+      Array[(SKStore.IID(0), SKStore.IntFile(0))],
+    );
+    builtHdl = intermediateHdl.map(
+      SKStore.StrID::keyType,
+      WidgetFile::type,
+      context,
+      UiDialog.widgetsDirName(path),
+      (context, writer, key, _) ~> {
+        key.value match {
+        | "title" ->
+          controller.getTitle(context).each(title -> {
+            writer.set(
+              key,
+              WidgetFile(
+                controller.getKind(context) match {
+                | fc @ UiDialog.FullScreen _ ->
+                  buildFullScreenTitle(context, path, title, fc)
+                | _ -> buildTitle(context, path.makeChild("title"), title)
+                },
+              ),
+            )
+          })
+        | "action" ->
+          (controller.getKind(context) match {
+          | UiDialog.FullScreen _ -> None()
+          | UiDialog.Rows(value) ->
+            Some(
+              buildActions(
+                context,
+                path,
+                value,
+                UiButton.Basic(),
+                None(),
+                true,
+              ),
+            )
+          | UiDialog.Stacked(value) ->
+            Some(
+              buildActions(
+                context,
+                path,
+                value,
+                UiButton.Basic(),
+                None(),
+                false,
+                0,
+                UiFlex.Start(),
+                VerticalAxis(),
+                UiFlex.CrossStretch(),
+              ),
+            )
+          | UiDialog.LeftRight(left, right) ->
+            leftWidget = buildActions(context, path, left);
+            rightWidget = buildActions(
+              context,
+              path,
+              right,
+              UiButton.Basic(),
+              None(),
+              false,
+              8,
+              UiFlex.End(),
+            );
+            if (left.isEmpty()) {
+              Some(rightWidget)
+            } else if (right.isEmpty()) {
+              Some(leftWidget)
+            } else {
+              Some(
+                Flex::createForController(
+                  context,
+                  path.makeChild("bottom"),
+                  UiFlex.LamController{
+                    widgets => WidgetsArray(Array[leftWidget, rightWidget]),
+                    mainAxisAlignment => _ctx ~> UiFlex.SpaceBetween(),
+                  },
+                ),
+              )
+            }
+          }).each(w ->
+            writer.set(
+              key,
+              WidgetFile(
+                Decorated::create(
+                  context,
+                  path.makeChild("actions").makeChild("padding"),
+                  UiDecorated.LamController{
+                    decoration => _ctx ~>
+                      Padding(Geometry.Insets::only{top => 24.0}),
+                    widget => _ctx ~> Some(w),
+                  },
+                ),
+              ),
+            )
+          )
+        | _ -> void
+        }
+      },
+    );
+    builderHdl = mainHdl.map(
+      SKStore.IID::keyType,
+      WidgetFile::type,
+      context,
+      UiDialog.widgetDirName(path),
+      (context, writer, key, _file) ~> {
+        kind = controller.getKind(context);
+        content = kind match {
+        | UiDialog.FullScreen _ ->
+          Configured::create(
+            context,
+            path.makeChild("content").makeChild("fit"),
+            UiConfigured.LamController{widget => controller.getContent},
+            Some(Ui.default(UiFlex.Configuration{flex => 1})),
+          )
+        | _ -> controller.getContent(context)
+        };
+        optTitle = builtHdl.maybeGet(context, SKStore.StrID("title")).map(f ~>
+          f.widget
+        );
+        optAction = builtHdl
+          .maybeGet(context, SKStore.StrID("action"))
+          .map(f ~> f.widget);
+        widgets = optTitle match {
+        | Some(title) ->
+          optAction match {
+          | Some(action) -> Array[title, content, action]
+          | _ -> Array[title, content]
+          }
+        | _ ->
+          optAction match {
+          | Some(action) -> Array[content, action]
+          | _ -> Array[content]
+          }
+        };
+        dialog = Flex::createForController(
+          context,
+          path.makeChild("body"),
+          UiFlex.LamController{
+            widgets => WidgetsArray(widgets),
+            direction => _ctx ~> VerticalAxis(),
+            crossAxisAlignment => _ctx ~> UiFlex.CrossStretch(),
+          },
+          Some(Ui.default(UiFlex.Configuration{flex => 1})),
+        );
+        writer.set(
+          key,
+          WidgetFile(
+            controller.getKind(context) match {
+            | UiDialog.FullScreen _ -> dialog
+            | _ ->
+              radius = Px(24.0);
+              background = Decorated::create(
+                context,
+                path.makeChild("background"),
+                UiDecorated.LamController{
+                  decoration => ctx ~>
+                    Nested(
+                      Array[
+                        Background(
+                          ctx.getThemeColor(UiTheme.Base()),
+                          Geometry.Insets::all(0.0),
+                          Some(radius),
+                        ),
+                        Background(
+                          ctx.getThemeColor(UiTheme.Primary()).scaleAlpha(0.15),
+                          Geometry.Insets::all(0.0),
+                          Some(radius),
+                        ),
+                        Padding(Geometry.Insets::all(24.0)),
+                      ],
+                    ),
+                  widget => _ctx ~> Some(dialog),
+                },
+              );
+              constrained = Constrained::create(
+                context,
+                path.makeChild("sizing"),
+                UiConstrained.LamController{
+                  constraints => _ctx ~> BoxConstraints::forWidth(400.0, 600.0),
+                  widget => _ctx ~> Some(background),
+                },
+              );
+              main = Decorated::create(
+                context,
+                path.makeChild("padding"),
+                UiDecorated.LamController{
+                  decoration => _ctx ~> Padding(Geometry.Insets::all(32.0)),
+                  widget => _ctx ~> Some(constrained),
+                },
+              );
+              centered = Flex::createForController(
+                context,
+                path.makeChild("centered"),
+                UiFlex.LamController{
+                  widgets => WidgetsArray(Array[main]),
+                  direction => _ctx ~> VerticalAxis(),
+                  mainAxisAlignment => _ctx ~> UiFlex.Center(),
+                },
+              );
+              decorated = Decorated::create(
+                context,
+                path.makeChild("veil"),
+                UiDecorated.LamController{
+                  decoration => ctx ~>
+                    Background(ctx.getThemeColor(UiTheme.Veil())),
+                },
+              );
+              Stack::createForController(
+                context,
+                path.makeChild("stack"),
+                UiStack.LamController{
+                  widgets => WidgetsArray(Array[decorated, centered]),
+                },
+              )
+            },
+          ),
+        )
+      },
+    );
+    static{
+      path,
+      controller,
+      cache,
+      optConfiguration,
+      supplier => ctx ~> builderHdl.get(ctx, SKStore.IID(0)).widget,
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    builtNode = this.supplier(context).getNode(context, constraints);
+    utils = this.controller.getKind(context).getSubmitExit();
+    Node(
+      this,
+      builtNode.size,
+      Array[CNode(builtNode, Geometry.Offset::zero, constraints)],
+      constUserData(Some(utils)),
+    )
+  }
+
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
+    this.supplier(context).getViewportDefinition(context);
+  }
+
+  fun checkFocusHandlers(
+    context: mutable SKStore.Context,
+    nodeInfo: Getter<NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    wrappedFocusHandlers(handlers, optFocusHandler -> {
+      Some(
+        UiDialog.FocusHandler{
+          dialog => this,
+          category => "dialog",
+          optFocusHandler,
+          nodeInfo => nodeInfo(context),
+        },
+      )
+    })
+  }
+
+  fun getMainFocusable(context: mutable SKStore.Context): ?Path {
+    this.controller.getMainFocusable(context) match {
+    | Some(path) -> Some(path)
+    | _ ->
+      kind = this.controller.getKind(context);
+      kind.getSubmitId().map(submit ->
+        this.path.makeChild("action").makeChild(submit)
+      )
+    }
+  }
+}
+
+fun buildTitle(
+  context: mutable SKStore.Context,
+  path: Path,
+  title: Text,
+): Widget {
+  text = VText::createForController(
+    context,
+    path,
+    UiText.LamController{
+      text => _ctx ~> title,
+      style => ctx ~> {
+        fill = ctx.getThemeColor(UiTheme.Title());
+        faceId = ctx.getThemeFont(UiTheme.Title());
+        Text.Style{faceId, fill, wrapping => Text.WordWrap()}
+      },
+    },
+  );
+  Decorated::create(
+    context,
+    path.makeChild("padding"),
+    UiDecorated.LamController{
+      decoration => _ctx ~> Padding(Geometry.Insets::only{bottom => 20.0}),
+      widget => _ctx ~> Some(text),
+    },
+  )
+}
+
+fun buildFullScreenTitle(
+  context: mutable SKStore.Context,
+  path: Path,
+  title: Text,
+  fs: UiDialog.FullScreen,
+): Widget {
+  titlePath = path.makeChild("title");
+  closePath = titlePath.makeChild("close");
+  closeButton = Button::create(
+    context,
+    closePath,
+    UiButton.Parameters(
+      UiButton.LamController{
+        kind => _ctx ~> UiButton.Primary(),
+        mode => _ctx ~> UiButton.Flat(),
+        icon => (ctx, size) ~>
+          ctx.getThemeIcon(UiTheme.Close()).buildIcon(ctx, size),
+        onFire => (ctx, _optCount) ~> fs.close(ctx),
+      },
+      UiButton.init(context, closePath),
+    ),
+  );
+  text = VText::createForController(
+    context,
+    titlePath,
+    UiText.LamController{
+      text => _ctx ~> title,
+      style => ctx ~> {
+        fill = ctx.getThemeColor(UiTheme.Base());
+        faceId = ctx.getThemeFont(UiTheme.Title());
+        Text.Style{faceId, fill, wrapping => Text.WordWrap()}
+      },
+    },
+  );
+  titlePadding = Decorated::create(
+    context,
+    text.path.makeChild("titlePadding"),
+    UiDecorated.LamController{
+      decoration => _ctx ~>
+        Padding(Geometry.Insets::fromLTRB(16.0, 8.0, 16.0, 8.0)),
+      widget => _ctx ~> Some(text),
+    },
+    Some(Ui.default(UiFlex.Configuration{flex => 1})),
+  );
+  closeWithTitle = Flex::createForController(
+    context,
+    titlePath.makeChild("level1"),
+    UiFlex.LamController{
+      widgets => WidgetsArray(Array[closeButton, titlePadding]),
+    },
+    Some(Ui.default(UiFlex.Configuration{flex => 1})),
+  );
+  actions = buildActions(
+    context,
+    path,
+    fs.value,
+    UiButton.Flat(),
+    Some(UiButton.Primary()),
+  );
+  banner = Flex::createForController(
+    context,
+    titlePath.makeChild("banner"),
+    UiFlex.LamController{
+      widgets => WidgetsArray(Array[closeWithTitle, actions]),
+    },
+  );
+  Decorated::create(
+    context,
+    titlePath.makeChild("background"),
+    UiDecorated.LamController{
+      decoration => ctx ~>
+        Background(
+          ctx.getThemeColor(UiTheme.Primary()),
+          Geometry.Insets::all(16.0),
+        ),
+      widget => _ctx ~> Some(banner),
+    },
+  )
+}
+
+fun buildActions(
+  context: mutable SKStore.Context,
+  path: Path,
+  actions: Array<UiDialog.Action>,
+  mode: UiButton.Mode = UiButton.Basic(),
+  optKind: ?UiButton.Kind = None(),
+  flex: Bool = false,
+  space: Int = 8,
+  mainAxisAlignment: UiFlex.Alignment = UiFlex.Start(),
+  direction: Axis = HorizontalAxis(),
+  crossAxisAlignment: UiFlex.CrossAlignment = UiFlex.CrossStart(),
+): Widget {
+  actionButtons: Array<Widget> = actions.map(action -> {
+    actionPath = path.makeChild("action").makeChild(action.id);
+    Button::create(
+      context,
+      actionPath,
+      UiButton.Parameters(
+        UiButton.LamController{
+          text => _ctx ~> Some(action.text),
+          kind => _ctx ~>
+            optKind.default(
+              action.optRole match {
+              | Some(role) ->
+                if (role.isSubmit()) UiButton.Primary() else UiButton.Warn()
+              | _ -> UiButton.Regular()
+              },
+            ),
+          mode => _ctx ~> mode,
+          onFire => (ctx, _optCount) ~> action.perform(ctx),
+          disabled => ctx ~> action.disabled(ctx, false),
+        },
+        UiButton.init(context, actionPath),
+      ),
+      if (flex) Some(Ui.default(UiFlex.Configuration{flex => 1})) else None(),
+    )
+  });
+  if (space > 0) {
+    last = actionButtons.size() - 1;
+    !actionButtons = actionButtons.mapWithIndex((idx, button) ->
+      if (idx < last) {
+        Decorated::create(
+          context,
+          button.path.makeChild("padding"),
+          UiDecorated.LamController{
+            decoration => _ctx ~>
+              Padding(Geometry.Insets::only{right => space.toFloat()}),
+            widget => _ctx ~> Some(button),
+          },
+        )
+      } else {
+        button
+      }
+    )
+  };
+  Flex::createForController(
+    context,
+    path.makeChild("actions"),
+    UiFlex.LamController{
+      widgets => WidgetsArray(actionButtons),
+      direction => _ctx ~> direction,
+      crossAxisAlignment => _ctx ~> crossAxisAlignment,
+      mainAxisAlignment => _ctx ~> mainAxisAlignment,
+    },
+  );
+}
+
+module end;

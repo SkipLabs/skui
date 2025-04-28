@@ -1,0 +1,379 @@
+module UiSlider;
+
+const statePath: String = "ui/slider/state";
+const computedPath: String = "ui/slider/computed";
+const factor: Float = 10000.0;
+
+class HStorage(name: String, handle: SKStore.INotTyped) extends Storage {
+  //
+  static fun forNameAndScope(
+    context: mutable SKStore.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKStore.IHandle::notTyped(SKStore.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun setHover(context: mutable SKStore.Context, optThumb: ?Thumb): void {
+    this.handle.writeOrRemove(context, Ui.hoverProp, optThumb)
+  }
+
+  fun setArmed(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.armedProp, SKStore.BoolFile(value))
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.dirName.toString()
+  }
+
+  fun setTodo(context: mutable SKStore.Context, value: Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
+  }
+}
+
+class HState(
+  storage: SKStore.ENotTyped,
+  computed: SKStore.ENotTyped,
+) extends State {
+  fun getHover(context: mutable SKStore.Context): ?Thumb {
+    this.storage.maybeGetProp(context, Ui.hoverProp, f ~> f as Thumb _)
+  }
+
+  fun isArmed(context: mutable SKStore.Context): Bool {
+    this.storage.getBool(context, Ui.armedProp)
+  }
+
+  fun getValue(context: mutable SKStore.Context): Variable {
+    this.computed.getProp(context, Ui.valueProp, Variable::btype, VValue(0, 0));
+  }
+
+  fun emitGoTo(
+    context: mutable SKStore.Context,
+    thumb: Thumb,
+    next: Bool,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, GoTo(thumb, next, optRepeatOn));
+  }
+
+  fun emitSetProportion(
+    context: mutable SKStore.Context,
+    thumb: Thumb,
+    value: Float,
+  ): void {
+    this.emit(context, SetProportion(thumb, (value * factor).toInt()));
+  }
+
+  fun emitArmed(context: mutable SKStore.Context, value: Bool): void {
+    this.emit(context, SetArmed(value))
+  }
+
+  fun emitHover(context: mutable SKStore.Context, optThumb: ?Thumb): void {
+    this.emit(context, SetHover(optThumb))
+  }
+
+  fun emitReset(context: mutable SKStore.Context): void {
+    this.emit(context, Reset())
+  }
+
+  fun emitAll(
+    context: mutable SKStore.Context,
+    commands: readonly Vector<Command>,
+  ): void {
+    if (!commands.isEmpty()) {
+      if (commands.size() == 1) {
+        this.emit(context, commands.first())
+      } else {
+        this.emit(context, Multiples(commands.toArray()))
+      }
+    }
+  }
+
+  private fun emit(
+    context: mutable SKStore.Context,
+    command: SKUIMessage.Command,
+  ): void {
+    SKUIMessage.emit(
+      context,
+      statePath,
+      this.storage.dirName.toString(),
+      command,
+    );
+  }
+}
+
+class UserData(controller: Controller, source: Int) extends SKStore.UserData {}
+
+fun init(
+  context: mutable SKStore.Context,
+  path: Ui.Path,
+  controller: Controller,
+): Parameters {
+  source = context.timeStamp().value;
+  dirName = Ui.controllerDirName(path);
+  filteredDirName = SKStore.DirName::make(dirName, "filtered/");
+  stateHdl = context.makeNotTyped(
+    dirName,
+    Array<(SKStore.Key, SKStore.File)>[
+      (Ui.todoProp, Ui.Todo(Init(), context.getTick())),
+    ],
+  );
+  preFilteredHdl = context.makeNotTypedPre(filteredDirName, Array[]);
+  filteredHdl = stateHdl.map(
+    k ~> k,
+    Ui.Todo::type,
+    context,
+    filteredDirName,
+    (context, writer, key, it) ~> {
+      if (key == Ui.todoProp) {
+        todo = Ui.Todo::type(it.first);
+        executables = mutable Vector<Executable>[];
+        optCurrent = preFilteredHdl.maybeGetProp(
+          context,
+          key,
+          Ui.Todo::type,
+          true,
+        );
+        tick = optCurrent.map(c -> c.tick).default(SKStore.Tick(-1));
+        max = tick;
+        if (todo.tick > tick) {
+          executables.push(todo.command as Executable _);
+          !max = todo.tick;
+        };
+        check: (SKStore.Tick, Variable) -> void = (ttick, v) -> {
+          if (ttick > tick) {
+            if (ttick > todo.tick) {
+              executables.push(SetValue(v));
+            } else {
+              executables.insert(0, SetValue(v));
+            };
+            if (ttick > max) {
+              !max = todo.tick;
+            }
+          }
+        };
+        controller.getValue(context) match {
+        | IntProp(prop) ->
+          (v, ttick, src) = prop.getTimed(context);
+          if (src != source) {
+            check(ttick, VValue(v, src))
+          }
+        | RangeProp(prop) ->
+          (v, ttick, src) = prop.getTimed(context);
+          if (src != source) {
+            check(ttick, VRange(v.start, v.end, src))
+          }
+        };
+        size = executables.size();
+        if (size == 0) {
+          optCurrent.each(c -> writer.set(key, c))
+        } else if (size == 1) {
+          toUpdate = executables.first();
+          write = optCurrent
+            .map(c ->
+              c.command match {
+              | SetProportion(ot, ov) ->
+                toUpdate match {
+                | SetProportion(nt, nv) -> ot != nt || ov != nv
+                | _ -> true
+                }
+              | _ -> true
+              }
+            )
+            .default(true);
+          if (write) {
+            writer.set(key, Ui.Todo(executables.first(), max))
+          } else {
+            optCurrent.each(c -> writer.set(key, c))
+          }
+        } else {
+          writer.set(key, Ui.Todo(All(unsafe_chill_trust_me(executables)), max))
+        }
+      }
+    },
+  );
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  computedHdl = SKStore.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    filteredHdl,
+    Ui.todoProp,
+    Array[Ui.valueProp],
+    update,
+    Some(UserData(controller, source)),
+  );
+  check: (Int, Range, Step) ~> Int = (c, r, s) ~> {
+    incr = if (s.first > 0) s.first else s.value;
+    v = r.start;
+    Math.min(
+      loop {
+        if (c <= v + incr / 2) {
+          break v;
+        };
+        !v = v + incr;
+        !incr = s.value;
+      },
+      r.end,
+    );
+  };
+  afterHdl = computedHdl.map(
+    k ~> k,
+    f ~> f,
+    context,
+    SKStore.DirName::make(dirName, "after/"),
+    (context, writer, key, it) ~> {
+      if (key == Ui.valueProp) {
+        step = controller.getStep(context, true);
+        range = controller.getRange(context, true);
+        var = Variable::btype(it.first) match {
+        | VRange(vMin, vMax, src) ->
+          nMin = check(vMin, range, step);
+          nMax = check(vMax, range, step);
+          VRange(Math.min(nMin, nMax), Math.max(nMin, nMax), src)
+        | VValue(value, src) -> VValue(check(value, range, step), src)
+        };
+        writer.set(key, var)
+      }
+    },
+  );
+  _ = afterHdl.map(
+    k ~> k,
+    f ~> f,
+    context,
+    SKStore.DirName::make(dirName, "notified/"),
+    (context, _writer, key, it) ~>
+      if (key == Ui.valueProp) {
+        controller.getValue(context, true) match {
+        | IntProp(prop) ->
+          it.first match {
+          | VValue(v, src) ->
+            if (src == source) {
+              prop.set(context, Some(v), source)
+            }
+          | _ -> print_error("Invalid int slider value")
+          }
+        | RangeProp(prop) ->
+          it.first match {
+          | VRange(min, max, src) ->
+            if (src == source) {
+              prop.set(context, Some(Range(min, max)), source)
+            }
+          | _ -> print_error("Invalid range slider value")
+          }
+        }
+      }
+    ,
+  );
+  Parameters(controller, HState(stateHdl, afterHdl))
+}
+
+fun update(
+  context: mutable SKStore.Context,
+  _scope: String,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  todo: Ui.Todo,
+  optUserData: ?UserData,
+): void {
+  userData = optUserData.fromSome();
+  isRange = userData.controller.isRange(context, true);
+  range = userData.controller.getRange(context, true);
+  value = values
+    .get(Ui.valueProp)
+    .map(Variable::btype)
+    .default(
+      if (isRange) {
+        VRange(range.start, range.end, 0)
+      } else {
+        VValue(range.start, 0)
+      },
+    );
+  step = userData.controller.getStep(context, true);
+  nValue = execute(
+    todo.command as Executable _,
+    value,
+    range,
+    step,
+    userData.source,
+  );
+  values.set(Ui.valueProp, Some(nValue));
+}
+
+fun execute(
+  executable: Executable,
+  value: Variable,
+  range: Range,
+  step: Step,
+  source: Int,
+): Variable {
+  executable match {
+  | All(cmds) ->
+    cmds.each(cmd -> {
+      !value = execute(cmd, value, range, step, source)
+    });
+    value
+  | Init() -> value
+  | SetValue(v) -> v
+  | SetProportion(thumb, v) ->
+    proportion = v.toFloat() / factor;
+    res = Math.round((range.end - range.start).toFloat() * proportion).toInt();
+    value match {
+    | VRange(vMin, vMax, _) ->
+      thumb match {
+      | Min() -> VRange(Math.min(res, vMax), vMax, source)
+      | Max() -> VRange(vMin, Math.max(vMin, res), source)
+      }
+    | _ -> VValue(res, source)
+    }
+  | GoTo(thumb, next, _, count) ->
+    occ = Math.max(count / 10, 1);
+    value match {
+    | VRange(vMin, vMax, _) ->
+      thumb match {
+      | Min() ->
+        if (next) {
+          incr = if (vMin == range.start && step.first > 0) {
+            step.first
+          } else {
+            step.value
+          };
+          VRange(Math.min(vMin + occ * incr, vMax), vMax, source)
+        } else {
+          VRange(Math.max(range.start, vMin - occ * step.value), vMax, source)
+        }
+      | Max() ->
+        if (next) {
+          incr = if (vMax == range.start && step.first > 0) {
+            step.first
+          } else {
+            step.value
+          };
+          VRange(vMin, Math.min(vMax + occ * incr, range.end), source)
+        } else {
+          VRange(vMin, Math.max(vMin, vMax - occ * step.value), source)
+        }
+      }
+    | VValue(v, _) ->
+      VValue(
+        if (next) {
+          incr = if (v == range.start && step.first > 0) {
+            step.first
+          } else {
+            step.value
+          };
+          Math.min(v + occ * incr, range.end);
+        } else {
+          Math.max(range.start, v - occ * step.value);
+        },
+        source,
+      )
+    }
+  }
+}
+
+module end;

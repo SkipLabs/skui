@@ -1,0 +1,391 @@
+module UiDropdown;
+
+const vGap: Int = 8;
+const hGap: Int = 8;
+const triangle: Float = 16.0;
+
+class Shortcut(width: Float, optText: ?(String, Font.FaceID) = None())
+
+class ItemData(
+  path: Ui.Path,
+  item: ItemBase,
+  optIcon: ?(Ui.Icon, Float),
+  text: (String, Float, Font.FaceID),
+  optShortcut: ?Shortcut,
+  height: Float,
+) extends SKStore.File {
+  //
+  static fun type(obj: SKStore.File): this {
+    obj match {
+    | x @ ItemData _ -> x
+    | _ -> invariant_violation("Must be UiDropdown.ItemData")
+    }
+  }
+
+  fun toSettings(
+    iWidth: Float,
+    tWidth: Float,
+    sWidth: Float,
+    size: Geometry.Size,
+    idx: Int,
+  ): Settings {
+    Settings(
+      this.item,
+      (this.optIcon.map(i -> i.i0), iWidth),
+      (this.text.i0, tWidth, this.text.i2),
+      Shortcut(sWidth, this.optShortcut.flatMap(s -> s.optText)),
+      idx,
+      this.path,
+      size,
+    )
+  }
+}
+
+base class SettingsBase(
+  path: Ui.Path,
+  size: Geometry.Size,
+) extends SKStore.File {
+  fun build(
+    context: mutable SKStore.Context,
+    parent: Ui.Path,
+    controller: Controller,
+    state: State,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): Ui.Widget;
+}
+
+class Sep() extends SettingsBase {
+  fun build(
+    context: mutable SKStore.Context,
+    parent: Ui.Path,
+    _controller: Controller,
+    _state: State,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): Ui.Widget {
+    Separator{
+      path => parent.makeChild("separators").add(this.path),
+      optSize => Some(this.size),
+      optConfiguration,
+      tick => context.getTick(),
+    }
+  }
+}
+
+class Settings(
+  item: ItemBase,
+  icon: (?Ui.Icon, Float),
+  text: (String, Float, Font.FaceID),
+  shortcut: Shortcut,
+  idx: Int,
+) extends SettingsBase {
+  fun build(
+    context: mutable SKStore.Context,
+    parent: Ui.Path,
+    controller: Controller,
+    state: State,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): Ui.Widget {
+    ItemView::create(
+      context,
+      parent.makeChild("items").add(this.path),
+      IVParameters(this, state, this.idx, Some(controller.onClose)),
+      optConfiguration,
+    );
+  }
+}
+
+class IVParameters(
+  settings: Settings,
+  state: State,
+  idx: Int,
+  optOnClose: ?(mutable SKStore.Context) ~> void = None(),
+) extends Ui.Parameters
+
+class ItemView protected {
+  settings: Settings,
+  state: State,
+  idx: Int,
+  optOnClose: ?(mutable SKStore.Context) ~> void = None(),
+} extends Ui.StrictWidget uses Ui.WithNodeCache, Ui.NoViewports {
+  //
+  type Params = IVParameters;
+  type Buffer = Ui.NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    params: IVParameters,
+    cache: Ui.NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{
+      path,
+      settings => params.settings,
+      state => params.state,
+      idx => params.idx,
+      optOnClose => params.optOnClose,
+      optConfiguration,
+      cache,
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    _context: mutable SKStore.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    Ui.Node(this, constraints.constrain(this.settings.size), Array[])
+  }
+
+  fun getHoverHandler(
+    context: mutable SKStore.Context,
+    _childGetter: Ui.Getter<?FWK.HoverHandler>,
+  ): ?Ui.HoverHandlerGetter {
+    if (this.settings.item.disabled(context)) {
+      None()
+    } else {
+      Some(
+        Ui.constHoverHandler(
+          IVHoverHandler(
+            this.path,
+            this.state,
+            this.settings.path,
+            this.settings.item,
+            this.idx,
+            this.optOnClose,
+          ),
+        ),
+      )
+    }
+  }
+
+  fun checkFocusHandlers(
+    context: mutable SKStore.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    if (this.settings.item.disabled(context)) {
+      handlers.chill()
+    } else {
+      Vector[
+        IVFocusHandler{
+          category => "button",
+          path => this.path,
+          state => this.state,
+          itemPath => this.settings.path,
+          item => this.settings.item,
+          idx => this.idx,
+          optOnClose => this.optOnClose,
+        },
+      ]
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    drawables = mutable Vector<Ui.Drawable>[];
+    layer match {
+    | Ui.MainLayer() ->
+      this.fillMain(context, support, absolute, node.size(), drawables)
+    | Ui.BackgroundLayer() ->
+      this.fillBackground(context, support, absolute, node.size(), drawables)
+    | Ui.ForegroundLayer() ->
+      this.fillForeground(context, support, absolute, node.size(), drawables)
+    };
+    drawables.toArray()
+  }
+
+  private fun fillMain(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    shorcutVisible = Math.greaterOrEquals(size.width, this.settings.size.width);
+    foreground = if (this.settings.item.disabled(context)) {
+      context.getThemeColor(UiTheme.Disabled())
+    } else {
+      context.getThemeColor(UiTheme.Regular())
+    };
+    left = hGap.toFloat();
+    remainingWidth = size.width - (2 * hGap).toFloat();
+    (optIcon, iWidth) = this.settings.icon;
+    if (iWidth > 0.0) {
+      optIcon.each(icon -> {
+        iSize = icon.size(context);
+        top = (size.height - iSize.height) / 2.0;
+        iLeft = left + (iWidth - iSize.width) / 2.0;
+        iOffset = absolute.translate(iLeft, top);
+        icon.fillDrawables(
+          context,
+          support,
+          iOffset,
+          iSize,
+          foreground,
+          drawables,
+        );
+      });
+      !left = left + iWidth + hGap.toFloat();
+      !remainingWidth = remainingWidth - (iWidth + hGap.toFloat());
+    };
+    textSupport = context.getTextSupport();
+    if (this.settings.item.isMenu()) {
+      tTop = (size.height - triangle) / 2.0;
+      tLeft = (size.width - triangle - hGap.toFloat());
+      drawables.push(
+        support.triangle(
+          absolute.translate(tLeft, tTop),
+          Geometry.Size::square(triangle),
+          foreground,
+          UiSide.Right(),
+        ),
+      );
+      if (shorcutVisible) {
+        !remainingWidth =
+          remainingWidth - (hGap.toFloat() + this.settings.shortcut.width);
+      } else {
+        !remainingWidth = remainingWidth - triangle - hGap.toFloat();
+      }
+    } else if (shorcutVisible) {
+      sWidth = this.settings.shortcut.width;
+      this.settings.shortcut.optText.each(iShorcut -> {
+        offset = absolute.translateX(size.width - (hGap.toFloat() + sWidth));
+        Ui.drawConstrainedText(
+          context,
+          support,
+          textSupport,
+          iShorcut.i0,
+          Geometry.Rect::fromOffsetSize(
+            offset,
+            Geometry.Size(sWidth, size.height),
+          ),
+          context.getThemeColor(UiTheme.Shortcut()),
+          iShorcut.i1,
+          drawables,
+        )
+      });
+      !remainingWidth =
+        remainingWidth - (hGap.toFloat() + this.settings.shortcut.width);
+    };
+    tWidth = Math.max(remainingWidth, 2.0 * hGap.toFloat());
+    tOffset = absolute.translateX(left);
+    Ui.drawConstrainedText(
+      context,
+      support,
+      textSupport,
+      this.settings.text.i0,
+      Geometry.Rect::fromOffsetSize(
+        tOffset,
+        Geometry.Size(tWidth, size.height),
+      ),
+      foreground,
+      this.settings.text.i2,
+      drawables,
+    )
+  }
+
+  private fun fillBackground(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    if (this.settings.item.disabled(context)) {
+      drawables.push(
+        support.rectangle(
+          absolute,
+          size,
+          context.getThemeColor(UiTheme.Disabled()),
+        ),
+      )
+    }
+  }
+
+  private fun fillForeground(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    if (!this.settings.item.disabled(context)) {
+      focused = context.isFocused(this.path);
+      hover = this.isHover(context);
+      selected = this.isSelected(context);
+      color = context.getThemeColor(UiTheme.Primary());
+      if (focused || hover || selected) {
+        count = 1;
+        if (focused) !count = count + 1;
+        if (hover) !count = count + 1;
+        if (selected) !count = count + 1;
+        drawables.push(
+          support.rectangle(
+            absolute,
+            size,
+            color.scaleAlpha(count.toFloat() / 10.0),
+          ),
+        )
+      }
+    }
+  }
+
+  private fun isSelected(context: mutable SKStore.Context): Bool {
+    this.state.isSelected(context, this.settings.idx)
+  }
+
+  private fun isHover(context: mutable SKStore.Context): Bool {
+    this.state.getHover(context) == Some(this.settings.path);
+  }
+}
+
+class Separator{
+  optSize: ?Geometry.Size,
+} extends Ui.Widget uses FWK.NoFocusHandler, Ui.NoViewports {
+  //
+  fun getNode(
+    _context: mutable SKStore.Context,
+    constraints: Ui.BoxConstraints,
+  ): Ui.Node {
+    size = this.optSize.default(
+      Geometry.Size(hGap.toFloat() * 4.0, vGap.toFloat()),
+    );
+    Ui.Node(this, constraints.constrain(size), Array[])
+  }
+
+  fun computeLayer(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | Ui.MainLayer() ->
+      size = node.size();
+      width = size.width - hGap.toFloat();
+      if (width > 0.0 && size.height >= 2.0) {
+        Array[
+          support.rectangle(
+            absolute.translate(4.0, (size.height - 2.0) / 2.0),
+            Geometry.Size(width, 2.0),
+            context.getThemeColor(UiTheme.Separator()),
+          ),
+        ]
+      } else {
+        Array[]
+      }
+    | Ui.BackgroundLayer()
+    | Ui.ForegroundLayer() ->
+      Array[]
+    };
+  }
+}
+
+module end;

@@ -1,0 +1,319 @@
+module Ui;
+
+class Button protected {
+  controller: UiButton.Controller,
+  state: UiButton.State,
+} extends StrictWidget uses WithNodeCache, NoViewports {
+  //
+  type Params = UiButton.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    params: UiButton.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    faceId = context.getThemeFont(UiTheme.Action());
+    (size, innerSize) = this.controller.getMode(context) match {
+    | UiButton.Basic()
+    | UiButton.Raised()
+    | UiButton.Stroked()
+    | UiButton.Flat() ->
+      this.controller.getText(context) match {
+      | Some(text) ->
+        hSide = context
+          .getThemeThickness(UiTheme.ActionHorizontalSide())
+          .toFloat();
+        vSide = context
+          .getThemeThickness(UiTheme.ActionVerticalSide())
+          .toFloat();
+        lineSpacing = context.getThemeThickness(UiTheme.LineSpacing());
+        iconTextGap = context
+          .getThemeThickness(UiTheme.IconTextGap())
+          .toFloat();
+        textSupport = context.getTextSupport();
+        str = context.translate(text);
+        size = textSupport.getLinesSize(context, str, None(), faceId, _lh ->
+          lineSpacing.toFloat()
+        );
+        innerSize = this.controller.getIcon(context, faceId.size) match {
+        | Some(icon) ->
+          iSize = icon.size(context);
+          Geometry.Size(size.width + iSize.width + iconTextGap, size.height)
+        | _ -> size
+        };
+        fullSize = (innerSize + Geometry.Size(2.0 * hSide, 2.0 * vSide)).max(
+          Geometry.Size(36.0, 36.0),
+        );
+        (fullSize, innerSize)
+      | _ -> this.onlyIconSizes(context, faceId.size, 36.0)
+      }
+    | UiButton.Icon(mini) ->
+      this.onlyIconSizes(context, faceId.size, if (mini) 30.0 else 36.0)
+    | UiButton.Fab(mini) ->
+      this.onlyIconSizes(context, faceId.size, if (mini) 40.0 else 56.0)
+    };
+    !size = constraints.constrain(size);
+    Node(this, size, Array[], constUserData(Some(UiButton.Layout(innerSize))));
+  }
+
+  fun getHoverHandler(
+    context: mutable SKStore.Context,
+    _childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    if (this.controller.isDisabled(context)) {
+      None()
+    } else {
+      Some((_, _, _) ~> Some(UiButton.HoverHandler(this)))
+    }
+  }
+
+  fun checkFocusHandlers(
+    context: mutable SKStore.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    if (this.controller.isDisabled(context)) {
+      handlers.chill()
+    } else {
+      Vector[UiButton.FocusHandler{category => "button", button => this}]
+    }
+  }
+
+  fun computeLayer(
+    context: mutable SKStore.Context,
+    support: DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    drawables = mutable Vector<Ui.Drawable>[];
+    layer match {
+    | MainLayer() ->
+      innerSize = node.optUserData
+        .map(l ~> l as UiButton.Layout _)
+        .fromSome().size;
+      this.fillMain(
+        context,
+        support,
+        absolute,
+        node.size(),
+        innerSize,
+        drawables,
+      )
+    | BackgroundLayer() ->
+      this.fillBackground(context, support, absolute, node.size(), drawables)
+    | ForegroundLayer() ->
+      this.fillForeground(context, support, absolute, node.size(), drawables)
+    };
+    drawables.toArray()
+  }
+
+  private fun fillMain(
+    context: mutable SKStore.Context,
+    support: DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    innerSize: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    mode = this.controller.getMode(context);
+    foreground = if (this.controller.isDisabled(context)) {
+      context.getThemeColor(UiTheme.Disabled())
+    } else {
+      this.getForegroundColor(context, mode)
+    };
+    left = Math.max(4.0, (size.width - innerSize.width) / 2.0);
+    remainingWidth = innerSize.width;
+    faceId = context.getThemeFont(UiTheme.Action());
+    iconTextGap = context.getThemeThickness(UiTheme.IconTextGap()).toFloat();
+    lineSpacing = context.getThemeThickness(UiTheme.LineSpacing()).toFloat();
+    this.controller.getIcon(context, faceId.size).each(icon -> {
+      iSize = icon.size(context);
+      top = (size.height - iSize.height) / 2.0;
+      iOffset = absolute.translate(left, top);
+      icon.fillDrawables(
+        context,
+        support,
+        iOffset,
+        iSize,
+        foreground,
+        drawables,
+      );
+      !left = left + iSize.width + iconTextGap;
+      !remainingWidth = remainingWidth - (iSize.width + iconTextGap);
+    });
+    if (mode.withText()) {
+      this.controller.getText(context).each(text -> {
+        width = Math.min(remainingWidth, size.width - 4.0 - left);
+        height = innerSize.height;
+        str = context.translate(text);
+        top = (size.height - innerSize.height) / 2.0;
+        context
+          .getTextSupport()
+          .fillLinesDrawables(
+            context,
+            support,
+            str,
+            absolute.translate(left, top),
+            Geometry.Size(width, height),
+            Text.Style{
+              faceId,
+              fill => foreground,
+              lineSpacing => Text.ConstLineSpacing(lineSpacing),
+            },
+            drawables,
+          )
+      })
+    }
+  }
+
+  private fun fillBackground(
+    context: mutable SKStore.Context,
+    support: DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    mode = this.controller.getMode(context);
+    optBackground = if (this.controller.isDisabled(context)) {
+      Some(context.getThemeColor(UiTheme.Disabled()))
+    } else {
+      mode match {
+      | UiButton.Basic()
+      | UiButton.Stroked()
+      | UiButton.Icon _ ->
+        None()
+      | UiButton.Raised() ->
+        radius = mode.getRadius(size);
+        Ui.themeShadow(context, support, absolute, size, radius).each(
+          drawables.push,
+        );
+        this.controller.getKind(context) match {
+        | UiButton.Regular() -> Some(context.getThemeColor(UiTheme.Base()))
+        | UiButton.Primary() -> Some(context.getThemeColor(UiTheme.Primary()))
+        | UiButton.Accent() -> Some(context.getThemeColor(UiTheme.Accent()))
+        | UiButton.Warn() -> Some(context.getThemeColor(UiTheme.Warn()))
+        }
+      | UiButton.Flat()
+      | UiButton.Fab _ ->
+        this.controller.getKind(context) match {
+        | UiButton.Regular() -> None()
+        | UiButton.Primary() -> Some(context.getThemeColor(UiTheme.Primary()))
+        | UiButton.Accent() -> Some(context.getThemeColor(UiTheme.Accent()))
+        | UiButton.Warn() -> Some(context.getThemeColor(UiTheme.Warn()))
+        }
+      }
+    };
+    optBackground.each(color ->
+      drawables.push(
+        support.roundedRectangle(absolute, size, color, mode.getRadius(size)),
+      )
+    );
+    mode match {
+    | UiButton.Stroked() ->
+      color = context.getThemeColor(UiTheme.Border());
+      drawables.push(
+        support.roundedRectangle(
+          absolute,
+          size,
+          Colors.transparent(),
+          mode.getRadius(size),
+          2.0,
+          Some(Ui.Border(color, 1.0)),
+        ),
+      )
+    | _ -> void
+    }
+  }
+
+  private fun fillForeground(
+    context: mutable SKStore.Context,
+    support: DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    mode = this.controller.getMode(context);
+    foreground = this.getForegroundColor(context, mode);
+    optColor = if (this.controller.isDisabled(context)) {
+      None()
+    } else {
+      focused = context.isFocused(this.path);
+      hover = FWKPipeline.isMouseHover(context, this.path);
+      if (this.state.isArmed(context)) {
+        Some(foreground.scaleAlpha(0.4))
+      } else if (focused || hover) {
+        Some(foreground.scaleAlpha(if (focused && hover) 0.3 else 0.2))
+      } else {
+        None()
+      }
+    };
+    optColor.each(color ->
+      drawables.push(
+        support.roundedRectangle(absolute, size, color, mode.getRadius(size)),
+      )
+    )
+  }
+
+  private fun onlyIconSizes(
+    context: mutable SKStore.Context,
+    fontSize: Float,
+    maxValue: Float = 36.0,
+  ): (Geometry.Size, Geometry.Size) {
+    this.controller.getIcon(context, fontSize) match {
+    | Some(icon) ->
+      iSize = icon.size(context);
+      size = (iSize + Geometry.Size::square(4.0)).max(
+        Geometry.Size::square(maxValue),
+      );
+      (size, iSize)
+    | _ -> (Geometry.Size::square(maxValue), Geometry.Size::square(0.0))
+    }
+  }
+
+  private fun getForegroundColor(
+    context: mutable SKStore.Context,
+    mode: UiButton.Mode,
+  ): .Color {
+    mode match {
+    | UiButton.Basic()
+    | UiButton.Stroked()
+    | UiButton.Icon _ ->
+      this.controller.getKind(context) match {
+      | UiButton.Regular() -> context.getThemeColor(UiTheme.Regular())
+      | UiButton.Primary() -> context.getThemeColor(UiTheme.Primary())
+      | UiButton.Accent() -> context.getThemeColor(UiTheme.Accent())
+      | UiButton.Warn() -> context.getThemeColor(UiTheme.Warn())
+      }
+    | UiButton.Raised()
+    | UiButton.Flat()
+    | UiButton.Fab _ ->
+      this.controller.getKind(context) match {
+      | UiButton.Regular() -> context.getThemeColor(UiTheme.Regular())
+      | UiButton.Primary()
+      | UiButton.Accent()
+      | UiButton.Warn() ->
+        context.getThemeColor(UiTheme.Base())
+      }
+    }
+  }
+}
+
+module end;

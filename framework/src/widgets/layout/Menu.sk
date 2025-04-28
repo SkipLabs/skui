@@ -1,0 +1,170 @@
+module UiMenuLayout;
+
+base class Controller extends Ui.Parameters {
+  //
+  fun getOffset(context: mutable SKStore.Context): Geometry.Offset;
+
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget;
+
+  fun onClose(context: mutable SKStore.Context): void;
+}
+
+class LamController{
+  offset: Ui.Getter<Geometry.Offset>,
+  widget: Ui.Getter<Ui.Widget>,
+  onClose_: Ui.Getter<void>,
+} extends Controller {
+  //
+  fun getOffset(context: mutable SKStore.Context): Geometry.Offset {
+    this.offset(context)
+  }
+
+  fun getWidget(context: mutable SKStore.Context): Ui.Widget {
+    this.widget(context)
+  }
+
+  fun onClose(context: mutable SKStore.Context): void {
+    this.onClose_(context)
+  }
+}
+
+class FocusHandler{
+  path: Ui.Path,
+  onClose: Ui.Getter<void>,
+} extends Ui.FocusHandlerWrapper uses FWK.OnlyShortcuts {
+  //
+  protected fun getMainIdentifier(): Ui.Path {
+    this.path;
+  }
+
+  protected fun getShortcuts(
+    _context: mutable SKStore.Context,
+  ): Array<FWK.ShortcutAction> {
+    Array[
+      FWK.ShortcutAction(
+        "exit",
+        FWK.Shortcut(Array[UiEvent.pureKeyReleased(UiEvent.KeyInfo::escape)]),
+        FWK.Standard(this.onClose),
+      ),
+    ]
+  }
+}
+
+class HoverHandler(
+  path: Ui.Path,
+  perform: Ui.Getter<void>,
+) extends Ui.HoverHandlerWrapper {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.path
+  }
+
+  protected fun isParentBefore(): Bool {
+    false
+  }
+
+  protected fun onMouse(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+  ): FWK.Result {
+    FWK.Result(
+      if (mouse.isPrimaryPressed(context.getTick())) {
+        this.perform(context);
+        true
+      } else {
+        false
+      },
+    )
+  }
+}
+
+module end;
+
+module Ui;
+
+class MenuLayout protected {
+  controller: UiMenuLayout.Controller,
+} extends StrictWidget uses WithNodeCache {
+  //
+  type Params = UiMenuLayout.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    params: UiMenuLayout.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{
+      path,
+      controller => params,
+      cache,
+      optConfiguration,
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    offset = this.controller.getOffset(context);
+    size = constraints.biggest();
+    bottom = size.height - offset.dy;
+    widget = this.controller.getWidget(context);
+    cConstraints = constraints.loosen();
+    node = widget.getNode(context, cConstraints);
+    top = if (node.size.height <= bottom) {
+      offset.dy
+    } else if (node.size.height <= offset.dy) {
+      offset.dy - node.size.height
+    } else {
+      size.height - node.size.height
+    };
+    left = Math.min(offset.dx, size.width - node.size.width);
+    Node(
+      this,
+      size,
+      Array[CNode(node, Geometry.Offset(left, top), cConstraints)],
+    );
+  }
+
+  fun checkFocusHandlers(
+    _context: mutable SKStore.Context,
+    _nodeInfo: Ui.Getter<Ui.NodeInfo>,
+    handlers: readonly Vector<FWK.FocusHandler>,
+  ): Vector<FWK.FocusHandler> {
+    Ui.wrappedFocusHandlers(handlers, optFocusHandler -> {
+      Some(
+        UiMenuLayout.FocusHandler{
+          path => this.path,
+          category => "menulayout",
+          optFocusHandler,
+          onClose => this.controller.onClose,
+        },
+      )
+    })
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKStore.Context,
+    childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((context, _offset, _node) ~>
+      Some(
+        UiMenuLayout.HoverHandler(
+          this.path,
+          this.controller.onClose,
+          childGetter(context),
+        ),
+      )
+    )
+  }
+
+  fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {
+    this.controller.getWidget(context).getViewportDefinition(context);
+  }
+}
+
+module end;

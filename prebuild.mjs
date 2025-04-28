@@ -9,11 +9,11 @@ const symlinks = {
   "skipwasm-date": "./skip/skiplang/skdate/ts/src",
   "skiplang-json": "./skip/skiplang/skjson/ts/binding/src",
   "skipwasm-json": "./skip/skiplang/skjson/ts/wasm/src",
-  "skui-base": "./skui_base/ts/src",
-  "skui-common": "./skui_common/ts/wasm/src",
-  "skui-opengl": "./skui_opengl/ts/wasm/src",
-  "skui-fwk": "./skui_fwk/ts/src",
-  "skui-js": "./skui_js/ts/src",
+  "skui-base": "./base/ts/src",
+  "skui-common": "./common/ts/wasm/src",
+  "skui-opengl": "./opengl/ts/wasm/src",
+  "skui-fwk": "./framework/ts/src",
+  "skui-js": "./framework_js/ts/src",
 };
 
 const filename = fileURLToPath(import.meta.url);

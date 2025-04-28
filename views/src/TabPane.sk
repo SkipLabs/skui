@@ -1,0 +1,253 @@
+module SKUIViewsTabpane;
+
+@skuiview
+fun view(): (
+  Cli.Command,
+  Cli.ParseResults ~> Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
+) {
+  (
+    Cli.Command("tabpane")
+      .arg(
+        Cli.Arg::string("side")
+          .short("s")
+          .long("side")
+          .about("The tabpane size (left | top | right | bottom)")
+          .default("top"),
+      )
+      .about("View that display tabpane sample."),
+    args ~> {
+      path = Ui.Path::create("tabpane");
+      strSide = args.getString("side");
+      side = strSide match {
+      | "bottom" -> UiSide.Bottom()
+      | "left" -> UiSide.Left()
+      | "right" -> UiSide.Right()
+      | _ -> UiSide.Top()
+      };
+      (context, _root) ~> {
+        state = init(context, path.makeChild("tabsState"));
+        Ui.TabPane::create(
+          context,
+          path,
+          UiTabPane.LamController{
+            tabs => state.getTabs,
+            tab => state.getTab,
+            widget => state.getWidget,
+            actions => state.getActions,
+            action => state.getAction,
+            side => _ctx ~> side,
+            closable => (_ctx, _name) ~> true,
+            onClose_ => state.close,
+          },
+        )
+      }
+    },
+  )
+}
+
+base class Executable extends Ui.Executable {}
+
+base class ExecCommand extends Executable {
+  children =
+  | Create()
+  | Close(toClose: Array<String>)
+}
+
+const statePath: String = "ui/tpview/state";
+const colors: Array<String> = Array["yellow", "blue", "green", "red", "black"];
+
+const tabsKey: SKStore.StrID = SKStore.StrID("tabs");
+const nextKey: SKStore.StrID = SKStore.StrID("next");
+
+class Tab(color: String, alpha: Int = 100) uses Orderable {
+  fun toId(): String {
+    strAlpha = this.alpha.toString();
+    aChars = strAlpha.chars();
+    if (aChars.size() < 3) {
+      !strAlpha = String::fromChars(
+        Arrays.merge(Array::fill(3 - aChars.size(), '0'), aChars.toArray()),
+      )
+    };
+    `${this.color}_${strAlpha}`
+  }
+}
+
+class Tabs(v: Array<Tab>) extends SKStore.File
+class TabIds(v: Array<String>) extends SKStore.File
+
+class State(storage: SKStore.INotTyped, computed: SKStore.ENotTyped) {
+  //
+  fun getTabs(context: mutable SKStore.Context): Array<String> {
+    default: Tabs = Tabs(Array[]);
+    this.computed.getProp(context, tabsKey, Tabs::type, default).v.map(t ->
+      t.toId()
+    )
+  }
+
+  fun getTab(_context: mutable SKStore.Context, id: String): UiTabPane.Tab {
+    elems = id.split("_");
+    color = elems[0];
+    alpha = elems[1].toInt();
+    name = color match {
+    | "yellow" -> "Yellow"
+    | "blue" -> "Blue"
+    | "green" -> "Green"
+    | "red" -> "Red"
+    | "black" -> "Black"
+    | _ -> color
+    };
+    alphaTxt = Raw(`${alpha} %`);
+    UiTabPane.Tab{
+      optText => Some(Format(!"{1} color", Array[!name])),
+      optDiscriminant => Some(alphaTxt),
+      optTooltip => Some(Format(Raw("{1} {2}"), Array[!name, alphaTxt])),
+    }
+  }
+
+  fun getActions(_context: mutable SKStore.Context): Array<String> {
+    Array["add"]
+  }
+
+  fun getAction(
+    context: mutable SKStore.Context,
+    action: String,
+  ): UiTabs.Action {
+    action match {
+    | "add" ->
+      UiTabs.Action(
+        action,
+        context.getThemeIcon(UiTheme.Add()),
+        Some(!"Add tab"),
+        this.create,
+      )
+    | _ -> invariant_violation("Invalid action")
+    }
+  }
+
+  fun getWidget(context: mutable SKStore.Context, id: String): ?Ui.Widget {
+    elems = id.split("_");
+    color = elems[0];
+    alpha = elems[1].toInt();
+    optColor = color match {
+    | "yellow" -> Some(Colors.yellow())
+    | "blue" -> Some(Colors.blue())
+    | "green" -> Some(Colors.green())
+    | "red" -> Some(Colors.red())
+    | "black" -> Some(Colors.black())
+    | _ -> None()
+    };
+    optColor.map(color ->
+      Ui.Decorated::create(
+        context,
+        Ui.Path::create("tabpane").makeChild("content").makeChild(id),
+        UiDecorated.LamController{
+          decoration => _ctx ~>
+            Ui.Background(color.withAlpha(alpha.toFloat() / 100.0)),
+        },
+      )
+    );
+  }
+
+  fun create(context: mutable SKStore.Context): void {
+    this.setTodo(context, Create())
+  }
+
+  fun close(context: mutable SKStore.Context, toClose: Array<String>): void {
+    this.setTodo(context, Close(toClose))
+  }
+
+  private fun setTodo(
+    context: mutable SKStore.Context,
+    value: Executable,
+  ): void {
+    Ui.setTodo(context, this.storage, value);
+  }
+}
+
+fun update(
+  context: mutable SKStore.Context,
+  _scope: String,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  todo: Ui.Todo,
+  _optUserData: ?SKStore.UserData,
+): void {
+  execute(context, todo.command, values);
+}
+
+@debug
+fun execute(
+  context: mutable SKStore.Context,
+  executable: Ui.Executable,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+): void {
+  executable match {
+  | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
+  | Ui.Init() ->
+    values.set(
+      tabsKey,
+      Some(
+        Tabs(
+          Array[
+            Tab("yellow"),
+            Tab("blue"),
+            Tab("green"),
+            Tab("red"),
+            Tab("black"),
+          ],
+        ),
+      ),
+    );
+    values.set(nextKey, Some(SKStore.IntFile(0)))
+  | Create() ->
+    tabs = values.get(tabsKey).map(Tabs::type).fromSome().v;
+    next = values
+      .get(nextKey)
+      .map(f ~> SKStore.IntFile::type(f).value)
+      .default(0);
+    nColor = colors[next];
+    current = tabs.filter(t -> t.color == nColor);
+    if (current.size() == 0) {
+      !tabs = Arrays.add(tabs, Tab(nColor));
+    } else {
+      alpha = current.reduce((acc, v) -> acc + v.alpha, 0);
+      nAlpha = (100.0 / (2.0 * alpha.toFloat()) * 100.0).toInt();
+      // For testing only, can loop
+      while (current.any(t -> t.alpha == nAlpha)) {
+        !nAlpha = nAlpha / 2;
+      };
+      !tabs = Arrays.add(tabs, Tab(nColor, nAlpha));
+    };
+    values.set(tabsKey, Some(Tabs(tabs)));
+    values.set(nextKey, Some(SKStore.IntFile((next + 1) % 5)))
+  | Close(toClose) ->
+    tabs = values.get(tabsKey).map(Tabs::type).fromSome().v;
+    set = SortedSet::createFromItems(toClose);
+    values.set(tabsKey, Some(Tabs(tabs.filter(t -> !set.contains(t.toId())))))
+  | _ -> SKStore.cast_violation("SKUIViewsTabpane.Executable", executable)
+  }
+}
+
+@debug
+fun init(context: mutable SKStore.Context, path: Ui.Path): State {
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeDir(
+    SKStore.StrID::keyType,
+    Ui.Todo::type,
+    dirName,
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick()))],
+  );
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  computedHdl = SKStore.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    stateHdl,
+    Ui.todoProp,
+    Array[tabsKey, nextKey],
+    update,
+    None(),
+  );
+  State(SKStore.IHandle::notTyped(dirName), computedHdl)
+}
+
+module end;

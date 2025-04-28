@@ -1,0 +1,64 @@
+module UiToggle;
+
+class HoverHandler(toggle: Ui.Toggle) extends FWK.HoverHandler {
+  fun getIdentifier(): Ui.Path {
+    this.toggle.path
+  }
+
+  fun enter(context: mutable SKStore.Context): void {
+    if (!this.toggle.controller.isDisabled(context, true)) {
+      this.toggle.state.emitHover(context, true);
+      FWKPointer.setCursor(context, Ui.HandCursor());
+    };
+  }
+
+  fun manage(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+    _optPrevious: ?FWK.HoverHandler,
+  ): FWK.Result {
+    if (this.toggle.controller.isDisabled(context, true)) {
+      return FWK.Result(false)
+    };
+    FWK.Result(
+      if (mouse.isPrimaryPressed(context.getTick())) {
+        SystemProperties.setRequireFocus(context, this.toggle.path);
+        this.toggle.state.emitArmed(context, true);
+        true
+      } else if (
+        mouse.isPrimaryReleased(context.getTick()) &&
+        this.toggle.state.isArmed(context)
+      ) {
+        this.toggle.controller.getIndeterminateProp(context, true).each(prop ->
+          prop.set(context, Some(false), 0)
+        );
+        selectedProp = this.toggle.controller.getSelectedProp(context, true);
+        this.toggle.controller.getKind(context, true) match {
+        | Toggle()
+        | Checkbox() ->
+          selectedProp.toggle(context, 0)
+        | Radio() -> selectedProp.set(context, Some(true), 0)
+        };
+        this.toggle.state.emitArmed(context, false);
+        true
+      } else {
+        false
+      },
+    )
+  }
+
+  fun exit(context: mutable SKStore.Context): void {
+    FWKPointer.resetCursor(context);
+    this.toggle.state.emitAll(context, false, false);
+  }
+
+  fun getTooltip(context: mutable SKStore.Context): ?FWK.SourcedWidget {
+    Ui.buildTooltip(
+      context,
+      this.toggle.path,
+      this.toggle.controller.getTooltip,
+    )
+  }
+}
+
+module end;

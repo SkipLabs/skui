@@ -1,0 +1,199 @@
+module SKUIX11;
+
+private const PrimaryButton: Int = 1;
+private const MiddleButton: Int = 2;
+private const SecondaryButton: Int = 3;
+private const WheelUpButton: Int = 4;
+private const WheelDownButton: Int = 5;
+
+class OnWindowClose(mutable SKStore.Context ~> void) extends SKStore.File
+
+@cpp_extern("SKIP_SKUIX11_launch")
+native fun launch(
+  wId: Int,
+  title: String,
+  screen: Int,
+  framePerSecond: Int,
+): void;
+
+@debug
+@cpp_extern("SKIP_SKUIX11_sendMessage")
+native fun sendMessage(
+  wId: Int,
+  message: String,
+  asyncMode: Bool,
+  delay: UInt32,
+): void;
+
+@cpp_export("SKIP_SKUIX11_windowInitialized")
+fun windowInitialized(wId: Int): void {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    context.setGlobal(
+      "SKUIMessage.Sender",
+      SKUIMessage.Sender((_ctx, message, asyncMode, delay) ~> {
+        sendMessage(wId, message, asyncMode, delay);
+        true
+      }),
+    );
+    context.checkPendingMessages();
+    context.updateIfRoot();
+  });
+  SKStore.destroyObstack(pos);
+}
+
+@cpp_export("SKIP_SKUIX11_manageMouseLocation")
+private fun manageMouseLocation(
+  _wId: Int,
+  x: Int,
+  y: Int,
+  _screenX: Int,
+  _screenY: Int,
+): void {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    FWKMouse.execute(
+      context,
+      FWKMouse.Location(
+        Geometry.Offset(x.toFloat(), y.toFloat()),
+        context.systemTimeStamp(),
+        context.getTick(),
+      ),
+    );
+    context.updateIfRoot();
+  });
+  SKStore.destroyObstack(pos);
+}
+
+@cpp_export("SKIP_SKUIX11_manageMouseButton")
+private fun manageMouseButton(_wId: Int, button: Int, pressed: Bool): void {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    FWKMouse.execute(
+      context,
+      FWKMouse.Button(
+        button match {
+        | WheelUpButton -> FWK.WheelUp()
+        | WheelDownButton -> FWK.WheelDown()
+        | PrimaryButton -> FWK.Primary()
+        | MiddleButton -> FWK.Middle()
+        | SecondaryButton -> FWK.Secondary()
+        | _ -> FWK.Unknown(button)
+        },
+        pressed,
+        context.systemTimeStamp(),
+        context.getTick(),
+      ),
+    );
+    context.updateIfRoot();
+  });
+  SKStore.destroyObstack(pos);
+}
+
+@cpp_export("SKIP_SKUIX11_manageResize")
+fun manageResize(wId: Int, w: Int, h: Int, r: Int): void {
+  pos = SKStore.newObstack();
+  SKStore.Context::withoutGc(context ~> {
+    context.getGlobal("FWK.Window.Size").map(FWK.Sizer::type).each(sizer ->
+      sizer.value(context, wId, w, h, r.toFloat() / 100.0)
+    );
+    context.updateIfRoot();
+  });
+  SKStore.destroyObstack(pos);
+}
+
+@cpp_export("SKIP_SKUIX11_manageKeyPressed")
+private fun manageKeyPressed(
+  _wId: Int,
+  keyCode: Int,
+  keySym: Int,
+  optKeyValue: ?String,
+): void {
+  fn = context ~> {
+    webCodeForX11Code(keyCode) match {
+    | Some(code) ->
+      symbol = webSymForKeySym(keySym).default(code);
+      fOptKeyValue = if (symbol.startsWith("dead_") && optKeyValue.isNone()) {
+        kDead.maybeGet(symbol).map(c -> c.toString());
+      } else {
+        optKeyValue
+      };
+      FWKKeys.execute(
+        context,
+        FWKKeys.KeyPressed(
+          code,
+          symbol,
+          fOptKeyValue,
+          UiEvent.Locks(
+            if (code == UiEvent.KeyInfo::capsLock) {
+              Some(UiEvent.Toggle())
+            } else {
+              None()
+            },
+            if (code == UiEvent.KeyInfo::numLock) {
+              Some(UiEvent.Toggle())
+            } else {
+              None()
+            },
+            if (code == UiEvent.KeyInfo::scrollLock) {
+              Some(UiEvent.Toggle())
+            } else {
+              None()
+            },
+          ),
+          context.systemTimeStamp(),
+          context.getTick(),
+        ),
+      );
+      context.updateIfRoot()
+    | _ -> debug(`Unknown symbol ${keyCode}`)
+    };
+  };
+  SKStore.Context::withoutGc(fn);
+}
+
+@cpp_export("SKIP_SKUIX11_manageKeyReleased")
+fun manageKeyReleased(_wId: Int, keyCode: Int): void {
+  pos = SKStore.newObstack();
+  fn = context ~> {
+    webCodeForX11Code(keyCode) match {
+    | Some(code) ->
+      FWKKeys.execute(
+        context,
+        FWKKeys.KeyReleased(code, context.systemTimeStamp(), context.getTick()),
+      )
+    | _ -> debug(`Unknown symbol ${keyCode}`)
+    };
+    context.updateIfRoot();
+  };
+  SKStore.Context::withoutGc(fn);
+  SKStore.destroyObstack(pos);
+}
+
+@cpp_export("SKIP_SKUIX11_manageRequestClose")
+fun manageRequestClose(wId: Int): Bool {
+  pos = SKStore.newObstack();
+  res = SKStore.Context::withoutGc(context ~>
+    SystemProperties.quit(context, wId)
+  );
+  SKStore.destroyObstack(pos);
+  res;
+}
+
+@cpp_extern("SKIP_SKUIX11_requestClipboard")
+native fun requestClipboard(wid: Int, mimeType: String): void;
+
+@cpp_extern("SKIP_SKUIX11_updateClipboard")
+native fun updateClipboard(wid: Int, mimeType: String, data: String): void;
+
+@cpp_export("SKIP_SKUIX11_performPaste")
+fun performPaste(wid: Int, mimeType: String, data: String): void {
+  SKStore.Context::withoutGc(context ~> {
+    type = FWKClipboard.Type::fromMime(mimeType);
+    content = FWKClipboard.Content(Map[type => IO.Text(data)]);
+    debug(("TODO: Manage on paste event", wid, type, content));
+    context.updateIfRoot();
+  });
+}
+
+module end;

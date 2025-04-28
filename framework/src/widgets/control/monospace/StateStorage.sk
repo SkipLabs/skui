@@ -1,0 +1,1091 @@
+module UiMonospace;
+
+const statePath: String = "ui/monospace/state";
+const numberOfLinesProp: SKStore.StrID = SKStore.StrID("numberOfLines");
+const numberOfColumnsProp: SKStore.StrID = SKStore.StrID("numberOfColumns");
+const fontLoadingProp: SKStore.StrID = SKStore.StrID("fontLoading");
+const linesProp: SKStore.StrID = SKStore.StrID("lines");
+const fontSizeProp: SKStore.StrID = SKStore.StrID("fontSize");
+const caretVisibleTimeProp: SKStore.StrID = SKStore.StrID("caretVisibleTime");
+const verifiedPositionProp: SKStore.StrID = SKStore.StrID("verifiedPosition");
+const displayPositionProp: SKStore.StrID = SKStore.StrID("displayPosition");
+const verifiedSelectionProp: SKStore.StrID = SKStore.StrID("verifiedSelection");
+const verifiedTargetProp: SKStore.StrID = SKStore.StrID("verifiedTarget");
+const colorsProp: SKStore.StrID = SKStore.StrID("colors");
+
+class HStorage(
+  name: String,
+  handle: SKStore.IHandle<SKStore.Key, SKStore.File>,
+) extends Storage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKStore.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKStore.IHandle(k ~> k, f ~> f, SKStore.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.dirName.toString()
+  }
+
+  fun setTodo(context: mutable SKStore.Context, value: Ui.Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
+  }
+
+  fun setHScroll(
+    context: mutable SKStore.Context,
+    optScroll: ?Ui.Scroll,
+  ): void {
+    this.handle.writeOrRemove(context, Ui.hScrollProp, optScroll)
+  }
+
+  fun setVScroll(
+    context: mutable SKStore.Context,
+    optScroll: ?Ui.Scroll,
+  ): void {
+    this.handle.writeOrRemove(context, Ui.vScrollProp, optScroll)
+  }
+
+  fun setScrolling(
+    context: mutable SKStore.Context,
+    optTick: ?SKStore.Tick,
+  ): void {
+    this.handle.writeOrRemove(
+      context,
+      Ui.scrollingProp,
+      optTick.map(t -> SKStore.IntFile(t.value)),
+    )
+  }
+
+  fun setHover(context: mutable SKStore.Context, optValue: ?Hover): void {
+    this.handle.writeOrRemove(context, Ui.hoverProp, optValue)
+  }
+
+  fun setArmed(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.armedProp, SKStore.BoolFile(value))
+  }
+
+  fun setBlinking(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.blinkingProp, SKStore.BoolFile(value))
+  }
+
+  fun setMoveSelection(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.moveSelectionProp, SKStore.BoolFile(value))
+  }
+
+  fun setVisibility(
+    context: mutable SKStore.Context,
+    optVisibility: ?Ui.Visibility,
+  ): void {
+    this.handle.writeOrRemove(context, Ui.visibilityProp, optVisibility)
+  }
+
+  // GETTERS
+
+  fun getVisibility(context: mutable SKStore.Context): ?Ui.Visibility {
+    this.handle.maybeGetProp(context, Ui.visibilityProp, Ui.Visibility::type)
+  }
+
+  fun getScrolling(context: mutable SKStore.Context): ?SKStore.Tick {
+    this.handle.maybeGetInt(context, Ui.scrollingProp).map(v -> SKStore.Tick(v))
+  }
+
+  fun getTodo(context: mutable SKStore.Context): Ui.Todo {
+    Ui.Todo::type(this.handle.get(context, Ui.todoProp))
+  }
+}
+
+class HState(
+  path: Ui.Path,
+  storage: SKStore.EHandle<SKStore.Key, SKStore.File>,
+  computed: SKStore.EHandle<SKStore.Key, SKStore.File>,
+) extends State {
+  //
+  fun getHover(context: mutable SKStore.Context): ?Hover {
+    this.storage.maybeGetProp(context, Ui.hoverProp, f ~> f as Hover _)
+  }
+
+  fun isArmed(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.storage.getBool(context, Ui.armedProp, isUntracked)
+  }
+
+  fun isMoveSelection(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.storage.getBool(context, Ui.moveSelectionProp, isUntracked)
+  }
+
+  fun getHScroll(context: mutable SKStore.Context): ?Ui.Scroll {
+    this.storage.maybeGetProp(context, Ui.hScrollProp, f ~> f as Ui.Scroll _);
+  }
+
+  fun getVScroll(context: mutable SKStore.Context): ?Ui.Scroll {
+    this.storage.maybeGetProp(context, Ui.vScrollProp, f ~> f as Ui.Scroll _);
+  }
+
+  fun isScrolling(context: mutable SKStore.Context): Bool {
+    this.storage.maybeGetInt(context, Ui.scrollingProp).isSome()
+  }
+
+  // COMPUTED
+
+  fun getLineCommandsManager(
+    _context: mutable SKStore.Context,
+    _isUntracked: Bool = false,
+  ): Ui.TextCommandsManager {
+    TextCommandsManager(this)
+  }
+
+  fun getNumberOfLines(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Int {
+    this.computed.getInt(context, numberOfLinesProp, isUntracked)
+  }
+
+  fun getNumberOfColumns(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Int {
+    this.computed.getInt(context, numberOfColumnsProp, isUntracked)
+  }
+
+  fun isFontLoading(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Bool {
+    this.computed.getBool(context, fontLoadingProp, isUntracked)
+  }
+
+  fun isCaretVisible(context: mutable SKStore.Context): Bool {
+    this.computed.getBool(context, Ui.caretVisibleProp)
+  }
+
+  fun getHEnsureVisible(context: mutable SKStore.Context): ?Ui.Visible {
+    this.computed.maybeGetProp(context, Ui.hEnsureVisibleProp, f ~>
+      f as Ui.Visible _
+    ).flatMap(v -> if (v.tick == context.getTick()) Some(v) else None());
+  }
+
+  fun getVEnsureVisible(context: mutable SKStore.Context): ?Ui.Visible {
+    this.computed.maybeGetProp(context, Ui.vEnsureVisibleProp, f ~>
+      f as Ui.Visible _
+    ).flatMap(v -> if (v.tick == context.getTick()) Some(v) else None());
+  }
+
+  fun getLines(context: mutable SKStore.Context): Vector<Line> {
+    this.computed.getProp(
+      context,
+      linesProp,
+      Lines::type,
+      Lines(Vector[Line(context.timeStamp().value, Array[], Array[])]),
+    ).value
+  }
+
+  fun getFontSize(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Ui.FontSize {
+    this.computed.getProp(
+      context,
+      fontSizeProp,
+      Ui.FontSize::type,
+      Ui.FontSize(8.0, 8.0, 4.0),
+      isUntracked,
+    )
+  }
+
+  fun getPosition(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Ui.Position {
+    this.computed.getProp(
+      context,
+      verifiedPositionProp,
+      Ui.Position::type,
+      Ui.Position::zero,
+      isUntracked,
+    )
+  }
+
+  fun getTarget(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.Position {
+    this.computed.maybeGetProp(
+      context,
+      verifiedTargetProp,
+      Ui.Position::type,
+      isUntracked,
+    )
+  }
+
+  fun getSelection(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?Ui.Portion {
+    selection = this.computed.getProp(
+      context,
+      verifiedSelectionProp,
+      Ui.Portion::type,
+      Ui.Portion::empty,
+      isUntracked,
+    );
+    if (selection.isEmpty()) {
+      None()
+    } else {
+      Some(selection)
+    }
+  }
+
+  fun getColorRanges(context: mutable SKStore.Context): Vector<ColorRange> {
+    this.computed.getProp(
+      context,
+      colorsProp,
+      ColorRanges::type,
+      ColorRanges(Vector[]),
+    ).value;
+  }
+
+  fun computeClipboardContent(
+    context: mutable SKStore.Context,
+    endLine: Ui.EndLine,
+    isUntracked: Bool = false,
+  ): ?FWKClipboard.Content {
+    lines = this.computed.getProp(
+      context,
+      linesProp,
+      Lines::type,
+      Lines::empty(() -> context.timeStamp().value),
+      isUntracked,
+    ).value;
+    toCopy = mutable Vector<Array<Char>>[];
+    this.getSelection(context, isUntracked) match {
+    | Some(selection) ->
+      if (selection.start.line == selection.end.line) {
+        line = lines[selection.start.line];
+        startColumn = Math.clamp(selection.start.column, 0, line.text.size());
+        endColumn = Math.clamp(selection.end.column, 0, line.text.size());
+        copied = line.text.slice(startColumn, endColumn);
+        if (!copied.isEmpty()) {
+          toCopy.push(copied)
+        };
+      } else {
+        sLine = lines[selection.start.line];
+        startColumn = Math.clamp(selection.start.column, 0, sLine.text.size());
+        sCopied = sLine.text.slice(startColumn, sLine.text.size());
+        toCopy.push(sCopied);
+        for (idx in Range(selection.start.line + 1, selection.end.line)) {
+          toCopy.push(lines[idx].text);
+        };
+        eLine = lines[selection.end.line];
+        endColumn = Math.clamp(selection.end.column, 0, eLine.text.size());
+        eCopied = eLine.text.slice(0, endColumn);
+        toCopy.push(eCopied);
+      }
+    | _ -> void
+    };
+    if (!toCopy.isEmpty()) {
+      endLineChars = endLine.toChars();
+      index = 0;
+      withEndLines = Array::fillBy(toCopy.size() + toCopy.size() - 1, idx ->
+        if (idx % 2 == 0) {
+          r = toCopy[index];
+          !index = index + 1;
+          r
+        } else {
+          endLineChars
+        }
+      );
+      Some(
+        FWKClipboard.Content::plain(
+          String::fromChars(Arrays.mergeAll(withEndLines)),
+        ),
+      )
+    } else {
+      None()
+    }
+  }
+
+  fun emitHover(context: mutable SKStore.Context, optHover: ?Hover): void {
+    this.emit(context, SetHover(optHover));
+  }
+
+  fun emitArmed(context: mutable SKStore.Context, value: Bool): void {
+    this.emit(context, SetArmed(value));
+  }
+
+  fun emitDiacritic(context: mutable SKStore.Context, value: Char): void {
+    this.emit(context, ManageDiacritic(value));
+  }
+
+  fun emitUnicode(context: mutable SKStore.Context, optValue: ?Int): void {
+    this.emit(context, ManageUnicode(optValue));
+  }
+
+  fun emitMoveSelection(context: mutable SKStore.Context, value: Bool): void {
+    this.emit(context, SetMoveSelection(value));
+  }
+
+  fun emitNewLine(
+    context: mutable SKStore.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, NewLine(optRepeatOn));
+  }
+
+  fun emitUndo(
+    context: mutable SKStore.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Undo(optRepeatOn));
+  }
+
+  fun emitRedo(
+    context: mutable SKStore.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Redo(optRepeatOn));
+  }
+
+  fun emitCut(context: mutable SKStore.Context): void {
+    this.emit(context, Cut());
+  }
+
+  fun emitCopy(context: mutable SKStore.Context): void {
+    this.emit(context, Copy());
+  }
+
+  fun emitSave(context: mutable SKStore.Context): void {
+    this.emit(context, Save());
+  }
+
+  fun emitDuplicate(context: mutable SKStore.Context): void {
+    this.emit(context, Duplicate());
+  }
+
+  fun emitSwitchLine(context: mutable SKStore.Context): void {
+    this.emit(context, SwitchLine());
+  }
+
+  fun emitDecrLine(
+    context: mutable SKStore.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, DecrLine(optRepeatOn));
+  }
+
+  fun emitIncrLine(
+    context: mutable SKStore.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, IncrLine(optRepeatOn));
+  }
+
+  fun emitIndent(
+    context: mutable SKStore.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Indent(optRepeatOn));
+  }
+
+  fun emitOutdent(
+    context: mutable SKStore.Context,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Outdent(optRepeatOn));
+  }
+
+  fun emitPaste(context: mutable SKStore.Context): void {
+    FWKClipboard.paste(
+      context,
+      FWKClipboard.Plain(),
+      SKUIMessage.Target::forClass(
+        statePath,
+        this.storage.dirName.toString(),
+        "UiMonospace.Paste",
+      ),
+    )
+  }
+
+  fun emitUpper(context: mutable SKStore.Context): void {
+    this.emit(context, Upper());
+  }
+
+  fun emitLower(context: mutable SKStore.Context): void {
+    this.emit(context, Lower());
+  }
+
+  fun emitInsert(
+    context: mutable SKStore.Context,
+    text: String,
+    ignoreSelection: Bool,
+    optPosition: ?Ui.Position,
+  ): void {
+    this.emit(context, Insert(text, ignoreSelection, optPosition));
+  }
+
+  fun emitBlinking(context: mutable SKStore.Context, value: Bool): void {
+    this.emit(context, SetBlinking(value));
+  }
+
+  fun emitHScroll(context: mutable SKStore.Context, value: ?Ui.Scroll): void {
+    this.emit(context, SetHScroll(value));
+  }
+
+  fun emitVScroll(context: mutable SKStore.Context, value: ?Ui.Scroll): void {
+    this.emit(context, SetVScroll(value));
+  }
+
+  fun emitHScrolling(context: mutable SKStore.Context, value: Int): void {
+    this.emit(context, ManageHScrolling(value, context.getTick()));
+  }
+
+  fun emitVScrolling(context: mutable SKStore.Context, value: Int): void {
+    this.emit(context, ManageVScrolling(value, context.getTick()));
+  }
+
+  fun emitCancelScrolling(
+    context: mutable SKStore.Context,
+    tick: SKStore.Tick,
+  ): void {
+    this.emit(context, CancelScrolling(tick));
+  }
+
+  fun emitDeleteTo(
+    context: mutable SKStore.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, DeleteTo(target, optRepeatOn));
+  }
+
+  fun emitGoTo(
+    context: mutable SKStore.Context,
+    target: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, GoTo(target, optRepeatOn));
+  }
+
+  fun emitSelectTo(
+    context: mutable SKStore.Context,
+    target: Selection,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, SelectTo(target, optRepeatOn));
+  }
+
+  fun emitHVisible(context: mutable SKStore.Context, index: Int): void {
+    this.emit(context, ManageHVisible(index))
+  }
+
+  fun emitVVisible(context: mutable SKStore.Context, index: Int): void {
+    this.emit(context, ManageVVisible(index))
+  }
+
+  fun emitTarget(
+    context: mutable SKStore.Context,
+    optTarget: ?Ui.Position,
+  ): void {
+    this.emit(context, DnDTarget(optTarget));
+  }
+
+  fun emitSelectLine(context: mutable SKStore.Context, line: Int): void {
+    this.emit(context, SelectLine(line))
+  }
+
+  fun emitAll(
+    context: mutable SKStore.Context,
+    commands: readonly Vector<Command>,
+  ): void {
+    this.emit(context, All(commands.toArray()))
+  }
+
+  private fun emit(
+    context: mutable SKStore.Context,
+    command: SKUIMessage.Command,
+  ): void {
+    SKUIMessage.emit(
+      context,
+      statePath,
+      this.storage.dirName.toString(),
+      command,
+    )
+  }
+
+  fun emitOpenGoToLine(context: mutable SKStore.Context): void {
+    context.openInputDialog(
+      !"What is the line number?",
+      todo()/*SKUIMessage.Target::forClass(
+      statePath,
+      this.storage.dirName.toString(),
+      "UiMonospace.GoToLine",
+      )*/ ,
+      true,
+      None(),
+      UiDialogs.Settings{
+        //TODO: optPlaceHolder => Some((!"Line Number").toJSON()),
+        maxChars => 6,
+        kind => UiInput.Integer(Some(1)),
+      },
+    )
+  }
+}
+
+class TextCommandsManager(state: HState) extends Ui.TextCommandsManager {
+  //
+  fun manageAcquire(context: mutable SKStore.Context): void {
+    SystemProperties.setRequireFocus(context, this.state.path);
+  }
+
+  fun getSelectToPosCommand(position: Ui.Position): SKUIMessage.Command {
+    SelectTo(TPos(Some(position)))
+  }
+
+  fun getGoToPosCommand(position: Ui.Position): SKUIMessage.Command {
+    GoTo(TPos(Some(position)))
+  }
+
+  fun getSetMoveSelectionCommand(move: Bool): SKUIMessage.Command {
+    SetMoveSelection(move)
+  }
+
+  fun getSetArmedCommand(armed: Bool): SKUIMessage.Command {
+    SetArmed(armed)
+  }
+
+  fun getSelectGroupCommand(): SKUIMessage.Command {
+    SelectTo(TGroup(None()))
+  }
+
+  fun getSelectLineCommand(): SKUIMessage.Command {
+    SelectTo(TInLine(None()))
+  }
+
+  fun getSelectAllCommand(): SKUIMessage.Command {
+    SelectTo(TAll())
+  }
+
+  fun getDeleteSelectionCommand(): SKUIMessage.Command {
+    DeleteTo(TPos(None()))
+  }
+
+  fun getInsertCommand(
+    str: String,
+    ignoreSelection: Bool,
+    position: Ui.Position,
+  ): SKUIMessage.Command {
+    Insert(str, ignoreSelection, Some(position))
+  }
+
+  fun getTargetCommand(optPosition: ?Ui.Position): SKUIMessage.Command {
+    DnDTarget(optPosition)
+  }
+
+  fun emitAll(
+    context: mutable SKStore.Context,
+    commands: readonly Vector<SKUIMessage.Command>,
+  ): void {
+    this.state.emitAll(context, commands.map(cmd -> cmd as Command _));
+  }
+}
+
+class UserData(
+  controller: Controller,
+  path: Ui.Path,
+  source: Int,
+) extends SKStore.UserData {}
+
+@debug
+fun init(
+  context: mutable SKStore.Context,
+  path: Ui.Path,
+  controller: Controller,
+): Parameters {
+  source = context.timeStamp().value;
+  dirName = Ui.controllerDirName(path);
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  managedDirName = SKStore.DirName::make(dirName, "managed/");
+  initKeys = Array[
+    linesProp,
+    Ui.diacriticProp,
+    Ui.unicodeProp,
+    displayPositionProp,
+    Ui.positionProp,
+    Ui.selectionProp,
+    Ui.targetProp,
+    Ui.historyProp,
+    Ui.ensureVisibleProp,
+  ];
+  preComputedHdl = context.makeNotTypedPre(
+    computedDirName,
+    Array[(SKStore.KKeys(), SKStore.Keys(initKeys))],
+  );
+  stateHdl = context.makeNotTyped(
+    dirName,
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick()))],
+  );
+  dv = SKStore.IntFile(0);
+  toReallyDoHdl = stateHdl.map(
+    k ~> k,
+    Ui.Todo::type,
+    context,
+    SKStore.DirName::make(dirName, "todo/"),
+    (context, writer, key, it) ~> {
+      if (key == Ui.todoProp) {
+        todo = Ui.Todo::type(it.first);
+        timedText = controller.getText(context).getTimed(context);
+        if (timedText.i1 > todo.tick && timedText.i2 != source) {
+          !todo = Ui.Todo(ManageText(timedText.i0.toString()), timedText.i1)
+        };
+        timedPosition = controller.getPosition(context).getTimed(context);
+        if (timedPosition.i1 > todo.tick && timedPosition.i2 != source) {
+          !todo = Ui.Todo(
+            GoTo(TPos(Some(timedPosition.i0.decr()))),
+            timedPosition.i1,
+          )
+        };
+        timedPortion = controller.getSelection(context).getTimed(context);
+        if (timedPortion.i1 > todo.tick && timedPortion.i2 != source) {
+          !todo = Ui.Todo(
+            SelectTo(TPortion(timedPortion.i0.decr())),
+            timedPortion.i1,
+          )
+        };
+        writer.set(key, todo);
+      }
+    },
+  );
+  managedHdl = SKStore.derive(
+    context,
+    dirName.toString(),
+    managedDirName,
+    toReallyDoHdl,
+    Ui.todoProp,
+    initKeys,
+    update,
+    Some(UserData(controller, path, source)),
+    Some(preComputedHdl),
+  );
+  afterSourceHdl = context.makeDir(
+    k ~> k,
+    SKStore.IntFile::type,
+    SKStore.DirName::make(dirName, "afterSource/"),
+    Array[
+      (SKStore.KKeys(), dv),
+      (linesProp, dv),
+      (Ui.diacriticProp, dv),
+      (Ui.unicodeProp, dv),
+      (Ui.historyProp, dv),
+      (Ui.hEnsureVisibleProp, dv),
+      (Ui.vEnsureVisibleProp, dv),
+      (Ui.positionProp, dv),
+      (Ui.targetProp, dv),
+      (Ui.selectionProp, dv),
+      (displayPositionProp, dv),
+      (fontSizeProp, dv),
+      (fontLoadingProp, dv),
+      (Ui.caretVisibleProp, dv),
+    ],
+  );
+  computedHdl = afterSourceHdl
+    .map(
+      k ~> k,
+      f ~> f,
+      context,
+      SKStore.DirName::make(dirName, "after/"),
+      (context, writer, key, _) ~> {
+        if (key == fontSizeProp) {
+          font = context.getThemeFont(UiTheme.Monospace());
+          writer.set(key, context.getTextSupport().getSpaceSize(context, font));
+        } else if (key == fontLoadingProp) {
+          font = context.getThemeFont(UiTheme.Monospace());
+          writer.set(
+            key,
+            SKStore.BoolFile(context.getFontSupport().isLoading(context, font)),
+          );
+        } else if (key == Ui.caretVisibleProp) {
+          optVisibility = stateHdl.maybeGetProp(
+            context,
+            Ui.visibilityProp,
+            Ui.Visibility::type,
+          );
+          optCaretVisible = preComputedHdl
+            .maybeGetInt(context, caretVisibleTimeProp)
+            .map(v -> SKStore.Tick(v));
+          writer.set(
+            key,
+            SKStore.BoolFile(
+              optVisibility match {
+              | Some(visiblity) ->
+                optCaretVisible match {
+                | Some(tick) ->
+                  if (visiblity.tick == tick) visiblity.visible else true
+                | _ -> true
+                }
+              | _ -> optCaretVisible.isSome()
+              },
+            ),
+          )
+        } else {
+          managedHdl.maybeGet(context, key).each(value -> {
+            if (key == linesProp) {
+              lines = Lines::type(value).value;
+              columnsNumber = lines.reduce(
+                (acc, l) -> Math.max(acc, l.text.size()),
+                0,
+              );
+              writer.set(numberOfLinesProp, SKStore.IntFile(lines.size()));
+              writer.set(numberOfColumnsProp, SKStore.IntFile(columnsNumber));
+            };
+            writer.set(key, value)
+          })
+        }
+      },
+    )
+    .map(
+      k ~> k,
+      f ~> f,
+      context,
+      SKStore.DirName::make(dirName, "verified/"),
+      (context, writer, key, it) ~> {
+        if (key == Ui.selectionProp) {
+          portion = Ui.Portion::type(it.first);
+          controller
+            .getSelection(context, true)
+            .set(context, Some(portion.incr()), source);
+          lines = managedHdl
+            .maybeGet(context, linesProp)
+            .map(Lines::type)
+            .default(Lines::empty(() -> context.timeStamp().value)).value;
+          sLineIdx = Math.clamp(portion.start.line, 0, lines.size() - 1);
+          eLineIdx = Math.clamp(portion.end.line, 0, lines.size() - 1);
+          sLine = lines[sLineIdx];
+          eLine = lines[eLineIdx];
+          sColumnIdx = Math.clamp(portion.start.column, 0, sLine.text.size());
+          eColumnIdx = Math.clamp(portion.end.column, 0, eLine.text.size());
+          // verify
+          writer.set(
+            verifiedSelectionProp,
+            Ui.Portion(
+              Ui.Position(sLineIdx, sColumnIdx),
+              Ui.Position(eLineIdx, eColumnIdx),
+            ),
+          )
+        } else if (key == Ui.positionProp) {
+          position = Ui.Position::type(it.first);
+          controller
+            .getPosition(context, true)
+            .set(context, Some(position.incr()), source);
+          // verify
+          lines = managedHdl
+            .maybeGet(context, linesProp)
+            .map(Lines::type)
+            .default(Lines::empty(() -> context.timeStamp().value)).value;
+          lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+          line = lines[lineIdx];
+          columnIdx = Math.clamp(position.column, 0, line.text.size());
+          writer.set(verifiedPositionProp, Ui.Position(lineIdx, columnIdx))
+        } else if (key == Ui.targetProp) {
+          position = Ui.Position::type(it.first);
+          // verify
+          lines = managedHdl
+            .maybeGet(context, linesProp)
+            .map(Lines::type)
+            .default(Lines::empty(() -> context.timeStamp().value)).value;
+          lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+          line = lines[lineIdx];
+          columnIdx = Math.clamp(position.column, 0, line.text.size());
+          writer.set(verifiedTargetProp, Ui.Position(lineIdx, columnIdx))
+        } else if (key == linesProp) {
+          controller.getColorSupplier(context).each(supplier ->
+            controller.getBracketsChecker(context).each(checker -> {
+              colors = mutable Vector<ColorRange>[];
+              lines = Lines::type(it.first).value;
+              stack = mutable Vector<Bracket>[];
+              optCurrent: ?Bracket = None();
+              optPosition: ?Ui.Position = None();
+              update = (idx, current, optBracket) -> {
+                supplier(String::fromChars(current.value)).each(color ->
+                  optPosition.each(start ->
+                    colors.push(
+                      optBracket match {
+                      | Some(bracket) ->
+                        ColorRange(
+                          start,
+                          Ui.Position(
+                            idx,
+                            bracket.index + bracket.value.size(),
+                          ),
+                          color,
+                        )
+                      | _ -> ColorRange(start, Ui.LineEnd(idx), color)
+                      },
+                    )
+                  )
+                );
+                !optPosition = None();
+                !optCurrent = None()
+              };
+              check: (Int, ?Bracket) -> void = (idx, optBracket) -> {
+                optNew = checker(optCurrent, optBracket, stack);
+                (optCurrent, optNew) match {
+                | (None(), Some(bracket)) ->
+                  !optPosition = Some(Ui.Position(idx, bracket.index));
+                  !optCurrent = Some(bracket)
+                | (Some(current), None()) -> update(idx, current, optBracket)
+                | (Some(current), Some(bracket)) ->
+                  if (
+                    optCurrent.map(b -> b.value) != optNew.map(b -> b.value)
+                  ) {
+                    update(idx, current, optBracket);
+                    !optPosition = Some(Ui.Position(idx, bracket.index));
+                    !optCurrent = Some(bracket)
+                  } else {
+                    !optCurrent = optNew
+                  }
+                | (None(), None()) -> !optCurrent = optNew
+                }
+              };
+              lines.eachWithIndex((idx, line) -> {
+                line.brackets.each(bracket -> check(idx, Some(bracket)));
+                check(idx, None())
+              });
+              writer.set(colorsProp, ColorRanges(unsafe_chill_trust_me(colors)))
+            })
+          )
+        };
+        writer.set(key, it.first);
+      },
+    )
+    .map(
+      k ~> k,
+      f ~> f,
+      context,
+      computedDirName,
+      (context, writer, key, it) ~>
+        if (key == verifiedPositionProp) {
+          if (stateHdl.getBool(context, Ui.blinkingProp)) {
+            writer.set(
+              caretVisibleTimeProp,
+              SKStore.IntFile(context.getTick().value),
+            );
+            SKUIMessage.emit(
+              context,
+              statePath,
+              dirName.toString(),
+              ToggleHidden(context.getTick()),
+              false,
+              Some(500),
+            );
+          };
+          writer.set(key, it.first)
+        } else {
+          writer.set(key, it.first)
+        }
+      ,
+    );
+  Parameters(controller, HState(path, stateHdl, computedHdl))
+}
+
+@debug
+fun update(
+  context: mutable SKStore.Context,
+  _scope: String,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  todo: Ui.Todo,
+  optUserData: ?UserData,
+): void {
+  userData = optUserData.fromSome();
+  optBracketsBuilder = userData.controller.getBracketsBuilder(context, true);
+  (pagesCount, optRange) = if (FWKPipeline.gNodeInfo.exists(context)) {
+    FWKPipeline.gNodeInfo.maybeGetValue(context, userData.path, true)
+      .flatMap(ni ->
+        ni.info.optUserData
+          .map(ud ~> ud as Metrics _)
+          .map(metrics ->
+            (
+              (metrics.vertical.pageCount, metrics.vertical.pageCount),
+              Some(metrics.vertical.range),
+            )
+          )
+      )
+      .default(((80, 40), None()))
+  } else {
+    ((80, 40), None())
+  };
+  updater = mutable Updater(
+    values,
+    mutable Vector[],
+    mutable Vector[],
+    optBracketsBuilder.default((_, _, _) ~> None()),
+    userData.controller.getEndLine(context, true).get(context, true),
+    userData.controller.getIndentation(context, true).get(context, true),
+    userData.controller.isEditable(context, true),
+    () -> context.timeStamp().value,
+    pagesCount,
+    optRange,
+    (ctx, str) ~>
+      userData.controller
+        .getText(ctx, true)
+        .set(ctx, Some(str), userData.source),
+    (ctx, policy) ~>
+      userData.controller.getStorePolicies(ctx, true).contains(policy)
+    ,
+  );
+  execute(context, todo.command, updater);
+}
+
+@debug
+fun execute(
+  context: mutable SKStore.Context,
+  executable: Ui.Executable,
+  updater: mutable Updater,
+): void {
+  check = true;
+  oldPosition = updater.getPosition();
+  oldSelection = updater.getSelection();
+  executable match {
+  | Ui.Multiple(cmds) -> cmds.each(cmd -> execute(context, cmd, updater))
+  | Ui.Init() -> !check = false
+  | ManageText(value) ->
+    updater.setText(value);
+    updater.ensureVisible(context)
+  | ManageDiacritic(char) ->
+    if (updater.manageDiacritic(char)) {
+      updater.ensureVisible(context)
+    }
+  | Copy() -> _ = updater.copy(context)
+  | Cut() ->
+    updater.cut(context);
+    updater.ensureVisible(context)
+  | Save() -> updater.save(context)
+  | Paste(content) ->
+    updater.paste(content);
+    updater.ensureVisible(context)
+  | Duplicate() ->
+    updater.duplicate();
+    updater.ensureVisible(context)
+  | SwitchLine() ->
+    updater.switchLine();
+    updater.ensureVisible(context)
+  | DecrLine _ ->
+    updater.decrLine();
+    updater.ensureVisible(context)
+  | IncrLine _ ->
+    updater.incrLine();
+    updater.ensureVisible(context)
+  | Indent _ ->
+    updater.indent();
+    updater.ensureVisible(context)
+  | Outdent _ ->
+    updater.outdent();
+    updater.ensureVisible(context)
+  | Insert(text, ignoreSelection, optPosition) ->
+    updater.insert(text.chars().toArray(), ignoreSelection, optPosition);
+    updater.ensureVisible(context)
+  | DnDTarget(optPosition) -> updater.values.set(Ui.targetProp, optPosition)
+  | Upper() -> updater.modify(Unicode.toUpper)
+  | Lower() -> updater.modify(Unicode.toLower)
+  | ManageHScrolling(incr, _) ->
+    updater.values.set(
+      Ui.hEnsureVisibleProp,
+      Some(Ui.Incr(incr, context.getTick())),
+    )
+  | ManageVScrolling(incr, _) ->
+    updater.values.set(
+      Ui.vEnsureVisibleProp,
+      Some(Ui.Incr(incr, context.getTick())),
+    )
+  | ManageHVisible(visible) ->
+    updater.values.set(
+      Ui.hEnsureVisibleProp,
+      Some(Ui.Pos(visible, context.getTick())),
+    )
+  | ManageVVisible(visible) ->
+    updater.values.set(
+      Ui.vEnsureVisibleProp,
+      Some(Ui.Pos(visible, context.getTick())),
+    )
+  | GoToLine(optLineNumber) ->
+    optLineNumber.each(lineNumber ->
+      updater.goToLine(context, lineNumber.toInt())
+    )
+  | SelectLine(lineIdx) ->
+    updater.selectLine(lineIdx);
+    updater.ensureVisible(context)
+  | GoTo(target, _, _) ->
+    updater.goTo(target);
+    updater.ensureVisible(context)
+  | DeleteTo(target, _, _) ->
+    updater.deleteTo(target);
+    updater.ensureVisible(context)
+  | ManageUnicode(optValue) ->
+    if (updater.manageUnicode(optValue)) {
+      updater.ensureVisible(context)
+    }
+  | SelectTo(selection, _, _) ->
+    if (updater.selectTo(selection)) {
+      updater.ensureVisible(context)
+    }
+  | Undo _ ->
+    updater.undoRedo(context, h ~> h.undo);
+    !check = false
+  | Redo _ ->
+    updater.undoRedo(context, h ~> h.redo);
+    !check = false
+  | NewLine _ ->
+    updater.insert(updater.endLine.toChars());
+    updater.ensureVisible(context)
+  | _ -> SKStore.cast_violation("UiMonospace.Executable", executable)
+  };
+  if (check && updater.isEditable && !updater.redo.isEmpty()) {
+    optOldHistory = updater.values.get(Ui.historyProp).map(History::type);
+    history = optOldHistory match {
+    | Some(history) ->
+      newPosition = updater.getPosition();
+      newSelection = updater.getSelection();
+      undo = updater.undo.reversed();
+      redo = updater.redo.chill();
+      updater.undo.clear();
+      updater.redo.clear();
+      history.add(
+        LamUndoable(
+          (u, tick) ~> {
+            undo.each(u.patch);
+            u.setPosition(oldPosition);
+            u.setSelection(oldSelection);
+            u.setHEnsureVisible(Ui.Pos(oldPosition.column, tick));
+            u.setVEnsureVisible(Ui.Pos(oldPosition.line, tick));
+          },
+          (u, tick) ~> {
+            redo.each(u.patch);
+            u.setPosition(newPosition);
+            u.setSelection(newSelection);
+            u.setHEnsureVisible(Ui.Pos(newPosition.column, tick));
+            u.setVEnsureVisible(Ui.Pos(newPosition.line, tick));
+          },
+        ),
+      )
+    | None() -> History()
+    };
+    updater.values.set(Ui.historyProp, Some(history));
+    if (updater.hasStorePolicies(context, OnChange())) {
+      updater.save(context)
+    }
+  }
+}
+
+module end;

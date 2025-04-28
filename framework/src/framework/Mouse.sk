@@ -1,0 +1,226 @@
+module FWKMouse;
+
+const statePath: SKStore.DirName = SKStore.DirName::create(
+  "/ui/system/mouse/state/",
+);
+const propKey: SKStore.IID = SKStore.IID(0);
+
+const mfHandle: SKStore.IHandle<
+  SKStore.IID,
+  UiEvent.MouseFile,
+> = SKStore.IHandle(SKStore.IID::keyType, UiEvent.MouseFile::type, statePath);
+
+base class Command extends SKUIMessage.Command {
+  children =
+  | Next()
+
+  fun toJSON(): JSON.Value
+  | Button(button, pressed, timeStamp, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "button" => button.toJSON(),
+        "pressed" => JSON.Bool(pressed),
+        "timeStamp" => timeStamp.toJSON(),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | Location(offset, timeStamp, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "offset" => offset.toJSON(),
+        "timeStamp" => timeStamp.toJSON(),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | Wheel(delta, timeStamp, tick) ->
+    JSON.Object(
+      Map[
+        "__class" => JSON.String(this.getClassName()),
+        "delta" => JSON.IntNumber(delta),
+        "timeStamp" => timeStamp.toJSON(),
+        "tick" => JSON.IntNumber(tick.value),
+      ],
+    )
+  | Next() -> JSON.Object(Map["__class" => JSON.String(this.getClassName())])
+
+  static fun fromJSON(jsv: JSON.Value): Command {
+    jso = jsv.expectObject();
+    cl = jso.getString("__class");
+    cl match {
+    | "FWKMouse.Next" -> Next()
+    | "FWKMouse.Button" ->
+      Button(
+        FWK.Button::fromJSON(jso.get("button")),
+        jso.getBool("pressed"),
+        System.TimeStamp::fromJSON(jso.get("timeStamp")),
+        SKStore.Tick(jso.getInt("tick")),
+      )
+    | "FWKMouse.Location" ->
+      Location(
+        Geometry.Offset::fromJSON(jso.get("offset")),
+        System.TimeStamp::fromJSON(jso.get("timeStamp")),
+        SKStore.Tick(jso.getInt("tick")),
+      )
+    | "FWKMouse.Wheel" ->
+      Wheel(
+        jso.getInt("delta"),
+        System.TimeStamp::fromJSON(jso.get("timeStamp")),
+        SKStore.Tick(jso.getInt("tick")),
+      )
+    | _ -> invariant_violation(`Invalid json object ${cl} for FWKMouse.Command`)
+    }
+  }
+}
+
+base class Event(
+  timeStamp: System.TimeStamp,
+  tick: SKStore.Tick,
+) extends Command {
+  fun compute(
+    mouseFile: UiEvent.MouseFile,
+    tick: SKStore.Tick,
+  ): UiEvent.MouseFile;
+}
+
+class Button(button: FWK.Button, pressed: Bool) extends Event {
+  fun compute(
+    mouseFile: UiEvent.MouseFile,
+    tick: SKStore.Tick,
+  ): UiEvent.MouseFile {
+    nMouseFile = mouseFile;
+    primaryButton = nMouseFile.mouse.primaryButton;
+    middleButton = nMouseFile.mouse.middleButton;
+    secondaryButton = nMouseFile.mouse.secondaryButton;
+    wheel = 0;
+    lastWheel = mouseFile.mouse.lastWheel;
+    scrolling = this.timeStamp - lastWheel < System.TimeStamp(0, 150000);
+    if (this.button == FWK.WheelUp()) {
+      !wheel = if (this.pressed) 100 else 0;
+      !lastWheel = this.timeStamp;
+    } else if (this.button == FWK.WheelDown()) {
+      !wheel = if (this.pressed) -100 else 0;
+      !lastWheel = this.timeStamp;
+    } else if (this.button == FWK.Primary()) {
+      !primaryButton = primaryButton.derive(
+        this.pressed,
+        this.timeStamp,
+        mouseFile.absolute,
+        tick,
+      );
+      !middleButton = middleButton.next();
+      !secondaryButton = secondaryButton.next();
+    } else if (this.button == FWK.Middle()) {
+      !primaryButton = primaryButton.next();
+      !middleButton = middleButton.derive(
+        this.pressed,
+        this.timeStamp,
+        mouseFile.absolute,
+        tick,
+      );
+      !secondaryButton = secondaryButton.next();
+    } else if (this.button == FWK.Secondary()) {
+      !primaryButton = primaryButton.next();
+      !middleButton = middleButton.next();
+      !secondaryButton = secondaryButton.derive(
+        this.pressed,
+        this.timeStamp,
+        mouseFile.absolute,
+        tick,
+      )
+    };
+    !nMouseFile.mouse = UiEvent.Mouse(
+      this.timeStamp,
+      nMouseFile.mouse.point,
+      nMouseFile.mouse.movement,
+      if (wheel != 0) Some(UiEvent.Wheel(wheel, tick)) else None(),
+      lastWheel,
+      primaryButton,
+      middleButton,
+      secondaryButton,
+      0.0,
+      scrolling,
+    );
+    nMouseFile
+  }
+}
+
+class Location(offset: Geometry.Offset) extends Event {
+  fun compute(
+    mouseFile: UiEvent.MouseFile,
+    _tick: SKStore.Tick,
+  ): UiEvent.MouseFile {
+    lastWheel = mouseFile.mouse.lastWheel;
+    scrolling = this.timeStamp - lastWheel < System.TimeStamp(0, 150000);
+    movement = this.offset - mouseFile.mouse.point;
+    elapsed = (this.timeStamp - mouseFile.mouse.timeStamp).toSeconds();
+    distance = movement.distance();
+    speed = distance / elapsed;
+    nMouseFile = if (this.offset != mouseFile.mouse.point) {
+      mouseFile.clearCount();
+    } else {
+      mouseFile.next();
+    };
+    !nMouseFile.mouse.timeStamp = this.timeStamp;
+    !nMouseFile.mouse.point = this.offset;
+    !nMouseFile.mouse.movement = movement;
+    !nMouseFile.mouse.speed = speed;
+    !nMouseFile.mouse.scrolling = scrolling;
+    !nMouseFile.absolute = this.offset;
+    !nMouseFile.position = this.tick;
+    nMouseFile
+  }
+}
+
+class Wheel(delta: Int) extends Event {
+  fun compute(
+    mouseFile: UiEvent.MouseFile,
+    tick: SKStore.Tick,
+  ): UiEvent.MouseFile {
+    lastWheel = mouseFile.mouse.lastWheel;
+    scrolling = this.timeStamp - lastWheel < System.TimeStamp(0, 150000);
+    nMouseFile = mouseFile.clearCount();
+    !nMouseFile.mouse.timeStamp = this.timeStamp;
+    !nMouseFile.mouse.wheel = Some(UiEvent.Wheel(this.delta, tick));
+    !nMouseFile.mouse.scrolling = scrolling;
+    !nMouseFile.mouse.lastWheel = this.timeStamp;
+    !nMouseFile.mouse.speed = 0.0;
+    nMouseFile
+  }
+}
+
+@skuiinitializer
+fun init(context: mutable SKStore.Context): void {
+  _ = context.makeDir(
+    SKStore.IID::keyType,
+    UiEvent.MouseFile::type,
+    statePath,
+    Array[(propKey, UiEvent.MouseFile(UiEvent.Mouse::new(), SKStore.Tick(0)))],
+  );
+}
+
+fun execute(context: mutable SKStore.Context, command: Command): void {
+  mouseFile = mfHandle.get(context, propKey);
+  nMouseFile = command match {
+  | Next() -> mouseFile.next()
+  | event @ Event _ -> event.compute(mouseFile, context.getTick())
+  };
+  mfHandle.write(context, propKey, nMouseFile)
+}
+
+fun getMouse(
+  context: mutable SKStore.Context,
+  isUntracked: Bool = false,
+): UiEvent.MouseFile {
+  mfHandle.getValue(context, propKey, isUntracked);
+}
+
+fun getOffset(
+  context: mutable SKStore.Context,
+  isUntracked: Bool,
+): Geometry.Offset {
+  mfHandle.getValue(context, propKey, isUntracked).offset();
+}
+
+module end;

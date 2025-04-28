@@ -1,0 +1,187 @@
+module Ui;
+
+class TableCell protected {
+  controller: UiTableCell.Controller,
+  state: UiTableCell.State,
+} extends StrictWidget uses WithNodeCache, NoViewports, FWK.NoFocusHandler {
+  //
+  type Params = UiTableCell.Parameters;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    params: UiTableCell.Parameters,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{
+      path,
+      controller => params.controller,
+      state => params.state,
+      optConfiguration,
+      cache,
+      tick => context.getTick(),
+    }
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    ts = context.getTextSupport();
+    face = this.controller.getFont(context);
+    optLabel = this.controller.getText(context).map(text ->
+      Ui.getTextInfo(context, ts, face, context.translate(text))
+    );
+    optIcon = this.controller.getIcon(context, face.size).map(icon ->
+      (icon, icon.size(context))
+    );
+    optAction = this.controller.getAction(context).flatMap(acion ->
+      acion.icon.buildIcon(context, face.size).map(icon ->
+        (
+          icon,
+          icon.size(context) +
+            Geometry.Size::square(UiTableCell.actionPadding * 2.0),
+        )
+      )
+    );
+    layout = UiTableCell.Layout(
+      optLabel,
+      optIcon,
+      optAction,
+      context.getThemeThickness(UiTheme.IconTextGap()).toFloat(),
+    );
+    size = constraints.constrain(layout.computeSize());
+    Node(this, size, Array[], constUserData(Some(layout)));
+  }
+
+  fun computeDrawInfo(
+    context: mutable SKStore.Context,
+    _support: Ui.DrawableSupport,
+    _relative: Geometry.Offset,
+    nodeSum: Ui.NodeSum,
+    optUserData: ?UserData,
+  ): ?DrawInfo {
+    layout = optUserData.map(ud ~> ud as UiTableCell.Layout _).fromSome();
+    Some(
+      UiTableCell.DrawInfo::compute(
+        layout,
+        Geometry.Offset::zero,
+        nodeSum.size,
+        this.controller.getAlignment(context),
+      ),
+    );
+  }
+
+  fun getHoverHandler(
+    _context: mutable SKStore.Context,
+    _childGetter: Getter<?FWK.HoverHandler>,
+  ): ?HoverHandlerGetter {
+    Some((_, offset, ni) ~>
+      ni.optDrawInfo.map(di ~> di as UiTableCell.DrawInfo _) match {
+      | Some(di) ->
+        action = di.optBounds
+          .map(bounds -> bounds.contains(offset))
+          .default(false);
+        Some(
+          UiTableCell.HoverHandler(
+            this.path,
+            this.controller,
+            this.state,
+            action,
+          ),
+        )
+      | _ -> None()
+      }
+    )
+  }
+
+  fun computeLayer(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    di = node.optDrawInfo.map(di ~> di as UiTableCell.DrawInfo _).fromSome();
+    layer match {
+    | MainLayer() ->
+      drawables = mutable Vector<Ui.Drawable>[];
+      this.fillMain(context, support, absolute, di, drawables);
+      drawables.toArray()
+    | BackgroundLayer() -> Array[]
+    | ForegroundLayer() ->
+      di.optBounds
+        .flatMap(bounds -> {
+          armed = this.state.isArmed(context);
+          hover = this.state.isHover(context);
+          foreground = context.getThemeColor(UiTheme.Primary());
+          optColor = if (armed) {
+            Some(foreground.scaleAlpha(0.5))
+          } else if (hover) {
+            Some(foreground.scaleAlpha(0.2))
+          } else {
+            None()
+          };
+          optColor.map(color ->
+            Array[
+              support.roundedRectangle(
+                absolute + bounds.topLeft(),
+                bounds.size(),
+                color,
+                UiTableCell.radius,
+              ),
+            ]
+          );
+        })
+        .default(Array[])
+    };
+  }
+
+  private fun fillMain(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    di: UiTableCell.DrawInfo,
+    drawables: mutable Vector<Ui.Drawable>,
+  ): void {
+    fill = this.controller.getFill(context);
+    di.optIcon.each(i ->
+      i.i0.fillDrawables(
+        context,
+        support,
+        absolute + i.i1,
+        i.i2,
+        fill,
+        drawables,
+      )
+    );
+    di.optAction.each(a ->
+      a.i0.fillDrawables(
+        context,
+        support,
+        absolute + a.i1,
+        a.i2,
+        fill,
+        drawables,
+      )
+    );
+    ts = context.getTextSupport();
+    di.optLabel.each(label ->
+      Ui.drawConstrainedText(
+        context,
+        support,
+        ts,
+        label.i0,
+        label.i1.shift(absolute),
+        fill,
+        label.i2,
+        drawables,
+        label.i3,
+      )
+    );
+  }
+}
+
+module end;

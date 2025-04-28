@@ -1,0 +1,1000 @@
+module UiMonospace;
+
+mutable class Updater(
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  redo: mutable Vector<Vector<Step>>,
+  undo: mutable Vector<Vector<Step>>,
+  bracketsChecker: BracketsBuilder,
+  endLine: Ui.EndLine,
+  indentation: Ui.Indentation,
+  isEditable: Bool,
+  idSupplier: () -> Int,
+  pagesCount: (Int, Int),
+  optRange: ?Range,
+  saver: (mutable SKStore.Context, String) ~> void,
+  hasStorePolicies: Ui.GetterOne<Bool, StorePolicy>,
+) {
+  //
+  mutable fun manageDiacritic(char: Char): Bool {
+    inserted = false;
+    this.setDiacritic(
+      this.getDiacritic() match {
+      | Some(diacritic) ->
+        chars = if (diacritic == char) {
+          Array[char]
+        } else {
+          Array[diacritic, char]
+        };
+        !chars = chars.filter(Unicode.isGraphic);
+        if (!chars.isEmpty()) {
+          this.insert(chars);
+          !inserted = true;
+        };
+        None()
+      | _ -> Some(char)
+      },
+    );
+    inserted
+  }
+
+  mutable fun manageUnicode(optValue: ?Int): Bool {
+    inserted = false;
+    optUnicode = this.getUnicode();
+    this.setUnicode(
+      optValue match {
+      | Some(value) ->
+        Some(
+          optUnicode match {
+          | Some(unicode) -> (unicode * 10) + value
+          | _ -> value
+          },
+        )
+      | _ ->
+        optUnicode.each(unicode ->
+          vtry<void>(
+            () -> {
+              char = Char::fromCode(UInt32::truncate(unicode).toInt());
+              if (Unicode.isGraphic(char)) {
+                this.insert(Array[char]);
+                !inserted = true;
+              }
+            },
+            _e -> void,
+          )
+        );
+        None()
+      },
+    );
+    inserted
+  }
+
+  readonly fun getUnicode(): ?Int {
+    this.values.get(Ui.unicodeProp).map(SKStore.IntFile::type).map(f -> f.value)
+  }
+
+  readonly fun getDiacritic(): ?Char {
+    this.values.get(Ui.diacriticProp).map(SKStore.CharFile::type).map(f ->
+      f.value
+    )
+  }
+
+  mutable fun setUnicode(optValue: ?Int): void {
+    this.values.set(Ui.unicodeProp, optValue.map(v -> SKStore.IntFile(v)));
+  }
+
+  mutable fun setDiacritic(optDiacritic: ?Char): void {
+    this.values.set(
+      Ui.diacriticProp,
+      optDiacritic.map(char -> SKStore.CharFile(char)),
+    );
+  }
+
+  readonly fun getSelection(): ?Ui.Portion {
+    this.values.get(Ui.selectionProp).map(Ui.Portion::type).flatMap(portion ->
+      if (portion.isEmpty()) None() else Some(portion)
+    );
+  }
+
+  mutable fun setSelection(optPortion: ?Ui.Portion): void {
+    this.values.set(
+      Ui.selectionProp,
+      Some(
+        optPortion.default(Ui.Portion(Ui.Position(0, 0), Ui.Position(0, 0))),
+      ),
+    );
+  }
+
+  readonly fun getPosition(): Ui.Position {
+    this.values.get(Ui.positionProp)
+      .map(Ui.Position::type)
+      .default(Ui.Position(0, 0))
+  }
+
+  mutable fun setPosition(position: Ui.Position): void {
+    this.values.set(Ui.positionProp, Some(position));
+  }
+
+  readonly fun getDisplayPosition(): ?Ui.Position {
+    this.values.get(displayPositionProp).map(Ui.Position::type)
+  }
+
+  mutable fun setDisplayPosition(optPosition: ?Ui.Position): void {
+    this.values.set(displayPositionProp, optPosition);
+  }
+
+  mutable fun getLines(): Vector<Line> {
+    this.values.get(linesProp)
+      .map(Lines::type)
+      .map(f -> f.value)
+      .default(Lines::empty(this.idSupplier).value);
+  }
+
+  mutable fun setLines(lines: Vector<Line>): void {
+    this.values.set(linesProp, Some(Lines(lines)))
+  }
+
+  mutable fun setHEnsureVisible(visible: Ui.Visible): void {
+    this.values.set(Ui.hEnsureVisibleProp, Some(visible));
+  }
+
+  mutable fun setVEnsureVisible(visible: Ui.Visible): void {
+    this.values.set(Ui.vEnsureVisibleProp, Some(visible));
+  }
+
+  mutable fun setText(text: String): void {
+    oldLines = this.getLines();
+    lines = stringToLines(text, this.bracketsChecker, this.idSupplier);
+    set = () -> {
+      redo = Vector<Step>[SSet(lines)];
+      undo = Vector<Step>[SSet(oldLines)];
+      this.setLines(lines);
+      this.redo.push(redo);
+      this.undo.push(undo.reversed());
+    };
+    if (oldLines.isEmpty()) {
+      if (!lines.isEmpty()) {
+        set()
+      }
+    } else if (lines.isEmpty()) {
+      set()
+    } else {
+      redo = process(oldLines, lines);
+      if (!redo.isEmpty()) {
+        undo = process(lines, oldLines);
+        this.setLines(patch(oldLines, redo));
+        this.redo.push(redo);
+        this.undo.push(undo);
+      }
+    }
+  }
+
+  mutable fun duplicate(): void {
+    (toCopy, optSelection, position) = this.toCopy();
+    if (optSelection.isNone()) {
+      endLine = this.endLine.toChars();
+      !toCopy = Arrays.merge(endLine, toCopy);
+    };
+    this.setSelection(None());
+    this.insert(toCopy, false, Some(position))
+  }
+
+  mutable fun switchLine(): void {
+    this.decrLine(false)
+  }
+
+  mutable fun indent(): void {
+    redo = mutable Vector<Step>[];
+    undo = mutable Vector<Step>[];
+    lines = this.getLines();
+    this.getSelection() match {
+    | Some(selection) ->
+      startLine = Math.clamp(selection.start.line, 0, lines.size() - 1);
+      endLine = Math.clamp(selection.end.line, 0, lines.size() - 1);
+      lastSize = 0;
+      for (idx in Range(startLine, endLine + 1)) {
+        iLine = lines[idx];
+        newLine = indentLine(iLine.text, this.indentation);
+        lineUpdate = toLines(
+          ArrayAccessor(newLine),
+          this.bracketsChecker,
+          () -> iLine.id,
+        ).get(0);
+        redo.push(SUpdate(idx, lineUpdate));
+        undo.push(SUpdate(idx, iLine));
+        !lastSize = newLine.size();
+      };
+      this.setSelection(
+        Some(
+          Ui.Portion(Ui.Position(startLine, 0), Ui.Position(endLine, lastSize)),
+        ),
+      );
+      this.setPosition(Ui.Position(startLine, 0))
+    | _ ->
+      position = this.getPosition();
+      lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+      line = lines[lineIdx];
+      columnIdx = Math.clamp(position.column, 0, line.text.size());
+      (nb, c) = this.indentation match {
+      | Ui.Space(size) -> (Text.tabSizeAt(line.text, size, columnIdx), ' ')
+      | Ui.Tabulation _ -> (1, '\t')
+      };
+      this.insert(
+        Array::fill(nb, c),
+        false,
+        Some(Ui.Position(lineIdx, columnIdx)),
+      )
+    };
+    if (!redo.isEmpty()) {
+      this.setLines(patch(lines, redo));
+      this.redo.push(unsafe_chill_trust_me(redo));
+      this.undo.push(unsafe_chill_trust_me(undo.reversed()));
+    }
+  }
+
+  mutable fun outdent(): void {
+    redo = mutable Vector<Step>[];
+    undo = mutable Vector<Step>[];
+    lines = this.getLines();
+    range = this.getSelection() match {
+    | Some(selection) ->
+      startLine = Math.clamp(selection.start.line, 0, lines.size() - 1);
+      endLine = Math.clamp(selection.end.line, 0, lines.size() - 1);
+      Range(startLine, endLine + 1)
+    | _ ->
+      position = this.getPosition();
+      lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+      Range(lineIdx, lineIdx + 1)
+    };
+    lastSize = 0;
+    for (idx in range) {
+      iLine = lines[idx];
+      newLine = outdentLine(iLine.text, this.indentation);
+      if (newLine != iLine.text) {
+        lineUpdate = toLines(
+          ArrayAccessor(newLine),
+          this.bracketsChecker,
+          () -> iLine.id,
+        ).get(0);
+        redo.push(SUpdate(idx, lineUpdate));
+        undo.push(SUpdate(idx, iLine));
+      };
+      !lastSize = newLine.size()
+    };
+    this.setSelection(
+      Some(
+        Ui.Portion(
+          Ui.Position(range.start, 0),
+          Ui.Position(range.end - 1, lastSize),
+        ),
+      ),
+    );
+    this.setPosition(Ui.Position(range.start, 0));
+    if (!redo.isEmpty()) {
+      this.setLines(patch(lines, redo));
+      this.redo.push(unsafe_chill_trust_me(redo));
+      this.undo.push(unsafe_chill_trust_me(undo.reversed()));
+    }
+  }
+
+  mutable fun decrLine(follow: Bool = true): void {
+    lines = this.getLines();
+    position = this.getPosition();
+    lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+    if (lineIdx > 0) {
+      redo = Vector<Step>[SMove(lineIdx, lineIdx - 1)];
+      undo = Vector<Step>[SMove(lineIdx, lineIdx - 1)];
+      this.setLines(patch(lines, redo));
+      this.redo.push(redo);
+      this.undo.push(undo);
+      if (follow) {
+        this.setPosition(Ui.Position(lineIdx - 1, 0))
+      } else {
+        this.setPosition(Ui.Position(lineIdx, 0))
+      }
+    }
+  }
+
+  mutable fun incrLine(): void {
+    lines = this.getLines();
+    position = this.getPosition();
+    lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+    if (lineIdx < lines.size() - 1) {
+      redo = Vector<Step>[SMove(lineIdx + 1, lineIdx)];
+      undo = Vector<Step>[SMove(lineIdx + 1, lineIdx)];
+      this.setLines(patch(lines, redo));
+      this.redo.push(redo);
+      this.undo.push(undo);
+      this.setPosition(Ui.Position(lineIdx + 1, 0))
+    }
+  }
+
+  mutable fun insert(
+    toInsert: Array<Char>,
+    ignoreSelection: Bool = false,
+    optPosition: ?Ui.Position = None(),
+  ): void {
+    !toInsert = this.getDiacritic() match {
+    | Some(diacritic) ->
+      if (toInsert.size() == 1) {
+        char = toInsert[0];
+        checked = UiEvent.checkDiacritical(diacritic);
+        (Unicode.combine(char, checked) match {
+        | Some(combined) -> Array[combined]
+        | _ -> Array[diacritic, char]
+        }).filter(Unicode.isGraphic)
+      } else {
+        toInsert
+      }
+    | _ -> toInsert
+    };
+    position = optPosition.default(this.getPosition());
+    if (!ignoreSelection) {
+      this.getSelection().each(portion -> {
+        this.delete(portion);
+        if (portion.end <= position) {
+          portion.diff().each(diff -> !position = position - diff)
+        } else if (portion.start <= position) {
+          !position = portion.start
+        }
+      })
+    };
+    if (!toInsert.isEmpty()) {
+      this.doInsert(toInsert, position)
+    };
+    this.setSelection(None())
+  }
+
+  mutable fun ensureVisible(
+    context: mutable SKStore.Context,
+    optPosition: ?Ui.Position = None(),
+  ): void {
+    position = optPosition.default(this.getPosition());
+    this.values.set(
+      Ui.hEnsureVisibleProp,
+      Some(Ui.Pos(position.column, context.getTick())),
+    );
+    this.values.set(
+      Ui.vEnsureVisibleProp,
+      Some(Ui.Pos(position.line, context.getTick())),
+    )
+  }
+
+  mutable fun delete(portion: Ui.Portion): void {
+    lines = this.getLines();
+    undo = mutable Vector<Step>[];
+    redo = mutable Vector<Step>[];
+    if (portion.start.line == portion.end.line) {
+      line = lines[portion.start.line];
+      prefix = line.text.take(portion.start.column);
+      suffix = line.text.drop(portion.end.column);
+      newLine = Arrays.merge(prefix, suffix);
+      if (line.text != newLine) {
+        lineUpdate = toLines(
+          ArrayAccessor(newLine),
+          this.bracketsChecker,
+          () -> line.id,
+        ).get(0);
+        redo.push(SUpdate(portion.start.line, lineUpdate));
+        undo.push(SUpdate(portion.start.line, line))
+      };
+    } else {
+      endLine = lines[portion.end.line];
+      suffix = endLine.text.drop(portion.end.column);
+      for (i in Range(
+        portion.start.line + 1,
+        portion.end.line + 1,
+      ).reversed()) {
+        redo.push(SDelete(i));
+        undo.push(SInsert(i, lines[i]));
+      };
+      startLine = lines[portion.start.line];
+      prefix = startLine.text.take(portion.start.column);
+      newLine = Arrays.merge(prefix, suffix);
+      if (startLine.text != newLine) {
+        lineUpdate = toLines(
+          ArrayAccessor(newLine),
+          this.bracketsChecker,
+          () -> startLine.id,
+        ).get(0);
+        redo.push(SUpdate(portion.start.line, lineUpdate));
+        undo.push(SUpdate(portion.start.line, startLine));
+      };
+    };
+    this.values.set(Ui.positionProp, Some(portion.start));
+    if (!redo.isEmpty()) {
+      this.setLines(patch(lines, redo));
+      this.redo.push(unsafe_chill_trust_me(redo));
+      this.undo.push(unsafe_chill_trust_me(undo.reversed()));
+    }
+  }
+
+  mutable fun doInsert(toInsert: Array<Char>, position: Ui.Position): void {
+    if (toInsert.isEmpty()) return void;
+    redo = mutable Vector<Step>[];
+    undo = mutable Vector<Step>[];
+    lines = this.getLines();
+    lines.maybeGet(position.line).each(line -> {
+      prefix = line.text.take(position.column);
+      suffix = line.text.drop(position.column);
+      toReplace = Arrays.mergeAll(Array[prefix, toInsert, suffix]);
+      linesToInsert = toLines(
+        ArrayAccessor(toReplace),
+        this.bracketsChecker,
+        this.idSupplier,
+      );
+      redo.push(SDelete(position.line));
+      undo.push(SInsert(position.line, line));
+      linesToInsert.eachWithIndex((idx, lineToInsert) -> {
+        if (idx == 0) !lineToInsert.id = line.id;
+        redo.push(SInsert(idx + position.line, lineToInsert));
+        undo.push(SDelete(idx + position.line));
+      });
+      lastInsertedIndex = linesToInsert.size() - 1;
+      lastInsertedLine = linesToInsert[lastInsertedIndex];
+      this.setPosition(
+        Ui.Position(
+          position.line + lastInsertedIndex,
+          lastInsertedLine.text.size() - suffix.size(),
+        ),
+      );
+    });
+    if (!redo.isEmpty()) {
+      this.setLines(patch(lines, redo));
+      this.redo.push(unsafe_chill_trust_me(redo));
+      this.undo.push(unsafe_chill_trust_me(undo.reversed()));
+    }
+  }
+
+  mutable fun copy(context: mutable SKStore.Context): ?Ui.Portion {
+    (toCopy, optSelection, _) = this.toCopy();
+    if (!toCopy.isEmpty()) {
+      FWKClipboard.copy(
+        context,
+        FWKClipboard.Content::plain(String::fromChars(toCopy)),
+      )
+    };
+    optSelection
+  }
+
+  mutable fun save(context: mutable SKStore.Context): void {
+    lines = this.getLines();
+    endLine = this.endLine.toChars();
+    index = 0;
+    withEndLines = Array::fillBy(lines.size() + lines.size() - 1, idx ->
+      if (idx % 2 == 0) {
+        r = lines[index].text;
+        !index = index + 1;
+        r
+      } else {
+        endLine
+      }
+    );
+    this.saver(context, String::fromChars(Arrays.mergeAll(withEndLines)))
+  }
+
+  mutable fun cut(context: mutable SKStore.Context): void {
+    this.copy(context) match {
+    | Some(portion) -> this.delete(portion)
+    | _ ->
+      this.setPosition(Ui.Position::zero);
+      lines = this.getLines();
+      if (!lines.isEmpty()) {
+        empty = Lines::empty(() -> context.timeStamp().value).value;
+        redo = Vector<Step>[SSet(empty)];
+        undo = Vector<Step>[SSet(lines)];
+        this.setLines(empty);
+        this.redo.push(redo);
+        this.undo.push(undo.reversed());
+      }
+    };
+    this.setSelection(None());
+  }
+
+  mutable fun paste(content: FWKClipboard.Content): void {
+    content.getPlain().each(plain ->
+      if (!plain.isEmpty()) {
+        this.insert(plain.chars().toArray())
+      }
+    )
+  }
+
+  mutable fun modify(m: Char ~> Char): void {
+    redo = mutable Vector<Step>[];
+    undo = mutable Vector<Step>[];
+    lines = this.getLines();
+    this.getSelection().each(selection -> {
+      startLine = Math.clamp(selection.start.line, 0, lines.size() - 1);
+      endLine = Math.clamp(selection.end.line, 0, lines.size() - 1);
+      if (startLine == endLine) {
+        line = lines[startLine];
+        startColumn = Math.clamp(selection.start.column, 0, line.text.size());
+        endColumn = Math.clamp(selection.end.column, 0, line.text.size());
+        prefix = line.text.take(startColumn);
+        suffix = line.text.drop(endColumn);
+        modified = line.text.slice(startColumn, endColumn).map(m);
+        result = Arrays.mergeAll(Array[prefix, modified, suffix]);
+        if (result != line.text) {
+          redo.push(SUpdate(startLine, Line(line.id, result, line.brackets)));
+          undo.push(SUpdate(startLine, line));
+        }
+      } else {
+        sLine = lines[startLine];
+        startColumn = Math.clamp(selection.start.column, 0, sLine.text.size());
+        prefix = sLine.text.take(startColumn);
+        sModified = sLine.text.drop(startColumn).map(m);
+        sResult = Arrays.merge(prefix, sModified);
+        if (sResult != sLine.text) {
+          redo.push(
+            SUpdate(startLine, Line(sLine.id, sResult, sLine.brackets)),
+          );
+          undo.push(SUpdate(startLine, sLine));
+        };
+        for (idx in Range(startLine + 1, endLine)) {
+          iLine = lines[idx];
+          iResult = iLine.text.map(m);
+          if (iResult != iLine.text) {
+            redo.push(SUpdate(idx, Line(iLine.id, iResult, iLine.brackets)));
+            undo.push(SUpdate(idx, iLine));
+          };
+        };
+        eLine = lines[endLine];
+        endColumn = Math.clamp(selection.end.column, 0, eLine.text.size());
+        suffix = eLine.text.drop(endColumn);
+        eModified = eLine.text.drop(endColumn).map(m);
+        eResult = Arrays.merge(eModified, suffix);
+        if (eResult != eLine.text) {
+          redo.push(SUpdate(endLine, Line(eLine.id, eResult, eLine.brackets)));
+          undo.push(SUpdate(endLine, eLine));
+        };
+      }
+    });
+    if (!redo.isEmpty()) {
+      this.setLines(patch(lines, redo));
+      this.redo.push(unsafe_chill_trust_me(redo));
+      this.undo.push(unsafe_chill_trust_me(undo.reversed()));
+    }
+  }
+
+  mutable fun goToLine(
+    context: mutable SKStore.Context,
+    lineNumber: Int,
+  ): void {
+    lines = this.getLines();
+    lineIdx = Math.clamp(lineNumber - 1, 0, lines.size() - 1);
+    optEnsureVisible = this.optRange match {
+    | Some(range) ->
+      vPage = this.pagesCount.i1;
+      start = Math.clamp(lineIdx - vPage / 2, 0, lines.size() - 1);
+      end = Math.clamp(start + vPage, 0, lines.size() - 1);
+      if (start < range.start) {
+        Some(Ui.Position(start, 0))
+      } else if (end > range.end) {
+        Some(Ui.Position(end, 0))
+      } else {
+        None()
+      }
+    | _ -> None()
+    };
+    this.goTo(TPos(Some(Ui.Position(lineIdx, 0))));
+    this.ensureVisible(context, optEnsureVisible)
+  }
+
+  mutable fun goTo(target: Target): void {
+    this.getSelection() match {
+    | Some(portion) ->
+      target match {
+      | TColumn(next) ->
+        this.setPosition(if (next) portion.end else portion.start);
+        this.setSelection(None());
+        return void
+      | _ -> void
+      }
+    | _ -> void
+    };
+    this.computeTarget(target).each(info -> {
+      this.setPosition(info.i0);
+      this.setSelection(None());
+    });
+    this.setDisplayPosition(None());
+  }
+
+  mutable fun deleteTo(target: Target): void {
+    (this.getSelection() match {
+    | Some(portion) -> Some(portion)
+    | _ ->
+      position = this.getPosition();
+      this.computeTarget(target) match {
+      | Some(info) ->
+        toPosition = info.i0;
+        if (toPosition != position) {
+          Some(Ui.Portion(toPosition.min(position), toPosition.max(position)))
+        } else {
+          None()
+        }
+      | _ ->
+        target match {
+        | TInLine _ ->
+          lines = this.getLines();
+          lines.maybeGet(position.line).map(line ->
+            Ui.Portion(
+              Ui.Position(position.line, 0),
+              if (position.line < lines.size() - 1) {
+                Ui.Position(position.line + 1, 0)
+              } else {
+                Ui.Position(position.line, line.text.size())
+              },
+            )
+          )
+        | _ -> None()
+        }
+      }
+    }).each(this.delete);
+    this.setDisplayPosition(None());
+    this.setSelection(None())
+  }
+
+  mutable fun selectLine(lineNumber: Int): void {
+    lines = this.getLines();
+    lineIdx = Math.clamp(lineNumber - 1, 0, lines.size() - 1);
+    start = Ui.Position(lineIdx, 0);
+    end = if (lineIdx < lines.size() - 1) {
+      Ui.Position(lineIdx + 1, 0)
+    } else {
+      line = lines[lineIdx];
+      Ui.Position(lineIdx, line.text.size())
+    };
+    this.setPosition(end);
+    this.setSelection(Some(Ui.Portion(start, end)));
+    this.setDisplayPosition(None());
+  }
+
+  mutable fun selectTo(selection: Selection): Bool {
+    position = this.getPosition();
+    lines = this.getLines();
+    selection match {
+    | target @ Target _ ->
+      this.computeTarget(target) match {
+      | Some(info) ->
+        toPosition = info.i0;
+        if (toPosition != position) {
+          this.setSelection(
+            this.getSelection() match {
+            | Some(portion) ->
+              nPortion = if (portion.start == position) {
+                if (toPosition > portion.end) {
+                  Ui.Portion(portion.end, toPosition);
+                } else {
+                  Ui.Portion(toPosition, portion.end);
+                }
+              } else if (portion.end == position) {
+                if (toPosition < portion.start) {
+                  Ui.Portion(toPosition, portion.start);
+                } else {
+                  Ui.Portion(portion.start, toPosition);
+                }
+              } else {
+                Ui.Portion(toPosition.min(position), toPosition.max(position))
+              };
+              if (!nPortion.isEmpty()) {
+                Some(nPortion)
+              } else {
+                None()
+              }
+            | _ ->
+              Some(
+                Ui.Portion(toPosition.min(position), toPosition.max(position)),
+              )
+            },
+          );
+          this.setPosition(toPosition);
+        }
+      | _ ->
+        optPortion = lines.maybeGet(position.line).flatMap(line ->
+          target match {
+          | TGroup _ ->
+            this.groupRange(line.text, position.column).map(range ->
+              Ui.Portion(
+                Ui.Position(position.line, range.start),
+                Ui.Position(position.line, range.end),
+              )
+            )
+          | TInLine _ ->
+            Some(
+              Ui.Portion(
+                Ui.Position(position.line, 0),
+                if (position.line < lines.size() - 1) {
+                  Ui.Position(position.line + 1, 0)
+                } else {
+                  Ui.Position(position.line, line.text.size())
+                },
+              ),
+            )
+          | _ -> None()
+          }
+        );
+        optPortion.each(portion -> {
+          this.setSelection(Some(portion));
+          this.setPosition(portion.end);
+        })
+      };
+      target match {
+      | TPos(optPos) ->
+        this.setDisplayPosition(
+          optPos.flatMap(p -> if (p.display) Some(p) else None()),
+        )
+      | _ -> this.setDisplayPosition(None())
+      };
+      true
+    | TPortion(portion) ->
+      this.setSelection(Some(portion));
+      false
+    | TAll() ->
+      this.setSelection(
+        Some(
+          Ui.Portion(
+            Ui.Position(0, 0),
+            Ui.Position(lines.size() - 1, lines.last().text.size()),
+          ),
+        ),
+      );
+      false
+    }
+  }
+
+  mutable fun patch(steps: Vector<Step>): void {
+    this.setLines(patch(this.getLines(), steps));
+  }
+
+  mutable fun undoRedo(
+    context: mutable SKStore.Context,
+    selector: History ~> (mutable Updater, tick: SKStore.Tick) ~> (
+      History,
+      Bool,
+    ),
+  ): void {
+    this.values.get(Ui.historyProp).map(History::type).each(history -> {
+      action = selector(history);
+      (!history, _) = action(this, context.getTick());
+      this.values.set(Ui.historyProp, Some(history))
+    })
+  }
+
+  mutable fun computeTarget(target: Target): ?(Ui.Position, ?Bool) {
+    lines = this.getLines();
+    position = this.getPosition();
+    lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+    line = lines[lineIdx];
+    (target match {
+    | TColumn(next) ->
+      columnIdx = if (next) position.column + 1 else position.column - 1;
+      if (columnIdx >= line.text.size() + 1) {
+        !columnIdx = if (lineIdx < lines.size() - 1) {
+          !lineIdx = lineIdx + 1;
+          0
+        } else {
+          line.text.size()
+        }
+      } else if (columnIdx < 0) {
+        !columnIdx = if (lineIdx > 0) {
+          !lineIdx = lineIdx - 1;
+          lines[lineIdx].text.size()
+        } else {
+          0
+        }
+      };
+      Some((Ui.Position(lineIdx, columnIdx), Some(next)))
+    | TGroup(optNext) ->
+      optNext.map(next -> {
+        tColumn = if (next) this.nextGroup(line.text, position.column) else {
+          this.previousGroup(line.text, position.column)
+        };
+        (Ui.Position(position.line, tColumn), Some(next))
+      })
+    | TInLine(optNext) ->
+      optNext.map(next -> {
+        columnIdx = if (next) line.text.size() else 0;
+        (Ui.Position(lineIdx, columnIdx), Some(next))
+      })
+    | TPos(optPos) ->
+      optPos.map(p -> {
+        if (p.display && this.getDisplayPosition() == Some(p)) {
+          (this.getPosition(), None())
+        } else {
+          pLineIdx = Math.clamp(p.line, 0, lines.size() - 1);
+          pLine = lines[pLineIdx];
+          pColumnIdx = if (p.display) {
+            // TODO find other way to manage index from display
+            Text.indexFromDisplay(pLine.text, p.column, this.indentation.size)
+            //Math.clamp(p.column, 0, pLine.text.size())s
+          } else {
+            Math.clamp(p.column, 0, pLine.text.size())
+          };
+          (Ui.Position(pLineIdx, pColumnIdx), None())
+        }
+      })
+    | UiMonospace.TDocument(next) ->
+      pLineIdx = if (next) lines.size() - 1 else 0;
+      pLine = lines[pLineIdx];
+      pColumnIdx = if (next) pLine.text.size() else 0;
+      Some((Ui.Position(pLineIdx, pColumnIdx), Some(next)))
+    | UiMonospace.TLine(next) ->
+      pLineIdx = Math.clamp(
+        if (next) lineIdx + 1 else lineIdx - 1,
+        0,
+        lines.size() - 1,
+      );
+      Some((Ui.Position(pLineIdx, position.column), Some(next)))
+    | UiMonospace.TPage(next) ->
+      pLineIdx = Math.clamp(
+        if (next) lineIdx + this.pagesCount.i1 else {
+          lineIdx - this.pagesCount.i1
+        },
+        0,
+        lines.size() - 1,
+      );
+      Some((Ui.Position(pLineIdx, position.column), Some(next)))
+    })
+  }
+
+  private readonly fun groupRange(chars: Array<Char>, pos: Int): ?.Range {
+    chars.maybeGet(pos).map(c -> {
+      k = this.kind(c);
+      end_ = loop {
+        !pos = pos + 1;
+        chars.maybeGet(pos) match {
+        | Some(c1) -> if (this.kind(c1) != k) break pos
+        | _ -> break pos
+        }
+      };
+      start = loop {
+        chars.maybeGet(pos - 1) match {
+        | Some(c1) -> if (this.kind(c1) == k) break pos
+        | _ -> break pos
+        };
+        !pos = pos - 1;
+      };
+      Range(start, end_)
+    })
+  }
+
+  private readonly fun nextGroup(chars: Array<Char>, pos: Int): Int {
+    chars.maybeGet(pos) match {
+    | Some(c) ->
+      k = this.kind(c);
+      if (k != 0) {
+        loop {
+          !pos = pos + 1;
+          chars.maybeGet(pos) match {
+          | Some(c1) ->
+            if (this.kind(c1) != k) {
+              break void;
+            }
+          | _ -> return pos
+          }
+        }
+      };
+      if (k == 0) {
+        loop {
+          !pos = pos + 1;
+          chars.maybeGet(pos) match {
+          | Some(c1) ->
+            if (this.kind(c1) != k) {
+              break void;
+            }
+          | _ -> return pos
+          }
+        }
+      }
+    | _ -> void
+    };
+    pos
+  }
+
+  private readonly fun previousGroup(chars: Array<Char>, pos: Int): Int {
+    chars.maybeGet(pos - 1) match {
+    | Some(c) ->
+      k = this.kind(c);
+      if (k != 0) {
+        loop {
+          !pos = pos - 1;
+          chars.maybeGet(pos - 1) match {
+          | Some(c1) ->
+            if (this.kind(c1) != k) {
+              break void;
+            }
+          | _ -> return pos
+          }
+        }
+      };
+      if (k == 0) {
+        loop {
+          !pos = pos - 1;
+          chars.maybeGet(pos - 1) match {
+          | Some(c1) ->
+            if (this.kind(c1) != k) {
+              break void;
+            }
+          | _ -> return pos
+          }
+        }
+      }
+    | _ -> void
+    };
+    pos
+  }
+
+  private readonly fun kind(c: Char): Int {
+    if (Char.isAlphaNumeric(c) || c == '_') {
+      0
+    } else if (Char.isWhitespace(c)) {
+      1
+    } else {
+      2
+    }
+  }
+
+  mutable fun toCopy(): (Array<Char>, ?Ui.Portion, Ui.Position) {
+    lines = this.getLines();
+    toCopy = mutable Vector<Array<Char>>[];
+    (optSelection, position) = this.getSelection() match {
+    | Some(selection) ->
+      startLine = Math.clamp(selection.start.line, 0, lines.size() - 1);
+      endLine = Math.clamp(selection.end.line, 0, lines.size() - 1);
+      if (startLine == endLine) {
+        line = lines[startLine];
+        startColumn = Math.clamp(selection.start.column, 0, line.text.size());
+        endColumn = Math.clamp(selection.end.column, 0, line.text.size());
+        copied = line.text.slice(startColumn, endColumn);
+        if (!copied.isEmpty()) {
+          toCopy.push(copied)
+        };
+        portion = Ui.Portion(
+          Ui.Position(startLine, startColumn),
+          Ui.Position(endLine, endColumn),
+        );
+        (Some(portion), portion.end)
+      } else {
+        sLine = lines[startLine];
+        startColumn = Math.clamp(selection.start.column, 0, sLine.text.size());
+        sCopied = sLine.text.slice(startColumn, sLine.text.size());
+        toCopy.push(sCopied);
+        for (idx in Range(startLine + 1, endLine)) {
+          toCopy.push(lines[idx].text);
+        };
+        eLine = lines[endLine];
+        endColumn = Math.clamp(selection.end.column, 0, eLine.text.size());
+        eCopied = eLine.text.slice(0, endColumn);
+        toCopy.push(eCopied);
+        portion = Ui.Portion(
+          Ui.Position(startLine, startColumn),
+          Ui.Position(endLine, endColumn),
+        );
+        (Some(portion), portion.end)
+      }
+    | _ ->
+      position = this.getPosition();
+      lineIdx = Math.clamp(position.line, 0, lines.size() - 1);
+      line = lines[lineIdx];
+      toCopy.push(line.text);
+      (None(), Ui.Position(lineIdx, line.text.size()))
+    };
+    if (!toCopy.isEmpty()) {
+      endLine = this.endLine.toChars();
+      index = 0;
+      withEndLines = Array::fillBy(toCopy.size() + toCopy.size() - 1, idx ->
+        if (idx % 2 == 0) {
+          r = toCopy[index];
+          !index = index + 1;
+          r
+        } else {
+          endLine
+        }
+      );
+      (Arrays.mergeAll(withEndLines), optSelection, position)
+    } else {
+      (Array[], optSelection, position)
+    }
+  }
+}
+
+module end;

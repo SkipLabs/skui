@@ -1,0 +1,10 @@
+[package]
+name = "skui_fwk"
+version = "0.1.0"
+test-harness = "SKUIFwkTest.main"
+
+[build-dependencies]
+skui_build = { path = "../builder" } 
+
+[dependencies]
+skui_mtsdf = { "path" = "../mtsdf" }

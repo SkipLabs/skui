@@ -1,0 +1,310 @@
+module UiDropdown;
+
+const statePath: String = "ui/dropdown/state";
+const computedPath: String = "ui/dropdown/computed";
+
+base class OptPath(optPath: ?Ui.Path) extends SKStore.Key {
+  children =
+  | Path()
+  | FirstPath()
+  | LastPath()
+
+  //
+  fun toString(): String {
+    `${this.optPath}`
+  }
+}
+
+class Selected(optIndex: ?Int) extends OptPath
+
+base class PathKey(path: Ui.Path) extends SKStore.Key {
+  children =
+  | PreviousPath()
+  | NextPath()
+  | Index()
+
+  //
+  fun toString(): String {
+    `${this.path}`
+  }
+}
+
+class Active(optPath: ?Ui.Path, accessor: Accessor) extends SKStore.File {
+  //
+  static fun type(obj: SKStore.File): this {
+    obj match {
+    | x @ Active _ -> x
+    | _ -> invariant_violation("Must be UiDropdown.Active")
+    }
+  }
+
+  fun makeChild(menu: Menu): Active {
+    this.optPath match {
+    | Some(path) -> Active(Some(path.makeChild(menu.id)), menu)
+    | _ -> Active(Some(Ui.Path(menu.id)), menu)
+    }
+  }
+}
+
+class HStorage(
+  name: String,
+  handle: SKStore.IHandle<SKStore.Key, SKStore.File>,
+) extends Storage uses Ui.ScrollingStorage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKStore.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKStore.IHandle::notTyped(SKStore.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.dirName.toString()
+  }
+
+  protected fun getHandle(): SKStore.IHandle<SKStore.Key, SKStore.File> {
+    this.handle
+  }
+
+  fun setTodo(context: mutable SKStore.Context, value: Ui.Executable): void {
+    Ui.setTodo(context, this.handle, value)
+  }
+}
+
+class HState(
+  storage: SKStore.IHandle<SKStore.Key, SKStore.File>,
+  splitted: SKStore.EHandle<Selected, SKStore.BoolFile>,
+  computed: SKStore.EHandle<SKStore.Key, SKStore.File>,
+) extends State uses Ui.ScrollingState {
+  //
+  protected fun getHandle(): SKStore.EHandle<SKStore.Key, SKStore.File> {
+    this.storage.toEHandle()
+  }
+
+  protected fun getComputed(): SKStore.EHandle<SKStore.Key, SKStore.File> {
+    this.computed
+  }
+
+  protected fun getStatePath(): String {
+    statePath
+  }
+
+  protected fun setScrollCmd(value: ?Ui.Scroll): SKUIMessage.Command {
+    SetScroll(value)
+  }
+
+  protected fun manageScrollingCmd(
+    value: Int,
+    tick: SKStore.Tick,
+  ): SKUIMessage.Command {
+    ManageScrolling(value, tick)
+  }
+
+  fun isSelected(context: mutable SKStore.Context, index: Int): Bool {
+    optPath = this.getActive(context).optPath;
+    this.splitted.maybeGet(context, Selected(Some(index), optPath))
+      .map(v -> v.value)
+      .default(false)
+  }
+
+  fun getSelected(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): ?Int {
+    optPath = this.getActive(context, isUntracked).optPath;
+    this.computed.maybeGetProp(
+      context,
+      Selected(None(), optPath),
+      SKStore.IntFile::type,
+      isUntracked,
+    ).map(f ~> f.value);
+  }
+
+  fun isRoot(context: mutable SKStore.Context): Bool {
+    this.getActive(context).optPath.isNone()
+  }
+
+  fun getTitle(context: mutable SKStore.Context): ?Text {
+    this.getActive(context).accessor.getTitle(context)
+  }
+
+  fun getNumberOfItems(context: mutable SKStore.Context): Int {
+    this.getActive(context)
+      .accessor.items(context, false)
+      .getNumberOfItems(context)
+  }
+
+  fun getItem(context: mutable SKStore.Context, index: Int): ItemBase {
+    this.getActive(context)
+      .accessor.items(context, false)
+      .getItem(context, index)
+  }
+
+  fun getHover(context: mutable SKStore.Context): ?Ui.Path {
+    this.storage.maybeGetProp(context, Ui.hoverProp, Ui.Path::type)
+  }
+
+  fun getCurrent(context: mutable SKStore.Context): ?Ui.Path {
+    this.getActive(context).optPath
+  }
+
+  fun emitSelect(
+    context: mutable SKStore.Context,
+    value: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, Select(value, optRepeatOn));
+  }
+
+  fun setGoto(context: mutable SKStore.Context, value: Spot): void {
+    Ui.setTodo(context, this.storage, Goto(value));
+  }
+
+  fun setClose(context: mutable SKStore.Context): void {
+    Ui.setTodo(context, this.storage, Close());
+  }
+
+  fun setHover(context: mutable SKStore.Context, optPath: ?Ui.Path): void {
+    this.storage.writeOrRemove(context, Ui.hoverProp, optPath)
+  }
+
+  fun getActive(
+    context: mutable SKStore.Context,
+    isUntracked: Bool = false,
+  ): Active {
+    this.computed.maybeGetProp(
+      context,
+      Ui.currentProp,
+      Active::type,
+      isUntracked,
+    ).fromSome()
+  }
+}
+
+@debug
+fun init(
+  context: mutable SKStore.Context,
+  path: Ui.Path,
+  controller: Controller,
+): Parameters {
+  dirName = Ui.controllerDirName(path);
+  stateHdl = context.makeNotTyped(
+    dirName,
+    Array[(Ui.todoProp, Ui.Todo(Ui.Init(), context.getTick()))],
+  );
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  computedHdl = SKStore.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    stateHdl,
+    Ui.todoProp,
+    Array[Ui.currentProp, Ui.ensureVisibleProp],
+    update,
+    Some(controller),
+  );
+  splittedHdl = computedHdl.map(
+    Selected::keyType,
+    SKStore.BoolFile::type,
+    context,
+    SKStore.DirName::make(dirName, "splitted/"),
+    (_, writer, key, it) ~> {
+      key match {
+      | Selected(_, optPath) ->
+        sKey = Selected(Some(SKStore.IntFile::type(it.first).value), optPath);
+        writer.set(sKey, SKStore.BoolFile(true))
+      | _ -> void
+      }
+    },
+  );
+  Parameters(
+    controller,
+    HState(SKStore.toIHandle(stateHdl), splittedHdl, computedHdl),
+  )
+}
+
+@debug
+fun update(
+  context: mutable SKStore.Context,
+  _scope: String,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  todo: SKStore.File,
+  optUtils: ?Controller,
+): void {
+  execute(context, Ui.Todo::type(todo).command, values, optUtils.fromSome())
+}
+
+@debug
+fun execute(
+  context: mutable SKStore.Context,
+  executable: Ui.Executable,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  controller: Controller,
+): void {
+  current = values
+    .get(Ui.currentProp)
+    .map(Active::type)
+    .default(Active(None(), controller));
+  optSelected = values
+    .maybeGet(Selected(None(), current.optPath))
+    .default(None())
+    .map(SKStore.IntFile::type)
+    .map(f ~> f.value);
+  executable match {
+  | Ui.Init() -> !current = Active(None(), controller)
+  | Ui.Multiple(cmds) ->
+    cmds.each(cmd -> execute(context, cmd, values, controller))
+  | ManageScrolling(incr, _) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.getTick())))
+  | Goto(stop) ->
+    stop match {
+    | Backward() ->
+      !current = current.optPath.flatMap(p -> p.optParent) match {
+      | Some(parent) -> values.get(Path(Some(parent))).fromSome() as Active _
+      | _ -> Active(None(), controller)
+      }
+    | Forward(idx) ->
+      current.accessor.items(context, true).getItem(context, idx, true) match {
+      | _i @ Item _ -> void
+      | m @ Menu _ -> !current = current.makeChild(m)
+      }
+    }
+  | Close() -> !current = Active(None(), controller)
+  | Select(target, _, _) ->
+    currentNumber = current.accessor
+      .items(context, true)
+      .getNumberOfItems(context, true);
+    newSelected = target match {
+    | Previous() ->
+      optSelected match {
+      | Some(selected) -> if (selected > 0) selected - 1 else currentNumber - 1
+      | _ -> currentNumber - 1
+      }
+    | Next() ->
+      optSelected match {
+      | Some(selected) -> if (selected < currentNumber - 1) selected + 1 else 0
+      | _ -> 0
+      }
+    | Idx(idx) -> Math.clamp(idx, 0, currentNumber - 1)
+    };
+    values.set(
+      Ui.ensureVisibleProp,
+      Some(Ui.Pos(newSelected, context.getTick())),
+    );
+    values.set(
+      Selected(None(), current.optPath),
+      Some(SKStore.IntFile(newSelected)),
+    )
+  | _ -> SKStore.cast_violation("UiDropdown.Executable", executable)
+  };
+  values.set(Ui.currentProp, Some(current));
+  values.set(Path(current.optPath), Some(current));
+}
+
+module end;

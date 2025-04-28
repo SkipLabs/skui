@@ -1,0 +1,73 @@
+module UiMonospace;
+
+class LockHandler(
+  monospace: Ui.Monospace,
+  vertical: Bool,
+) extends FWK.LockHandler {
+  fun update(
+    context: mutable SKStore.Context,
+    mouse: UiEvent.MouseFile,
+  ): ?FWK.LockHandler {
+    if (!mouse.isPrimaryDown(context.getTick())) {
+      None()
+    } else {
+      FWKPipeline.gNodeInfo.maybeGetValue(
+        context,
+        this.monospace.path,
+        true,
+      ).flatMap(nodeInfo ->
+        nodeInfo.info.optUserData
+          .map(v ~> v as Metrics _)
+          .map(m -> {
+            wOffset = nodeInfo.info.getWindowOffset(context, true, true);
+            offset = mouse.offset() - wOffset;
+            barSize = context.getThemeThickness(UiTheme.ScrollBar()).toFloat();
+            drawInfo = nodeInfo.info.optDrawInfo
+              .map(v ~> v as DrawInfo _)
+              .fromSome();
+            if (this.vertical) {
+              height =
+                nodeInfo.info.size().height -
+                if (drawInfo.optHBar.isSome()) barSize else 0.0;
+              sheight = m.vertical.unity * height / m.vertical.main;
+              pointed = (offset.dy / sheight).toInt();
+              before = m.vertical.visibleCount / 2;
+              after = m.vertical.visibleCount - before;
+              start = Math.max(pointed - before, 0);
+              end = Math.min(pointed + after, m.vertical.count);
+              if (start < m.vertical.range.start) {
+                this.monospace.state.emitVVisible(context, start);
+              } else if (
+                start > m.vertical.range.start &&
+                end > m.vertical.range.end
+              ) {
+                this.monospace.state.emitVVisible(context, end);
+              };
+              this
+            } else {
+              width =
+                nodeInfo.info.size().width -
+                if (drawInfo.optVBar.isSome()) barSize else 0.0;
+              swidth = m.horizontal.unity * width / m.horizontal.main;
+              pointed = (offset.dx / swidth).toInt();
+              before = m.horizontal.visibleCount / 2;
+              after = m.horizontal.visibleCount - before;
+              start = Math.max(pointed - before, 0);
+              end = Math.min(pointed + after, m.horizontal.count);
+              if (start < m.horizontal.range.start) {
+                this.monospace.state.emitHVisible(context, start);
+              } else if (
+                start > m.horizontal.range.start &&
+                end > m.horizontal.range.end
+              ) {
+                this.monospace.state.emitHVisible(context, end);
+              };
+              this
+            }
+          })
+      )
+    }
+  }
+}
+
+module end;

@@ -1,0 +1,18 @@
+[package]
+name = "skui_font"
+version = "0.1.0"
+test-harness = "SKUIFontTest.main"
+
+[dev-dependencies]
+sktest = { path = "../skip/sktest" }
+skui_font_tests = { path = "./dev" }
+
+[dependencies]
+skui_common = { "path" = "../common" }
+
+[build-dependencies]
+skui_build = { path = "../builder" }
+
+#[[bin]]
+#name = "skuifont"
+#main = "SkuiFont.main"

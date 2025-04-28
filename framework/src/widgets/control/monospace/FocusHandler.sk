@@ -1,0 +1,497 @@
+module UiMonospace;
+
+class FocusHandler{
+  monospace: Ui.Monospace,
+} extends Ui.F2FocusHandler uses FWK.Shortcuts {
+  //
+  fun getIdentifier(): Ui.Path {
+    this.monospace.path;
+  }
+
+  protected fun isEditable(context: mutable SKStore.Context): Bool {
+    this.monospace.controller.isEditable(context, true)
+  }
+
+  fun enter(context: mutable SKStore.Context): void {
+    this.monospace.state.emitBlinking(context, true)
+  }
+
+  fun exit(context: mutable SKStore.Context): void {
+    this.monospace.state.emitBlinking(context, false);
+    if (
+      this.monospace.controller.getStorePolicies(context, true).contains(
+        OnFocusLost(),
+      )
+    ) {
+      this.monospace.state.emitSave(context)
+    };
+  }
+
+  protected fun getShortcuts(
+    context: mutable SKStore.Context,
+  ): Array<FWK.ShortcutAction> {
+    getShortcuts(context, this.monospace.state, this.monospace.controller)
+  }
+
+  protected fun beforeShortcuts(
+    _context: mutable SKStore.Context,
+    _keys: UiEvent.KeysFile,
+  ): Bool {
+    false
+  }
+
+  protected fun afterShortcuts(
+    context: mutable SKStore.Context,
+    keys: UiEvent.KeysFile,
+  ): Bool {
+    if (this.monospace.controller.isEditable(context, true)) {
+      keys.getChar(false, false, context.getTick()) match {
+      | Some(info) ->
+        info match {
+        | UiEvent.Unicode(char) ->
+          this.monospace.state.emitUnicode(context, toNumber(char))
+        | UiEvent.Diacritic(char) ->
+          this.monospace.state.emitDiacritic(context, char)
+        | UiEvent.Letter(char) ->
+          this.monospace.state.emitInsert(
+            context,
+            char.toString(),
+            false,
+            None(),
+          )
+        | UiEvent.Word(chars) ->
+          this.monospace.state.emitInsert(
+            context,
+            String::fromChars(chars),
+            false,
+            None(),
+          )
+        };
+        true
+      | _ -> false
+      };
+    } else {
+      false;
+    }
+  }
+}
+
+fun getShortcuts(
+  context: mutable SKStore.Context,
+  state: State,
+  controller: Controller,
+): Array<FWK.ShortcutAction> {
+  shortcuts = mutable Vector<FWK.ShortcutAction>[];
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToPrevious",
+      FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowLeft)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitGoTo(ctx, TColumn(false), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToNext",
+      FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowRight)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitGoTo(ctx, TColumn(true), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToPreviousLine",
+      FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowUp)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitGoTo(ctx, TLine(false), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToNextLine",
+      FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::arrowDown)]),
+      FWK.Repeatable((ctx, repeat) ~> state.emitGoTo(ctx, TLine(true), repeat)),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToPreviousPage",
+      FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::pageUp)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitGoTo(ctx, TPage(false), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToNextPage",
+      FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::pageDown)]),
+      FWK.Repeatable((ctx, repeat) ~> state.emitGoTo(ctx, TPage(true), repeat)),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToGroupBegin",
+      FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::arrowLeft)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitGoTo(ctx, TGroup(Some(false)), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToGroupEnd",
+      FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::arrowRight)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitGoTo(ctx, TGroup(Some(true)), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToLine",
+      FWK.Shortcut(Array[UiEvent.controlChar('g')]),
+      FWK.Standard(ctx ~> state.emitOpenGoToLine(ctx)),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToBegin",
+      FWK.Shortcut(Array[UiEvent.key(UiEvent.KeyInfo::home)]),
+      FWK.Standard(ctx ~> state.emitGoTo(ctx, TDocument(false))),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "goToEnd",
+      FWK.Shortcut(Array[UiEvent.key(UiEvent.KeyInfo::end)]),
+      FWK.Standard(ctx ~> state.emitGoTo(ctx, TDocument(true))),
+    ),
+  );
+  ///////// SELECTION
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToPrevious",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::arrowLeft)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TColumn(false), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToNext",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::arrowRight)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TColumn(true), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToPreviousLine",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::arrowUp)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TLine(false), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToNextLine",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::arrowDown)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TLine(true), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToPreviousPage",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::pageUp)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TPage(false), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToNextPage",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::pageDown)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TPage(true), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToGroupBegin",
+      FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::arrowLeft)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TGroup(Some(false)), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToGroupEnd",
+      FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::arrowRight)]),
+      FWK.Repeatable((ctx, repeat) ~>
+        state.emitSelectTo(ctx, TGroup(Some(true)), repeat)
+      ),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToLineBegin",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::home)]),
+      FWK.Standard(ctx ~> state.emitSelectTo(ctx, TInLine(Some(false)))),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToLineEnd",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::end)]),
+      FWK.Standard(ctx ~> state.emitSelectTo(ctx, TInLine(Some(true)))),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToBegin",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::home)]),
+      FWK.Standard(ctx ~> state.emitSelectTo(ctx, TDocument(false))),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectToEnd",
+      FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::end)]),
+      FWK.Standard(ctx ~> state.emitSelectTo(ctx, TDocument(true))),
+    ),
+  );
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "selectAll",
+      FWK.Shortcut::selectAll(),
+      FWK.Standard(ctx ~> state.emitSelectTo(ctx, TAll())),
+    ),
+  );
+  // UTILS
+  shortcuts.push(
+    FWK.ShortcutAction(
+      "copySelection",
+      FWK.Shortcut::copy(),
+      FWK.Standard(state.emitCopy),
+    ),
+  );
+  if (controller.isEditable(context, true)) {
+    if (controller.getStorePolicies(context, true).contains(OnSave())) {
+      shortcuts.push(
+        FWK.ShortcutAction(
+          "save",
+          FWK.Shortcut(Array[UiEvent.controlChar('s')]),
+          FWK.Standard(state.emitSave),
+        ),
+      );
+    };
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deletePrevious",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::backspace)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          state.emitDeleteTo(ctx, TColumn(false), repeat)
+        ),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deleteNext",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::delete)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          state.emitDeleteTo(ctx, TColumn(true), repeat)
+        ),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deleteToGroupBegin",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::backspace)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          state.emitDeleteTo(ctx, TGroup(Some(false)), repeat)
+        ),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deleteToGroupEnd",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::delete)]),
+        FWK.Repeatable((ctx, repeat) ~>
+          state.emitDeleteTo(ctx, TGroup(Some(true)), repeat)
+        ),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deleteToLineBegin",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::backspace)]),
+        FWK.Standard(ctx ~> state.emitDeleteTo(ctx, TInLine(Some(false)))),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deleteToLineEnd",
+        FWK.Shortcut(Array[UiEvent.control(UiEvent.KeyInfo::delete)]),
+        FWK.Standard(ctx ~> state.emitDeleteTo(ctx, TInLine(Some(true)))),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deleteToBegin",
+        FWK.Shortcut(
+          Array[
+            UiEvent.controlShift(
+              UiEvent.KeyInfo::backspace,
+              UiEvent.Key::isKeyPressed,
+            ),
+          ],
+        ),
+        FWK.Standard(ctx ~> state.emitDeleteTo(ctx, TDocument(false))),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "deleteToEnd",
+        FWK.Shortcut(
+          Array[
+            UiEvent.controlShift(
+              UiEvent.KeyInfo::delete,
+              UiEvent.Key::isKeyPressed,
+            ),
+          ],
+        ),
+        FWK.Standard(ctx ~> state.emitDeleteTo(ctx, TDocument(false))),
+      ),
+    );
+    // UTILS
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "newLine",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::enter)]),
+        FWK.Repeatable((ctx, repeat) ~> state.emitNewLine(ctx, repeat)),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "duplicate",
+        FWK.Shortcut(Array[UiEvent.controlChar('d')]),
+        FWK.Standard(state.emitDuplicate),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "switchLine",
+        FWK.Shortcut(Array[UiEvent.controlChar('t')]),
+        FWK.Standard(state.emitSwitchLine),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "lineToPrevious",
+        FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::arrowUp)]),
+        FWK.Repeatable(state.emitDecrLine),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "lineToNext",
+        FWK.Shortcut(Array[UiEvent.controlShift(UiEvent.KeyInfo::arrowDown)]),
+        FWK.Repeatable(state.emitIncrLine),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "indent",
+        FWK.Shortcut(Array[UiEvent.pureKeyPressed(UiEvent.KeyInfo::tab)]),
+        FWK.Repeatable(state.emitIndent),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "outdent",
+        FWK.Shortcut(Array[UiEvent.shift(UiEvent.KeyInfo::tab)]),
+        FWK.Repeatable(state.emitOutdent),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "upperSelection",
+        FWK.Shortcut(Array[UiEvent.controlChar('u')]),
+        FWK.Standard(state.emitUpper),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "lowerSelection",
+        FWK.Shortcut(Array[UiEvent.controlShiftChar('u')]),
+        FWK.Standard(state.emitLower),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "cutSelection",
+        FWK.Shortcut::cut(),
+        FWK.Standard(state.emitCut),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "paste",
+        FWK.Shortcut::paste(),
+        FWK.Standard(state.emitPaste),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "undo",
+        FWK.Shortcut::undo(),
+        FWK.Repeatable(state.emitUndo),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "redo",
+        FWK.Shortcut::redo(),
+        FWK.Repeatable(state.emitRedo),
+      ),
+    );
+    shortcuts.push(
+      FWK.ShortcutAction(
+        "checkUnicode",
+        FWK.Shortcut(Array[UiEvent.altReleased()]),
+        FWK.Standard(ctx ~> state.emitUnicode(ctx, None())),
+      ),
+    );
+  };
+  shortcuts.toArray();
+}
+
+fun toNumber(char: Char): ?Int {
+  char match {
+  | '0' -> Some(0)
+  | '1' -> Some(1)
+  | '2' -> Some(2)
+  | '3' -> Some(3)
+  | '4' -> Some(4)
+  | '5' -> Some(5)
+  | '6' -> Some(6)
+  | '7' -> Some(7)
+  | '8' -> Some(8)
+  | '9' -> Some(9)
+  | _ -> None()
+  }
+}
+
+module end;

@@ -1,0 +1,213 @@
+module UiTabsSc;
+
+const statePath: String = "ui/tabssc/state";
+const computedPath: String = "ui/tabssc/computed";
+
+class HStorage(
+  name: String,
+  handle: SKStore.INotTyped,
+) extends Storage uses Ui.ScrollingStorage {
+  //
+  static fun forNameAndScope(
+    context: readonly SKStore.Context,
+    name: String,
+    scope: String,
+  ): ?this {
+    hdl = SKStore.IHandle::notTyped(SKStore.DirName::create(scope));
+    if (hdl.exists(context)) Some(HStorage(name, hdl)) else None()
+  }
+
+  fun getName(): String {
+    this.name
+  }
+
+  fun getScope(): String {
+    this.handle.dirName.toString()
+  }
+
+  protected fun getHandle(): SKStore.INotTyped {
+    this.handle
+  }
+
+  fun setTodo(context: mutable SKStore.Context, value: Executable): void {
+    this.handle.write(context, Ui.todoProp, Ui.Todo(value, context.getTick()))
+  }
+
+  fun setHover(context: mutable SKStore.Context, optHover: ?Hover): void {
+    this.handle.writeOrRemove(context, Ui.hoverProp, optHover)
+  }
+
+  fun setTargeted(context: mutable SKStore.Context, value: Bool): void {
+    this.handle.write(context, Ui.targetedProp, SKStore.BoolFile(value))
+  }
+
+  fun getTodo(context: mutable SKStore.Context): Ui.Todo {
+    Ui.Todo::type(this.handle.get(context, Ui.todoProp))
+  }
+}
+
+class HState(
+  storage: SKStore.ENotTyped,
+  after: SKStore.ENotTyped,
+) extends State uses Ui.ScrollingState {
+  //
+  fun isTargeted(context: mutable SKStore.Context): Bool {
+    this.storage.getBool(context, Ui.targetedProp)
+  }
+
+  protected fun getHandle(): SKStore.ENotTyped {
+    this.storage
+  }
+
+  protected fun getComputed(): SKStore.ENotTyped {
+    this.after
+  }
+
+  protected fun getStatePath(): String {
+    statePath
+  }
+
+  protected fun setScrollCmd(value: ?Ui.Scroll): SKUIMessage.Command {
+    SetScroll(value)
+  }
+
+  protected fun manageScrollingCmd(
+    value: Int,
+    tick: SKStore.Tick,
+  ): SKUIMessage.Command {
+    ManageScrolling(value, tick)
+  }
+
+  fun getHover(context: mutable SKStore.Context): ?Hover {
+    this.storage.maybeGetProp(context, Ui.hoverProp, f ~> f as Hover _);
+  }
+
+  fun isScrolling(context: mutable SKStore.Context): Bool {
+    this.storage.maybeGetInt(context, Ui.scrollingProp).isSome()
+  }
+
+  fun emitHover(context: mutable SKStore.Context, value: ?Hover): void {
+    this.emit(context, SetHover(value));
+  }
+
+  fun emitGoTo(
+    context: mutable SKStore.Context,
+    value: Target,
+    optRepeatOn: ?FWK.Repeat = None(),
+  ): void {
+    this.emit(context, GoTo(value, optRepeatOn));
+  }
+}
+
+@debug
+fun init(
+  context: mutable SKStore.Context,
+  path: Ui.Path,
+  controller: Controller,
+  reference: Ui.Path,
+): Parameters {
+  dirName = Ui.controllerDirName(path);
+  filteredDirName = SKStore.DirName::make(dirName, "filtered/");
+  stateHdl = context.makeNotTyped(
+    dirName,
+    Array<(SKStore.Key, SKStore.File)>[
+      (Ui.todoProp, Ui.Todo(Init(), context.getTick())),
+    ],
+  );
+  preFilteredHdl = context.makeNotTypedPre(filteredDirName, Array[]);
+  filteredHdl = stateHdl.map(
+    k ~> k,
+    Ui.Todo::type,
+    context,
+    filteredDirName,
+    (context, writer, key, it) ~> {
+      if (key == Ui.todoProp) {
+        todo = Ui.Todo::type(it.first);
+        executables = mutable Vector<Executable>[];
+        optCurrent = preFilteredHdl.maybeGetProp(
+          context,
+          key,
+          Ui.Todo::type,
+          true,
+        );
+        tick = optCurrent.map(c -> c.tick).default(SKStore.Tick(-1));
+        max = tick;
+        if (todo.tick > tick) {
+          executables.push(todo.command as Executable _);
+          !max = todo.tick;
+        };
+        controller.getVisibleSource(context).each(v ->
+          if (v.tick > tick) {
+            if (v.tick > todo.tick) {
+              executables.push(ManageVisible(v.index));
+            } else {
+              executables.insert(0, ManageVisible(v.index));
+            };
+            if (v.tick > max) {
+              !max = todo.tick;
+            }
+          }
+        );
+        size = executables.size();
+        if (size == 0) {
+          optCurrent.each(c -> writer.set(key, c))
+        } else if (size == 1) {
+          writer.set(key, Ui.Todo(executables.first(), max))
+        } else {
+          writer.set(key, Ui.Todo(All(unsafe_chill_trust_me(executables)), max))
+        }
+      }
+    },
+  );
+  computedDirName = SKStore.DirName::make(dirName, "computed/");
+  initKeys = Array[Ui.ensureVisibleProp];
+  computedHdl = SKStore.derive(
+    context,
+    dirName.toString(),
+    computedDirName,
+    filteredHdl,
+    Ui.todoProp,
+    initKeys,
+    update,
+    None(),
+  );
+  Parameters(reference, controller, HState(stateHdl, computedHdl));
+}
+
+@debug
+fun update(
+  context: mutable SKStore.Context,
+  _scope: String,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+  todo: Ui.Todo,
+  _optUserData: ?SKStore.UserData,
+): void {
+  execute(context, todo.command as Executable _, values);
+}
+
+@debug
+fun execute(
+  context: mutable SKStore.Context,
+  executable: Executable,
+  values: mutable FWK.SMap<SKStore.Key, ?SKStore.File>,
+): void {
+  executable match {
+  | All(cmds) -> cmds.each(cmd -> execute(context, cmd, values))
+  | Init() -> void
+  | ManageScrolling(incr, _) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Incr(incr, context.getTick())))
+  | ManageVisible(value) ->
+    values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.getTick())))
+  | GoTo(target, _, _) ->
+    target match {
+    | Before() ->
+      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(-1, context.getTick())))
+    | After() ->
+      values.set(Ui.ensureVisibleProp, Some(Ui.Incr(1, context.getTick())))
+    | Index(value) ->
+      values.set(Ui.ensureVisibleProp, Some(Ui.Pos(value, context.getTick())))
+    }
+  }
+}
+
+module end;

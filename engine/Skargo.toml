@@ -1,0 +1,13 @@
+[package]
+name = "skui_eng"
+version = "0.1.0"
+
+[dependencies]
+skui_fwk = { "path" = "../framework" }
+skui_mtsdf = { "path" = "../mtsdf" }
+skui_opengl = { "path" = "../opengl" }
+
+[build-dependencies]
+skui_build = { path = "../builder" } 
+
+

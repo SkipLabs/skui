@@ -1,0 +1,141 @@
+module UiTooltip;
+
+class Layout(text: String, faceId: Font.FaceID) extends Ui.UserData
+
+const lineSpacing: Int = 2;
+const radius: Int = 6;
+
+base class Controller extends Ui.Parameters {
+  fun getText(context: mutable SKStore.Context): Text;
+}
+
+class LamController{text: mutable SKStore.Context ~> Text} extends Controller {
+  //
+  fun getText(context: mutable SKStore.Context): Text {
+    this.text(context)
+  }
+}
+
+module end;
+
+module Ui;
+
+class Tooltip protected {
+  controller: UiTooltip.Controller,
+} extends StrictWidget uses FWK.NoFocusHandler, WithNodeCache, NoViewports {
+  //
+  type Params = UiTooltip.Controller;
+  type Buffer = NodeCache;
+
+  protected static fun make(
+    context: mutable SKStore.Context,
+    path: Ui.Path,
+    controller: UiTooltip.Controller,
+    cache: NodeCache,
+    optConfiguration: ?Ui.Getter<Ui.Configuration> = None(),
+  ): this {
+    static{path, controller, optConfiguration, cache, tick => context.getTick()}
+  }
+
+  fun layout(
+    context: mutable SKStore.Context,
+    constraints: BoxConstraints,
+  ): Node {
+    maxWidth = context.getThemeThickness(UiTheme.Tooltip());
+    faceId = context.getThemeFont(UiTheme.Tooltip());
+    cContraints = constraints.enforce(
+      BoxConstraints::forWidth(0.0, maxWidth.toFloat()),
+    );
+    border = (2 * UiTooltip.radius).toFloat();
+    textSupport = context.getTextSupport();
+    str = context.translate(this.controller.getText(context));
+    size = textSupport.getLinesSize(context, str, None(), faceId, _lh ->
+      UiTooltip.lineSpacing.toFloat()
+    );
+    allowedWidth = cContraints.maxWidth() - border;
+    if (size.width > allowedWidth) {
+      !size = textSupport.getLinesSize(
+        context,
+        str,
+        Some(allowedWidth),
+        faceId,
+        _lh -> UiTooltip.lineSpacing.toFloat(),
+      );
+    };
+    fSize = constraints.constrain(size + Geometry.Size::square(border));
+    Node(
+      this,
+      fSize,
+      Array[],
+      constUserData(Some(UiTooltip.Layout(str, faceId))),
+    )
+  }
+
+  fun computeLayer(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    layer: Ui.LayerId,
+    node: Ui.NodeInfo,
+  ): Array<Ui.Drawable> {
+    layer match {
+    | MainLayer() ->
+      info = node.optUserData.map(l ~> l as UiTooltip.Layout _).fromSome();
+      this.computeMain(context, support, absolute, node.size(), info)
+    | BackgroundLayer() ->
+      this.computeBackground(context, support, absolute, node.size())
+    | ForegroundLayer() -> Array[]
+    };
+  }
+
+  private fun computeBackground(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+  ): Array<Ui.Drawable> {
+    color = context.getThemeColor(UiTheme.Tooltip());
+    Array[
+      support.roundedRectangle(
+        absolute,
+        size,
+        color,
+        UiTooltip.radius.toFloat(),
+      ),
+    ]
+  }
+
+  private fun computeMain(
+    context: mutable SKStore.Context,
+    support: Ui.DrawableSupport,
+    absolute: Geometry.Offset,
+    size: Geometry.Size,
+    info: UiTooltip.Layout,
+  ): Array<Ui.Drawable> {
+    drawables = mutable Vector<Ui.Drawable>[];
+    fill = context.getThemeColor(UiTheme.TooltipText());
+    border = (2 * UiTooltip.radius).toFloat();
+    tSize = size - Geometry.Size::square(border);
+    left = UiTooltip.radius.toFloat();
+    top = UiTooltip.radius.toFloat();
+    tOffset = absolute.translate(left, top);
+    lines = context
+      .getTextSupport()
+      .getLines(
+        context,
+        info.text,
+        tSize,
+        Text.Style{
+          faceId => info.faceId,
+          lineSpacing => Text.ConstLineSpacing(UiTooltip.lineSpacing.toFloat()),
+          wrapping => Text.WordWrap(),
+        },
+      );
+    lines.each(l ->
+      l.fillDrawables(context, support, tOffset, fill, drawables)
+    );
+    drawables.toArray();
+  }
+}
+
+module end;
