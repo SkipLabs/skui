@@ -88,7 +88,7 @@ fun perform(
             | Some(t) -> t
             | _ -> command._about.fromSome()
             };
-            _ = SKStore.gContextInit(SKStore.Context{});
+            _ = SKStore.gContextInit(SKStore.Context::create{});
             SKStore.Context::withGc(context ~> {
               initUiWidget(context, wId, fn(args));
               context.initPre();

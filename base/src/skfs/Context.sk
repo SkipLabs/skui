@@ -12,6 +12,20 @@ class Random(value: .Random) extends File {
   }
 }
 
+class ToWrite(
+  dirName: DirName,
+  key: Key,
+  values: readonly Context ~> Array<File>,
+) extends Postponable {
+  //
+  fun perform(context: mutable Context): void {
+    context.unsafeMaybeGetEagerDir(this.dirName) match {
+    | Some(dir) -> dir.writeArray(context, this.key, this.values(context))
+    | _ -> void
+    }
+  }
+}
+
 @cpp_extern("SKIP_check_memory")
 native fun .checkMemory(): void;
 
