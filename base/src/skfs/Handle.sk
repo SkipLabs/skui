@@ -464,7 +464,7 @@ extension class EHandle {
   }
 
   fun isWritable(context: mutable Context): Bool {
-    context.maybeGetEagerDir(this.dirName).map(d -> d.isInput()).default(false)
+    context.maybeGetEagerDir(this.dirName).map(d -> d.input).default(false)
   }
 }
 
@@ -511,7 +511,7 @@ class IHandle<K: Key, T: File>() extends Handle<K, T> {
       | None() ->
         invariant_violation(`Could not find input directory: ${this.dirName}`)
       | Some(dir) ->
-        if (!dir.isInput()) {
+        if (!dir.input) {
           invariant_violation(`Not an input Dir: ${this.dirName}`)
         };
         dir.writeArray(context, key, value)
@@ -532,7 +532,7 @@ class IHandle<K: Key, T: File>() extends Handle<K, T> {
       | None() ->
         invariant_violation(`Could not find input directory: ${this.dirName}`)
       | Some(dir) ->
-        invariant(dir.isInput(), `Not an input Dir: ${this.dirName}`);
+        invariant(dir.input, `Not an input Dir: ${this.dirName}`);
         dir.writeArray(context, key, valuesGetter(context))
       }
     }

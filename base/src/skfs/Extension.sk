@@ -150,7 +150,7 @@ extension base class IFixedDir {
       None()
     } else {
       middle = (this.data.size() - 1) / 2;
-      tickRange = this.decode(this.data[middle]).tag;
+      tickRange = this.get(middle).tag;
       Some(tickRange.max)
     }
   }
