@@ -56,12 +56,12 @@ class Constrained{
     this.controller.getWidget(context) match {
     | Some(constrained) ->
       node = constrained.getNode(context, cConstraints);
-      Ui.Node(
+      Ui.Node::create(
         this,
         node.size,
-        Array[Ui.CNode(node, Geometry.Offset::zero, cConstraints)],
+        Array[Ui.CNode::create(node, Geometry.Offset::zero, cConstraints)],
       )
-    | _ -> Ui.Node(this, cConstraints.smallest())
+    | _ -> Ui.Node::create(this, cConstraints.smallest())
     }
   }
 

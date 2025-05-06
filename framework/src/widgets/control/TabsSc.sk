@@ -81,11 +81,11 @@ class TabsSc protected {
     | HorizontalAxis() -> size - Geometry.Size(spaces, 0.0)
     | VerticalAxis() -> size - Geometry.Size(0.0, spaces)
     };
-    Node(
+    Node::create(
       this,
       size,
       Array[
-        CLink(
+        CLink::create(
           this.path.makeChild("vp"),
           Geometry.Rect::fromOffsetSize(offset, lSize),
           Opaque(),
@@ -123,7 +123,7 @@ class TabsSc protected {
     | VerticalAxis() -> constraints.freeHeight()
     };
     node = widget.getNode(context, cConstraints);
-    CNode(node, Geometry.Offset::zero, cConstraints)
+    CNode::create(node, Geometry.Offset::zero, cConstraints)
   }
 
   fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {

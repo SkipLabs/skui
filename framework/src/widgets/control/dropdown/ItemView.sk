@@ -134,7 +134,7 @@ class ItemView protected {
     _context: mutable SKStore.Context,
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
-    Ui.Node(this, constraints.constrain(this.settings.size), Array[])
+    Ui.Node::create(this, constraints.constrain(this.settings.size), Array[])
   }
 
   fun getHoverHandler(
@@ -356,7 +356,7 @@ class Separator{
     size = this.optSize.default(
       Geometry.Size(hGap.toFloat() * 4.0, vGap.toFloat()),
     );
-    Ui.Node(this, constraints.constrain(size), Array[])
+    Ui.Node::create(this, constraints.constrain(size), Array[])
   }
 
   fun computeLayer(

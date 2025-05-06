@@ -63,7 +63,7 @@ class Tooltip protected {
       );
     };
     fSize = constraints.constrain(size + Geometry.Size::square(border));
-    Node(
+    Node::create(
       this,
       fSize,
       Array[],

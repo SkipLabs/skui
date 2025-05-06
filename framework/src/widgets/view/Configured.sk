@@ -40,10 +40,10 @@ class Configured{
   ): Node {
     widget = this.controller.getWidget(context);
     node = widget.getNode(context, constraints);
-    Ui.Node(
+    Ui.Node::create(
       this,
       node.size,
-      Array[Ui.CNode(node, Geometry.Offset::zero, constraints)],
+      Array[Ui.CNode::create(node, Geometry.Offset::zero, constraints)],
     )
   }
 

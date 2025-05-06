@@ -201,11 +201,11 @@ class Table protected {
       // TODO User Data
       userData = _ctx ~> None();
       if (valid) {
-        return Node(
+        return Node::create(
           this,
           size,
           Array[
-            CLink(
+            CLink::create(
               this.path.makeChild("vp"),
               Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, size),
               Opaque(),
@@ -221,7 +221,12 @@ class Table protected {
     };
     node = this.indicator.getNode(context, constraints);
     offset = Geometry.Offset::zero;
-    Node(this, node.size, Array[CNode(node, offset, constraints)], userData)
+    Node::create(
+      this,
+      node.size,
+      Array[CNode::create(node, offset, constraints)],
+      userData,
+    )
   }
 
   fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {

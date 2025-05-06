@@ -9,7 +9,7 @@ class Viewport{
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     child = this.scroll.viewportChild(context, constraints);
-    Ui.Node(this, child.node.size, Array[child])
+    Ui.Node::create(this, child.node.size, Array[child])
   }
 }
 

@@ -360,7 +360,7 @@ class Dropdown protected {
       vec = mutable Vector<NChild>[];
       optTitle.each(title -> {
         tNode = title.widget.getNode(context, childConstraints);
-        vec.push(CNode(tNode, offset, childConstraints));
+        vec.push(CNode::create(tNode, offset, childConstraints));
         !offset.dy = offset.dy + tNode.size.height;
       });
       optBOffset = optBody.map(body -> {
@@ -374,7 +374,7 @@ class Dropdown protected {
         (bOffset, bNode) = info;
         bHeight = height - vGap - bOffset.dy;
         vec.push(
-          CLink(
+          CLink::create(
             this.path.makeChild("vp"),
             Geometry.Rect::fromOffsetSize(
               bOffset,
@@ -388,7 +388,7 @@ class Dropdown protected {
       });
       (Geometry.Size(width, height), vec.toArray(), optMetrics)
     };
-    Node(this, size, childrenArray, _ctx ~> optUserData);
+    Node::create(this, size, childrenArray, _ctx ~> optUserData);
   }
 
   fun computeDrawInfo(

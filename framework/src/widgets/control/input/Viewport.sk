@@ -9,9 +9,9 @@ class Viewport{
     constraints: Ui.BoxConstraints,
   ): Ui.Node {
     if (constraints.hasBoundedWidth() && constraints.hasBoundedHeight()) {
-      Ui.Node(this, constraints.biggest(), Array[])
+      Ui.Node::create(this, constraints.biggest(), Array[])
     } else {
-      Ui.Node(this, constraints.smallest(), Array[])
+      Ui.Node::create(this, constraints.smallest(), Array[])
     }
   }
 

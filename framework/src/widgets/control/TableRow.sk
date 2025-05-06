@@ -30,10 +30,12 @@ class TableRow protected {
       cWidth = widths[idx];
       cContraints = BoxConstraints::tight(cWidth, height);
       node = cell.getNode(context, cContraints);
-      childVector.push(CNode(node, Geometry.Offset(left, 0.0), cContraints));
+      childVector.push(
+        CNode::create(node, Geometry.Offset(left, 0.0), cContraints),
+      );
       !left = left + cWidth;
     });
-    Node(this, Geometry.Size(left, height), childVector.toArray());
+    Node::create(this, Geometry.Size(left, height), childVector.toArray());
   }
 
   fun computeDrawInfo(

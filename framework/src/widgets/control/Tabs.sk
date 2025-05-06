@@ -369,10 +369,10 @@ class Tabs protected {
   ): Node {
     widget = this.widgetHdl.get(context).widget;
     node = widget.getNode(context, constraints);
-    Node(
+    Node::create(
       this,
       node.size,
-      Array[CNode(node, Geometry.Offset::zero, constraints)],
+      Array[CNode::create(node, Geometry.Offset::zero, constraints)],
     );
   }
 

@@ -62,10 +62,10 @@ class TooltipLayout protected {
       offset.dy
     };
     left = Math.min(offset.dx, size.width - node.size.width);
-    Node(
+    Node::create(
       this,
       size,
-      Array[CNode(node, Geometry.Offset(left, top), cConstraints)],
+      Array[CNode::create(node, Geometry.Offset(left, top), cConstraints)],
     );
   }
 

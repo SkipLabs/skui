@@ -171,25 +171,25 @@ class Size(
   }
 
   fun +(other: Size): Size {
-    Size(this.width + other.width, this.height + other.height);
+    this.op(other, (v1, v2) -> v1 + v2)
   }
 
   fun -(other: Size): Size {
-    Size(this.width - other.width, this.height - other.height);
+    this.op(other, (v1, v2) -> v1 - v2)
   }
 
   /**
    * Returns a Size whose dimensions are the dimensions of the left-hand-side operand (a Size) multiplied by the scalar right-hand-side operand (a double).
    */
   fun *(operand: Float): Size {
-    Size(this.width * operand, this.height * operand);
+    this.op(Size::square(operand), (v1, v2) -> v1 * v2)
   }
 
   /**
    * Returns a Size whose dimensions are the dimensions of the left-hand-side operand (a Size) divided by the scalar right-hand-side operand (a double).
    */
   fun /(operand: Float): Size {
-    Size(this.width / operand, this.height / operand);
+    this.op(Size::square(operand), (v1, v2) -> v1 / v2)
   }
 
   fun toDimension2D(): Geometry.Dimension2D {
@@ -246,6 +246,28 @@ class Size(
 
   fun iceil(): ISize {
     this.ceil().toISize();
+  }
+
+  fun hasNaN(): Bool {
+    this.width.isNaN() || this.height.isNaN();
+  }
+
+  private fun op(other: Size, op: (Float, Float) -> Float): Size {
+    width = if (this.width == Float::inf || this.width == -Float::inf) {
+      this.width
+    } else if (other.width == Float::inf || other.width == -Float::inf) {
+      other.width
+    } else {
+      op(this.width, other.width)
+    };
+    height = if (this.height == Float::inf || this.height == -Float::inf) {
+      this.height
+    } else if (other.height == Float::inf || other.height == -Float::inf) {
+      other.height
+    } else {
+      op(this.height, other.height)
+    };
+    Size(width, height)
   }
 }
 

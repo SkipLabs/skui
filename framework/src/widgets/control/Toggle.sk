@@ -31,7 +31,7 @@ class Toggle protected {
   ): Node {
     layout = UiToggle.Layout::create(context, this.controller);
     size = constraints.constrain(layout.computeSize());
-    Node(this, size, Array[], constUserData(Some(layout)))
+    Node::create(this, size, Array[], constUserData(Some(layout)))
   }
 
   fun getHoverHandler(

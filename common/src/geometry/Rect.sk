@@ -79,21 +79,35 @@ class Rect(
    * The distance between the left and right edges of this rectangle.
    */
   fun width(): Float {
-    Math.abs(this.right - this.left);
+    if (this.right == Float::inf || this.left == -Float::inf) {
+      Float::inf
+    } else {
+      Math.abs(this.right - this.left)
+    }
   }
 
   /**
    * The distance between the top and bottom edges of this rectangle.
    */
   fun height(): Float {
-    Math.abs(this.bottom - this.top);
+    if (this.top == Float::inf || this.bottom == -Float::inf) {
+      Float::inf
+    } else {
+      Math.abs(this.bottom - this.top)
+    }
   }
 
   /**
    * The offset to the center of the bottom edge of this rectangle
    */
   fun bottomCenter(): Offset {
-    Offset(this.left + this.width() / 2.0, this.bottom);
+    width = this.width();
+    !width = if (width == Float::inf || this.left == -Float::inf) {
+      Float::inf
+    } else {
+      this.left + width / 2.0
+    };
+    Offset(width, this.bottom);
   }
 
   /**
@@ -114,14 +128,32 @@ class Rect(
    * The offset to the point halfway between the left and right and the top and bottom edges of this rectangle.
    */
   fun center(): Offset {
-    Offset(this.left + this.width() / 2.0, this.top + this.height() / 2.0);
+    width = this.width();
+    !width = if (width == Float::inf || this.left == -Float::inf) {
+      Float::inf
+    } else {
+      this.left + width / 2.0
+    };
+    height = this.height();
+    !height = if (height == Float::inf || this.top == -Float::inf) {
+      Float::inf
+    } else {
+      this.top + height / 2.0
+    };
+    Offset(width, height);
   }
 
   /**
    * The offset to the center of the left edge of this rectangle.
    */
   fun centerLeft(): Offset {
-    Offset(this.left, this.top + this.height() / 2.0);
+    height = this.height();
+    !height = if (height == Float::inf || this.top == -Float::inf) {
+      Float::inf
+    } else {
+      this.top + height / 2.0
+    };
+    Offset(this.left, height);
   }
 
   /**

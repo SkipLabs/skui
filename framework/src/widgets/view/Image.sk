@@ -42,7 +42,7 @@ class ImageView{
     size = constraints.constrain(
       optSize.default(Geometry.ISize(0, 0)).toSize(),
     );
-    Ui.Node(this, size)
+    Ui.Node::create(this, size)
   }
 
   fun computeLayer(

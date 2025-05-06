@@ -275,7 +275,7 @@ class Wrap protected {
       spacing,
       runSpacing,
     );
-    Node(this, size, childArray);
+    Node::create(this, size, childArray);
   }
 
   //*************************************
@@ -424,7 +424,10 @@ class Wrap protected {
             crossAxisOffset + childCrossAxisOffset,
           );
           (childNode, childId) = sizes.get(index);
-          childArray.set(index, Some(CNode(childNode, offset, childId)));
+          childArray.set(
+            index,
+            Some(CNode::create(childNode, offset, childId)),
+          );
           !childMainPosition = if (flipMainAxis) {
             childMainPosition - childBetweenSpace;
           } else {

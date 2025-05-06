@@ -263,10 +263,10 @@ class Dialog protected {
   ): Node {
     builtNode = this.supplier(context).getNode(context, constraints);
     utils = this.controller.getKind(context).getSubmitExit();
-    Node(
+    Node::create(
       this,
       builtNode.size,
-      Array[CNode(builtNode, Geometry.Offset::zero, constraints)],
+      Array[CNode::create(builtNode, Geometry.Offset::zero, constraints)],
       constUserData(Some(utils)),
     )
   }

@@ -61,10 +61,10 @@ class Dialogs protected {
     constraints: BoxConstraints,
   ): Node {
     builtNode = this.supplier(context).getNode(context, constraints);
-    Node(
+    Node::create(
       this,
       builtNode.size,
-      Array[CNode(builtNode, Geometry.Offset::zero, constraints)],
+      Array[CNode::create(builtNode, Geometry.Offset::zero, constraints)],
     )
   }
 

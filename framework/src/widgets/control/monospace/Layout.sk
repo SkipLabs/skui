@@ -44,9 +44,9 @@ class Layout protected {
       node = line.getNode(context, constraints);
       !height = height + node.size.height;
       !width = Math.max(width, node.size.width);
-      Ui.CNode(node, Geometry.Offset(0.0, top), constraints);
+      Ui.CNode::create(node, Geometry.Offset(0.0, top), constraints);
     });
-    Ui.Node(this, Geometry.Size(width, height), cns)
+    Ui.Node::create(this, Geometry.Size(width, height), cns)
   }
 }
 

@@ -53,7 +53,7 @@ class TableCell protected {
       context.getThemeThickness(UiTheme.IconTextGap()).toFloat(),
     );
     size = constraints.constrain(layout.computeSize());
-    Node(this, size, Array[], constUserData(Some(layout)));
+    Node::create(this, size, Array[], constUserData(Some(layout)));
   }
 
   fun computeDrawInfo(

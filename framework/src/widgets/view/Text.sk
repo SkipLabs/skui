@@ -379,7 +379,7 @@ class VText protected {
     );
     innerSize = Geometry.Size(width, height);
     size = constraints.constrain(innerSize);
-    Node(
+    Node::create(
       this,
       size,
       Array[],
