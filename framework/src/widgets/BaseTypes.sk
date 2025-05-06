@@ -98,14 +98,33 @@ class NumberConverter<T: Number>() extends Converter<T> {
 
 class Opaque(mouse: Bool = true, keys: Bool = false)
 
-class NodeSum(
+class NodeSum private (
   nodeInfoGetter: NodeInfoGetter,
   nodeOffsetsGetter: NodeOffsetsGetter,
   viewportGetter: ViewportGetter,
   size: Geometry.Size,
   optParent: ?Path,
   optViewport: ?Path,
-)
+) {
+  static fun create(
+    nodeInfoGetter: NodeInfoGetter,
+    nodeOffsetsGetter: NodeOffsetsGetter,
+    viewportGetter: ViewportGetter,
+    size: Geometry.Size,
+    optParent: ?Path,
+    optViewport: ?Path,
+  ): NodeSum {
+    invariant(!size.hasNaN(), "Nan size in Ui.NodeSum");
+    static(
+      nodeInfoGetter,
+      nodeOffsetsGetter,
+      viewportGetter,
+      size,
+      optParent,
+      optViewport,
+    )
+  }
+}
 
 class NodeOffsets(
   viewport: Geometry.Offset,
@@ -311,7 +330,7 @@ class WidgetFile(widget: Widget) extends SKStore.File {
   }
 }
 
-class Node(
+class Node private (
   widget: Widget,
   size: Geometry.Size,
   subNodes: Array<NChild> = Array[],
@@ -325,6 +344,18 @@ class Node(
     | x @ Node _ -> x
     | _ -> invariant_violation("Must be Ui.Node")
     }
+  }
+
+  static fun create(
+    widget: Widget,
+    size: Geometry.Size,
+    subNodes: Array<NChild> = Array[],
+    userData: UserDataGetter = constUserData(None()),
+    manageVisibility: Bool = false,
+    reversedEvents: Bool = false,
+  ): this {
+    invariant(!size.hasNaN(), "Nan size in Ui.Node");
+    static(widget, size, subNodes, userData, manageVisibility, reversedEvents)
   }
 
   static fun reversed(
@@ -379,11 +410,8 @@ type ViewportGetter = (mutable SKStore.Context, Path, Bool) ~> NViewport;
 type NodeInfoGetter = (mutable SKStore.Context, Path, Bool) ~> NodeInfo;
 type NodeOffsetsGetter = (mutable SKStore.Context, Bool) ~> ?NodeOffsets;
 
-base class NChild(constraints: BoxConstraints) {
-  children =
-  | CNode(node: Node, offset: Geometry.Offset)
-  | CLink(path: Path, bounds: Geometry.Rect, opaque: Opaque)
-
+base class NChild private (constraints: BoxConstraints) {
+  //
   fun getOffset(): Geometry.Offset
   | CNode(__, offset, _) -> offset
   | CLink(_, bounds, _, _) -> bounds.topLeft()
@@ -417,6 +445,34 @@ base class NChild(constraints: BoxConstraints) {
   | CLink(path, _, opaque, _) ->
     node = nodeGetter(context, path, isUntracked);
     (node, opaque.keys)
+}
+
+class CLink private (
+  path: Path,
+  bounds: Geometry.Rect,
+  opaque: Opaque,
+) extends NChild {
+  //
+  static fun create(
+    path: Path,
+    bounds: Geometry.Rect,
+    opaque: Opaque,
+    constraints: BoxConstraints,
+  ): CLink {
+    invariant(!bounds.hasNaN(), "Nan in Ui.CLink bounds");
+    static(path, bounds, opaque, constraints)
+  }
+}
+
+class CNode private (node: Node, offset: Geometry.Offset) extends NChild {
+  //
+  static fun create(
+    node: Node,
+    offset: Geometry.Offset,
+    constraints: BoxConstraints,
+  ): CNode {
+    static(node, offset, constraints)
+  }
 }
 
 base class Parameters extends SKStore.File

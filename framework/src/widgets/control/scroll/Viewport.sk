@@ -29,10 +29,10 @@ class Viewport{
       (hPolicy == UiScroll.Never() && vPolicy == UiScroll.Never())
     ) {
       node = widget.getNode(context, constraints);
-      Ui.Node(
+      Ui.Node::create(
         this,
         node.size,
-        Array[Ui.CNode(node, Geometry.Offset::zero, constraints)],
+        Array[Ui.CNode::create(node, Geometry.Offset::zero, constraints)],
       )
     } else {
       // get natural size of child widget
@@ -70,10 +70,10 @@ class Viewport{
         !iNode = widget.getNode(context, cConstraints);
       };
       size = constraints.constrain(Geometry.Size(width, height));
-      Ui.Node(
+      Ui.Node::create(
         this,
         size,
-        Array[Ui.CNode(iNode, Geometry.Offset::zero, cConstraints)],
+        Array[Ui.CNode::create(iNode, Geometry.Offset::zero, cConstraints)],
       )
     }
   }

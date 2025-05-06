@@ -51,13 +51,13 @@ class Viewport{
         );
       };
       childVector.push(
-        Ui.CNode(node, Geometry.Offset(0.0, top), noConstraints),
+        Ui.CNode::create(node, Geometry.Offset(0.0, top), noConstraints),
       );
       !unity = node.size.height;
       !top = top + unity;
       !width = Math.max(width, node.size.width);
     });
-    Ui.Node(
+    Ui.Node::create(
       this,
       Geometry.Size(width, top),
       childVector.toArray(),

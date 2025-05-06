@@ -60,7 +60,7 @@ class Decorated{
       node = widget.getNode(context, cConstraints);
       offset = Geometry.Offset(padding.left, padding.top);
       size = padding.inflateSize(node.size);
-      Node(this, size, Array[CNode(node, offset, cConstraints)])
+      Node::create(this, size, Array[CNode::create(node, offset, cConstraints)])
     | _ ->
       biggest = cConstraints.biggest();
       smallest = cConstraints.smallest();
@@ -74,7 +74,7 @@ class Decorated{
       } else {
         smallest.height
       };
-      Node(this, padding.inflateSize(Geometry.Size(width, height)))
+      Node::create(this, padding.inflateSize(Geometry.Size(width, height)))
     };
   }
 

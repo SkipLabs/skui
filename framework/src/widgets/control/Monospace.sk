@@ -439,10 +439,10 @@ class Monospace protected {
   ): Node {
     if (this.state.isFontLoading(context)) {
       node = this.indicator.getNode(context, constraints);
-      Node(
+      Node::create(
         this,
         node.size,
-        Array[CNode(node, Geometry.Offset::zero, constraints)],
+        Array[CNode::create(node, Geometry.Offset::zero, constraints)],
       )
     } else if (
       !constraints.hasBoundedWidth() ||
@@ -475,7 +475,7 @@ class Monospace protected {
       font = this.state.getFontSize(context);
       optNumbersNode.each(nn -> {
         childNodes.push(
-          CLink(
+          CLink::create(
             this.path.makeChild("numsVp"),
             Geometry.Rect::fromOffsetSize(
               Geometry.Offset::zero,
@@ -489,7 +489,7 @@ class Monospace protected {
         !vpSize = Geometry.Size(size.width - nn.size.width, size.height)
       });
       childNodes.push(
-        CLink(
+        CLink::create(
           this.path.makeChild("vp"),
           Geometry.Rect::fromOffsetSize(vpOffset, vpSize),
           Opaque(),
@@ -497,7 +497,7 @@ class Monospace protected {
         ),
       );
       childNodes.push(
-        CLink(
+        CLink::create(
           this.path.makeChild("barVp"),
           Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, size),
           Opaque(false, false),
@@ -506,7 +506,7 @@ class Monospace protected {
       );
       //
       fVpSize = vpSize;
-      Node(this, size, childNodes.toArray(), ctx ~> {
+      Node::create(this, size, childNodes.toArray(), ctx ~> {
         metrics = UiMonospace.Metrics::compute(
           ctx,
           fVpSize,

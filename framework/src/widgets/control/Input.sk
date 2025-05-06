@@ -173,11 +173,11 @@ class Input protected {
       layout,
       iconTextGap,
     );
-    Node(
+    Node::create(
       this,
       size,
       Array[
-        CLink(
+        CLink::create(
           this.path.makeChild("vp"),
           fRect,
           Opaque(),

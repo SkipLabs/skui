@@ -1,6 +1,9 @@
 module Ui;
 
-class Boundary(value: Float, included: Bool = true) uses Hashable, Orderable {
+class Boundary private (
+  value: Float,
+  included: Bool = true,
+) uses Hashable, Orderable {
   static fun zero(): Boundary {
     Boundary(0.0, true);
   }
@@ -13,8 +16,13 @@ class Boundary(value: Float, included: Bool = true) uses Hashable, Orderable {
     }
   }
 
+  static fun create(value: Float, included: Bool = true): Boundary {
+    invariant(!value.isNaN(), `Nan boundary`);
+    Boundary(value, included);
+  }
+
   fun isInf(): Bool {
-    this.value == Float::inf
+    this.value == Float::inf || this.value == -Float::inf
   }
 
   fun isLeft(value: Float): Bool {
@@ -33,6 +41,10 @@ class Boundary(value: Float, included: Bool = true) uses Hashable, Orderable {
     }
   }
 
+  fun withValue(value: Float): Boundary {
+    static::create(value, this.included)
+  }
+
   // The only non-finite numbers are NaN, positive infinitity and negative infinity.
   fun isFinite(): Bool {
     !this.value.isNaN() &&
@@ -49,24 +61,26 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
 
   static fun make{min: ?Float = None(), max: ?Float = None()}: Interval {
     (min, max) match {
-    | (Some(mi), Some(ma)) -> Interval(Boundary(mi), Boundary(ma))
-    | (Some(mi), None()) -> Interval(Boundary(mi), Boundary::inf())
-    | (None(), Some(ma)) -> Interval(Boundary(0.0), Boundary(ma))
+    | (Some(mi), Some(ma)) ->
+      Interval(Boundary::create(mi), Boundary::create(ma))
+    | (Some(mi), None()) -> Interval(Boundary::create(mi), Boundary::inf())
+    | (None(), Some(ma)) ->
+      Interval(Boundary::create(0.0), Boundary::create(ma))
     | _ -> static::zeroInfinite()
     };
   }
 
   static fun included(min: Float, max: Float): Interval {
-    //invariant(min <= max, `max must be greater than min`);
-    Interval(Boundary(min), Boundary(max));
+    invariant(min <= max, "max must be greater than min");
+    Interval(Boundary::create(min), Boundary::create(max));
   }
 
   static fun forMin(min: Float, included: Bool = true): Interval {
-    Interval(Boundary(min, included), Boundary::inf());
+    Interval(Boundary::create(min, included), Boundary::inf());
   }
 
   static fun forMax(max: Float, included: Bool = true): Interval {
-    Interval(Boundary(0.0, true), Boundary(max, included));
+    Interval(Boundary::create(0.0, true), Boundary::create(max, included));
   }
 
   static fun zeroInfinite(): Interval {
@@ -94,14 +108,14 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
   }
 
   fun withMax(value: Float): Interval {
-    !this.min.value = Math.min(this.min.value, value);
-    !this.max.value = Math.min(this.max.value, value);
+    !this.min = this.min.withValue(Math.min(this.min.value, value));
+    !this.max = this.max.withValue(Math.min(this.max.value, value));
     this;
   }
 
   fun withMin(value: Float): Interval {
-    !this.min.value = Math.max(this.min.value, value);
-    !this.max.value = Math.max(this.max.value, value);
+    !this.min = this.min.withValue(Math.max(this.min.value, value));
+    !this.max = this.max.withValue(Math.max(this.max.value, value));
     this;
   }
 
@@ -110,8 +124,8 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
    */
   fun *(factor: Float): Interval {
     Interval(
-      Boundary(this.min.value * factor, this.min.included),
-      Boundary(this.max.value * factor, this.max.included),
+      Boundary::create(this.min.value * factor, this.min.included),
+      Boundary::create(this.max.value * factor, this.max.included),
     );
   }
   /**
@@ -119,8 +133,8 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
    */
   fun /(factor: Float): Interval {
     Interval(
-      Boundary(this.min.value / factor, this.min.included),
-      Boundary(this.max.value / factor, this.max.included),
+      Boundary::create(this.min.value / factor, this.min.included),
+      Boundary::create(this.max.value / factor, this.max.included),
     );
   }
 
@@ -128,15 +142,15 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
     minValue = this.min.value.toInt() / factor;
     maxValue = this.max.value.toInt() / factor;
     Interval(
-      Boundary(minValue.toFloat(), this.min.included),
-      Boundary(maxValue.toFloat(), this.max.included),
+      Boundary::create(minValue.toFloat(), this.min.included),
+      Boundary::create(maxValue.toFloat(), this.max.included),
     );
   }
 
   fun %(factor: Int): Interval {
     Interval(
-      Boundary(Math.modulo(this.min.value, factor), this.min.included),
-      Boundary(Math.modulo(this.max.value, factor), this.max.included),
+      Boundary::create(Math.modulo(this.min.value, factor), this.min.included),
+      Boundary::create(Math.modulo(this.max.value, factor), this.max.included),
     );
   }
   /**
@@ -168,8 +182,8 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
       this.max.value
     };
     Interval(
-      Boundary(minValue, this.min.included),
-      Boundary(maxValue, this.max.included),
+      Boundary::create(minValue, this.min.included),
+      Boundary::create(maxValue, this.max.included),
     );
   }
 
@@ -179,14 +193,14 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
       max match {
       | Some(ma) ->
         Interval(
-          Boundary(mi, this.min.included),
-          Boundary(ma, this.max.included),
+          Boundary::create(mi, this.min.included),
+          Boundary::create(ma, this.max.included),
         )
-      | _ -> Interval(Boundary(mi, this.min.included), this.max)
+      | _ -> Interval(Boundary::create(mi, this.min.included), this.max)
       }
     | _ ->
       max match {
-      | Some(ma) -> Interval(this.min, Boundary(ma, this.min.included))
+      | Some(ma) -> Interval(this.min, Boundary::create(ma, this.min.included))
       | _ -> Interval(this.min, this.max)
       }
     };

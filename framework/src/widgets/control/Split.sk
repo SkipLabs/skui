@@ -57,11 +57,11 @@ class Split protected {
           Math.max(fNode.size.height, sNode.size.height),
         ),
       );
-      Ui.Node(
+      Ui.Node::create(
         this,
         size,
         Array[
-          CLink(
+          CLink::create(
             this.path.makeChild("firstVp"),
             Geometry.Rect::fromOffsetSize(
               offset,
@@ -70,7 +70,7 @@ class Split protected {
             Opaque(false, false),
             fc,
           ),
-          CLink(
+          CLink::create(
             this.path.makeChild("secondVp"),
             Geometry.Rect::fromOffsetSize(
               offset.translateX(fWidth + thickness),
@@ -120,11 +120,11 @@ class Split protected {
           fHeight + thickness + sNode.size.height,
         ),
       );
-      Ui.Node(
+      Ui.Node::create(
         this,
         size,
         Array[
-          CLink(
+          CLink::create(
             this.path.makeChild("firstVp"),
             Geometry.Rect::fromOffsetSize(
               offset,
@@ -133,7 +133,7 @@ class Split protected {
             Opaque(false, false),
             fc,
           ),
-          CLink(
+          CLink::create(
             this.path.makeChild("secondVp"),
             Geometry.Rect::fromOffsetSize(
               offset.translateY(fHeight + thickness),

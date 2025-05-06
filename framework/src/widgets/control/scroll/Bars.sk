@@ -26,7 +26,7 @@ class Bars{
         );
         hNode = hBar.getNode(context, hConstraints);
         childNodes.push(
-          Ui.CNode(
+          Ui.CNode::create(
             hNode,
             Geometry.Offset(0.0, size.height - barSize),
             hConstraints,
@@ -44,16 +44,16 @@ class Bars{
         );
         vNode = vBar.getNode(context, vConstraints);
         childNodes.push(
-          Ui.CNode(
+          Ui.CNode::create(
             vNode,
             Geometry.Offset(size.width - barSize, 0.0),
             vConstraints,
           ),
         );
       });
-      Ui.Node(this, constraints.biggest(), childNodes.toArray())
+      Ui.Node::create(this, constraints.biggest(), childNodes.toArray())
     } else {
-      Ui.Node(this, constraints.smallest(), Array[])
+      Ui.Node::create(this, constraints.smallest(), Array[])
     }
   }
 }

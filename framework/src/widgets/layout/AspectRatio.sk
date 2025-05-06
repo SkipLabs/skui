@@ -86,10 +86,10 @@ class AspectRatio{
     } else {
       Geometry.Offset(0.0, 0.0);
     };
-    Node(
+    Node::create(
       this,
       Geometry.Size(width, height),
-      Array[CNode(node, offset, cConstraints)],
+      Array[CNode::create(node, offset, cConstraints)],
     )
   }
 }

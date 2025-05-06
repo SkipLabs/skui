@@ -163,7 +163,7 @@ class TextLine protected {
       count.toFloat() * fontSize.width,
       Math.ceil(fontSize.height()) + (2 * padding).toFloat(),
     );
-    Node(this, size);
+    Node::create(this, size);
   }
 
   fun computeDrawInfo(

@@ -132,7 +132,7 @@ class Stack protected {
       );
       vpsPath = this.path.makeChild("vps");
       childVector.push(
-        CLink(
+        CLink::create(
           vpsPath.add(widget.path),
           rect,
           Ui.Opaque(opaque, opaque),
@@ -140,7 +140,14 @@ class Stack protected {
         ),
       );
     };
-    Node(this, size, childVector.toArray(), constUserData(None()), false, true);
+    Node::create(
+      this,
+      size,
+      childVector.toArray(),
+      constUserData(None()),
+      false,
+      true,
+    );
   }
 
   fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef {

@@ -137,12 +137,12 @@ class Splitted protected {
       (
         size,
         Array[
-          CNode(
+          CNode::create(
             firstNode,
             Geometry.Offset(0.0, (size.height - firstNode.size.height) / 2.0),
             firstConstraints,
           ),
-          CNode(
+          CNode::create(
             secondNode,
             Geometry.Offset(
               firstNode.size.width,
@@ -177,12 +177,12 @@ class Splitted protected {
       (
         size,
         Array[
-          CNode(
+          CNode::create(
             firstNode,
             Geometry.Offset((size.width - firstNode.size.width) / 2.0, 0.0),
             firstConstraints,
           ),
-          CNode(
+          CNode::create(
             secondNode,
             Geometry.Offset(
               (size.width - secondNode.size.width) / 2.0,
@@ -193,7 +193,7 @@ class Splitted protected {
         ],
       )
     };
-    Node(this, size, childArray);
+    Node::create(this, size, childArray);
   }
 
   protected fun getWidgets(context: mutable SKStore.Context): Array<Widget> {

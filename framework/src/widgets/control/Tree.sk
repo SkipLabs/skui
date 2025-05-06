@@ -132,17 +132,17 @@ class Tree protected {
       .default(20.0);
     count = this.state.getSize(context);
     //
-    Node(
+    Node::create(
       this,
       size,
       Array[
-        CLink(
+        CLink::create(
           this.path.makeChild("vp"),
           Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, size),
           Opaque(),
           cConstraints,
         ),
-        CLink(
+        CLink::create(
           this.path.makeChild("barVp"),
           Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, size),
           Opaque(false, false),

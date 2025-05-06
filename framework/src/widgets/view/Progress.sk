@@ -33,7 +33,7 @@ class Indicator protected {
       context.getThemeThickness(UiTheme.Indicator()).toFloat(),
     );
     size = constraints.constrain(refSize);
-    Ui.Node(this, size)
+    Ui.Node::create(this, size)
   }
 
   fun computeLayer(

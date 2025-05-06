@@ -142,13 +142,13 @@ class ScrollPane{
       this,
       size,
       Array[
-        CLink(
+        CLink::create(
           this.path.makeChild("vp"),
           Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, node.size),
           Opaque(false, false),
           constraints,
         ),
-        CLink(
+        CLink::create(
           this.path.makeChild("scrollBars"),
           Geometry.Rect::fromOffsetSize(Geometry.Offset::zero, node.size),
           Opaque(false, false),

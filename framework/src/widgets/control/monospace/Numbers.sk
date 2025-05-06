@@ -24,7 +24,7 @@ class Numbers{
     _constraints: Ui.BoxConstraints,
   ): Ui.Node {
     if (this.controller.isFontLoading(context)) {
-      Ui.Node(this, Geometry.Size(0.0, 0.0), Array[])
+      Ui.Node::create(this, Geometry.Size(0.0, 0.0), Array[])
     } else {
       numberOfLines = this.controller.getNumberOfLines(context);
       range = this.controller.getRange(context);
@@ -36,7 +36,7 @@ class Numbers{
         range.size().toFloat() * Math.ceil(fontSize.height()) +
           (2 * padding).toFloat(),
       );
-      Ui.Node(this, size);
+      Ui.Node::create(this, size);
     }
   }
 

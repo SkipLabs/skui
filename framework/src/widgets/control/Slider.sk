@@ -46,7 +46,7 @@ class Slider protected {
     size = constraints.constrain(
       this.controller.getDirection(context).size(main, cross),
     );
-    Node(this, size, Array[]);
+    Node::create(this, size, Array[]);
   }
 
   fun getHoverHandler(
