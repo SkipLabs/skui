@@ -144,6 +144,37 @@ class Split{
   optVertical: ?Serializable = None(),
 } extends Description {
   //
+  static fun simple(
+    first: Description,
+    second: Description,
+    seperation: Ui.Separation,
+    vertical: Bool,
+  ): Split {
+    Split{
+      optSeparation => Some(seperation),
+      optFirst => Some(first),
+      optSecond => Some(second),
+      optVertical => Some(UiEngine.SBool(vertical)),
+    }
+  }
+
+  static fun vertical(
+    first: Description,
+    second: Description,
+    seperation: Ui.Separation,
+  ): Split {
+    static::simple(first, second, seperation, true)
+  }
+
+  static fun horizontal(
+    first: Description,
+    second: Description,
+    seperation: Ui.Separation,
+  ): Split {
+    static::simple(first, second, seperation, false)
+  }
+
+  //
   fun collect(collector: Renderable -> void): void {
     this.optFirst.each(s -> collect(s, collector));
     this.optSecond.each(s -> collect(s, collector));

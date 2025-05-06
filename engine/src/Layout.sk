@@ -87,6 +87,13 @@ class Wrap{
   }
 }
 
+const kFlexStart: Int = 0;
+const kFlexEnd: Int = 1;
+const kFlexCenter: Int = 2;
+const kFlexSpaceBetween: Int = 3;
+const kFlexSpaceAround: Int = 4;
+const kFlexSpaceEvenly: Int = 5;
+
 class Flex{
   optWidgets: ?Serializable = None(),
   optVertical: ?Serializable = None(),
@@ -97,6 +104,15 @@ class Flex{
   optMaxSize: ?Serializable = None(),
 } extends Description {
   //
+  static fun verticalStartStart(widgets: Array<Description>): Flex {
+    Flex{
+      optWidgets => Some(UiEngine.SArray(widgets)),
+      optVertical => Some(UiEngine.SBool(true)),
+      optMainAlignment => Some(UiEngine.SInt(kFlexStart)),
+      optCrossAlignment => Some(UiEngine.SInt(kFlexStart)),
+    }
+  }
+
   fun collect(collector: Renderable -> void): void {
     this.optWidgets.each(s -> collect(s, collector))
   }
