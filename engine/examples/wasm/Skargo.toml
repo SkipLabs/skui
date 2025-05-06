@@ -5,6 +5,8 @@ version = "0.1.0"
 [dependencies]
 skui_eng = { "path" = "../.." }
 skui_js = { path = "../../../framework_js" }
+roboto = { "path" = "../../../framework/fonts/Roboto" }
+roboto-mono = { "path" = "../../../framework/fonts/RobotoMono"}
 
 [lib]
 type = ["cdylib"]

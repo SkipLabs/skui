@@ -1,0 +1,6 @@
+[package]
+name = "inconsolata"
+version = "0.1.0"
+
+[dependencies]
+skui_font = { "path" = "../../../font" }

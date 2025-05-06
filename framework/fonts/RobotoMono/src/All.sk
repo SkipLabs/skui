@@ -1,0 +1,140 @@
+module RobotoMono;
+
+fun fill(
+  p: SortedMap<Font.TypefaceInfo, String>,
+): SortedMap<Font.TypefaceInfo, String> {
+  name = "RobotoMono";
+  thinB64 = RobotoMono.thinB64();
+  thinItalicB64 = RobotoMono.thinItalicB64();
+  // Thin
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::thin, Font.Normal()),
+    thinB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::thin, Font.Italic()),
+    thinItalicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::thin, Font.Oblique()),
+    thinItalicB64,
+  );
+  // Extra light
+  extraLightB64 = RobotoMono.extraLightB64();
+  extraLightItalicB64 = RobotoMono.extraLightItalicB64();
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::extralight, Font.Normal()),
+    extraLightB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::extralight, Font.Italic()),
+    extraLightItalicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::extralight, Font.Oblique()),
+    extraLightItalicB64,
+  );
+  // Roboto light
+  lightB64 = RobotoMono.lightB64();
+  lightItalicB64 = RobotoMono.lightItalicB64();
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::light, Font.Normal()),
+    lightB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::light, Font.Italic()),
+    lightItalicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::light, Font.Oblique()),
+    lightItalicB64,
+  );
+  // Roboto normal
+  regularB64 = RobotoMono.regularB64();
+  italicB64 = RobotoMono.italicB64();
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::normal, Font.Normal()),
+    regularB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::normal, Font.Italic()),
+    italicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::normal, Font.Oblique()),
+    italicB64,
+  );
+  // Roboto medium
+  mediumB64 = RobotoMono.mediumB64();
+  mediumItalicB64 = RobotoMono.mediumItalicB64();
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::medium, Font.Normal()),
+    mediumB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::medium, Font.Italic()),
+    mediumItalicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::medium, Font.Oblique()),
+    mediumItalicB64,
+  );
+  // Roboto semi bold
+  semiBoldB64 = RobotoMono.semiBoldB64();
+  semiBoldItalicB64 = RobotoMono.semiBoldItalicB64();
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::semibold, Font.Normal()),
+    semiBoldB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::semibold, Font.Italic()),
+    semiBoldItalicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::semibold, Font.Oblique()),
+    semiBoldItalicB64,
+  );
+  // Roboto bold
+  boldB64 = RobotoMono.boldB64();
+  boldItalicB64 = RobotoMono.boldItalicB64();
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::bold, Font.Normal()),
+    boldB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::bold, Font.Italic()),
+    boldItalicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::bold, Font.Oblique()),
+    boldItalicB64,
+  );
+  // Roboto extra bold
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::extrabold, Font.Normal()),
+    boldB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::extrabold, Font.Italic()),
+    boldItalicB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::extrabold, Font.Oblique()),
+    boldItalicB64,
+  );
+  // Roboto black
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::black, Font.Normal()),
+    boldB64,
+  );
+  !p = p.add(
+    Font.TypefaceInfo(name, Font.Weight::black, Font.Italic()),
+    boldItalicB64,
+  );
+  p.add(
+    Font.TypefaceInfo(name, Font.Weight::black, Font.Oblique()),
+    boldItalicB64,
+  );
+}
+
+module end;

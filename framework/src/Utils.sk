@@ -45,10 +45,11 @@ fun init(
     UiRoot.Storage,
   >,
   support: Ui.DrawableSupport,
+  predefinedFonts: SortedMap<Font.TypefaceInfo, String>,
   inits: Array<mutable SKStore.Context ~> void> = Array[],
 ): void {
   FWKEnv.init(context, wId);
-  context.initFontSupport();
+  context.initFontSupport(predefinedFonts);
   context.initIconSupport();
   context.initTextSupport(support);
   root = UiRoot.HStorage::create(context, SKStore.DirName::create("/ui/root/"));
