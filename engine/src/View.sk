@@ -7,6 +7,10 @@ class Label{
   optTooltip: ?Serializable = None(),
 } extends Description {
   //
+  static fun simple(text: String): Label {
+    Label{optText => Some(!text)}
+  }
+
   fun collect(_collector: Renderable -> void): void {
     void
   }
