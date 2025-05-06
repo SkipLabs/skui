@@ -13,8 +13,14 @@ class HandlePathFile(handle: Handle<Ui.Path, File>) extends File {
 }
 
 extension class Context {
-  mutable fun initFontSupport(): void {
-    this.setGlobal("Ui.FontSupport", TrueType.createFontSupport(this));
+  //
+  mutable fun initFontSupport(
+    predefined: SortedMap<Font.TypefaceInfo, String>,
+  ): void {
+    this.setGlobal(
+      "Ui.FontSupport",
+      TrueType.createFontSupport(this, predefined),
+    );
   }
 
   readonly fun getFontSupport(): Ui.FontSupport {

@@ -19,13 +19,19 @@ fun main(): void {
 
 const rootPath: SKStore.DirName = SKStore.DirName::create("/ui/views/");
 
+fun predefined(): SortedMap<Font.TypefaceInfo, String> {
+  p = SortedMap<Font.TypefaceInfo, String>::create();
+  !p = Roboto.fill(p);
+  RobotoMono.fill(p)
+}
+
 fun initUiWidget(
   context: mutable SKStore.Context,
   wId: Int,
   getter: Ui.GetterOne<Ui.Widget, UiRoot.Storage>,
 ): void {
   support = SKUIGL.DrawableSupport(SKUI.pictureToTexturable);
-  SKUI.init(context, wId, (_ctx, _root) ~> getter, support)
+  SKUI.init(context, wId, (_ctx, _root) ~> getter, support, predefined())
 }
 
 fun perform(

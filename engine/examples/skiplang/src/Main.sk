@@ -117,7 +117,13 @@ fun initEngineWidget(
     hdl = UiEngine.widgetPipeline(ctx, property, root);
     (ctx, _root) ~> hdl.get(ctx).widget
   };
-  SKUI.init(context, wId, builder, support);
+  SKUI.init(context, wId, builder, support, predefined());
+}
+
+fun predefined(): SortedMap<Font.TypefaceInfo, String> {
+  p = SortedMap<Font.TypefaceInfo, String>::create();
+  !p = Roboto.fill(p);
+  RobotoMono.fill(p)
 }
 
 module end;

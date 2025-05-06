@@ -5,6 +5,8 @@ version = "0.1.0"
 [dependencies]
 skui_fwk = { "path" = "../framework" }
 skui_x11gl = { "path" = "../x11gl" }
+roboto = { "path" = "../framework/fonts/Roboto" }
+roboto-mono = { "path" = "../framework/fonts/RobotoMono"}
 
 [build-dependencies]
 skui_build = { path = "../builder" }

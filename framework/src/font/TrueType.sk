@@ -39,9 +39,10 @@ base class State {
 
 fun createFontSupport(
   context: mutable SKStore.Context,
+  predefined: SortedMap<Font.TypefaceInfo, String>,
   optBasename: ?SKStore.DirName = None(),
 ): Ui.FontSupport {
-  filesProps = fontSupplier(context, optBasename);
+  filesProps = fontSupplier(context, predefined, optBasename);
   faceProps = faceSupplier(context, filesProps, optBasename);
   glyphProps = glyphSupplier(context, faceProps, optBasename);
   msdfProps = msdfSupplier(context, glyphProps, optBasename);
@@ -50,9 +51,9 @@ fun createFontSupport(
 
 fun fontSupplier(
   context: mutable SKStore.Context,
+  predef: SortedMap<Font.TypefaceInfo, String>,
   optBasename: ?SKStore.DirName = None(),
 ): Ui.GetterOne<SKStore.Future<TrueType.File>, Font.TypefaceInfo> {
-  prefed = Font.predefined();
   typefacePath = SKStore.DirName::check("fonts/ttfs/typefaces/", optBasename);
   typefaceHdl = SKStore.LHandle::lazy(
     Font.TypefaceInfo::keyType,
@@ -60,7 +61,7 @@ fun fontSupplier(
     context,
     typefacePath,
     (_ctx, _self, typeface) ~> {
-      prefed.maybeGet(typeface) match {
+      predef.maybeGet(typeface) match {
       | Some(base64) ->
         buffer = Base64.decode(base64);
         SKStore.Loaded(TrueType.File(TrueType.parse(buffer)))
