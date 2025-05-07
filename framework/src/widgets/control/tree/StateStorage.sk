@@ -281,7 +281,7 @@ fun init(
     },
   );
   allItemsDirName = itemsDirName(path.makeChild("listed"));
-  preListedHdl = context.makeNotTyped(
+  preListedHdl = context.makeNotTypedPre(
     allItemsDirName,
     Array<(SKStore.Key, SKStore.File)>[
       (SKStore.KKeys(), SKStore.Keys(Array[])),
