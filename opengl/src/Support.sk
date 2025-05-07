@@ -36,10 +36,8 @@ const ctxHandle: SKStore.IHandle<
   SKStore.IntFile,
 > = SKStore.IHandle(k ~> k, SKStore.IntFile::type, webglPath);
 
-class Useless()
-
-@wasm_export("SKIP_SKUIGL_performFrame")
-@cpp_export("SKIP_SKUIGL_performFrame")
+// Draw all frames to allow shader animation
+@export("SKIP_SKUIGL_performFrame")
 fun performFrame(
   cid: UInt32,
   width: UInt32,
@@ -48,14 +46,13 @@ fun performFrame(
   frames: UInt32,
 ): void {
   pos = SKStore.newObstack();
-  SKStore.Context::withoutGc(context ~>
-    drawFrame(context, cid, width, height, ratio, frames)
-  );
+  current = SKStore.gUnsafeContextGet();
+  drawFrame(current, cid, width, height, ratio, frames);
+  SKStore.gUnsafeFree(current);
   SKStore.destroyObstack(pos);
 }
 
-@wasm_export("SKIP_SKUIGL_setWindowContext")
-@cpp_export("SKIP_SKUIGL_setWindowContext")
+@export("SKIP_SKUIGL_setWindowContext")
 fun setWindowContext(window: UInt32, cid: UInt32): void {
   pos = SKStore.newObstack();
   win = window.toInt();
@@ -608,46 +605,17 @@ fun populateViewport(
 
 @debug
 fun drawFrame(
-  context: mutable SKStore.Context,
+  context: readonly SKStore.Context,
   cid: UInt32,
   width: UInt32,
   height: UInt32,
   ratio: UInt32,
   frames: UInt32,
 ): void {
-  frame = context
-    .getGlobal("SKUIGL.AnimationFrame")
-    .map(SKStore.IntFile::type)
-    .map(f -> f.value + 1)
-    .default(0);
-  context.setGlobal("SKUIGL.AnimationFrame", SKStore.IntFile(frame));
-  optVersion = context
-    .getGlobal("SKUIGL.Version")
-    .map(SKStore.IntFile::type)
-    .map(f -> f.value);
-  optDrawTick = getDrawTick(context);
-  optDrawTick match {
-  | Some(
-    tick,
-  ) if (optVersion.map(v -> tick.value > v).default(true) || kAlwaysDraw) ->
-    drawCtxFrame(context, GL.Ctx(cid), width, height, ratio, frames, tick.value)
-  | _ -> void
-  };
-}
-
-@debug
-fun drawCtxFrame(
-  context: mutable SKStore.Context,
-  ctx: GL.Ctx,
-  width: UInt32,
-  height: UInt32,
-  ratio: UInt32,
-  frames: UInt32,
-  time: Int,
-): void {
   fRatio = ratio.toFloat() / 100.0;
   fWidth = (width.toFloat() * fRatio).toInt();
   fHeight = (height.toFloat() * fRatio).toInt();
+  ctx = GL.Ctx(cid);
   ctx.bindMainFrameBuffer();
   ctx.enableBlend();
   ctx.straitAlphaBlending();
@@ -661,13 +629,13 @@ fun drawCtxFrame(
     height.toInt(),
     fRatio,
     frames.toInt(),
-  );
-  context.setGlobal("SKUIGL.Version", SKStore.IntFile(time));
+  )
 }
 
+@debug
 fun drawViewports(
   gl: GL.Ctx,
-  context: mutable SKStore.Context,
+  context: readonly SKStore.Context,
   width: Int,
   height: Int,
   ratio: Float,
@@ -706,7 +674,7 @@ fun drawViewports(
 
 fun drawViewport(
   gCtx: GL.Ctx,
-  context: mutable SKStore.Context,
+  context: readonly SKStore.Context,
   viewportDef: Ui.ViewportDefinition,
   absolute: Ui.NViewport,
   width: Int,
@@ -751,7 +719,7 @@ fun drawViewport(
 }
 
 fun doOnDirectory(
-  context: mutable SKStore.Context,
+  context: readonly SKStore.Context,
   dirName: SKStore.DirName,
   todo: SKStore.EagerDir -> void,
   ignore: Bool = true,
@@ -765,63 +733,12 @@ fun doOnDirectory(
   };
 }
 
-fun getOnDirectory<T>(
-  context: mutable SKStore.Context,
-  dirName: SKStore.DirName,
-  todo: SKStore.EagerDir -> T,
-  ignore: Bool = true,
-): ?T {
-  context.unsafeMaybeGetEagerDir(dirName) match {
-  | Some(dir) -> Some(todo(dir))
-  | _ ->
-    if (!ignore) {
-      invariant_violation(`${dirName} must be defined.`)
-    };
-    None()
-  };
-}
-
-fun getDrawTick(context: mutable SKStore.Context): ?SKStore.Tick {
-  optContraintsTick = getOnDirectory(
-    context,
-    Ui.constraintsPath,
-    constraintsDir -> constraintsDir.getLastTick(),
-  );
-  optHandlesTick = getOnDirectory(context, layerHandlesPath, handlesDir ->
-    handlesDir.getLastTick()
-  );
-  (optContraintsTick, optHandlesTick) match {
-  | (None(), None())
-  | (Some(None()), None())
-  | (None(), Some(None()))
-  | (Some(None()), Some(None())) ->
-    None()
-  | (Some(Some(ct)), Some(Some(ht))) -> Some(Math.max(ct, ht))
-  | (Some(Some(tick)), _)
-  | (_, Some(Some(tick))) ->
-    Some(tick)
-  }
-}
-
 fun getValue<T: frozen>(
   dir: SKStore.EagerDir,
   key: SKStore.Key,
   conv: SKStore.File ~> T,
 ): T {
   conv(dir.getArrayRaw(key).first())
-}
-
-fun maybeGetValue<T: frozen>(
-  dir: SKStore.EagerDir,
-  key: SKStore.Key,
-  conv: SKStore.File ~> T,
-): ?T {
-  vs = getValues(dir, key, conv);
-  if (vs.isEmpty()) {
-    None()
-  } else {
-    Some(vs.first())
-  }
 }
 
 fun getValues<T: frozen>(
