@@ -1,75 +1,84 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# TODO: This is flaky as it relies on coarse directory-level diffs.
+set -euo pipefail
+
+# Require Bash 4+
+if [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
+  echo "Bash 4 or newer is required. Your version: $BASH_VERSION"
+  exit 1
+fi
+
+# Enable recursive globbing and ignore unmatched globs
+shopt -s globstar nullglob
 
 SKIPHEAD="$(git -C skip rev-parse HEAD)"
-
 BASE="$(git merge-base main HEAD)"
 
-shopt -s globstar
 declare -A SK_CHANGED
 do_check=false
-check_all=$([ "$SKIPHEAD" != "6bf01a0dfdf10f65187c138f37c552be9b0fa7fb" ] && echo "true" || echo "false");
+check_all=$([ "$SKIPHEAD" != "6bf01a0dfdf10f65187c138f37c552be9b0fa7fb" ] && echo "true" || echo "false")
 
 for skargo_toml in **/Skargo.toml; do
   dir=$(dirname "$skargo_toml")
 
-  has_diff=$(git diff --quiet "$BASE" HEAD -- "$dir"; echo $?)
-
-  if [ "$has_diff" -ne 0 ] || [ "$check_all" = "true" ]; then
+  if git diff --name-only "$BASE" HEAD | grep -q "^$dir/"; then
+    SK_CHANGED["$dir"]=true
+  elif [ "$check_all" = "true" ]; then
     SK_CHANGED["$dir"]=true
   else
     SK_CHANGED["$dir"]=false
   fi
 
-  if [ "${SK_CHANGED["$dir"]}" = "true" ]; then
+  if [ "${SK_CHANGED[$dir]}" = "true" ]; then
     do_check=true
   fi
 done
 
+# Exit early if nothing changed
 if ! $do_check; then
   circleci-agent step halt
   exit 0
 fi
 
-if ${SK_CHANGED[base]}; then
+# Dependency propagation
+if [[ "${SK_CHANGED[base]:-false}" == "true" ]]; then
   SK_CHANGED[common]=true
 fi
 
-if ${SK_CHANGED[common]}; then
+if [[ "${SK_CHANGED[common]:-false}" == "true" ]]; then
   SK_CHANGED[font]=true
   SK_CHANGED["opengl/gsls"]=true
 fi
 
-if ${SK_CHANGED[font]}; then
+if [[ "${SK_CHANGED[font]:-false}" == "true" ]]; then
   SK_CHANGED[mtsdf]=true
 fi
 
-if ${SK_CHANGED[mtsdf]}; then
+if [[ "${SK_CHANGED[mtsdf]:-false}" == "true" ]]; then
   SK_CHANGED[framework]=true
   SK_CHANGED[opengl]=true
 fi
 
-if ${SK_CHANGED[opengl]}; then
+if [[ "${SK_CHANGED[opengl]:-false}" == "true" ]]; then
   SK_CHANGED[x11gl]=true
   SK_CHANGED[engine]=true
 fi
 
-if ${SK_CHANGED[framework]}; then
+if [[ "${SK_CHANGED[framework]:-false}" == "true" ]]; then
   SK_CHANGED[engine]=true
 fi
 
-if ${SK_CHANGED[x11gl]}; then
+if [[ "${SK_CHANGED[x11gl]:-false}" == "true" ]]; then
   SK_CHANGED[views]=true
 fi
 
+# Output the CircleCI workflow YAML
 cat .circleci/base.yml
 
 echo "workflows:"
 
-if ${do_check}
-then
-    cat <<EOF
+if $do_check; then
+  cat <<EOF
   checks:
     jobs:
       - lint
@@ -77,9 +86,8 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[common]}
-then
-    cat <<EOF
+if [[ "${SK_CHANGED[common]:-false}" == "true" ]]; then
+  cat <<EOF
   common:
     jobs:
       - skui_common
@@ -87,9 +95,8 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[font]}
-then
-    cat <<EOF
+if [[ "${SK_CHANGED[font]:-false}" == "true" ]]; then
+  cat <<EOF
   font:
     jobs:
       - skui_font
@@ -97,9 +104,8 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[mtsdf]}
-then
-    cat <<EOF
+if [[ "${SK_CHANGED[mtsdf]:-false}" == "true" ]]; then
+  cat <<EOF
   mtsdf:
     jobs:
       - skui_mtsdf
@@ -107,9 +113,8 @@ then
 EOF
 fi
 
-if ${SK_CHANGED["opengl/gsls"]}
-then
-    cat <<EOF
+if [[ "${SK_CHANGED["opengl/gsls"]:-false}" == "true" ]]; then
+  cat <<EOF
   glsl:
     jobs:
       - skui_glsl
@@ -117,9 +122,8 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[skui_eng]}
-then
-    cat <<EOF
+if [[ "${SK_CHANGED[engine]:-false}" == "true" ]]; then
+  cat <<EOF
   engine:
     jobs:
       - skui_eng
