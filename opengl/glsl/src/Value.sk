@@ -4,6 +4,8 @@ base class Value {
   fun toArray(): Array<Float>;
 }
 
+base class Texture
+
 class VStruct(values: SortedMap<String, Value>) extends Value {
   //
   static fun createFromItems<I: readonly Sequence<(String, Value)>>(
@@ -17,16 +19,16 @@ class VStruct(values: SortedMap<String, Value>) extends Value {
   }
 }
 
-class VTexture(texture: GL.Texture, chanel: Int) extends Value {
+class VTexture(texture: Texture, chanel: Int) extends Value {
   //
   fun toArray(): Array<Float> {
     Array[this.chanel.toFloat()]
   }
 }
 
-class VTextures(textures: Array<GL.Texture>) extends Value {
+class VTextures(textures: Array<Texture>) extends Value {
   //
-  static fun createFromItems<I: readonly Sequence<GL.Texture>>(items: I): this {
+  static fun createFromItems<I: readonly Sequence<Texture>>(items: I): this {
     static(Array::createFromItems(items))
   }
 

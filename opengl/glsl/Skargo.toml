@@ -1,0 +1,9 @@
+[package]
+name = "skui_glsl"
+version = "0.0.1"
+
+[dependencies]
+skui_common = { "path" = "../../common" }
+
+[dev-dependencies]
+sktest = { path = "../../skip/skiplang/sktest" }

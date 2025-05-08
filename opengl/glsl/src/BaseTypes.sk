@@ -1,0 +1,21 @@
+module GLSL;
+
+base class Buffer
+
+base class Ctx {
+  fun rectanglePositionBuffer(): Buffer;
+}
+
+base class Program uses Hashable {
+  fun toVertexShader(fLevel: Level = High()): Shader;
+  fun toFragmentShader(fLevel: Level = High()): Shader;
+  fun getAttributeBuilder(attr: Attribute): BufferBuilder;
+  fun getVertexSize(): Int;
+}
+
+base class BufferBuilder uses Hashable {
+  fun getName(): String;
+  fun build(ctx: Ctx): Buffer;
+}
+
+module end;

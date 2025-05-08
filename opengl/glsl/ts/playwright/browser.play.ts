@@ -1,6 +1,6 @@
 import { test } from "@playwright/test";
 import { tests, type Test } from "./tests.js";
-import { load } from "@skui/opengl-tests";
+import { load } from "@skui/glsl-tests";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -18,7 +18,7 @@ function run(t: Test) {
     await page.evaluate(`window.testName = "${t.name}";`);
     await page.evaluate(`window.test = ${t.fun};`);
     const res = await page.evaluate(async () => {
-      const m = await import("@skui/opengl-tests");
+      const m = await import("@skui/glsl-tests");
       const main = await m.load();
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore

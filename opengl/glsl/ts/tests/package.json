@@ -1,5 +1,5 @@
 {
-  "name": "@skui/opengl-tests",
+  "name": "@skui/glsl-tests",
   "version": "0.0.0",
   "type": "module",
   "exports": {
