@@ -4,13 +4,7 @@ version = "0.1.0"
 
 [dependencies]
 skui_mtsdf = { "path" = "../mtsdf" }
+skui_glsl = { "path" = "glsl" }
 
 [build-dependencies]
 skui_build = { path = "../builder" }
-
-[dev-dependencies]
-sktest = { path = "../skip/skiplang/sktest" }
-
-#[[bin]]
-#name = "skuiopengl"
-#main = "SkuiOpengl.main"

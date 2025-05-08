@@ -1,7 +1,17 @@
 module GL;
 
-class Ctx(id: UInt32) extends SKStore.File uses Hashable, HasClassName {
+class Ctx(
+  id: UInt32,
+) extends SKStore.File, GLSL.Ctx uses Hashable, HasClassName {
   // UTILS
+
+  fun rectanglePositionBuffer(): GLSL.Buffer {
+    // Put a unit quad in the buffer
+    GL.Buffer::createFromData(
+      this,
+      Array[0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+    );
+  }
 
   @debug
   fun enable2DVertex(location: AttributeLocation, buffer: BufferRef): void {

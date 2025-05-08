@@ -4,7 +4,9 @@ base class Value {
   fun toArray(): Array<Float>;
 }
 
-base class Texture
+base class Texture {
+  fun bind(): void;
+}
 
 class VStruct(values: SortedMap<String, Value>) extends Value {
   //
