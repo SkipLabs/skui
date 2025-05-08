@@ -1,3 +1,31 @@
+/**
+ * @file BaseType.sk
+ * @brief A module providing geometric structures and utilities.
+ *
+ * This module includes classes and functions for performing common geometry-related
+ * operations, including ranges, radii (circular and elliptical), rectangle corner radii,
+ * geometric transformations (rotation + scale + translation), and spatial positioning
+ * such as tooltip placement.
+ *
+ * ### Classes:
+ * - Range: Represents a floating-point range with utility functions.
+ * - Radius: Encapsulates horizontal and vertical radii, with arithmetic operations.
+ * - RectRadius: Specifies a radius for each corner of a rectangle.
+ * - RSTransform: Represents a geometric transform including rotation, scale, and translation.
+ *
+ * ### Functions:
+ * - positionDependentBox: Calculates the best position for a child element within a container.
+ * - coefficient: Computes the linear equation (slope and intercept) between two points.
+ * - parallelAt: Returns the equation of a line parallel to a given one at a specified distance.
+ * - intersect: Determines whether two line segments AB and CD intersect.
+ * - intersection: Computes the intersection point of two linear equations.
+ *
+ * This module is used in layout and rendering systems, such as positioning tooltips or
+ * computing intersections between geometric primitives.
+ *
+ * @author Daniel LOPES
+ * @date 2022
+ */
 module Geometry;
 
 value class Range(min: Float, max: Float) uses Hashable, Equality {
@@ -256,6 +284,15 @@ fun intersection(
   Geometry.Offset(x, y)
 }
 
+/**
+ * Determines whether two line segments AB and CD intersect.
+ *
+ * @param a The starting point of the first segment.
+ * @param b The ending point of the first segment.
+ * @param c The starting point of the second segment.
+ * @param d The ending point of the second segment.
+ * @return True if the segments intersect, false otherwise.
+ */
 fun intersect(a: Offset, b: Offset, c: Offset, d: Offset): Bool {
   cross = (p1, p2, p3) ->
     (p2.dx - p1.dx) * (p3.dy - p1.dy) - (p2.dy - p1.dy) * (p3.dx - p1.dx);
