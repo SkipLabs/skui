@@ -1,3 +1,5 @@
+module alias T = SKTest;
+
 module SKUICommonTest;
 
 @test
@@ -129,6 +131,171 @@ class InsetsDirectionalCase(
       this.expected.bottom
     })`
   }
+}
+
+@test
+fun intersectSegment_diagonal_across(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(100.0, 200.0),
+      Geometry.Offset(300.0, 400.0),
+    ),
+    true,
+  );
+}
+
+@test
+fun intersectSegment_entirely_outside(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(50.0, 50.0),
+      Geometry.Offset(150.0, 150.0),
+    ),
+    false,
+  );
+}
+
+@test
+fun intersectSegment_inside_rectangle(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(190.0, 290.0),
+      Geometry.Offset(210.0, 310.0),
+    ),
+    true,
+  );
+}
+
+@test
+fun intersectSegment_crossing_horizontally(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(100.0, 300.0),
+      Geometry.Offset(300.0, 300.0),
+    ),
+    true,
+  );
+}
+
+@test
+fun intersectSegment_crossing_vertically(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(200.0, 200.0),
+      Geometry.Offset(200.0, 400.0),
+    ),
+    true,
+  );
+}
+
+@test
+fun intersectSegment_touching_corner(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(160.0, 270.0),
+      Geometry.Offset(160.0, 270.0),
+    ),
+    false,
+  );
+}
+
+@test
+fun intersectSegment_start_inside_end_outside(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(200.0, 300.0),
+      Geometry.Offset(300.0, 400.0),
+    ),
+    true,
+  );
+}
+
+@test
+fun intersectSegment_parallel_above(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(100.0, 250.0),
+      Geometry.Offset(300.0, 250.0),
+    ),
+    false,
+  );
+}
+
+@test
+fun intersectSegment_parallel_below(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(100.0, 370.0),
+      Geometry.Offset(300.0, 370.0),
+    ),
+    false,
+  );
+}
+
+@test
+fun intersectSegment_on_left_side(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(200.0, 260.0),
+      Geometry.Offset(200.0, 340.0),
+    ),
+    true,
+  );
+}
+
+@test
+fun intersectSegment_just_misses_corner(): void {
+  rect = Geometry.Rect::fromOffsetSize(
+    Geometry.Offset(200.0, 300.0),
+    Geometry.Size(80.0, 60.0),
+  );
+  T.expectEq(
+    rect.intersectSegment(
+      Geometry.Offset(119.9, 239.9),
+      Geometry.Offset(119.9, 239.9),
+    ),
+    false,
+  );
 }
 
 module end;
