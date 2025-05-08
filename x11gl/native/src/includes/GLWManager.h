@@ -26,10 +26,7 @@ public:
   XVisualInfo *initializeDisplay(Display *disp, uint32_t screen);
   Atom createContext(Window window);
   void onIdle();
-  void initialized(
-      XIC xic,
-      std::function<void(Display *disp, Window fWindow, uint64_t frames)>
-          expose);
+  void initialized(XIC xic, std::function<void(uint64_t frames)> expose);
   void checkClipboard(XSelectionEvent *s);
   void updateClipboard(XSelectionRequestEvent *s);
   void requestClipboard(const std::string &mimeType,

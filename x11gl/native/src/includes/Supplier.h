@@ -46,7 +46,7 @@ public:
 class WindowSupplier {
 public:
   bool handleWindowEvents(Display *display);
-  Display *init(WindowManager &vManager, WindowInfo *info);
+  Display *init(XIC &xic, WindowManager &vManager, WindowInfo *info);
   void sendCloseMessage(uint32_t wId);
   void applyCursor(uint32_t wId, uint32_t cursor);
   void sendClientMessage(uint32_t wId, Atom type, uint32_t param1,
@@ -56,8 +56,6 @@ private:
   std::map<uint64_t, WindowManager *> windows;
   std::map<u_int64_t, Cursor> cursors;
 };
-
-void sendExposeMessage(Display *disp, Window fWindow, uint64_t count);
 
 } // namespace skui
 

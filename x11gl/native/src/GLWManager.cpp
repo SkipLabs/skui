@@ -250,15 +250,11 @@ void GLWindowManager::requestClipboard(const std::string &mimeType,
 }
 
 void GLWindowManager::initialized(
-    XIC xic, std::function<void(Display *disp, Window fWindow, uint64_t frames)>
-                 expose) {
+    XIC xic, std::function<void(uint64_t frames)> requestAnimationFrame) {
   this->xic = xic;
   this->onContextChange(this->config.wId, this->config.wId);
-  this->animationFrame.start(
-      [this, expose](uint64_t frames) {
-        expose(this->display, this->window, frames);
-      },
-      this->config.framePerSecond);
+  this->animationFrame.start(requestAnimationFrame,
+                             this->config.framePerSecond);
   this->resourceTimer.setInterval(
       [this]() {
         sendXClientMessage(this->display, this->window,

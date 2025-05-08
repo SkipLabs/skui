@@ -10,6 +10,8 @@ skui::WindowSupplier supplier;
 
 Atom kSkuiFwkUpdateMessage;
 Atom kSkuiMessageSend;
+Atom kSkuiAnimationFrame;
+
 std::atomic<uint32_t> nextMsgId{0};
 std::map<uint32_t, std::string> messages;
 std::map<uint32_t, skui::Timer> timers;
@@ -143,15 +145,26 @@ void SKIP_SKUIX11_launch(uint64_t wId, char *skTitle, uint64_t screen,
                                 [](uint64_t wid, uint64_t cId) {
                                   SKIP_SKUIGL_setWindowContext(wid, cId);
                                 });
-  Display *display = supplier.init(manager, nullptr);
+  XIC xic;
+  Display *display = supplier.init(xic, manager, nullptr);
   kSkuiFwkUpdateMessage = XInternAtom(display, "SKUI_FWK_UPDATE", False);
   kSkuiMessageSend = XInternAtom(display, "SKUI_MESSAGE_SEND", False);
+  kSkuiAnimationFrame = XInternAtom(display, "SKUI_ANIMATION_FRAME", False);
   manager.customMessages.insert(
       std::pair<Atom, std::function<void(uint32_t, uint32_t)>>(
           kSkuiFwkUpdateMessage, manageUpdate));
   manager.customMessages.insert(
       std::pair<Atom, std::function<void(uint32_t, uint32_t)>>(kSkuiMessageSend,
                                                                manageMessage));
+  manager.customMessages.insert(
+      std::pair<Atom, std::function<void(uint32_t, uint32_t)>>(
+          kSkuiAnimationFrame, [&manager](uint32_t param1, uint32_t) {
+            manager.performFrame(param1);
+          }));
+  manager.initialized(xic, [wId](uint64_t frames) {
+    supplier.sendClientMessage(wId, kSkuiAnimationFrame, (uint32_t)frames, 0);
+  });
+
   manager.setTitle(strTitle);
   SKIP_SKUIX11_windowInitialized(wId);
   while (1) {

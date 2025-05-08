@@ -28,10 +28,8 @@ public:
   virtual WindowConfig configuration() = 0;
   virtual XVisualInfo *initializeDisplay(Display *disp, uint32_t screen) = 0;
   virtual Atom createContext(Window window) = 0;
-  virtual void initialized(
-      XIC xic,
-      std::function<void(Display *disp, Window fWindow, uint64_t frames)>
-          expose) = 0;
+  virtual void initialized(XIC xic,
+                           std::function<void(uint64_t frames)> expose) = 0;
   virtual void onIdle() = 0;
   virtual void checkClipboard(XSelectionEvent *s) = 0;
   virtual void updateClipboard(XSelectionRequestEvent *s) = 0;
