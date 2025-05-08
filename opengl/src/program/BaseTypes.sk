@@ -225,14 +225,6 @@ fun triangleProgram(
   TriangleProgram(program, fragmentShader, vertexShader)
 }
 
-fun rectanglePositionBuffer(gl: GL.Ctx): GL.Buffer {
-  // Put a unit quad in the buffer
-  GL.Buffer::createFromData(
-    gl,
-    Array[0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
-  );
-}
-
 fun bilenearPositionBuffer(gl: GL.Ctx): GL.Buffer {
   GL.Buffer::createFromData(
     gl,

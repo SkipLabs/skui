@@ -259,7 +259,7 @@ class MsdfFragment() extends FragmentShaderBuilder {
 fun activateTexture(
   gl: GL.Ctx,
   chanel: Int,
-  texture: GL.Texture,
+  texture: GLSL.Texture,
   location: GL.UniformLocation,
 ): void {
   gl.activeTexture(uint32(chanel));
@@ -270,7 +270,7 @@ fun activateTexture(
 @debug
 fun activateTextures(
   gl: GL.Ctx,
-  textures: Array<GL.Texture>,
+  textures: Array<GLSL.Texture>,
   location: GL.UniformLocation,
 ): void {
   if (textures.isEmpty()) {

@@ -214,28 +214,6 @@ fun setUniform(
   }
 }
 
-base class BufferBuilder uses Hashable {
-  fun getName(): String;
-  fun build(ctx: GL.Ctx): GL.Buffer;
-}
-
-class RectangleBufferBuilder() extends BufferBuilder {
-  fun getName(): String {
-    "GSLS.RectangleBuffer"
-  }
-
-  fun build(ctx: GL.Ctx): GL.Buffer {
-    GLProgram.rectanglePositionBuffer(ctx)
-  }
-}
-
-base class Program uses Hashable {
-  fun toVertexShader(fLevel: Level = High()): Shader;
-  fun toFragmentShader(fLevel: Level = High()): Shader;
-  fun getAttributeBuilder(attr: Attribute): BufferBuilder;
-  fun getVertexSize(): Int;
-}
-
 base class VertexShader(
   locations: SortedMap<String, GL.AttributeLocation>,
 ) extends GLProgram.VertexShader {

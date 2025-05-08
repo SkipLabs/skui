@@ -48,7 +48,7 @@ fun ctxDeleteTexture(id: UInt32): void {
   deleteTexture(tex, ctx)
 }
 
-class Texture extends WithExtern<TextureRef>, SKStore.File {
+class Texture extends GLSL.Texture, WithExtern<TextureRef>, SKStore.File {
   //
   static fun type(obj: SKStore.File): this {
     obj match {
@@ -294,7 +294,7 @@ fun ctxDeleteBuffer(id: UInt32): void {
   deleteBuffer(buffer, ctx)
 }
 
-class Buffer extends WithExtern<BufferRef> {
+class Buffer extends GLSL.Buffer, WithExtern<BufferRef> {
   static fun create(ctx: Ctx): Buffer {
     static::make(ctx, ctx.createBuffer(), ctxDeleteBuffer);
   }

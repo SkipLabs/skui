@@ -303,7 +303,7 @@ mutable class Initializer(
 
   // VertexArray
 
-  mutable fun array(id: String, builder: GL.Ctx ~> GL.Buffer): UArray {
+  mutable fun array(id: String, builder: GLSL.Ctx ~> GLSL.Buffer): UArray {
     if (this.arrays.maybeGet(id).isNone()) {
       buffer = this.buffer(id, builder);
       fn = gl ~> VertexArray(GL.VertexArray::create(gl), buffer);
@@ -324,16 +324,18 @@ mutable class Initializer(
 
   // Buffers
 
-  mutable fun buffer(id: String, builder: GL.Ctx ~> GL.Buffer): UBuffer {
+  mutable fun buffer(id: String, builder: GLSL.Ctx ~> GLSL.Buffer): UBuffer {
     if (this.buffers.maybeGet(id).isNone()) {
-      fn = gl ~> Buffer(builder(gl));
+      fn = gl ~> Buffer(builder(gl) as GL.Buffer _);
       this.buffers.set(id, fn)
     };
     UBuffer(id)
   }
 
   mutable fun rectanglePositionBuffer(): UBuffer {
-    this.buffer("FWK.RectanglePositionBuffer", rectanglePositionBuffer);
+    this.buffer("FWK.RectanglePositionBuffer", (gl) ~>
+      gl.rectanglePositionBuffer()
+    );
   }
 
   mutable fun trianglePositionBuffer(side: .UiSide): UBuffer {
