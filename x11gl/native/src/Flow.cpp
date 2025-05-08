@@ -41,6 +41,8 @@ public:
 
 } // namespace skui
 
+Atom kSkuiAnimationFrame;
+
 extern "C" {
 void SKIP_SkuiX11gl_run(void *environment, uint64_t wId, uint64_t x, uint64_t y,
                         uint64_t width, uint64_t height, char *skTitle,
@@ -50,8 +52,18 @@ void SKIP_SkuiX11gl_run(void *environment, uint64_t wId, uint64_t x, uint64_t y,
   skui::WindowInfo info{x, y, width, height};
   skui::GLWindowManager manager(environment, wId, screen, framePerSecond,
                                 &eManager, [](uint64_t, uint64_t) {});
-  Display *display = supplier.init(manager, &info);
+  XIC xic;
+  Display *display = supplier.init(xic, manager, &info);
+  kSkuiAnimationFrame = XInternAtom(display, "SKUI_ANIMATION_FRAME", False);
   manager.setTitle(strTitle);
+  manager.customMessages.insert(
+      std::pair<Atom, std::function<void(uint32_t, uint32_t)>>(
+          kSkuiAnimationFrame, [&manager](uint32_t param1, uint32_t) {
+            manager.performFrame(param1);
+          }));
+  manager.initialized(xic, [wId](uint64_t frames) {
+    supplier.sendClientMessage(wId, kSkuiAnimationFrame, (uint32_t)frames, 0);
+  });
   while (1) {
     if (supplier.handleWindowEvents(display)) {
       break;

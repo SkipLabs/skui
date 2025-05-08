@@ -40,7 +40,8 @@ void WindowSupplier::sendClientMessage(uint32_t wId, Atom type, uint32_t param1,
   }
 }
 
-Display *WindowSupplier::init(WindowManager &vManager, WindowInfo *info) {
+Display *WindowSupplier::init(XIC &xic, WindowManager &vManager,
+                              WindowInfo *info) {
   XInitThreads();
   auto display = XOpenDisplay(nullptr);
   this->cursors[0] = XCreateFontCursor(display, XC_arrow); // NoneCursor // TODO
@@ -137,14 +138,13 @@ Display *WindowSupplier::init(WindowManager &vManager, WindowInfo *info) {
   if (failed_arg != NULL) {
     throw WindowException("Unable to gather styles");
   }
-  auto ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
-                      XNClientWindow, fWindow, NULL);
-  if (ic == NULL) {
+  xic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+                  XNClientWindow, fWindow, NULL);
+  if (xic == NULL) {
     throw WindowException("Unable to create client");
   }
-  XSetICFocus(ic);
+  XSetICFocus(xic);
   this->windows[wId] = &vManager;
-  vManager.initialized(ic, sendExposeMessage);
   return display;
 }
 
@@ -158,126 +158,120 @@ bool WindowSupplier::handleWindowEvents(Display *display) {
   bool closed = false;
   uint64_t current = -1;
   WindowManager *wManager = nullptr;
-  //($state, $icon_window) = X11::Protocol::WM::get_wm_state ($X, $window)
-  // Handle all pending XEvents (if any) and flush the input
-  // Only handle a finite number of events before finishing resize and paint..
-  count = XEventsQueued(display, QueuedAfterFlush);
-  if (count > 0) {
-    // collapse any Expose and Resize events.
-    while (count--) {
-      XEvent event;
-      XNextEvent(display, &event);
-      if (wManager == nullptr || !wManager->is(event.xany.window)) {
-        wManager = nullptr;
-        current = -1;
-        for (auto it = this->windows.begin(); it != this->windows.end(); ++it) {
-          if (it->second->is(event.xany.window)) {
-            current = it->first;
-            wManager = it->second;
-          }
-        }
-      }
-      if (current < 0 || wManager == nullptr) {
-        continue;
-      }
-      std::string keyValue;
-      switch (event.type) {
-      case Expose:
-        wManager->performFrame(event.xexpose.count);
-        break;
-      case ConfigureNotify:
-        wManager->resize(event.xconfigurerequest.width,
-                         event.xconfigurerequest.height);
-        break;
-      case MapNotify:
-        wManager->checkGC();
-        break;
-      case ClientMessage:
-        closed = wManager->manageCustomEvent(event.xclient);
-        break;
-      case ButtonPress:
-      case ButtonRelease:
-        if (location.changed) {
-          wManager->manageMouseLocation(location.x, location.y,
-                                        location.screenX, location.screenY);
-          location.reset();
-        }
-        {
-          bool pressed = event.type == ButtonPress;
-          wManager->manageMouseButton(event.xbutton.button, pressed);
-        }
-        break;
-      case MotionNotify:
-        location.changed = true;
-        location.x = event.xmotion.x;
-        location.y = event.xmotion.y;
-        location.screenX = event.xmotion.x_root;
-        location.screenY = event.xmotion.y_root;
-        break;
-      case EnterNotify:
-      case LeaveNotify:
-        location.changed = true;
-        location.x = event.xcrossing.x;
-        location.y = event.xcrossing.y;
-        location.screenX = event.xcrossing.x_root;
-        location.screenY = event.xcrossing.y_root;
-        break;
-      case KeyPress:
-        if (location.changed) {
-          wManager->manageMouseLocation(location.x, location.y,
-                                        location.screenX, location.screenY);
-          location.reset();
-        }
-        count = Xutf8LookupString(wManager->xic, (XKeyPressedEvent *)&event,
-                                  buf, 20, &keysym, &status);
-        if (count != 0) {
-          buf[count] = '\0';
-          keyValue = std::string(buf, count);
-        }
-        wManager->manageKeyPressed(event.xkey.keycode, keysym, keyValue);
-        keyValue.clear();
-        break;
-      case KeyRelease:
-        is_retriggered = false;
-        if (count == 0) {
-          count = XEventsQueued(display, QueuedAfterReading);
-        }
-        if (count > 0) {
-          XEvent nextEvent;
-          XPeekEvent(display, &nextEvent);
 
-          if (nextEvent.type == KeyPress &&
-              nextEvent.xkey.time == event.xkey.time &&
-              nextEvent.xkey.keycode == event.xkey.keycode) {
-            // delete retriggered KeyPress event
-            XNextEvent(display, &event);
-            is_retriggered = true;
-            count--;
-          }
+  while (XPending(display)) {
+    // collapse any Expose and Resize events.
+    XEvent event;
+    XNextEvent(display, &event);
+    if (wManager == nullptr || !wManager->is(event.xany.window)) {
+      wManager = nullptr;
+      current = -1;
+      for (auto it = this->windows.begin(); it != this->windows.end(); ++it) {
+        if (it->second->is(event.xany.window)) {
+          current = it->first;
+          wManager = it->second;
         }
-        if (!is_retriggered) {
-          wManager->manageKeyReleased(event.xkey.keycode);
-        }
-        break;
-      case SelectionClear:
-        break;
-      case SelectionRequest:
-        wManager->updateClipboard(
-            (XSelectionRequestEvent *)&event.xselectionrequest);
-        break;
-      case SelectionNotify:
-        wManager->checkClipboard((XSelectionEvent *)&event.xselection);
-        break;
-      default:
-        if (location.changed) {
-          wManager->manageMouseLocation(location.x, location.y,
-                                        location.screenX, location.screenY);
-          location.reset();
-        }
-        // these events should be handled in the main event loop
-        assert(event.type != Expose && event.type != ConfigureNotify);
-        break;
       }
+    }
+    if (current < 0 || wManager == nullptr) {
+      continue;
+    }
+    std::string keyValue;
+    switch (event.type) {
+    case Expose:
+      break;
+    case ConfigureNotify:
+      wManager->resize(event.xconfigurerequest.width,
+                       event.xconfigurerequest.height);
+      break;
+    case MapNotify:
+      wManager->checkGC();
+      break;
+    case ClientMessage:
+      closed = wManager->manageCustomEvent(event.xclient);
+      break;
+    case ButtonPress:
+    case ButtonRelease:
+      if (location.changed) {
+        wManager->manageMouseLocation(location.x, location.y, location.screenX,
+                                      location.screenY);
+        location.reset();
+      }
+      {
+        bool pressed = event.type == ButtonPress;
+        wManager->manageMouseButton(event.xbutton.button, pressed);
+      }
+      break;
+    case MotionNotify:
+      location.changed = true;
+      location.x = event.xmotion.x;
+      location.y = event.xmotion.y;
+      location.screenX = event.xmotion.x_root;
+      location.screenY = event.xmotion.y_root;
+      break;
+    case EnterNotify:
+    case LeaveNotify:
+      location.changed = true;
+      location.x = event.xcrossing.x;
+      location.y = event.xcrossing.y;
+      location.screenX = event.xcrossing.x_root;
+      location.screenY = event.xcrossing.y_root;
+      break;
+    case KeyPress:
+      if (location.changed) {
+        wManager->manageMouseLocation(location.x, location.y, location.screenX,
+                                      location.screenY);
+        location.reset();
+      }
+      count = Xutf8LookupString(wManager->xic, (XKeyPressedEvent *)&event, buf,
+                                20, &keysym, &status);
+      if (count != 0) {
+        buf[count] = '\0';
+        keyValue = std::string(buf, count);
+      }
+      wManager->manageKeyPressed(event.xkey.keycode, keysym, keyValue);
+      keyValue.clear();
+      break;
+    case KeyRelease:
+      is_retriggered = false;
+      if (count == 0) {
+        count = XEventsQueued(display, QueuedAfterReading);
+      }
+      if (count > 0) {
+        XEvent nextEvent;
+        XPeekEvent(display, &nextEvent);
+
+        if (nextEvent.type == KeyPress &&
+            nextEvent.xkey.time == event.xkey.time &&
+            nextEvent.xkey.keycode == event.xkey.keycode) {
+          // delete retriggered KeyPress event
+          XNextEvent(display, &event);
+          is_retriggered = true;
+          count--;
+        }
+      }
+      if (!is_retriggered) {
+        wManager->manageKeyReleased(event.xkey.keycode);
+      }
+      break;
+    case SelectionClear:
+      break;
+    case SelectionRequest:
+      wManager->updateClipboard(
+          (XSelectionRequestEvent *)&event.xselectionrequest);
+      break;
+    case SelectionNotify:
+      wManager->checkClipboard((XSelectionEvent *)&event.xselection);
+      break;
+    default:
+      if (location.changed) {
+        wManager->manageMouseLocation(location.x, location.y, location.screenX,
+                                      location.screenY);
+        location.reset();
+      }
+      // these events should be handled in the main event loop
+      assert(event.type != Expose && event.type != ConfigureNotify);
+      break;
     }
     if (wManager != nullptr) {
       if (location.changed) {
@@ -285,12 +279,6 @@ bool WindowSupplier::handleWindowEvents(Display *display) {
                                       location.screenY);
         location.reset();
       }
-      wManager->onIdle();
-    }
-  } else {
-    // Idle main window
-    // We are only really "idle" when the timer went off with zero events.
-    if (wManager != nullptr) {
       wManager->onIdle();
     }
   }
@@ -301,26 +289,6 @@ void WindowSupplier::sendCloseMessage(uint32_t wId) {
   auto it = this->windows.find(wId);
   if (it != this->windows.end()) {
     it->second->sendCloseRequest();
-  }
-}
-
-void sendExposeMessage(Display *disp, Window fWindow, uint64_t count) {
-  XWindowAttributes gwa;
-  XGetWindowAttributes(disp, fWindow, &gwa);
-  XEvent event;
-  event.type = Expose;
-  event.xexpose.send_event = True;
-  event.xexpose.display = disp;
-  event.xexpose.window = fWindow;
-  event.xexpose.x = 0;
-  event.xexpose.y = 0;
-  event.xexpose.width = gwa.width;
-  event.xexpose.height = gwa.height;
-  event.xexpose.count = count;
-  if (XSendEvent(disp, fWindow, False, ExposureMask, &event) != 0) {
-    XFlush(disp);
-  } else {
-    std::cerr << "The conversion to wire protocol format failed" << std::endl;
   }
 }
 
