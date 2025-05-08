@@ -9,7 +9,7 @@ BASE="$(git merge-base main HEAD)"
 shopt -s globstar
 declare -A SK_CHANGED
 do_check=false
-check_all=$([ "$SKIPHEAD" != "fbdfd2e2fac25e93923fa3e378e8ca5570e87430" ] && echo "true" || echo "false");
+check_all=$([ "$SKIPHEAD" != "6bf01a0dfdf10f65187c138f37c552be9b0fa7fb" ] && echo "true" || echo "false");
 
 for skargo_toml in **/Skargo.toml; do
   dir=$(dirname "$skargo_toml")
