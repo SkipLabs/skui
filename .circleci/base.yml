@@ -74,7 +74,7 @@ jobs:
             cd mtsdf && skargo test --junitxml ~/test-results/skui_mtsdf.xml
       - store_test_results:
           path: ~/test-results/skui_mtsdf.xml
-  skui_opengl:
+  skui_glsl:
     docker:
       - image: skiplabs/skdb-base:latest
     resource_class: large
@@ -87,9 +87,9 @@ jobs:
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            cd opengl && skargo test --junitxml ~/test-results/skui_opengl.xml
+            cd opengl/glsl && skargo test --junitxml ~/test-results/skui_glsl.xml
       - store_test_results:
-          path: ~/test-results/skui_opengl.xml
+          path: ~/test-results/skui_glsl.xml
   skui_eng:
     docker:
       - image: skiplabs/skdb-base:latest
@@ -161,7 +161,7 @@ jobs:
             make playwright test-wasm-mtsdf TEST_ARGS="-- --reporter=junit"
       - store_test_results:
           path: ~/test-results/skui_mtsdf-wasm.xml
-  skui_opengl-wasm:
+  skui_glsl-wasm:
     docker:
       - image: skiplabs/skdb-base:latest
     resource_class: large
@@ -173,13 +173,13 @@ jobs:
           name: Run wasm glsl tests
           environment:
             PLAYWRIGHT_JUNIT_OUTPUT_DIR: /root/test-results
-            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_opengl-wasm.xml
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME: skui_glsl-wasm.xml
           no_output_timeout: 5m
           command: |
             mkdir -p ~/test-results
-            make playwright test-wasm-opengl TEST_ARGS="-- --reporter=junit"
+            make playwright test-wasm-glsl TEST_ARGS="-- --reporter=junit"
       - store_test_results:
-          path: ~/test-results/skui_opengl-wasm.xml
+          path: ~/test-results/skui_glsl-wasm.xml
   lint:
     docker:
       - image: skiplabs/skdb-base:latest

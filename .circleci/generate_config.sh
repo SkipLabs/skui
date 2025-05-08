@@ -32,34 +32,35 @@ if ! $do_check; then
   exit 0
 fi
 
-if ${SK_CHANGED[skui_base]}; then
-  SK_CHANGED[skui_common]=true
+if ${SK_CHANGED[base]}; then
+  SK_CHANGED[common]=true
 fi
 
-if ${SK_CHANGED[skui_common]}; then
-  SK_CHANGED[skui_font]=true
+if ${SK_CHANGED[common]}; then
+  SK_CHANGED[font]=true
+  SK_CHANGED["opengl/gsls"]=true
 fi
 
-if ${SK_CHANGED[skui_font]}; then
-  SK_CHANGED[skui_mtsdf]=true
+if ${SK_CHANGED[font]}; then
+  SK_CHANGED[mtsdf]=true
 fi
 
-if ${SK_CHANGED[skui_mtsdf]}; then
-  SK_CHANGED[skui_fwk]=true
-  SK_CHANGED[skui_opengl]=true
+if ${SK_CHANGED[mtsdf]}; then
+  SK_CHANGED[framework]=true
+  SK_CHANGED[opengl]=true
 fi
 
-if ${SK_CHANGED[skui_opengl]}; then
-  SK_CHANGED[skui_x11gl]=true
-  SK_CHANGED[skui_eng]=true
+if ${SK_CHANGED[opengl]}; then
+  SK_CHANGED[x11gl]=true
+  SK_CHANGED[engine]=true
 fi
 
-if ${SK_CHANGED[skui_fwk]}; then
-  SK_CHANGED[skui_eng]=true
+if ${SK_CHANGED[framework]}; then
+  SK_CHANGED[engine]=true
 fi
 
-if ${SK_CHANGED[skui_x11gl]}; then
-  SK_CHANGED[skui_views]=true
+if ${SK_CHANGED[x11gl]}; then
+  SK_CHANGED[views]=true
 fi
 
 cat .circleci/base.yml
@@ -76,7 +77,7 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[skui_common]}
+if ${SK_CHANGED[common]}
 then
     cat <<EOF
   common:
@@ -86,7 +87,7 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[skui_font]}
+if ${SK_CHANGED[font]}
 then
     cat <<EOF
   font:
@@ -96,7 +97,7 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[skui_mtsdf]}
+if ${SK_CHANGED[mtsdf]}
 then
     cat <<EOF
   mtsdf:
@@ -106,13 +107,13 @@ then
 EOF
 fi
 
-if ${SK_CHANGED[skui_opengl]}
+if ${SK_CHANGED["opengl/gsls"]}
 then
     cat <<EOF
   glsl:
     jobs:
-      - skui_opengl
-      - skui_opengl-wasm
+      - skui_glsl
+      - skui_glsl-wasm
 EOF
 fi
 
