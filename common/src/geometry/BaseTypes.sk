@@ -256,4 +256,17 @@ fun intersection(
   Geometry.Offset(x, y)
 }
 
+fun intersect(a: Offset, b: Offset, c: Offset, d: Offset): Bool {
+  cross = (p1, p2, p3) ->
+    (p2.dx - p1.dx) * (p3.dy - p1.dy) - (p2.dy - p1.dy) * (p3.dx - p1.dx);
+
+  cross1 = cross(a, b, c);
+  cross2 = cross(a, b, d);
+  cross3 = cross(c, d, a);
+  cross4 = cross(c, d, b);
+
+  Math.lowerOrEquals(cross1 * cross2, 0.0) &&
+    Math.lowerOrEquals(cross3 * cross4, 0.0)
+}
+
 module end;

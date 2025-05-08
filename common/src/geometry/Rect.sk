@@ -383,6 +383,33 @@ class Rect(
       this.bottom > limit
   }
 
+  fun intersectSegment(from: Offset, to: Offset): Bool {
+    corners = Array[
+      this.topLeft(),
+      this.topRight(),
+      this.bottomRight(),
+      this.bottomLeft(),
+    ];
+
+    for (i in .Range(0, corners.size())) {
+      a = corners[i];
+      b = corners[(i + 1) % 4];
+      if (intersect(from, to, a, b)) return true;
+    };
+
+    isInside =
+      Math.greater(from.dx, this.left) &&
+      Math.lower(from.dx, this.right) &&
+      Math.greater(from.dy, this.top) &&
+      Math.lower(from.dy, this.bottom) &&
+      Math.greater(to.dx, this.left) &&
+      Math.lower(to.dx, this.right) &&
+      Math.greater(to.dy, this.top) &&
+      Math.lower(to.dy, this.bottom);
+
+    isInside
+  }
+
   static fun lerp(optA: ?Rect, optB: ?Rect, t: Float): ?Rect {
     optA match {
     | Some(a) ->
