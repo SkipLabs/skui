@@ -10,7 +10,7 @@
     "font/ts/tests",
     "mtsdf/ts/tests",
     "opengl/ts/wasm",
-    "opengl/ts/tests",
+    "opengl/glsl/ts/tests",
     "framework/ts",
     "framework_js/ts/",
     "views/ts/wasm",

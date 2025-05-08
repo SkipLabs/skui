@@ -6,6 +6,16 @@ fun asParam(): MapperFn {
   (_fn, p, _i) ~> Some(p.ref())
 }
 
+class RectangleBufferBuilder() extends BufferBuilder {
+  fun getName(): String {
+    "GSLS.RectangleBuffer"
+  }
+
+  fun build(ctx: Ctx): Buffer {
+    ctx.rectanglePositionBuffer()
+  }
+}
+
 base class Entity(material: ?MaterialSupplier = None()) uses Hashable {
   fun fillShape(
     position: Expr,
@@ -19,9 +29,12 @@ base class Entity(material: ?MaterialSupplier = None()) uses Hashable {
     equations: mutable Vector<Equation>,
   ): void;
 
+  fun getAttributeBuilder(attr: Attribute): BufferBuilder;
+  fun getVertexSize(): Int;
+  /*
   overridable fun getAttributeBuilder(attr: Attribute): BufferBuilder {
     attr.name match {
-    | "position" -> RectangleBufferBuilder()
+    | "position" -> this.getPositionBuffer()
     | name -> invariant_violation(`Attribute '${name}' not managed.`)
     }
   }
@@ -29,6 +42,7 @@ base class Entity(material: ?MaterialSupplier = None()) uses Hashable {
   overridable fun getVertexSize(): Int {
     6;
   }
+  */
 }
 
 trait WithFunction {
@@ -70,6 +84,19 @@ trait WithDefaultMapper {
     p: Param,
   ): ?Expr {
     params.insert(Some(fn), p, 0).map(p -> p.ref())
+  }
+}
+
+trait WithRectangleVertex {
+  fun getAttributeBuilder(attr: Attribute): BufferBuilder {
+    attr.name match {
+    | "position" -> RectangleBufferBuilder()
+    | name -> invariant_violation(`Attribute '${name}' not managed.`)
+    }
+  }
+
+  fun getVertexSize(): Int {
+    6;
   }
 }
 
@@ -123,7 +150,9 @@ class EllipsoideMapper() extends Mapper {
   }
 }
 
-class Ellipsoide() extends Entity uses WithReliefFunction, WithShapeFunction {
+class Ellipsoide()
+  extends Entity
+  uses WithReliefFunction, WithShapeFunction, WithRectangleVertex {
   const mapper: EllipsoideMapper = EllipsoideMapper();
 
   protected fun getReliefFunction(): Function {
@@ -143,7 +172,9 @@ class Ellipsoide() extends Entity uses WithReliefFunction, WithShapeFunction {
   }
 }
 
-class Button1() extends Entity uses WithReliefFunction, WithShapeFunction {
+class Button1()
+  extends Entity
+  uses WithReliefFunction, WithShapeFunction, WithRectangleVertex {
   protected fun getReliefFunction(): Function {
     button1()
   }
@@ -170,7 +201,14 @@ class Button1() extends Entity uses WithReliefFunction, WithShapeFunction {
 
 class Cylinder(
   vertical: Bool = false,
-) extends Entity uses WithReliefFunction, WithShapeFunction, WithDefaultMapper {
+)
+  extends Entity
+  uses
+    WithReliefFunction,
+    WithShapeFunction,
+    WithDefaultMapper,
+    WithRectangleVertex,
+   {
   //
   protected fun getReliefFunction(): Function {
     if (this.vertical) {
@@ -187,7 +225,12 @@ class Cylinder(
 
 class Face()
   extends Entity
-  uses WithReliefFunction, WithShapeFunction, WithDefaultMapper {
+  uses
+    WithReliefFunction,
+    WithShapeFunction,
+    WithDefaultMapper,
+    WithRectangleVertex,
+   {
   //
   protected fun getReliefFunction(): Function {
     setZFn()

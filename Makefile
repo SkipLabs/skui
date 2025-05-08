@@ -112,9 +112,9 @@ mtsdf-tests: common
 	npm run build -w @skui/mtsdf-tests
 
 # Build and test OpenGL components
-.PHONY: opengl-tests
-opengl-tests: common
-	npm run build -w @skui/opengl-tests
+.PHONY: glsl-tests
+glsl-tests: common
+	npm run build -w @skui/glsl-tests
 
 # Run native tests for various components
 .PHONY: test-native
@@ -122,7 +122,7 @@ test-native:
 	skargo test --manifest-path=common/Skargo.toml
 	skargo test --manifest-path=font/Skargo.toml
 	skargo test --manifest-path=mtsdf/Skargo.toml
-	skargo test --manifest-path=opengl/Skargo.toml
+	skargo test --manifest-path=opengl/glsl/Skargo.toml
 
 # Run WASM tests for common components
 .PHONY: run-wasm-common-tests
@@ -140,9 +140,9 @@ run-wasm-mtsdf-tests:
 	cd mtsdf/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 # Run WASM tests for OpenGL components
-.PHONY: run-wasm-opengl-tests
-run-wasm-opengl-tests:
-	cd opengl/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
+.PHONY: run-wasm-glsl-tests
+run-wasm-glsl-tests:
+	cd opengl/glsl/ts/playwright && npm run test --workspaces=false $(TEST_ARGS)
 
 # Run tests for views
 .PHONY: run-views-tests
@@ -159,12 +159,12 @@ test-wasm-font: font-tests run-wasm-font-tests
 .PHONY: test-wasm-mtsdf
 test-wasm-mtsdf: mtsdf-tests run-wasm-mtsdf-tests
 
-.PHONY: test-wasm-opengl
-test-wasm-opengl: opengl-tests run-wasm-opengl-tests
+.PHONY: test-wasm-glsl
+test-wasm-glsl: glsl-tests run-wasm-glsl-tests
 
 # Run all WASM tests
 .PHONY: test-wasm
-test-wasm: setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests run-wasm-opengl-tests
+test-wasm: setup run-wasm-common-tests run-wasm-font-tests run-wasm-mtsdf-tests run-wasm-glsl-tests
 
 # Generate engine documentation as a PDF
 .PHONY: enginedoc
@@ -213,7 +213,7 @@ check-fmt: fmt
 linter:	
 	npm i
 	npm run build -w @skiplang/std -w  @skip-wasm/std -w @skui/base -w @skui/common
-	npm run lint -w @skui/base -w @skui/common -w @skui/common-tests  -w @skui/common-tests -w @skui/font-tests -w @skui/mtsdf-tests -w @skui/opengl -w @skui/opengl-tests -w @skui/fwk -w @skui/js -w @skui/views -w @skui/engine
+	npm run lint -w @skui/base -w @skui/common -w @skui/common-tests  -w @skui/common-tests -w @skui/font-tests -w @skui/mtsdf-tests -w @skui/glsl-tests -w @skui/fwk -w @skui/js -w @skui/views -w @skui/engine
 
 # Build a specific component using Skargo
 build-%: ./%/Skargo.toml
