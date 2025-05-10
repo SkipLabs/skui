@@ -1,0 +1,72 @@
+module alias T = SKTest;
+module alias G = Geometry;
+
+module TestPathClean;
+
+@test
+fun test_1(): void {
+  T.expectEq(
+    Shape.Path{
+      elements => Array[
+        Shape.MoveTo(Geometry.Offset(130.0, 35.0)),
+        Shape.LineTo(Geometry.Offset(130.0, 35.0)),
+        Shape.LineTo(Geometry.Offset(130.0, 35.0)),
+        Shape.LineTo(Geometry.Offset(150.0, 35.0)),
+        Shape.LineTo(Geometry.Offset(160.0, 35.0)),
+      ],
+    }.clean(),
+    Shape.Path{
+      elements => Array[
+        Shape.MoveTo(Geometry.Offset(130.0, 35.0)),
+        Shape.LineTo(Geometry.Offset(160.0, 35.0)),
+      ],
+    },
+  )
+}
+
+@test
+fun test_2(): void {
+  T.expectEq(
+    Shape.Path{
+      elements => Array[
+        Shape.MoveTo(Geometry.Offset(130.0, 115.0)),
+        Shape.LineTo(Geometry.Offset(140.0, 115.0)),
+        Shape.LineTo(Geometry.Offset(140.0, 45.0)),
+        Shape.LineTo(Geometry.Offset(210.0, 45.0)),
+        Shape.LineTo(Geometry.Offset(210.0, 55.0)),
+      ],
+    }.clean(),
+    Shape.Path{
+      elements => Array[
+        Shape.MoveTo(Geometry.Offset(130.0, 115.0)),
+        Shape.LineTo(Geometry.Offset(140.0, 115.0)),
+        Shape.LineTo(Geometry.Offset(140.0, 45.0)),
+        Shape.LineTo(Geometry.Offset(210.0, 45.0)),
+        Shape.LineTo(Geometry.Offset(210.0, 55.0)),
+      ],
+    },
+  )
+}
+
+@test
+fun test_3(): void {
+  T.expectEq(
+    Shape.Path{
+      elements => Array[
+        Shape.MoveTo(Geometry.Offset(130.0, 45.0)),
+        Shape.LineTo(Geometry.Offset(130.0, 105.0)),
+        Shape.LineTo(Geometry.Offset(140.0, 105.0)),
+        Shape.LineTo(Geometry.Offset(160.0, 105.0)),
+      ],
+    }.clean(),
+    Shape.Path{
+      elements => Array[
+        Shape.MoveTo(Geometry.Offset(130.0, 45.0)),
+        Shape.LineTo(Geometry.Offset(130.0, 105.0)),
+        Shape.LineTo(Geometry.Offset(160.0, 105.0)),
+      ],
+    },
+  )
+}
+
+module end;

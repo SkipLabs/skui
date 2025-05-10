@@ -1,5 +1,53 @@
 module Shape;
 
+base class CapStyle uses Equality {
+  children =
+  | CButt()
+  | CSquare()
+  | CRound()
+}
+
+base class JoinStyle {
+  children =
+  | JMiter()
+  | JBevel()
+  | JRound()
+}
+
+base class Dir() uses Equality, Show {
+  children =
+  | XDir
+  | YDir
+
+  static fun create(start: Geometry.Offset, end: Geometry.Offset): ?Dir {
+    sameX = Math.like(start.dx, end.dx);
+    sameY = Math.like(start.dy, end.dy);
+    invariant(!(sameX && sameY), "Cannot be the same point");
+    if (sameX) {
+      Some(XDir())
+    } else if (sameY) {
+      Some(YDir())
+    } else {
+      None()
+    }
+  }
+
+  fun toString(): String
+  | XDir() -> "x"
+  | YDir() -> "y"
+
+  fun checkDirection(start: Geometry.Offset, end: Geometry.Offset): Bool {
+    sameX = Math.like(start.dx, end.dx);
+    sameY = Math.like(start.dy, end.dy);
+    if (!sameX && !sameY) return false;
+    invariant(sameX != sameY, "Cannot be the same point");
+    this match {
+    | XDir() -> sameX
+    | YDir() -> sameY
+    }
+  }
+}
+
 class Path{elements: Array<PathElement> = Array[]} uses Orderable {
   static fun rectangle(rect: Geometry.Rect): Path {
     Path{
@@ -147,6 +195,20 @@ class Path{elements: Array<PathElement> = Array[]} uses Orderable {
     }
   }
 
+  static fun polyline(
+    points: Array<Geometry.Offset>,
+    closePath: Bool = true,
+  ): Path {
+    vec = mutable Vector<PathElement>[];
+    points.eachWithIndex((i, p) ->
+      vec.push(if (i == 0) MoveTo(p) else LineTo(p))
+    );
+    if (closePath) {
+      vec.push(ClosePath())
+    };
+    Path{elements => vec.toArray()};
+  }
+
   fun transform(conv: Geometry.Offset ~> Geometry.Offset): this {
     static{elements => this.elements.map(e -> e.transform(conv))}
   }
@@ -163,6 +225,62 @@ class Path{elements: Array<PathElement> = Array[]} uses Orderable {
 
   fun lineTo(x: Float, y: Float): Path {
     this.add(LineTo(Geometry.Offset(x, y)));
+  }
+
+  fun clean(): Path {
+    elements = mutable Vector<PathElement>[];
+    start: ?Geometry.Offset = None();
+    current: ?(Geometry.Offset, Dir) = None();
+    this.elements.each(element -> {
+      element match {
+      | MoveTo(to) ->
+        elements.push(element);
+        !start = Some(to)
+      | LineTo(to) ->
+        current match {
+        | Some((c, d)) ->
+          if (to.like(c)) return void;
+          if (d.checkDirection(c, to)) {
+            !current = Some((to, Dir::create(c, to).fromSome()));
+          } else {
+            current.each(c -> elements.push(LineTo(c.i0)));
+            Dir::create(c, to) match {
+            | Some(nd) -> !current = Some((to, nd))
+            | _ ->
+              elements.push(element);
+              !current = None()
+            }
+          }
+        | _ ->
+          s = start.fromSome();
+          if (s.like(to)) return void;
+          !current = Dir::create(s, to).map(d -> (to, d))
+        };
+        !start = Some(to)
+      | QuadCurveTo(end, _)
+      | CubicCurveTo(end, _, _) ->
+        current.each(c -> elements.push(LineTo(c.i0)));
+        elements.push(element);
+        !start = Some(end);
+        !current = None()
+      | ClosePath _ ->
+        current.each(c -> elements.push(LineTo(c.i0)));
+        elements.push(element);
+        !start = None();
+        !current = None()
+      }
+    });
+    current.each(c -> elements.push(LineTo(c.i0)));
+    Path{elements => elements.toArray()}
+  }
+
+  fun like(other: Path, precision: Float = precisionErrorTolerance): Bool {
+    if (this.elements.size() != other.elements.size()) return false;
+    for (i => te in this.elements) {
+      oe = other.elements[i];
+      if (!te.like(oe, precision)) return false;
+    };
+    true
   }
 
   fun close(): Path {
@@ -210,6 +328,192 @@ class Path{elements: Array<PathElement> = Array[]} uses Orderable {
     | _ -> Geometry.Offset::zero
     }
   }
+
+  fun sample(samplesPerCurve: Int = 20): Array<Geometry.Offset> {
+    points = mutable Vector<Geometry.Offset>[];
+    current = Geometry.Offset::zero;
+    optStart: ?Geometry.Offset = None();
+
+    for (element in this.elements) {
+      element match {
+      | MoveTo(to) ->
+        !current = to;
+        !optStart = Some(current);
+        points.push(current)
+      | LineTo(to) ->
+        !current = to;
+        points.push(current)
+      | QuadCurveTo(end, control) ->
+        qCurve = QuadCurve{start => current, end, control};
+        for (i in Range(0, samplesPerCurve)) {
+          points.push(
+            qCurve.pointAt((i + 1).toFloat() / samplesPerCurve.toFloat()),
+          );
+        };
+        !current = end
+      | CubicCurveTo(end, firstControl, secondControl) ->
+        cCurve = CubicCurve{start => current, end, firstControl, secondControl};
+        for (i in Range(0, samplesPerCurve)) {
+          points.push(
+            cCurve.pointAt((i + 1).toFloat() / samplesPerCurve.toFloat()),
+          );
+        };
+        !current = end
+      | ClosePath() ->
+        optStart.each(start -> {
+          points.push(start);
+          !current = start
+        })
+      }
+    };
+    points.toArray();
+  }
+
+  static fun thickenPolyline(
+    points: Array<Geometry.Offset>,
+    thickness: Float,
+    cap: CapStyle = CButt(),
+    join: JoinStyle = JMiter(),
+    miterLimit: Float = 4.0,
+  ): Array<Geometry.Offset> {
+    half = thickness / 2.0;
+    left = mutable Vector<Geometry.Offset>[];
+    right = mutable Vector<Geometry.Offset>[];
+    zero = Geometry.Offset::zero;
+
+    // Iterate over the range from 0 to points.size() using Range
+    for (i in Range(0, points.size())) {
+      p1 = points[i];
+      p0 = points.maybeGet(i - 1).default(p1);
+      p2 = points.maybeGet(i + 1).default(p1);
+
+      // Tangent and normal at point i
+      diff = p2 - p1;
+      !diff = if (diff == zero) p1 - p0 else diff;
+      len = diff.distance();
+      n = if (len != 0.0) Geometry.Offset(-diff.dy, diff.dx) / len else zero;
+      offset = n * half;
+
+      // For joints
+      if (i > 0 && i < points.size() - 1) {
+        prev = p0;
+        curr = p1;
+        next = p2;
+
+        v1 = (curr - prev).normalize();
+        v2 = (next - curr).normalize();
+        angle = v1.angleBetween(v2);
+        dir = Math.sign(v1.crossProduct(v2)); // left/right turn
+
+        join match {
+        | JMiter() ->
+          miterLen = half / Math.sin(angle / 2.0);
+          if (miterLen < miterLimit * half) {
+            // Valid miter, use the bisector
+            bisector = (v1 + v2).normalize();
+            miter = (curr + bisector) * miterLen * dir.toFloat();
+            left.push(miter);
+            right.push(miter.reflect(curr));
+            continue
+          }
+        // fallback to bevel
+        | _ -> void
+        };
+
+        // Handle bevel and round join
+        join match {
+        | JBevel() ->
+          normal1 = Geometry.Offset(-v1.dy, v1.dx);
+          normal2 = Geometry.Offset(-v2.dy, v2.dx);
+          left.push(curr + normal1 * half);
+          left.push(curr + normal2 * half);
+          right.push(curr - normal1 * half);
+          right.push(curr - normal2 * half)
+        | _ -> // JRoundconst prev = [x0, y0];
+          bisector = (v1 + v2).normalize();
+          arcCenter = curr + bisector * half;
+          arc = generateArcPoints(
+            arcCenter,
+            Math.atan2(v1.dx, v1.dy),
+            angle,
+            half,
+            8,
+          );
+          arc.each(left.push);
+          arc.each(right.push)
+        };
+        continue
+      } else {
+        // Handle endpoints (caps)
+        offsetPos = p1 + offset;
+        offsetNeg = p1 - offset;
+        dir = (if (i == 0) (p2 - p1) else (p1 - p0)).normalize();
+        cap match {
+        | CSquare() ->
+          ext = dir * half;
+          left.push(if (i == 0) offsetPos - ext else offsetPos + ext);
+          right.push(if (i == 0) offsetNeg - ext else offsetNeg + ext)
+        | CRound() ->
+          angleStart = Math.atan2(-dir.dx, -dir.dy);
+          arc = generateArcPoints(p1, angleStart, Math.PI, half, 8);
+          mid = Math.floor(arc.size().toFloat() / 2.0).toInt();
+          arcPart = if (i == 0) arc.slice(0, mid + 1) else {
+            arc.drop(mid).reversed()
+          };
+          arcPart.each(left.push);
+          (if (i == 0) arc.drop(mid).reversed() else {
+            arc.slice(0, mid + 1)
+          }).each(right.push)
+        | CButt() ->
+          left.push(offsetPos);
+          right.push(offsetNeg)
+        }
+      }
+    };
+    right.reversed().each(left.push);
+    left.toArray()
+  }
+}
+
+fun pointInPolygon(p: Geometry.Offset, polygon: Array<Geometry.Offset>): Bool {
+  inside = false;
+  i = 0;
+  j = polygon.size() - 1;
+  while (i < polygon.size()) {
+    pi = polygon[i];
+    pj = polygon[j];
+    intersects =
+      ((pi.dy > p.dy) != (pj.dy > p.dy)) &&
+      (p.dx < ((pj.dx - pi.dx) * (p.dy - pi.dy)) / (pj.dy - pi.dy) + pi.dx);
+
+    if (intersects) {
+      !inside = !inside;
+    };
+
+    !j = i;
+    !i = i + 1;
+  };
+  inside
+}
+
+fun generateArcPoints(
+  center: Geometry.Offset,
+  startAngle: Float,
+  sweep: Float,
+  radius: Float,
+  segments: Int,
+): Array<Geometry.Offset> {
+  points = mutable Vector<Geometry.Offset>[];
+  for (i in Range(0, segments)) {
+    angle = startAngle + (sweep * i.toFloat()) / segments.toFloat();
+    points.push(
+      Geometry.Offset(
+        center.dx + Math.cos(angle) * radius,
+        center.dy + Math.sin(angle) * radius,
+      ),
+    );
+  };
+  points.toArray()
 }
 
 fun clampToShortest(rect: Geometry.Rect, value: Float): Float {
