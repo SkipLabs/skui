@@ -37,6 +37,31 @@ class Offset(dx: Float, dy: Float) uses Hashable, Orderable, Show {
     Math.sqrt(this.dx * this.dx + this.dy * this.dy);
   }
 
+  fun normalize(allowZero: Bool = false): this {
+    len = this.distance();
+    if (Math.like(len, 0.0)) {
+      Offset(0.0, if (allowZero) 0.0 else 1.0)
+    } else {
+      this / len
+    }
+  }
+
+  fun dotProduct(other: Offset): Float {
+    this.dx * other.dx + this.dy * other.dy
+  }
+
+  fun crossProduct(other: Offset): Float {
+    this.dx * other.dy - this.dy * other.dx
+  }
+
+  fun angleBetween(other: Offset): Float {
+    Math.atan2(this.crossProduct(other), this.dotProduct(other));
+  }
+
+  fun reflect(center: Offset): Offset {
+    (center * 2.0) - this;
+  }
+
   /**
    * Returns a new offset with the x component scaled by scaleX and the y component scaled by scaleY.
    * If the two scale arguments are the same, consider using the * operator instead

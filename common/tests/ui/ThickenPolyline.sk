@@ -1,0 +1,214 @@
+module alias T = SKTest;
+module alias G = Geometry;
+
+module ThickenPolyline;
+
+fun expectLike(
+  actual: Float,
+  expected: Float,
+  msg: String = "expected like",
+): void {
+  if (!Math.like(actual, expected, 10e-5)) {
+    throw T.ExpectationError(msg, expected.toString(), actual.toString())
+  }
+}
+
+fun expectNLike(
+  actual: Float,
+  expected: Float,
+  msg: String = "expected like",
+): void {
+  if (Math.like(actual, expected)) {
+    throw T.ExpectationError(msg, expected.toString(), actual.toString())
+  }
+}
+
+fun expectOffset(actual: G.Offset, expected: G.Offset): void {
+  try {
+    expectLike(actual.dx, expected.dx);
+    expectLike(actual.dy, expected.dy);
+  } catch {
+  | T.ExpectationError _ ->
+    throw T.ExpectationError(
+      "expected like",
+      expected.toString(),
+      actual.toString(),
+    )
+  | e -> throw e
+  }
+}
+
+fun expectOffsets(actual: Array<G.Offset>, expected: Array<G.Offset>): void {
+  try {
+    T.expectEq(actual.size(), expected.size());
+    actual.eachWithIndex((i, o) -> {
+      expectOffset(o, expected[i])
+    })
+  } catch {
+  | T.ExpectationError _ ->
+    throw T.ExpectationError(
+      "expected like",
+      expected.toString(),
+      actual.toString(),
+    )
+  | e -> throw e
+  }
+}
+
+fun expectNOffset(actual: G.Offset, expected: G.Offset): void {
+  if (Math.like(actual.dx, expected.dx) && Math.like(actual.dy, expected.dy)) {
+    throw T.ExpectationError(
+      "Offset cannot be equals",
+      `(${expected.dx}, ${expected.dy})`,
+      `(${actual.dx}, ${actual.dy})`,
+    )
+  }
+}
+
+fun expectGte<T1: frozen & Orderable>(actual: T1, expected: T1): void {
+  T.expectCmp(actual, expected, (v1, v2) ~> v1 >= v2);
+}
+
+fun expectLte<T1: frozen & Orderable>(actual: T1, expected: T1): void {
+  T.expectCmp(actual, expected, (v1, v2) ~> v1 <= v2);
+}
+
+fun expectGt<T1: frozen & Orderable>(actual: T1, expected: T1): void {
+  T.expectCmp(actual, expected, (v1, v2) ~> v1 > v2);
+}
+
+@test
+fun simple_horizontal_line(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(10.0, 0.0)];
+  thick = Shape.Path::thickenPolyline(line, 2.0, Shape.CButt(), Shape.JMiter());
+  expectGte(thick.size(), 4);
+  expectOffset(thick[0], G.Offset(0.0, 1.0));
+  expectOffset(thick[thick.size() - 1], G.Offset(0.0, -1.0));
+}
+
+@test
+fun simple_vertical_line_round(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(0.0, 10.0)];
+  thick = Shape.Path::thickenPolyline(
+    line,
+    4.0,
+    Shape.CRound(),
+    Shape.JRound(),
+  );
+  expectGt(thick.size(), 10);
+  expectLte(thick[0].dy, 12.0);
+  expectGte(thick[thick.size() - 1].dy, -2.0);
+}
+
+@test
+fun angled_line_with_bevel(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(5.0, 5.0), G.Offset(10.0, 0.0)];
+  actual = Shape.Path::thickenPolyline(
+    line,
+    2.0,
+    Shape.CButt(),
+    Shape.JBevel(),
+  );
+  expected = Array[
+    G.Offset(-0.707106781, 0.707106781), // 0 - A left
+    G.Offset(4.292893219, 5.707106781), // 1 - B left (AB)
+    G.Offset(5.707106781, 5.707106781), // 2 - B left (BC)
+    G.Offset(10.707106781, 0.707106781), // 3 - C left
+    G.Offset(9.292893219, -0.707106781), // 4 - C right
+    G.Offset(4.292893219, 4.292893219), // 5 - B right (BC)
+    G.Offset(5.707106781, 4.292893219), // 6 - B right (AB)
+    G.Offset(0.707106781, -0.707106781), // 7 - A right
+  ];
+  expectOffsets(actual, expected);
+}
+
+@test
+fun miter_falls_back_to_bevel_when_limit_exceeded(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(5.0, 0.1), G.Offset(10.0, 0.0)];
+  thick = Shape.Path::thickenPolyline(
+    line,
+    2.0,
+    Shape.CButt(),
+    Shape.JMiter(),
+    2.0,
+  );
+  expectGt(thick.size(), 4);
+}
+
+@test
+fun output_is_closed_polygon(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(10.0, 0.0)];
+  thick = Shape.Path::thickenPolyline(line, 2.0);
+  expectGte(thick.size(), 4);
+  expectNOffset(thick[0], thick[thick.size() - 1]);
+}
+
+@test
+fun point_inside_thickened_horizontal_line(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(10.0, 0.0)];
+  thick = Shape.Path::thickenPolyline(line, 2.0, Shape.CButt(), Shape.JMiter());
+  pt = G.Offset(5.0, 0.5);
+  result = Shape.pointInPolygon(pt, thick);
+  T.expectTrue(result);
+}
+
+@test
+fun point_outside_thickened_line(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(10.0, 0.0)];
+  thick = Shape.Path::thickenPolyline(line, 2.0, Shape.CButt(), Shape.JMiter());
+  pt = G.Offset(5.0, 2.5);
+  result = Shape.pointInPolygon(pt, thick);
+  T.expectFalse(result);
+}
+
+@test
+fun point_near_joint_inside(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(5.0, 5.0), G.Offset(10.0, 0.0)];
+  actual = Shape.Path::thickenPolyline(
+    line,
+    4.0,
+    Shape.CButt(),
+    Shape.JRound(),
+  );
+  expected = Array[
+    G.Offset(-1.414213562, 1.414213562),
+    G.Offset(8.414213562, 6.414213562),
+    G.Offset(8.662939225, 6.111140466),
+    G.Offset(8.847759065, 5.765366865),
+    G.Offset(8.961570561, 5.390180644),
+    G.Offset(9.0, 5.0),
+    G.Offset(8.961570561, 4.609819356),
+    G.Offset(8.847759065, 4.234633135),
+    G.Offset(8.662939225, 3.888859534),
+    G.Offset(11.414213562, 1.414213562),
+    G.Offset(8.585786438, -1.414213562),
+    G.Offset(8.662939225, 3.888859534),
+    G.Offset(8.847759065, 4.234633135),
+    G.Offset(8.961570561, 4.609819356),
+    G.Offset(9.0, 5.0),
+    G.Offset(8.961570561, 5.390180644),
+    G.Offset(8.847759065, 5.765366865),
+    G.Offset(8.662939225, 6.111140466),
+    G.Offset(8.414213562, 6.414213562),
+    G.Offset(1.414213562, -1.414213562),
+  ];
+  expectOffsets(actual, expected);
+  pt = G.Offset(5.0, 3.0);
+  result = Shape.pointInPolygon(pt, actual);
+  T.expectTrue(result);
+}
+
+@test
+fun point_at_edge(): void {
+  line = Array[G.Offset(0.0, 0.0), G.Offset(10.0, 0.0)];
+  actual = Shape.Path::thickenPolyline(line, 2.0);
+  expected = Array[
+    G.Offset(0.0, 1.0),
+    G.Offset(10.0, 1.0),
+    G.Offset(10.0, -1.0),
+    G.Offset(0.0, -1.0),
+  ];
+  expectOffsets(actual, expected)
+}
+
+module end;

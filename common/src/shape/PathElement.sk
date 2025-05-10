@@ -11,6 +11,10 @@ base class PathEdge extends PathEntity
 base class PathElement uses Hashable, Orderable {
   fun getEndOffset(previous: Geometry.Offset): Geometry.Offset;
   fun transform(conv: Geometry.Offset ~> Geometry.Offset): this;
+  fun like(
+    other: PathElement,
+    precision: Float = precisionErrorTolerance,
+  ): Bool;
 }
 
 class ClosePath() extends PathElement, PathSegment {
@@ -20,6 +24,13 @@ class ClosePath() extends PathElement, PathSegment {
 
   fun transform(_conv: Geometry.Offset ~> Geometry.Offset): ClosePath {
     this
+  }
+
+  fun like(
+    other: PathElement,
+    _precision: Float = precisionErrorTolerance,
+  ): Bool {
+    this == other
   }
 }
 
@@ -35,6 +46,16 @@ class MoveTo(point: Geometry.Offset) extends PathElement, PathSegment {
   fun transform(conv: Geometry.Offset ~> Geometry.Offset): MoveTo {
     MoveTo(conv(this.point))
   }
+
+  fun like(
+    other: PathElement,
+    precision: Float = precisionErrorTolerance,
+  ): Bool {
+    other match {
+    | MoveTo(to) -> this.point.like(to, precision)
+    | _ -> false
+    }
+  }
 }
 
 /**
@@ -48,6 +69,16 @@ class LineTo(point: Geometry.Offset) extends PathElement, PathSegment {
 
   fun transform(conv: Geometry.Offset ~> Geometry.Offset): LineTo {
     LineTo(conv(this.point))
+  }
+
+  fun like(
+    other: PathElement,
+    precision: Float = precisionErrorTolerance,
+  ): Bool {
+    other match {
+    | LineTo(to) -> this.point.like(to, precision)
+    | _ -> false
+    }
   }
 }
 
@@ -73,6 +104,19 @@ class CubicCurveTo(
       conv(this.secondControl),
     )
   }
+
+  fun like(
+    other: PathElement,
+    precision: Float = precisionErrorTolerance,
+  ): Bool {
+    other match {
+    | CubicCurveTo(end, firstControl, secondControl) ->
+      this.end.like(end, precision) &&
+        this.firstControl.like(firstControl, precision) &&
+        this.secondControl.like(secondControl, precision)
+    | _ -> false
+    }
+  }
 }
 
 /**
@@ -94,6 +138,17 @@ class QuadCurveTo(
 
   fun toSvg(): String {
     `Q ${this.control.dx} ${this.control.dy} ${this.end.dx} ${this.end.dy}`
+  }
+
+  fun like(
+    other: PathElement,
+    precision: Float = precisionErrorTolerance,
+  ): Bool {
+    other match {
+    | QuadCurveTo(end, control) ->
+      this.end.like(end, precision) && this.control.like(control, precision)
+    | _ -> false
+    }
   }
 }
 
