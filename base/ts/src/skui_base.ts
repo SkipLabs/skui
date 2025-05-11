@@ -8,6 +8,7 @@ import type {
 
 interface ToWasm {
   SKIP_JS_timeStamp(): float;
+  SKIP_Math_atan2(y: float, x: float): float;
 }
 
 class LinksImpl implements Links, ToWasm {
@@ -15,6 +16,10 @@ class LinksImpl implements Links, ToWasm {
 
   SKIP_JS_timeStamp() {
     return this.env.timestamp();
+  }
+
+  SKIP_Math_atan2(y: float, x: float) {
+    return Math.atan2(y, x);
   }
 
   complete(_utils: Utils, _exports: object) {
@@ -33,6 +38,7 @@ class Manager implements ToWasmManager {
     const toWasm = wasm as ToWasm;
     const links = new LinksImpl(this.environment);
     toWasm.SKIP_JS_timeStamp = links.SKIP_JS_timeStamp.bind(links);
+    toWasm.SKIP_Math_atan2 = links.SKIP_Math_atan2.bind(links);
     return links;
   };
 }
