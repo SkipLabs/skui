@@ -91,7 +91,7 @@ extension class Context {
     this.unsafeMaybeGetDir(path.dirName) match {
     | None() -> None()
     | Some(d) ->
-      files = d.getArrayRaw(path.baseName);
+      files = d.typed().getArrayRaw(path.baseName);
       if (files.isEmpty()) {
         None()
       } else {
