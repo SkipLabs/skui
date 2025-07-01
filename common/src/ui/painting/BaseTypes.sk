@@ -38,6 +38,7 @@ class Handles(
 }
 
 base class Drawable extends SKStore.File uses HasClassName {
+  fun toOrigin(): this;
   fun translate(offset: Geometry.Offset): this;
   fun size(): Geometry.Size;
 }
@@ -47,6 +48,12 @@ class Drawables(
   optViewport: ?Ui.Path = None(),
 ) extends SKStore.File {
   //
+
+  fun toOrigin(): Drawables {
+    !this.value = this.value.map(d -> d.toOrigin());
+    this
+  }
+
   static fun type(obj: SKStore.File): this {
     obj match {
     | x @ Drawables _ -> x
@@ -63,6 +70,12 @@ base class RectangleDrawable(bounds: Geometry.Rect) extends Drawable {
     this
   }
 
+  fun toOrigin(): this {
+    offset = this.bounds.topLeft();
+    !this.bounds = this.bounds.translate(-offset.dx, -offset.dy);
+    this
+  }
+
   fun size(): Geometry.Size {
     this.bounds.size()
   }
@@ -70,6 +83,10 @@ base class RectangleDrawable(bounds: Geometry.Rect) extends Drawable {
 
 class DummyDrawable() extends Drawable {
   fun translate(_offset: Geometry.Offset): this {
+    dummy()
+  }
+
+  fun toOrigin(): this {
     dummy()
   }
 

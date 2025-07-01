@@ -50,6 +50,7 @@ class HStorage(name: String, handle: SKStore.INotTyped) extends Storage {
       context,
       Ui.indeterminateProp,
       optValue.map(v -> SKStore.IntFile(v)),
+      true,
     )
   }
 

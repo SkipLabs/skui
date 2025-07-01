@@ -15,8 +15,16 @@ class TreeItems(value: Array<TreeItem>) extends SKStore.File {
 class TreeItem(
   id: String,
   item: UiTree.Item,
-  optItems: ?Serializable,
+  optItems: ?Serializable = None(),
 ) extends SKStore.File {
+  //
+  static fun create(
+    id: String,
+    item: UiTree.Item,
+    optItems: ?ArrayBox<TreeItem> = None(),
+  ): TreeItem {
+    TreeItem(id, item, optItems.map(v -> v.toSerializable()))
+  }
   //
   static fun type(obj: SKStore.File): this {
     obj match {
@@ -194,12 +202,39 @@ class Tree{
   items: Serializable,
   optAllowMultipleSelection: ?Serializable = None(),
   optBadgeMaxChar: ?Serializable = None(),
-  optMenuGetter: ?Serializable = None(),
-  optSelectionListener: ?Serializable = None(),
-  optExpansionListener: ?Serializable = None(),
-  optTreePerformer: ?Serializable = None(),
-  optTreeDropper: ?Serializable = None(),
+  optMenuGetter: ?TreeMenuGetter = None(),
+  optSelectionListener: ?TreeSelectionListener = None(),
+  optExpansionListener: ?TreeExpansionListener = None(),
+  optTreePerformer: ?TreePerformer = None(),
+  optTreeDropper: ?TreeDropper = None(),
 } extends Description {
+  //
+  static fun create<C: Ui.Configuration & Serializable>{
+    items: ArrayBox<TreeItem>,
+    optAllowMultipleSelection: ?Box<Bool> = None(),
+    optBadgeMaxChar: ?Box<Int> = None(),
+    optMenuGetter: ?TreeMenuGetter = None(),
+    optSelectionListener: ?TreeSelectionListener = None(),
+    optExpansionListener: ?TreeExpansionListener = None(),
+    optTreePerformer: ?TreePerformer = None(),
+    optTreeDropper: ?TreeDropper = None(),
+    optConfiguration: ?Box<C> = None(),
+  }: Tree {
+    Tree{
+      items => items.toSerializable(),
+      optAllowMultipleSelection => optAllowMultipleSelection.map(v ->
+        v.toSerializable()
+      ),
+      optBadgeMaxChar => optBadgeMaxChar.map(v -> v.toSerializable()),
+      optMenuGetter,
+      optSelectionListener,
+      optExpansionListener,
+      optTreePerformer,
+      optTreeDropper,
+      optConfiguration => optConfiguration.map(v -> v.toSerializable()),
+    }
+  }
+
   //
   fun collect(_collector: Renderable -> void): void {
     void
@@ -218,30 +253,17 @@ class Tree{
       this.optAllowMultipleSelection,
     );
     badgeMaxCharGetter = toIntOptGetter(context, this.optBadgeMaxChar);
-    optSelectionListener = this.optSelectionListener.flatMap(optFunction).map(
-      f -> H.TreeSelectionListener(f),
+    selectionChange = this.optSelectionListener.map(sl ~>
+      sl.selectionChanged
+    ).default(Ui.defaultOne(void));
+    expansionChange = this.optExpansionListener.map(sl ~>
+      sl.expansionChanged
+    ).default(Ui.defaultTwo(void));
+    fire = this.optTreePerformer.map(p ~> p.perform).default(
+      Ui.defaultTwo(void),
     );
-    selectionChange = optSelectionListener
-      .map(sl ~> sl.selectionChanged)
-      .default(Ui.defaultOne(void));
-    optExpansionListener = this.optExpansionListener.flatMap(optFunction).map(
-      f -> H.TreeExpansionListener(f),
-    );
-    expansionChange = optExpansionListener
-      .map(sl ~> sl.expansionChanged)
-      .default(Ui.defaultTwo(void));
-    optTreePerformer = this.optTreePerformer.flatMap(optFunction).map(f ->
-      H.TreePerformer(f)
-    );
-    fire = optTreePerformer.map(p ~> p.perform).default(Ui.defaultTwo(void));
-    optTreeDropper = this.optTreeDropper.flatMap(optFunction).map(f ->
-      H.TreeDropper(f)
-    );
-    drop = optTreeDropper.map(d ~> d.drop).default((_, _, _, _) ~> void);
-    optMenuGetter = this.optMenuGetter.flatMap(optFunction).map(f ->
-      H.TreeMenuGetter(f)
-    );
-    contextMenuItems = optMenuGetter match {
+    drop = this.optTreeDropper.map(d ~> d.drop).default((_, _, _, _) ~> void);
+    contextMenuItems = this.optMenuGetter match {
     | Some(mg) ->
       (ctx, optPath, selection) ~>
         mg.getContextMenu(ctx, optPath, selection).map(items ->
@@ -267,7 +289,69 @@ class Tree{
       //progress: Ui.GetterOne<?Ui.Progress, Ui.Path> = Ui.defaultOne(None()),
       //badge: Ui.GetterOne<?Text, Ui.Path> = Ui.defaultOne(None()),
     };
-    Ui.Tree::create(context, path, UiTree.init(context, path, controller));
+    Ui.Tree::create(
+      context,
+      path,
+      UiTree.init(context, path, controller),
+      toOptConfGetter(context, this.optConfiguration),
+    );
+  }
+}
+
+// Force to have multiple concrete class
+
+class DummyTreeMenuGetter() extends TreeMenuGetter {
+  //
+  fun getContextMenu(
+    _context: mutable SKStore.Context,
+    _optCurrent: ?Ui.Path,
+    _selection: Array<Ui.Path>,
+  ): Array<DItemBase> {
+    invariant_violation("dummy")
+  }
+}
+
+class DummyTreeExpansionListener() extends TreeExpansionListener {
+  //
+  fun expansionChanged(
+    _context: mutable SKStore.Context,
+    _path: Ui.Path,
+    _value: Bool,
+  ): void {
+    invariant_violation("dummy")
+  }
+}
+
+class DummyTreeSelectionListener() extends TreeSelectionListener {
+  //
+  fun selectionChanged(
+    _context: mutable SKStore.Context,
+    _selection: Array<Ui.Path>,
+  ): void {
+    invariant_violation("dummy")
+  }
+}
+
+class DummyTreePerformer() extends TreePerformer {
+  //
+  fun perform(
+    _context: mutable SKStore.Context,
+    _optCurrent: ?Ui.Path,
+    _selection: Array<Ui.Path>,
+  ): void {
+    invariant_violation("dummy")
+  }
+}
+
+class DummyTreeDropper() extends TreeDropper {
+  //
+  fun drop(
+    _context: mutable SKStore.Context,
+    _from: Ui.Path,
+    _to: Ui.Path,
+    _drop: Ui.Drop,
+  ): void {
+    invariant_violation("dummy")
   }
 }
 

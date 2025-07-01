@@ -103,7 +103,7 @@ class TabPane protected {
       context,
       UiTabPane.widgetsDirName(path.makeChild("before")),
       (context, writer, key, it) ~> {
-        subPath = path.makeChild("widgets").makeChild(key.toString());
+        subPath = path.makeChild("before/widgets").makeChild(key.toString());
         if (key == tabsKey) {
           tabsController = UiTabs.LamController{
             tabs => controller.getTabs,

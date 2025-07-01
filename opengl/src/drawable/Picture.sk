@@ -94,4 +94,57 @@ class Msdf(
   }
 }
 
+class Shape(
+  path: Shape.Path,
+  paint: Ui.Paint,
+  conv: (Ui.Picture, Bool) ~> ?GL.Texturable,
+  pxRange: Int,
+) extends GLRectangleDrawable {
+  //
+  static fun create(
+    path: Shape.Path,
+    paint: Ui.Paint,
+    conv: (Ui.Picture, Bool) ~> ?GL.Texturable,
+    pxRange: Int,
+    offset: Geometry.Offset,
+    size: Geometry.Size,
+  ): this {
+    static(
+      path,
+      paint,
+      conv,
+      pxRange,
+      Geometry.Rect::fromOffsetSize(offset, size),
+    )
+  }
+
+  fun prepare(initializer: mutable GLProgram.Initializer): GLProgram.Used {
+    initializer.msdf();
+  }
+
+  fun check(_context: mutable SKStore.Context): GLDrawable {
+    (picture, conv) = MTSDF.toMSDF{
+      shape => MTSDF.Shape::fromPath(this.path),
+      pxRange => this.pxRange,
+    };
+    Msdf::create(
+      ctx ~> this.conv(picture, true).map(t -> t.asTexture(ctx)),
+      r ~> conv(r, 1.0),
+      this.pxRange,
+      this.paint as .Color _,
+      0.0,
+      this.bounds.topLeft(),
+      this.bounds.size(),
+    );
+  }
+
+  fun build(
+    _gl: GL.Ctx,
+    _data: GLProgram.Data,
+    _supplier: GLProgram.Supplier,
+  ): ?Ui.Handle {
+    invariant_violation("GLDrawable.Shape.build should not be called")
+  }
+}
+
 module end;

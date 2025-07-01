@@ -145,8 +145,8 @@ class Split{
 } extends Description {
   //
   static fun simple(
-    first: Description,
-    second: Description,
+    first: Widgetable,
+    second: Widgetable,
     seperation: Ui.Separation,
     vertical: Bool,
   ): Split {
@@ -159,16 +159,16 @@ class Split{
   }
 
   static fun vertical(
-    first: Description,
-    second: Description,
+    first: Widgetable,
+    second: Widgetable,
     seperation: Ui.Separation,
   ): Split {
     static::simple(first, second, seperation, true)
   }
 
   static fun horizontal(
-    first: Description,
-    second: Description,
+    first: Widgetable,
+    second: Widgetable,
     seperation: Ui.Separation,
   ): Split {
     static::simple(first, second, seperation, false)

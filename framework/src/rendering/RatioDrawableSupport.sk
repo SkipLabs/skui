@@ -12,6 +12,10 @@ class RatioDrawableSupport(
     this.support.init(context, drawables);
   }
 
+  fun shape(path: Shape.Path, paint: Ui.Paint): Ui.Drawable {
+    this.support.shape(path, paint)
+  }
+
   fun msdf(
     offset: Geometry.Offset,
     size: Geometry.Size,

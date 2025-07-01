@@ -1,6 +1,6 @@
 module UiEngine;
 
-base class Serializable extends SKStore.File {
+base class Serializable extends SKStore.File uses HasClassName {
   children =
   | SArray(value: Array<Serializable>)
   | SOption(value: ?Serializable)
@@ -9,11 +9,8 @@ base class Serializable extends SKStore.File {
   | SString(value: String)
   | SMap(value: Map<String, Serializable>)
 
-  static fun frFile(file: SKStore.File): Serializable {
-    file match {
-    | x @ Serializable _ -> x
-    | _ -> invariant_violation("Must be UiEngine.Serializable")
-    }
+  static macro fun typeName(): String {
+    #thisClassName
   }
 }
 

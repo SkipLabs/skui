@@ -294,6 +294,10 @@ void WindowSupplier::sendCloseMessage(uint32_t wId) {
 
 void sendXClientMessage(Display *disp, Window window, Atom type,
                         uint32_t param1, uint32_t param2) {
+  XWindowAttributes attr;
+  Status status = XGetWindowAttributes(disp, window, &attr);
+  if (status == 0)
+    return;
   if (disp != nullptr) {
     XEvent event;
     event.type = ClientMessage;

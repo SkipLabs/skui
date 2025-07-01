@@ -31,16 +31,17 @@ class Split protected {
     | Ui.HorizontalAxis() ->
       (fc, sc) = if (constraints.hasBoundedWidth()) {
         width = constraints.maxWidth();
+        uWidth = Math.max(width - thickness, 0.0);
         firstWidth = Math.clamp(
           Math.floor(separation.toOffset(width) - (thickness / 2.0)),
           0.0,
-          width - thickness,
+          uWidth,
         );
         fConstraints = constraints.withMaxWidth(firstWidth);
         secondWidth = Math.clamp(
           Math.floor(width - firstWidth - thickness),
           0.0,
-          width - thickness,
+          uWidth,
         );
         sConstraints = constraints.withMaxWidth(secondWidth);
         (fConstraints, sConstraints)

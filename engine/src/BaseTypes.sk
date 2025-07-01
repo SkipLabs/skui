@@ -8,11 +8,43 @@ class WidgetableFile(value: Widgetable) extends SKStore.File
 
 class DescriptionFile(value: Description) extends SKStore.File
 
+/**
+ * @class Description
+ * @brief Represents a UI description that can be built into a renderable widget.
+ *
+ * The `Description` class extends `Widgetable` and provides a structure to describe how a UI component
+ * should be constructed. It may optionally include a configuration and supports transformation into
+ * actual UI widgets in a given rendering context.
+ */
 base class Description{
+  /**
+   * @brief Optional serialized configuration data.
+   *
+   * This can be used to store additional metadata or configuration associated with the UI description.
+   */
   optConfiguration: ?Serializable = None(),
 } extends Widgetable {
+  /**
+   * @brief Collects all nested `Renderable` instances contained in this description.
+   *
+   * This is useful for operations that need to traverse or manipulate the tree of renderable components.
+   *
+   * @param callback A function to be called with each contained `Renderable`.
+   */
   fun collect(Renderable -> void): void;
-  //
+
+  /**
+   * @brief Builds a UI widget based on this description.
+   *
+   * This method generates an actual UI widget using the current rendering context and root structure.
+   * If available, a prebuilt widget generator can be used for optimization.
+   *
+   * @param context The mutable rendering context used to resolve dynamic state and data.
+   * @param name The name of the widget being built.
+   * @param root The root UI storage reference.
+   * @param prebuilt A function that optionally returns a prebuilt widget given the context and name.
+   * @return A fully built `Ui.Widget` instance.
+   */
   fun build(
     context: mutable SKStore.Context,
     name: String,
@@ -20,6 +52,14 @@ base class Description{
     prebuilt: (mutable SKStore.Context, String) ~> ?Ui.Widget,
   ): Ui.Widget;
 
+  /**
+   * @brief Casts a `Widgetable` instance to a `Description`, if valid.
+   *
+   * Throws a cast violation if the provided object is not a `Description`.
+   *
+   * @param obj The widgetable object to cast.
+   * @return The casted `Description` object.
+   */
   static fun fromWidgetable(obj: Widgetable): Description {
     obj match {
     | x @ Description _ -> x
@@ -28,15 +68,78 @@ base class Description{
   }
 }
 
-base class Renderable extends Widgetable {
-  fun getId(): String;
+/**
+ * @class Renderable
+ * @brief Base class for UI components that can be rendered and serialized.
+ *
+ * The `Renderable` class extends `Widgetable` and provides a common interface for UI components
+ * that can be rendered in a given context and serialized for storage or transmission.
+ *
+ * This class also includes support for dynamic deserialization and type-safe casting from Widgetable types.
+ */
+base class Renderable extends Widgetable uses HasClassName {
+  /**
+   * @brief Returns the unique identifier for the renderable.
+   *
+   * By default, this is implemented by returning the class name. Subclasses may override this method.
+   *
+   * @return A string representing the ID of the renderable.
+   */
+  overridable fun getId(): String {
+    this.getClassName()
+  }
+
+  /**
+   * @brief Renders the component using the provided context.
+   *
+   * This method must be implemented by all subclasses to define how the component is rendered.
+   *
+   * @param context The mutable rendering context from SKStore.
+   * @return A `Description` object if rendering is successful, or `None` otherwise.
+   */
   fun render(context: mutable SKStore.Context): ?Description;
 
+  /**
+   * @brief Casts a `Widgetable` instance to a `Renderable`, if possible.
+   *
+   * This is a safe cast method that will return the instance if it is already a `Renderable`,
+   * or throw a cast violation error otherwise.
+   *
+   * @param obj The `Widgetable` object to cast.
+   * @return The `Renderable` object if cast is valid.
+   */
   static fun fromWidgetable(obj: Widgetable): Renderable {
     obj match {
     | x @ Renderable _ -> x
     | _ -> SKStore.cast_violation("UiEngine.Renderable", obj)
     }
+  }
+
+  /**
+   * @brief Serializes the current renderable object.
+   *
+   * Must be overridden in subclasses to define the serialization format.
+   * Throws an invariant violation if not implemented.
+   *
+   * @return A tuple containing the type name and a key-value map of serializable data.
+   */
+  overridable fun serialize(): (String, Map<String, UiEngine.Serializable>) {
+    invariant_violation("Renderable.serialize: Not implemented")
+  }
+
+  /**
+   * @brief Deserializes an object from a key-value map.
+   *
+   * This static method must be overridden by subclasses to define how to create an instance from serialized data.
+   * Throws an invariant violation if not implemented.
+   *
+   * @param _value A map representing serialized fields.
+   * @return An instance of the deserialized `Renderable`.
+   */
+  overridable static fun deserialize(
+    _value: Map<String, UiEngine.Serializable>,
+  ): this {
+    invariant_violation("Renderable::deserialize:  Not implemented")
   }
 }
 
@@ -94,6 +197,26 @@ base class Combine extends Writer {
     | _ -> SKStore.cast_violation("UiEngine.Combine", file)
     }
   }
+}
+
+base class Box<T: frozen & Serializable>() {
+  children =
+  | BRef(T)
+  | BProperty(UiEngine.Prop)
+
+  fun toSerializable(): Serializable
+  | BRef(v) -> v
+  | BProperty(prop) -> prop
+}
+
+base class ArrayBox<T: frozen & Serializable>() {
+  children =
+  | ARef(Array<T>)
+  | AProperty(UiEngine.Prop)
+
+  fun toSerializable(): Serializable
+  | ARef(v) -> SArray(v)
+  | AProperty(prop) -> prop
 }
 
 module end;

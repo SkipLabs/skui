@@ -75,7 +75,12 @@ fun toDirName(
     .map(f ~> f.value)
     .default(Ui.rootPath);
   optPath
-    .map(p -> SKStore.DirName::make(root, `${SKStore.normalize(p, true)}/`))
+    .map(p ->
+      SKStore.DirName::make(
+        root,
+        `${SKStore.normalize(p.trimBoth(c ~> c == '/'), true)}/`,
+      )
+    )
     .default(root)
 }
 

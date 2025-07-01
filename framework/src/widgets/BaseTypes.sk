@@ -260,6 +260,11 @@ base class Widget protected {
     constraints: BoxConstraints,
   ): Node;
 
+  fun withConfiguration(optConfiguration: ?Getter<Configuration>): this {
+    !this.optConfiguration = optConfiguration;
+    this
+  }
+
   fun getViewportDefinition(context: mutable SKStore.Context): ?ViewportDef;
 
   fun checkFocusHandlers(

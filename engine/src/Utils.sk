@@ -1,5 +1,29 @@
 module UiEngine;
 
+fun i(v: Int): Serializable {
+  SInt(v)
+}
+
+fun b(v: Bool): Serializable {
+  SBool(v)
+}
+
+fun f(v: Float): Serializable {
+  SFloat(v)
+}
+
+fun s(v: String): Serializable {
+  SString(v)
+}
+
+fun opt(v: ?Serializable): Serializable {
+  SOption(v)
+}
+
+fun a(v: Array<Serializable>): Serializable {
+  SArray(v)
+}
+
 fun optInt(serializable: Serializable): ?Int {
   serializable match {
   | SInt(v)

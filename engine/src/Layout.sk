@@ -1,3 +1,49 @@
+module UiFlex;
+
+extension base class Alignment {
+  fun toCode(): Int
+  | Start() -> 0
+  | End() -> 1
+  | Center() -> 2
+  | SpaceBetween() -> 3
+  | SpaceAround() -> 4
+  | SpaceEvenly() -> 5
+
+  static fun fromCode(code: Int): Alignment {
+    code match {
+    | 1 -> End()
+    | 2 -> Center()
+    | 3 -> SpaceBetween()
+    | 4 -> SpaceAround()
+    | 5 -> SpaceEvenly()
+    | 0
+    | _ ->
+      Start()
+    }
+  }
+}
+
+extension base class CrossAlignment {
+  fun toCode(): Int
+  | CrossStart() -> 0
+  | CrossEnd() -> 1
+  | CrossCenter() -> 2
+  | CrossStretch() -> 3
+
+  static fun fromCode(code: Int): CrossAlignment {
+    code match {
+    | 1 -> CrossEnd()
+    | 2 -> CrossCenter()
+    | 3 -> CrossStretch()
+    | 0
+    | _ ->
+      CrossStart()
+    }
+  }
+}
+
+module end;
+
 module UiEngine;
 
 class Wrap{
@@ -94,6 +140,8 @@ const kFlexSpaceBetween: Int = 3;
 const kFlexSpaceAround: Int = 4;
 const kFlexSpaceEvenly: Int = 5;
 
+const kFlexStretch: Int = 3;
+
 class Flex{
   optWidgets: ?Serializable = None(),
   optVertical: ?Serializable = None(),
@@ -104,12 +152,16 @@ class Flex{
   optMaxSize: ?Serializable = None(),
 } extends Description {
   //
-  static fun verticalStartStart(widgets: Array<Description>): Flex {
+  static fun vertical(
+    widgets: Array<Widgetable>,
+    mainAlignment: UiFlex.Alignment = UiFlex.Start(),
+    crossAlignment: UiFlex.CrossAlignment = UiFlex.CrossStart(),
+  ): Flex {
     Flex{
       optWidgets => Some(UiEngine.SArray(widgets)),
       optVertical => Some(UiEngine.SBool(true)),
-      optMainAlignment => Some(UiEngine.SInt(kFlexStart)),
-      optCrossAlignment => Some(UiEngine.SInt(kFlexStart)),
+      optMainAlignment => Some(SInt(mainAlignment.toCode())),
+      optCrossAlignment => Some(SInt(crossAlignment.toCode())),
     }
   }
 
@@ -147,25 +199,11 @@ class Flex{
             Ui.Down()
           },
         mainAxisAlignment => ctx ~>
-          mainAlignment(ctx, false).default(0) match {
-          | 1 -> UiFlex.End()
-          | 2 -> UiFlex.Center()
-          | 3 -> UiFlex.SpaceBetween()
-          | 4 -> UiFlex.SpaceAround()
-          | 5 -> UiFlex.SpaceEvenly()
-          | 0
-          | _ ->
-            UiFlex.Start()
-          },
+          UiFlex.Alignment::fromCode(mainAlignment(ctx, false).default(0)),
         crossAxisAlignment => ctx ~>
-          crossAlignment(ctx, false).default(0) match {
-          | 0 -> UiFlex.CrossStart()
-          | 1 -> UiFlex.CrossEnd()
-          | 2 -> UiFlex.CrossCenter()
-          | 3
-          | _ ->
-            UiFlex.CrossStretch()
-          },
+          UiFlex.CrossAlignment::fromCode(
+            crossAlignment(ctx, false).default(0),
+          ),
         widgets,
       },
       toOptConfGetter(context, this.optConfiguration),
