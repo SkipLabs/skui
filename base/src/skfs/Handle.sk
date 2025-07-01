@@ -191,7 +191,7 @@ extension base class Handle {
 
   fun maybeGetArray(context: mutable Context, key: K): ?Array<V> {
     context.maybeGetDir(this.dirName).map(dir ->
-      dir.getArray(context, key).map(this.type)
+      dir.typed().getArray(context, key).map(this.type)
     )
   }
 
@@ -210,7 +210,7 @@ extension base class Handle {
 
   fun uGetArray(context: readonly Context, key: K): ?Array<V> {
     context.unsafeMaybeGetDir(this.dirName).map(dir ->
-      dir.getArrayRaw(key).map(this.type)
+      dir.typed().getArrayRaw(key).map(this.type)
     );
   }
 

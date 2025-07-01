@@ -184,7 +184,7 @@ extension class DataMap {
   }
 }
 
-extension class EagerDir {
+extension base class EagerDir {
   fun getLastTick(): ?Tick {
     optFTick = this.fixedData.getTick();
     optDTick = this.data.getTick();
