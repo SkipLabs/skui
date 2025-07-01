@@ -141,6 +141,26 @@ extension class String {
     );
     vec.toArray();
   }
+
+  fun trimStart(predicate: Char ~> Bool): String {
+    this.search(ch ~> !predicate(ch)) match {
+    | Some(i) -> i.substring(this.getEndIter())
+    | None() -> ""
+    }
+  }
+
+  fun trimEnd(predicate: Char ~> Bool): String {
+    this.searchRight(ch ~> !predicate(ch)) match {
+    | Some(i) ->
+      _ = i.next();
+      this.getIter().substring(i)
+    | None() -> ""
+    }
+  }
+
+  fun trimBoth(predicate: Char ~> Bool): String {
+    this.trimStart(predicate).trimEnd(predicate)
+  }
 }
 
 module SKStore;

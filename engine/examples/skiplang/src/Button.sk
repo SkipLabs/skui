@@ -24,11 +24,7 @@ class ActionPerformer() extends UiEngine.ActionPerformer uses HasClassName {
   }
 }
 
-class Renderable() extends UiEngine.Renderable uses HasClassName {
-  fun getId(): String {
-    this.getClassName()
-  }
-
+class Renderable() extends UiEngine.Renderable {
   fun render(_context: mutable SKStore.Context): ?UiEngine.Description {
     button = UiEngine.Button{
       //

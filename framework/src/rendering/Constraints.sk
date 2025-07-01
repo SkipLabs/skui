@@ -71,7 +71,9 @@ class Interval private (min: Boundary, max: Boundary) uses Hashable, Orderable {
   }
 
   static fun included(min: Float, max: Float): Interval {
-    invariant(min <= max, "max must be greater than min");
+    if (min > max) {
+      invariant_violation(`max '${max}' must be greater than min '${min}'`)
+    };
     Interval(Boundary::create(min), Boundary::create(max));
   }
 

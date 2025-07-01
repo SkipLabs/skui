@@ -444,6 +444,8 @@ base class DrawableSupport {
     sigma: Float,
     paint: Ui.Paint,
   ): Ui.Drawable;
+
+  fun shape(path: Shape.Path, paint: Ui.Paint): Ui.Drawable;
 }
 
 class Path(
@@ -471,8 +473,11 @@ class Path(
 
   fun toPath(): String {
     this.optParent match {
-    | Some(parent) -> parent.toPath() + "/" + SKStore.normalize(this.id, true)
-    | _ -> SKStore.normalize(this.id, true)
+    | Some(parent) ->
+      parent.toPath() +
+        "/" +
+        SKStore.normalize(this.id.trimBoth(c ~> c == '/'), true)
+    | _ -> SKStore.normalize(this.id.trimBoth(c ~> c == '/'), true)
     }
   }
 
@@ -481,8 +486,17 @@ class Path(
     SKStore.DirName::create(root + path + "/");
   }
 
-  fun makeChild(id: String): this {
-    Path(id, Some(this))
+  fun makeChild(id: String, split: Bool = true): this {
+    path = this;
+    if (split) {
+      id
+        .split("/")
+        .filter(s -> !s.isEmpty())
+        .each(e -> !path = Path(e, Some(path)))
+    } else {
+      !path = Path(id, Some(path))
+    };
+    path
   }
 
   fun add(toAdd: Path): this {
@@ -718,6 +732,10 @@ class DummyDrawableSupport() extends DrawableSupport {
     _sigma: Float,
     _paint: Ui.Paint,
   ): Ui.Drawable {
+    dummy()
+  }
+
+  fun shape(_path: Shape.Path, _paint: Ui.Paint): Ui.Drawable {
     dummy()
   }
 }

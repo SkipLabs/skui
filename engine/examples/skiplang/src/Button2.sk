@@ -1,4 +1,5 @@
 module SKUIEngExButton2;
+
 @skuiengex
 fun example(): SkuiEngex.Example {
   SkuiEngex.Example(
@@ -8,11 +9,8 @@ fun example(): SkuiEngex.Example {
   )
 }
 
-class Renderable() extends UiEngine.Renderable uses HasClassName {
-  fun getId(): String {
-    this.getClassName()
-  }
-
+class Renderable() extends UiEngine.Renderable {
+  //
   fun render(ctx: mutable SKStore.Context): ?UiEngine.Description {
     time = ctx.timeStamp();
     path = time.toString();

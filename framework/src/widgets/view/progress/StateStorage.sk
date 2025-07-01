@@ -29,6 +29,7 @@ class HStorage(
       context,
       Ui.indeterminateProp,
       optValue.map(v -> SKStore.IntFile(v)),
+      true,
     )
   }
 }

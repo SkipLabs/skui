@@ -24,7 +24,12 @@ class DummyHandle() extends IHandle {
 
 fun toDirName(optPath: ?String): SKStore.DirName {
   optPath
-    .map(p -> SKStore.DirName::make(dirName, `${SKStore.normalize(p, true)}/`))
+    .map(p -> {
+      SKStore.DirName::make(
+        dirName,
+        `${SKStore.normalize(p.trimBoth(c ~> c == '/'), true)}/`,
+      )
+    })
     .default(dirName)
 }
 

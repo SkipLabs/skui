@@ -486,28 +486,49 @@ class IHandle<K: Key, T: File>() extends Handle<K, T> {
     this.keyType
   }
 
-  fun remove(context: mutable Context, key: K): void {
-    this.writeArray(context, key, Array[]);
+  fun remove(
+    context: mutable Context,
+    key: K,
+    ignoreIfNotExists: Bool = false,
+  ): void {
+    this.writeArray(context, key, Array[], ignoreIfNotExists);
   }
 
-  fun write(context: mutable Context, key: K, value: T): void {
-    this.writeArray(context, key, Array[value]);
+  fun write(
+    context: mutable Context,
+    key: K,
+    value: T,
+    ignoreIfNotExists: Bool = false,
+  ): void {
+    this.writeArray(context, key, Array[value], ignoreIfNotExists);
   }
 
-  fun writeOrRemove(context: mutable Context, key: K, optValue: ?T): void {
+  fun writeOrRemove(
+    context: mutable Context,
+    key: K,
+    optValue: ?T,
+    ignoreIfNotExists: Bool = false,
+  ): void {
     this.writeArray(
       context,
       key,
       optValue.map(value -> Array[value]).default(Array[]),
+      ignoreIfNotExists,
     );
   }
 
-  fun writeArray(context: mutable Context, key: Key, value: Array<T>): void {
+  fun writeArray(
+    context: mutable Context,
+    key: Key,
+    value: Array<T>,
+    ignoreIfNotExists: Bool = false,
+  ): void {
     if (context.currentArrow().isSome()) {
       context.postpone(ToWrite(this.dirName, key, _ctx ~> value))
     } else {
       invariant(context.currentArrow().isNone(), "Must be call on root.");
       context.maybeGetEagerDir(this.dirName) match {
+      | None() if (ignoreIfNotExists) -> void
       | None() ->
         invariant_violation(`Could not find input directory: ${this.dirName}`)
       | Some(dir) ->

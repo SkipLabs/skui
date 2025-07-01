@@ -65,11 +65,59 @@ fun setWindowContext(window: UInt32, cid: UInt32): void {
 
 class DrawableSupport(
   conv: (Ui.Picture, Bool) ~> ?GL.Texturable,
+  pxRange: Int = 8,
 ) extends Ui.DrawableSupport {
   fun init(
     context: mutable SKStore.Context,
-    nodeDrawablesHdl: SKStore.EHandle<Ui.KLayer, Ui.Drawables>,
+    nodeDrawablesToCheckHdl: SKStore.EHandle<Ui.KLayer, Ui.Drawables>,
   ): void {
+    nodeDrawablesHdl = nodeDrawablesToCheckHdl
+      .map(
+        Ui.KLayer::keyType,
+        Ui.Drawables::type,
+        context,
+        nodeDrawablesToCheckHdl.dirName.sub("orig"),
+        (_context, writer, key, it) ~> {
+          writer.set(key, it.first.toOrigin())
+        },
+      )
+      .map(
+        Ui.KLayer::keyType,
+        Ui.Drawables::type,
+        context,
+        nodeDrawablesToCheckHdl.dirName.sub("check"),
+        (context, writer, key, it) ~> {
+          drawables = it.first;
+          verified = Ui.Drawables(
+            drawables.value.map(uiDrawable -> {
+              drawable = uiDrawable as GLDrawable _;
+              drawable.check(context)
+            }),
+            drawables.optViewport,
+          );
+          writer.set(key, verified)
+        },
+      )
+      .map(
+        Ui.KLayer::keyType,
+        Ui.Drawables::type,
+        context,
+        nodeDrawablesToCheckHdl.dirName.sub("positionned"),
+        (context, writer, key, it) ~> {
+          pDrawables = nodeDrawablesToCheckHdl.get(context, key);
+          drawables = it.first;
+          writer.set(
+            key,
+            Ui.Drawables(
+              pDrawables.value.mapWithIndex((idx, pDrawable) -> {
+                drawable = drawables.value[idx];
+                drawable.translate((pDrawable as GLDrawable _).getOffset())
+              }),
+              drawables.optViewport,
+            ),
+          );
+        },
+      );
     webglHdl = context.makeDir(
       k ~> k,
       SKStore.IntFile::type,
@@ -388,6 +436,19 @@ class DrawableSupport(
       )
     | _ -> invariant_violation("Not implemented; only Color Fill managed")
     }
+  }
+
+  fun shape(path: Shape.Path, paint: Ui.Paint): Ui.Drawable {
+    bounds = path.getBounds();
+    offset = bounds.topLeft();
+    GLDrawable.Shape::create(
+      path.translate(Geometry.Offset::zero - offset),
+      paint,
+      this.conv,
+      this.pxRange,
+      offset,
+      bounds.size(),
+    )
   }
 
   static fun toHandles(

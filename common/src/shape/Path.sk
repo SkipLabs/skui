@@ -213,6 +213,10 @@ class Path{elements: Array<PathElement> = Array[]} uses Orderable {
     static{elements => this.elements.map(e -> e.transform(conv))}
   }
 
+  fun translate(offset: Geometry.Offset): this {
+    this.transform(o ~> o + offset)
+  }
+
   fun add(element: PathElement): Path {
     vec = Vector::mcreateFromItems(this.elements);
     vec.push(element);
@@ -225,6 +229,44 @@ class Path{elements: Array<PathElement> = Array[]} uses Orderable {
 
   fun lineTo(x: Float, y: Float): Path {
     this.add(LineTo(Geometry.Offset(x, y)));
+  }
+
+  fun getBounds(): Geometry.Rect {
+    minx: ?Float = None();
+    maxx: ?Float = None();
+    miny: ?Float = None();
+    maxy: ?Float = None();
+    min = (optMin, value) ->
+      Some(optMin.map(m -> Math.min(m, value)).default(value));
+    max = (optMax, value) ->
+      Some(optMax.map(m -> Math.max(m, value)).default(value));
+    minMax = offset -> {
+      !minx = min(minx, offset.dx);
+      !maxx = max(maxx, offset.dx);
+      !miny = min(miny, offset.dy);
+      !maxy = max(maxy, offset.dy);
+    };
+
+    this.elements.each(element -> {
+      element match {
+      | MoveTo(to) -> minMax(to)
+      | LineTo(to) -> minMax(to)
+      | QuadCurveTo(end, control) ->
+        minMax(end);
+        minMax(control)
+      | CubicCurveTo(end, c1, c2) ->
+        minMax(end);
+        minMax(c1);
+        minMax(c2)
+      | ClosePath _ -> void
+      }
+    });
+    Geometry.Rect(
+      minx.default(0.0),
+      miny.default(0.0),
+      maxx.default(0.0),
+      maxy.default(0.0),
+    )
   }
 
   fun clean(): Path {
