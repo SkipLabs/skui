@@ -36,7 +36,7 @@ public:
   void manageMouseButton(uint32_t, uint32_t, bool) {}
   void manageKeyPressed(uint32_t, uint32_t, uint32_t, const std::string &) {}
   void manageKeyReleased(uint32_t, uint32_t) {}
-  void paste(uint32_t, const std::string &, const std::string &){};
+  void paste(uint32_t, const std::string &, const std::string &) {};
 };
 
 } // namespace skui
