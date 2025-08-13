@@ -535,7 +535,7 @@ uint32_t SKIP_GL_cloneTexture(uint32_t texture, uint32_t width, uint32_t height,
                               uint32_t ctx) {
   auto size = width * height * 4;
   glBindTexture(GL_TEXTURE_2D, texture);
-  GLubyte pixels[size];
+  GLubyte *pixels = new GLubyte[width * height * 4];
   glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
   GLuint target = SKIP_GL_createTexture(ctx);
   glBindTexture(GL_TEXTURE_2D, target);
@@ -544,6 +544,7 @@ uint32_t SKIP_GL_cloneTexture(uint32_t texture, uint32_t width, uint32_t height,
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, pixels);
   glBindTexture(GL_TEXTURE_2D, 0);
+  delete[] pixels;
   return target;
 }
 
