@@ -96,13 +96,8 @@ void *SKIP_System_timeStamp() {
   return SKIP_System_createTimeStamp(curTime.tv_sec, curTime.tv_usec);
 }
 char *SKIP_Utils_sha256(char *toEncode) {
-  auto len = SKIP_String_byteSize(toEncode);
-  char cToEncode[len + 1];
-  memcpy(cToEncode, (const char *)toEncode, len);
-  cToEncode[len] = 0;
-
   std::string hashed;
-  computeHash(cToEncode, hashed);
+  computeHash(toEncode, hashed);
   return sk_string_create(hashed.c_str(), hashed.size());
 }
 }

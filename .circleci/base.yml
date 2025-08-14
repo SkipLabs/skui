@@ -14,7 +14,7 @@ commands:
       - run:
           name: Clone skip
           command: |
-            git clone --recursive https://github.com/SkipLabs/skip.git
+            git clone --recursive -b skui https://github.com/skiplabsdaniel/skip.git
   compileskc:
     description: "Compile skc"
     steps:
