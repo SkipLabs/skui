@@ -533,7 +533,6 @@ void SKIP_GL_restore(uint32_t) {
 
 uint32_t SKIP_GL_cloneTexture(uint32_t texture, uint32_t width, uint32_t height,
                               uint32_t ctx) {
-  auto size = width * height * 4;
   glBindTexture(GL_TEXTURE_2D, texture);
   GLubyte *pixels = new GLubyte[width * height * 4];
   glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
