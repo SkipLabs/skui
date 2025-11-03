@@ -16,7 +16,7 @@ class ToWrite(
   dirName: DirName,
   key: Key,
   values: readonly Context ~> Array<File>,
-) extends Postponable {
+) extends UPostponable {
   //
   fun perform(context: mutable Context): void {
     context.unsafeMaybeGetEagerDir(this.dirName) match {
@@ -32,14 +32,10 @@ native fun .checkMemory(): void;
 extension class Context {
   //
   static fun withoutGc<T>(fn: mutable Context ~> T): T {
-    if (SKStore.gHasContext() != 0) {
+    if (!SKStore.gHasContext()) {
       getWorkingContext() match {
       | Some(context) -> fn(context)
-      | _ ->
-        fromContext = gUnsafeContextGet();
-        fromTick = fromContext.tick;
-        context = fromContext.mclone();
-        context.performOnce(fn, fromContext, fromTick)
+      | _ -> Context::performOnce(fn)
       }
     } else {
       invariant_violation("No context");
@@ -78,36 +74,60 @@ extension class Context {
     optPos
   }
 
-  @debug
-  private mutable fun performOnce<T>(
-    fn: mutable Context ~> T,
-    fromContext: Context,
-    fromTick: Tick,
+  static fun performOnce<T>(
+    f: mutable Context ~> T,
+    synchronizer: ?Synchronizer = None(),
+    isync: Bool = false,
+    fork: ?String = None(),
   ): T {
-    setWorkingContext(Some(this));
-    try {
-      res = fn(this);
-      setWorkingContext(None());
-      invariant(
-        this.currentArrow().isNone(),
-        "gContextSync cannot be done durring update",
-      );
-      sContext = gContextSync(
-        fromTick,
-        fromContext,
-        this.clone(),
-        None(),
-        UInt32::truncate(0),
-        None(),
-      );
-      gUnsafeFree(sContext);
-      res;
-    } catch {
-    | ex ->
-      setWorkingContext(None());
-      gUnsafeFree(fromContext);
-      throw ex
+    sync = UInt32::truncate(if (isync) 1 else 0);
+    contexts = synchronizer match {
+    | None() ->
+      gGlobalLock();
+      gContextsGetNoLock()
+    | Some _ -> gUnsafeContextsGet()
     };
+    try {
+      current = contexts.get(fork);
+      context = current.mclone();
+      setWorkingContext(Some(context));
+      res = f(context);
+      setWorkingContext(None());
+      startTick = current.getTick();
+      new = synchronizer match {
+      | None() ->
+        new = gContextSyncNoLock(
+          startTick,
+          contexts,
+          context.clone(),
+          synchronizer,
+          sync,
+          None(),
+          fork,
+        );
+        gGlobalUnlock();
+        new
+      | Some _ ->
+        gContextSync(
+          startTick,
+          contexts,
+          context.clone(),
+          synchronizer,
+          sync,
+          None(),
+          fork,
+        )
+      };
+      new.contexts.get(fork).notifyAll(startTick);
+      new.actions.each(fn -> fn());
+      gUnsafeFree(new.contexts);
+      res
+    } catch {
+    | exn ->
+      setWorkingContext(None());
+      if (synchronizer.isNone()) gGlobalUnlock();
+      throw exn
+    }
   }
 
   static fun withGc<T>(fn: mutable Context ~> T): T {
