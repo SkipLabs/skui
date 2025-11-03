@@ -46,8 +46,8 @@ fun performFrame(
   frames: UInt32,
 ): void {
   pos = SKStore.newObstack();
-  current = SKStore.gUnsafeContextGet();
-  drawFrame(current, cid, width, height, ratio, frames);
+  current = SKStore.gUnsafeContextsGet();
+  drawFrame(current.main, cid, width, height, ratio, frames);
   SKStore.gUnsafeFree(current);
   SKStore.destroyObstack(pos);
 }
