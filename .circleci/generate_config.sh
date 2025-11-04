@@ -16,7 +16,7 @@ BASE="$(git merge-base main HEAD)"
 
 declare -A SK_CHANGED
 do_check=false
-check_all=$([ "$SKIPHEAD" != "2f3e251f1dd7d1ac51bfa14d67bf0d8ff88f42dc" ] && echo "true" || echo "false")
+check_all=$([ "$SKIPHEAD" != "513a8556a47a9211d73c57177038bf8b9f4bb5a7" ] && echo "true" || echo "false")
 
 for skargo_toml in **/Skargo.toml; do
   dir=$(dirname "$skargo_toml")

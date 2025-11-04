@@ -12,7 +12,7 @@ commands:
       - run:
           name: Clone skip
           command: |
-            git clone --no-checkout --depth 1 https://github.com/SkipLabs/skip.git
+            git clone --no-checkout --depth 1 -b skui https://github.com/skiplabsdaniel/skip.git
 
 jobs:
   setup:
