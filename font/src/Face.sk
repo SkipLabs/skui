@@ -162,12 +162,26 @@ class Metrics{
 
 class Bounds{bounds: Fixed.Rectangle26_6, advance: Fixed.Int26_6}
 
+/**
+ * One layer of a color glyph: a path in the same coordinates as the glyph's
+ * optPath, filled with color, or with the text color when color is None().
+ */
+class ColorLayer(path: Shape.Path, color: ?.Color)
+
 class Glyph{
   index: Int,
+  // The glyph's outline. For a color glyph, it is the plain (monochrome)
+  // outline, used when color layers are not drawn.
   optPath: ?Shape.Path,
   bounds: Bounds,
   private dr: Geometry.Rectangle,
+  // For a color glyph, its layers bottom to top; empty otherwise.
+  colorLayers: Array<ColorLayer> = Array[],
 } {
+  fun isColor(): Bool {
+    !this.colorLayers.isEmpty()
+  }
+
   fun imageHeight(): Int {
     this.dr.height()
   }

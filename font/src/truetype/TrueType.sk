@@ -211,6 +211,11 @@ class Font{
   gvar: Array<UInt8> = Array[],
   hvar: Array<UInt8> = Array[],
   /**
+   * Color glyph tables (COLR v0 layers and CPAL palettes).
+   */
+  colr: Array<UInt8> = Array[],
+  cpal: Array<UInt8> = Array[],
+  /**
    * The variation axes (fvar), empty for a non-variable font.
    */
   axes: Array<VariationAxis> = Array[],
@@ -293,6 +298,13 @@ class Font{
     font = this;
     !font.coords = normalizeCoords(this.axes, this.avar, values);
     font
+  }
+
+  /**
+   * The color layers of glyph g, bottom to top, if it is a color glyph.
+   */
+  fun getColorLayers(g: Int): ?Array<ColorLayer> {
+    colrLayers(this.colr, this.cpal, g)
   }
 
   /**
@@ -612,6 +624,8 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
   avar: Array<UInt8> = Array[];
   gvar: Array<UInt8> = Array[];
   hvar: Array<UInt8> = Array[];
+  colr: Array<UInt8> = Array[];
+  cpal: Array<UInt8> = Array[];
   for (i in .Range(0, n)) {
     x = (16 * i) + offset;
     // Table tags are compared as big-endian uint32 values.
@@ -663,6 +677,10 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
       !gvar = table // "gvar"
     | 0x48564152 ->
       !hvar = table // "HVAR"
+    | 0x434f4c52 ->
+      !colr = table // "COLR"
+    | 0x4350414c ->
+      !cpal = table // "CPAL"
     | _ -> void
     }
   };
@@ -724,6 +742,8 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
     avar,
     gvar,
     hvar,
+    colr,
+    cpal,
     axes => axes,
     coords => VariationCoords(axes.map(_ -> 0)),
     fUnitsPerEm,

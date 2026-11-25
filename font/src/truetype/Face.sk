@@ -141,7 +141,10 @@ class Face{
           Geometry.Point(ix + offset.x, iy + offset.y),
           Geometry.Point(ix + offset.x + width, iy + offset.y + height),
         );
-        Some(Font.Glyph{index => index.toInt(), bounds, optPath, dr})
+        colorLayers = this.colorLayers(index.toInt(), fx, fy, offset);
+        Some(
+          Font.Glyph{index => index.toInt(), bounds, optPath, dr, colorLayers},
+        )
       } catch {
       | FontFormatError _
       | HintingException _ ->
@@ -149,6 +152,38 @@ class Face{
       | exn -> throw exn
       }
     });
+  }
+
+  /**
+   * The color layers of glyph index, in the same pixel coordinates as its
+   * outline (whose top-left pixel offset is origin), or no layers if it is
+   * not a color glyph.
+   */
+  private fun colorLayers(
+    index: Int,
+    fx: Fixed.Int26_6,
+    fy: Fixed.Int26_6,
+    origin: Geometry.Point,
+  ): Array<Font.ColorLayer> {
+    this.font.getColorLayers(index) match {
+    | None() -> Array[]
+    | Some(layers) ->
+      // The same offset as toPath uses for the base glyph.
+      offset =
+        Fixed.Point26_6(fx, fy) -
+        Fixed.Point26_6(
+          Fixed.Int26_6::fromInt(origin.x),
+          Fixed.Int26_6::fromInt(origin.y),
+        );
+      layers
+        .map(layer -> {
+          glyphBuf = this.loadGlyph(layer.glyph);
+          outlinePath(glyphBuf.points, glyphBuf.ends, offset).map(path ->
+            Font.ColorLayer(path, layer.color)
+          )
+        })
+        .filterNone()
+    }
   }
 
   fun draw(
@@ -190,12 +225,7 @@ fun toPath(
   !subPixelOffset =
     subPixelOffset -
     Fixed.Point26_6(Fixed.Int26_6::fromInt(xmin), Fixed.Int26_6::fromInt(ymin));
-  elements = mutable Vector<Shape.PathElement>[];
-  e0 = 0;
-  for (e1 in ends) {
-    drawContour(points.slice(e0, e1).toArray(), subPixelOffset, elements);
-    !e0 = e1;
-  };
+  optPath = outlinePath(points, ends, subPixelOffset);
   bounds = Font.Bounds{
     bounds => Fixed.Rectangle26_6(
       Fixed.Point26_6(glyphBounds.min.x, glyphBounds.max.y.neg()),
@@ -203,17 +233,28 @@ fun toPath(
     ),
     advance => advanceWidth,
   };
-  (
-    if (!elements.isEmpty()) {
-      Some(Shape.Path{elements => elements.toArray()});
-    } else {
-      None()
-    },
-    Geometry.Point(xmin, ymin),
-    xmax - xmin,
-    ymax - ymin,
-    bounds,
-  );
+  (optPath, Geometry.Point(xmin, ymin), xmax - xmin, ymax - ymin, bounds);
+}
+
+/**
+ * The path of an outline, offset by offset (in pixels, Y down).
+ */
+fun outlinePath(
+  points: readonly Vector<TrueType.Point>,
+  ends: readonly Vector<Int>,
+  offset: Fixed.Point26_6,
+): ?Shape.Path {
+  elements = mutable Vector<Shape.PathElement>[];
+  e0 = 0;
+  for (e1 in ends) {
+    drawContour(points.slice(e0, e1).toArray(), offset, elements);
+    !e0 = e1;
+  };
+  if (!elements.isEmpty()) {
+    Some(Shape.Path{elements => elements.toArray()})
+  } else {
+    None()
+  }
 }
 
 /**
