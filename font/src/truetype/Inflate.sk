@@ -1,0 +1,379 @@
+module TrueType;
+
+/**
+ * A DEFLATE (RFC 1951) decompressor, with the zlib wrapper (RFC 1950), used
+ * to read WOFF tables. It runs the same way natively and in wasm, without a
+ * native zlib.
+ *
+ * Malformed input throws FontFormatError.
+ */
+
+const inflateLengthBase: Array<Int> = Array[
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  13,
+  15,
+  17,
+  19,
+  23,
+  27,
+  31,
+  35,
+  43,
+  51,
+  59,
+  67,
+  83,
+  99,
+  115,
+  131,
+  163,
+  195,
+  227,
+  258,
+];
+const inflateLengthExtra: Array<Int> = Array[
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  1,
+  1,
+  1,
+  2,
+  2,
+  2,
+  2,
+  3,
+  3,
+  3,
+  3,
+  4,
+  4,
+  4,
+  4,
+  5,
+  5,
+  5,
+  5,
+  0,
+];
+const inflateDistBase: Array<Int> = Array[
+  1,
+  2,
+  3,
+  4,
+  5,
+  7,
+  9,
+  13,
+  17,
+  25,
+  33,
+  49,
+  65,
+  97,
+  129,
+  193,
+  257,
+  385,
+  513,
+  769,
+  1025,
+  1537,
+  2049,
+  3073,
+  4097,
+  6145,
+  8193,
+  12289,
+  16385,
+  24577,
+];
+const inflateDistExtra: Array<Int> = Array[
+  0,
+  0,
+  0,
+  0,
+  1,
+  1,
+  2,
+  2,
+  3,
+  3,
+  4,
+  4,
+  5,
+  5,
+  6,
+  6,
+  7,
+  7,
+  8,
+  8,
+  9,
+  9,
+  10,
+  10,
+  11,
+  11,
+  12,
+  12,
+  13,
+  13,
+];
+// The order in which code length code lengths are stored.
+const inflateCodeLengthOrder: Array<Int> = Array[
+  16,
+  17,
+  18,
+  0,
+  8,
+  7,
+  9,
+  6,
+  10,
+  5,
+  11,
+  4,
+  12,
+  3,
+  13,
+  2,
+  14,
+  1,
+  15,
+];
+
+/**
+ * A canonical Huffman code: counts[len] is the number of codes of each
+ * length, symbols lists the symbols sorted by code.
+ */
+private class Huffman(counts: Array<Int>, symbols: Array<Int>) {
+  static fun make(lengths: Array<Int>): Huffman {
+    counts = Array::mfill(16, 0);
+    for (len in lengths) {
+      counts.set(len, counts[len] + 1)
+    };
+    counts.set(0, 0);
+    offsets = Array::mfill(16, 0);
+    for (len in Range(1, 15)) {
+      offsets.set(len + 1, offsets[len] + counts[len])
+    };
+    symbols = Array::mfill(lengths.size(), 0);
+    lengths.eachWithIndex((symbol, len) -> {
+      if (len != 0) {
+        symbols.set(offsets[len], symbol);
+        offsets.set(len, offsets[len] + 1)
+      }
+    });
+    Huffman(counts.chill(), symbols.chill())
+  }
+}
+
+/**
+ * Reads bits least significant first from a byte array.
+ */
+private mutable class BitReader(
+  data: Array<UInt8>,
+  mutable pos: Int,
+  mutable bitBuf: Int = 0,
+  mutable bitCount: Int = 0,
+) {
+  mutable fun bits(n: Int): Int {
+    while (this.bitCount < n) {
+      formatCheck(this.pos < this.data.size(), "deflate: unexpected end");
+      this.!bitBuf = this.bitBuf.or(
+        this.data[this.pos].toInt().shl(this.bitCount),
+      );
+      this.!pos = this.pos + 1;
+      this.!bitCount = this.bitCount + 8
+    };
+    v = this.bitBuf.and(1.shl(n) - 1);
+    this.!bitBuf = this.bitBuf.shr(n);
+    this.!bitCount = this.bitCount - n;
+    v
+  }
+
+  // Discards the remaining bits of the current byte.
+  mutable fun align(): void {
+    this.!bitBuf = 0;
+    this.!bitCount = 0
+  }
+
+  // Decodes one symbol, reading the code bit by bit (canonical decoding).
+  mutable fun decode(h: Huffman): Int {
+    code = 0;
+    first = 0;
+    index = 0;
+    for (len in Range(1, 16)) {
+      !code = code.or(this.bits(1));
+      count = h.counts[len];
+      if (code - count < first) {
+        return h.symbols[index + (code - first)]
+      };
+      !index = index + count;
+      !first = (first + count).shl(1);
+      !code = code.shl(1)
+    };
+    throw FontFormatError("deflate: invalid Huffman code")
+  }
+}
+
+/**
+ * Decompresses zlib (RFC 1950) data. expectedSize is the size of the
+ * uncompressed data, used to size the output and as a safety limit.
+ */
+fun zlibDecompress(data: Array<UInt8>, expectedSize: Int): Array<UInt8> {
+  formatCheck(data.size() >= 2, "zlib: data too short");
+  cmf = data[0].toInt();
+  flg = data[1].toInt();
+  formatCheck(cmf.and(0x0f) == 8, "zlib: unsupported compression method");
+  formatCheck((cmf * 256 + flg) % 31 == 0, "zlib: bad header check");
+  formatCheck(flg.and(0x20) == 0, "zlib: preset dictionaries unsupported");
+  try {
+    inflate(data, 2, expectedSize)
+  } catch {
+  | OutOfBounds _ -> throw FontFormatError("deflate: corrupt data")
+  | exn -> throw exn
+  }
+}
+
+/**
+ * Decompresses raw DEFLATE data starting at offset start.
+ */
+fun inflate(data: Array<UInt8>, start: Int, expectedSize: Int): Array<UInt8> {
+  out = mutable Vector<UInt8>[];
+  out.ensureCapacity(expectedSize);
+  reader = mutable BitReader(data, start);
+  fixedLit = Huffman::make(
+    Array::fillBy(288, i ->
+      if (i < 144) 8 else if (i < 256) 9 else if (i < 280) 7 else 8
+    ),
+  );
+  fixedDist = Huffman::make(Array::fill(30, 5));
+  lastBlock = false;
+  while (!lastBlock) {
+    !lastBlock = reader.bits(1) == 1;
+    blockType = reader.bits(2);
+    if (blockType == 0) {
+      // Stored block.
+      reader.align();
+      formatCheck(reader.pos + 4 <= data.size(), "deflate: unexpected end");
+      len = data[reader.pos].toInt().or(data[reader.pos + 1].toInt().shl(8));
+      nlen = data[reader.pos + 2]
+        .toInt()
+        .or(data[reader.pos + 3].toInt().shl(8));
+      formatCheck(len == nlen.xor(0xffff), "deflate: bad stored length");
+      reader.!pos = reader.pos + 4;
+      formatCheck(reader.pos + len <= data.size(), "deflate: unexpected end");
+      for (i in Range(0, len)) {
+        out.push(data[reader.pos + i])
+      };
+      reader.!pos = reader.pos + len
+    } else if (blockType == 1) {
+      inflateBlock(reader, out, fixedLit, fixedDist, expectedSize)
+    } else if (blockType == 2) {
+      (lit, dist) = inflateDynamicTables(reader);
+      inflateBlock(reader, out, lit, dist, expectedSize)
+    } else {
+      throw FontFormatError("deflate: invalid block type")
+    }
+  };
+  formatCheck(out.size() == expectedSize, "deflate: unexpected size");
+  out.toArray()
+}
+
+private fun inflateDynamicTables(
+  reader: mutable BitReader,
+): (Huffman, Huffman) {
+  nLit = reader.bits(5) + 257;
+  nDist = reader.bits(5) + 1;
+  nCode = reader.bits(4) + 4;
+  formatCheck(nLit <= 286 && nDist <= 30, "deflate: bad table sizes");
+  codeLengths = Array::mfill(19, 0);
+  for (i in Range(0, nCode)) {
+    codeLengths.set(inflateCodeLengthOrder[i], reader.bits(3))
+  };
+  codeHuffman = Huffman::make(codeLengths.chill());
+  lengths = Array::mfill(nLit + nDist, 0);
+  i = 0;
+  while (i < nLit + nDist) {
+    symbol = reader.decode(codeHuffman);
+    if (symbol < 16) {
+      lengths.set(i, symbol);
+      !i = i + 1
+    } else {
+      (repeat, value) = if (symbol == 16) {
+        formatCheck(i > 0, "deflate: repeat with no previous length");
+        (3 + reader.bits(2), lengths[i - 1])
+      } else if (symbol == 17) {
+        (3 + reader.bits(3), 0)
+      } else {
+        (11 + reader.bits(7), 0)
+      };
+      formatCheck(i + repeat <= nLit + nDist, "deflate: too many lengths");
+      for (_ in Range(0, repeat)) {
+        lengths.set(i, value);
+        !i = i + 1
+      }
+    }
+  };
+  all = lengths.chill();
+  (
+    Huffman::make(all.slice(0, nLit)),
+    Huffman::make(all.slice(nLit, all.size())),
+  )
+}
+
+private fun inflateBlock(
+  reader: mutable BitReader,
+  out: mutable Vector<UInt8>,
+  lit: Huffman,
+  dist: Huffman,
+  expectedSize: Int,
+): void {
+  loop {
+    symbol = reader.decode(lit);
+    if (symbol < 256) {
+      formatCheck(out.size() < expectedSize, "deflate: output too large");
+      out.push(UInt8::truncate(symbol))
+    } else if (symbol == 256) {
+      break void
+    } else {
+      lengthCode = symbol - 257;
+      formatCheck(lengthCode < 29, "deflate: invalid length code");
+      length =
+        inflateLengthBase[lengthCode] +
+        reader.bits(inflateLengthExtra[lengthCode]);
+      distCode = reader.decode(dist);
+      formatCheck(distCode < 30, "deflate: invalid distance code");
+      distance =
+        inflateDistBase[distCode] + reader.bits(inflateDistExtra[distCode]);
+      start = out.size() - distance;
+      formatCheck(start >= 0, "deflate: distance too far back");
+      formatCheck(
+        out.size() + length <= expectedSize,
+        "deflate: output too large",
+      );
+      // Copy byte by byte: the source may overlap the bytes being written.
+      for (k in Range(0, length)) {
+        out.push(out[start + k])
+      }
+    }
+  }
+}
+
+module end;

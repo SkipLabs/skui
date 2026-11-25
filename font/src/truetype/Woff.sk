@@ -1,0 +1,108 @@
+module TrueType;
+
+/**
+ * WOFF 1.0 support (https://www.w3.org/TR/WOFF/).
+ *
+ * A WOFF file is an SFNT font (TrueType or CFF) whose tables may each be
+ * zlib-compressed. It is converted back to the SFNT data it was made from,
+ * which is then parsed as usual.
+ */
+
+// "wOFF" as a big-endian uint32.
+const woffSignature: Int = 0x774f4646;
+// "wOF2" as a big-endian uint32.
+const woff2Signature: Int = 0x774f4632;
+
+const woffHeaderSize: Int = 44;
+const woffTableEntrySize: Int = 20;
+
+/**
+ * Whether data starts with a WOFF signature.
+ */
+fun isWoff(data: Array<UInt8>): Bool {
+  data.size() >= 4 && u32(data, 0).toInt() == woffSignature
+}
+
+/**
+ * Converts WOFF data back to SFNT (TTF/OTF) data.
+ */
+fun woffToSfnt(woff: Array<UInt8>): Array<UInt8> {
+  formatCheck(woff.size() >= woffHeaderSize, "WOFF data is too short");
+  signature = u32(woff, 0).toInt();
+  formatCheck(signature != woff2Signature, "WOFF2 is not supported");
+  formatCheck(signature == woffSignature, "Bad WOFF signature");
+  flavor = u32(woff, 4).toInt();
+  formatCheck(u32(woff, 8).toInt() == woff.size(), "Bad WOFF length");
+  numTables = u16(woff, 12).toInt();
+  formatCheck(u16(woff, 14).toInt() == 0, "Bad WOFF reserved field");
+  totalSfntSize = u32(woff, 16).toInt();
+  formatCheck(
+    woff.size() >= woffHeaderSize + woffTableEntrySize * numTables,
+    "WOFF table directory is too short",
+  );
+  sfntHeaderSize = 12 + 16 * numTables;
+  formatCheck(totalSfntSize >= sfntHeaderSize, "Bad WOFF totalSfntSize");
+  // Bound the output size: each table is at most as large as its declared
+  // original length, padded to 4 bytes.
+  formatCheck(totalSfntSize <= 0x10000000, "WOFF font is too large");
+  out = Array::mfill(totalSfntSize, UInt8::truncate(0));
+  // SFNT header: flavor, numTables, searchRange, entrySelector, rangeShift.
+  entrySelector = 0;
+  while (1.shl(entrySelector + 1) <= numTables) {
+    !entrySelector = entrySelector + 1
+  };
+  searchRange = 1.shl(entrySelector) * 16;
+  putU32(out, 0, flavor);
+  putU16(out, 4, numTables);
+  putU16(out, 6, searchRange);
+  putU16(out, 8, entrySelector);
+  putU16(out, 10, numTables * 16 - searchRange);
+  offset = sfntHeaderSize;
+  for (i in Range(0, numTables)) {
+    entry = woffHeaderSize + woffTableEntrySize * i;
+    tag = u32(woff, entry).toInt();
+    compOffset = u32(woff, entry + 4).toInt();
+    compLength = u32(woff, entry + 8).toInt();
+    origLength = u32(woff, entry + 12).toInt();
+    origChecksum = u32(woff, entry + 16).toInt();
+    formatCheck(
+      compOffset + compLength <= woff.size() && compLength <= origLength,
+      "Bad WOFF table entry",
+    );
+    formatCheck(
+      offset + origLength <= totalSfntSize,
+      "WOFF tables exceed totalSfntSize",
+    );
+    table = woff.slice(compOffset, compOffset + compLength);
+    data = if (compLength < origLength) {
+      zlibDecompress(table, origLength)
+    } else {
+      table
+    };
+    for (k in Range(0, origLength)) {
+      out.set(offset + k, data[k])
+    };
+    record = 12 + 16 * i;
+    putU32(out, record, tag);
+    putU32(out, record + 4, origChecksum);
+    putU32(out, record + 8, offset);
+    putU32(out, record + 12, origLength);
+    // Tables are 4-byte aligned in SFNT data.
+    !offset = offset + (origLength + 3).and(3.not())
+  };
+  out.chill()
+}
+
+private fun putU16(out: mutable Array<UInt8>, at: Int, v: Int): void {
+  out.set(at, UInt8::truncate(v.shr(8)));
+  out.set(at + 1, UInt8::truncate(v))
+}
+
+private fun putU32(out: mutable Array<UInt8>, at: Int, v: Int): void {
+  out.set(at, UInt8::truncate(v.shr(24)));
+  out.set(at + 1, UInt8::truncate(v.shr(16)));
+  out.set(at + 2, UInt8::truncate(v.shr(8)));
+  out.set(at + 3, UInt8::truncate(v))
+}
+
+module end;

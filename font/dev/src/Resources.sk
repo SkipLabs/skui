@@ -25,4 +25,8 @@ native fun xtnrBin(): Array<UInt8>;
 @cpp_extern("SKIP_resources_tests_liberation_bin")
 native fun liberationBin(): Array<UInt8>;
 
+// The same font converted to WOFF 1.0 (zlib-compressed tables).
+@cpp_extern("SKIP_resources_tests_liberation_woff_bin")
+native fun liberationWoffBin(): Array<UInt8>;
+
 module end;
