@@ -1,0 +1,125 @@
+module SKUIFontTest;
+
+@test
+fun optionsDefaults(): void {
+  zero = Font.Options{size => 0.0, dpi => 0.0};
+  expectEqualsAt(zero.getSize(), 12.0, "size");
+  expectEqualsAt(zero.getDpi(), 96.0, "dpi");
+  // Invalid sub-pixel counts fall back to 4 instead of dividing by zero or
+  // producing a corrupt mask.
+  for (n in Array[0, 3, 128, -2]) {
+    (bias, mask) = Font.Options{subPixelsX => n}.computeSubPixelsX();
+    expectEqualsAt((bias.asInt(), mask.asInt()), (8, -16), n)
+  };
+  (bias1, mask1) = Font.Options{subPixelsX => 1}.computeSubPixelsX();
+  expectEqualsAt((bias1.asInt(), mask1.asInt()), (0, -64), "1");
+  (bias64, mask64) = Font.Options{subPixelsX => 64}.computeSubPixelsX();
+  expectEqualsAt((bias64.asInt(), mask64.asInt()), (0, -1), "64");
+}
+
+@test
+fun rectangleContains(): void {
+  r = Fixed.Rectangle26_6::make(
+    fixed26_6(0),
+    fixed26_6(0),
+    fixed26_6(64),
+    fixed26_6(64),
+  );
+  expectEqualsAt(r.contains(r), true, "self");
+  inner = Fixed.Rectangle26_6::make(
+    fixed26_6(32),
+    fixed26_6(0),
+    fixed26_6(64),
+    fixed26_6(64),
+  );
+  expectEqualsAt(r.contains(inner), true, "shared edge");
+  outer = Fixed.Rectangle26_6::make(
+    fixed26_6(32),
+    fixed26_6(0),
+    fixed26_6(65),
+    fixed26_6(64),
+  );
+  expectEqualsAt(r.contains(outer), false, "outside");
+}
+
+@test
+fun int26_6FromFloat(): void {
+  expectEqualsAt(Fixed.Int26_6::fromFloat(1.0).asInt(), 64, "1.0");
+  expectEqualsAt(Fixed.Int26_6::fromFloat(0.999).asInt(), 64, "0.999");
+  expectEqualsAt(Fixed.Int26_6::fromFloat(-0.01).asInt(), -1, "-0.01");
+  expectEqualsAt(Fixed.Int26_6::fromFloat(-1.0).asInt(), -64, "-1.0");
+  // 0.5/64 is a tie: rounded away from zero.
+  expectEqualsAt(Fixed.Int26_6::fromFloat(0.5 / 64.0).asInt(), 1, "+tie");
+  expectEqualsAt(Fixed.Int26_6::fromFloat(-0.5 / 64.0).asInt(), -1, "-tie");
+}
+
+@test
+fun weightIsBold(): void {
+  expectEqualsAt(Font.Weight::w500.isBold(), false, "500");
+  expectEqualsAt(Font.Weight::w600.isBold(), true, "600");
+  expectEqualsAt(Font.Weight::w400.isBold(), false, "400");
+}
+
+fun faceSource(weight: Font.Weight): Font.FaceSource {
+  Font.FaceSource{
+    typeface => Font.TypefaceInfo::create("f", weight),
+    source => weight.toString(),
+  }
+}
+
+fun selected(sources: Array<Font.Weight>, weight: Font.Weight): ?Int {
+  Font.TypefaceInfo::create("f", weight)
+    .select(sources.map(faceSource))
+    .map(fs -> fs.typeface.weight.toWeight())
+}
+
+@test
+fun weightSelection(): void {
+  // Exact match.
+  expectEqualsAt(
+    selected(Array[Font.Weight::w300, Font.Weight::w400], Font.Weight::w400),
+    Some(400),
+    "exact",
+  );
+  // 400 tries 500 first.
+  expectEqualsAt(
+    selected(
+      Array[Font.Weight::w300, Font.Weight::w500, Font.Weight::w600],
+      Font.Weight::w400,
+    ),
+    Some(500),
+    "400->500",
+  );
+  // 400 without 500: lighter first.
+  expectEqualsAt(
+    selected(Array[Font.Weight::w300, Font.Weight::w600], Font.Weight::w400),
+    Some(300),
+    "400->lighter",
+  );
+  // Below 400: lighter first, even if a heavier one is as close.
+  expectEqualsAt(
+    selected(Array[Font.Weight::w200, Font.Weight::w400], Font.Weight::w300),
+    Some(200),
+    "300->lighter",
+  );
+  // Below 400 without lighter: heavier.
+  expectEqualsAt(
+    selected(Array[Font.Weight::w400, Font.Weight::w700], Font.Weight::w300),
+    Some(400),
+    "300->heavier",
+  );
+  // Above 500: heavier first.
+  expectEqualsAt(
+    selected(Array[Font.Weight::w500, Font.Weight::w800], Font.Weight::w600),
+    Some(800),
+    "600->heavier",
+  );
+  // Above 500 without heavier: lighter.
+  expectEqualsAt(
+    selected(Array[Font.Weight::w400, Font.Weight::w500], Font.Weight::w700),
+    Some(500),
+    "700->lighter",
+  );
+}
+
+module end;

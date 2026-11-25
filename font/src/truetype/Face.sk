@@ -8,10 +8,14 @@ class Face{
   subPixelMaskX: Fixed.Int26_6,
   subPixelBiasY: Fixed.Int26_6,
   subPixelMaskY: Fixed.Int26_6,
+  // The hinter state after the font and CVT programs have run, shared by
+  // every glyph load of this face. None when hinting is off or the font
+  // programs fail.
+  optHinterState: ?HinterState = None(),
 } extends Font.Face {
   static fun make(font: Font, options: Font.Options): Face {
     scale = fixed26_6(
-      (0.5 + (options.size * options.dpi * 64.0 / 72.0)).toInt(),
+      (0.5 + (options.getSize() * options.getDpi() * 64.0 / 72.0)).toInt(),
     );
     (subPixelBiasX, subPixelMaskX) = options.computeSubPixelsX();
     (subPixelBiasY, subPixelMaskY) = options.computeSubPixelsY();
@@ -23,6 +27,17 @@ class Face{
       ascent => fixed26_6(Math.ceil(fscale * fascent / fupe).toInt()),
       descent => fixed26_6(Math.ceil(fscale * -fdescent / fupe).toInt()),
     };
+    optHinterState = if (options.hinting == Font.HintingNone()) {
+      None()
+    } else {
+      try {
+        hinter = mutable Hinter{};
+        Some(hinter.init(font, scale).snapshot())
+      } catch {
+      | HintingException _ -> None()
+      | exn -> throw exn
+      }
+    };
     Face{
       font,
       scale,
@@ -32,24 +47,33 @@ class Face{
       subPixelBiasY,
       subPixelMaskY,
       metrics,
+      optHinterState,
     }
+  }
+
+  /**
+   * Loads the glyph with the given index, reusing the face's hinter state.
+   */
+  fun loadGlyph(index: Int): mutable GlyphBuf {
+    glyphBuf = mutable GlyphBuf{};
+    glyphBuf.load(
+      this.font,
+      this.scale,
+      index,
+      this.hinting,
+      this.optHinterState,
+    )
   }
 
   fun getGlyphBounds(c: Char): ?Font.Bounds {
     this.font.getIndex(c).flatMap(index ->
       try {
-        glyphBuf = mutable GlyphBuf{};
-        !glyphBuf = glyphBuf.load(
-          this.font,
-          this.scale,
-          index.toInt(),
-          this.hinting,
-        );
+        glyphBuf = this.loadGlyph(index.toInt());
         xmin = glyphBuf.bounds.min.x;
         ymin = glyphBuf.bounds.max.y.neg();
         xmax = glyphBuf.bounds.max.x;
         ymax = glyphBuf.bounds.min.y.neg();
-        invariant(xmin <= xmax && ymin <= ymax, "Invalid glyph bounds");
+        formatCheck(xmin <= xmax && ymin <= ymax, "Invalid glyph bounds");
         Some(
           Font.Bounds{
             bounds => Fixed.Rectangle26_6(
@@ -60,15 +84,18 @@ class Face{
           },
         );
       } catch {
-      | _ -> None()
+      | FontFormatError _
+      | HintingException _ ->
+        None()
+      | exn -> throw exn
       }
     );
   }
 
-  fun getKern(c0: Char, i1: Int): Fixed.Int26_6 {
-    this.font.getIndex(c0)
+  fun getKern(previous: Char, next: Font.Glyph): Fixed.Int26_6 {
+    this.font.getIndex(previous)
       .map(i0 -> {
-        kern = this.font.getKern(this.scale, i0, UInt16::truncate(i1));
+        kern = this.font.getKern(this.scale, i0, UInt16::truncate(next.index));
         if (this.hinting != Font.HintingNone()) {
           !kern = fixed26_6((kern.asInt() + 32).and(63.not()));
         };
@@ -80,16 +107,12 @@ class Face{
   fun getGlyphAdvance(c: Char): ?Fixed.Int26_6 {
     this.font.getIndex(c).flatMap(index ->
       try {
-        glyphBuf = mutable GlyphBuf{};
-        !glyphBuf = glyphBuf.load(
-          this.font,
-          this.scale,
-          index.toInt(),
-          this.hinting,
-        );
-        Some(glyphBuf.advanceWidth)
+        Some(this.loadGlyph(index.toInt()).advanceWidth)
       } catch {
-      | _ -> None()
+      | FontFormatError _
+      | HintingException _ ->
+        None()
+      | exn -> throw exn
       }
     )
   }
@@ -119,7 +142,10 @@ class Face{
         );
         Some(Font.Glyph{index => index.toInt(), bounds, optPath, dr})
       } catch {
-      | _ -> None()
+      | FontFormatError _
+      | HintingException _ ->
+        None()
+      | exn -> throw exn
       }
     });
   }
@@ -128,8 +154,7 @@ class Face{
     index: Int,
     subPixelOffset: Fixed.Point26_6,
   ): (?Shape.Path, Geometry.Point, Int, Int, Font.Bounds) {
-    glyphBuf = mutable GlyphBuf{};
-    !glyphBuf = glyphBuf.load(this.font, this.scale, index, this.hinting);
+    glyphBuf = this.loadGlyph(index);
     toPath(
       glyphBuf.points,
       glyphBuf.ends,
@@ -152,7 +177,10 @@ fun toPath(
   ymin = (subPixelOffset.y - glyphBounds.max.y).floor();
   xmax = (subPixelOffset.x + glyphBounds.max.x).ceil();
   ymax = (subPixelOffset.y - glyphBounds.min.y).ceil();
-  invariant(xmin <= xmax && ymin <= ymax, "Invalid glyph integer-pixel bounds");
+  formatCheck(
+    xmin <= xmax && ymin <= ymax,
+    "Invalid glyph integer-pixel bounds",
+  );
   // A TrueType's glyph's nodes can have negative co-ordinates, but the
   // rasterizer clips anything left of x=0 or above y=0. xmin and ymin are
   // the pixel offsets, based on the font's FUnit metrics, that let a
@@ -219,8 +247,8 @@ fun drawContour(
       points.slice(0, points.size() - 1);
     } else {
       !start = Fixed.Point26_6(
-        (start.x + last.x).idiv(2),
-        (start.y + last.y).idiv(2),
+        (start.x + end.x).idiv(2),
+        (start.y + end.y).idiv(2),
       );
       points
     }

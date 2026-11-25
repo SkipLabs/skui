@@ -64,7 +64,13 @@ fun fontSupplier(
       predef.maybeGet(typeface) match {
       | Some(base64) ->
         buffer = Base64.decode(base64);
-        SKStore.Loaded(TrueType.File(TrueType.parse(buffer)))
+        try {
+          SKStore.Loaded(TrueType.File(TrueType.parse(buffer)))
+        } catch {
+        | err @ TrueType.FontFormatError _ ->
+          SKStore.LoadFailed(Some(!err.getMessage()))
+        | exn -> throw exn
+        }
       | None() ->
         SKStore.LoadFailed(Some(!"Only prefefined fonts are managed."))
       }

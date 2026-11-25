@@ -129,7 +129,7 @@ class Metrics(
             }
           };
           glyph = fontSupport.getGlyph(context, char, style.faceId);
-          cw = glyph.width();
+          cw = glyph.advance();
           ck = glyph.getKern(optPrevious);
           if (isBreakable(char) && optBeforeWhiteSpace.isNone()) {
             breakables.push((idx, width, idx + 1, width + cw - ck, false));

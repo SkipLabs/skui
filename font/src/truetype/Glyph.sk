@@ -22,7 +22,6 @@ const flagArg1And2AreWords: Int = 1;
 const flagArgsAreXYValues: Int = 1.shl(1);
 const flagRoundXYToGrid: Int = 1.shl(2);
 const flagWeHaveAScale: Int = 1.shl(3);
-const flagUnused: Int = 1.shl(4);
 const flagMoreComponents: Int = 1.shl(5);
 const flagWeHaveAnXAndYScale: Int = 1.shl(6);
 const flagWeHaveATwoByTwo: Int = 1.shl(7);
@@ -93,16 +92,21 @@ mutable class GlyphBuf{
   // 10 bytes are the number of contours and the bounding box.
   const loadOffset: Int = 10;
 
-  mutable fun getPpx1(): Fixed.Int26_6 {
+  mutable fun getPp1x(): Fixed.Int26_6 {
     (pp1, _, _, _) = this.phantomPoints;
     pp1.x
   }
 
+  /**
+   * Loads glyph i. When optState is the hinter state for the same font and
+   * scale, it is used instead of running the font and CVT programs again.
+   */
   mutable fun load(
     font: Font,
     scale: Fixed.Int26_6,
     i: Int,
     fontHinting: Font.Hinting,
+    optState: ?HinterState = None(),
   ): mutable GlyphBuf {
     this.points.clear();
     this.unhinted.clear();
@@ -115,13 +119,15 @@ mutable class GlyphBuf{
     !this.phantomPoints = (Point{}, Point{}, Point{}, Point{});
     !this.metricsSet = false;
     !this.hinter.debug = false;
-    !this.hinter.index = i;
     if (fontHinting != Font.HintingNone()) {
-      !this.hinter = this.hinter.init(font, scale);
-      vec = mutable Vector<(Int, Array<Int>)>[];
-      this.hinter.functions.each((k, v) ->
-        vec.push((k.toInt(), v.map(u -> u.toInt())))
-      );
+      useState = optState
+        .map(state -> state.font == font && state.scale == scale)
+        .default(false);
+      !this.hinter = if (useState) {
+        Hinter::fromState(optState.fromSome())
+      } else {
+        this.hinter.init(font, scale)
+      };
     };
     !this = this.subload(0, i, true);
     // TODO: this selection of either g.pp1x or g.phantomPoints[0].X isn't ideal,
@@ -129,7 +135,7 @@ mutable class GlyphBuf{
     // plus additional tests for Freetype-Go's bounding boxes matching C Freetype's.
     ppx1 = this.pp1x;
     if (fontHinting != Font.HintingNone()) {
-      !ppx1 = this.getPpx1();
+      !ppx1 = this.getPp1x();
     };
     if (ppx1.asInt() != 0) {
       for (index in .Range(0, this.points.size())) {
@@ -144,14 +150,18 @@ mutable class GlyphBuf{
       if (font.hdmx.size() >= 8) {
         n = u32(font.hdmx, 4).toInt();
         if (n > 3 + i) {
-          hdmx = font.hdmx.slice(8, font.hdmx.size());
+          // Walk the device records in place: slicing the table for every
+          // record would copy it repeatedly.
           tocheck = scale.asInt().ushr(6);
-          while (hdmx.size() >= n) {
-            if (hdmx[0] == tocheck) {
-              !advanceWidth = fixed26_6(hdmx[2 + i].toInt().shl(6));
+          record = 8;
+          while (record + n <= font.hdmx.size()) {
+            if (font.hdmx[record] == tocheck) {
+              !advanceWidth = fixed26_6(
+                font.hdmx[record + 2 + i].toInt().shl(6),
+              );
               break void;
             };
-            !hdmx = hdmx.slice(n, hdmx.size());
+            !record = record + n;
           }
         }
       };
@@ -201,18 +211,25 @@ mutable class GlyphBuf{
     i: Int,
     useMyMetrics: Bool,
   ): mutable GlyphBuf {
-    invariant(recursion < 32, "excessive compound glyph recursion");
+    formatCheck(recursion < 32, "excessive compound glyph recursion");
+    formatCheck(i >= 0 && i < this.font.nGlyph, `Bad glyph index: ${i}`);
     (g0, g1) = if (this.font.locaOffsetFormat == Short()) {
+      formatCheck(2 * i + 4 <= this.font.loca.size(), "loca too short");
       (
         2 * u16(this.font.loca, 2 * i).toInt(),
         2 * u16(this.font.loca, 2 * i + 2).toInt(),
       )
     } else {
+      formatCheck(4 * i + 8 <= this.font.loca.size(), "loca too short");
       (
         u32(this.font.loca, 4 * i).toInt(),
         u32(this.font.loca, 4 * i + 4).toInt(),
       )
     };
+    formatCheck(
+      g0 <= g1 && g1 <= this.font.glyf.size(),
+      `Bad glyph offsets: ${g0}..${g1}`,
+    );
     // Decode the contour count and nominal bounding box, from the first
     // 10 bytes of the glyf data. boundsYMin and boundsXMax, at offsets 4
     // and 6, are unused.
@@ -257,22 +274,29 @@ mutable class GlyphBuf{
         this.points[len - 2],
         this.points[len - 1],
       );
+      // Drop the four phantom points from every buffer, so that later
+      // components stay aligned with points.
       for (_j in .Range(0, 4)) {
         _ = this.points.pop();
+        if (this.inFontUnits.size() > this.points.size()) {
+          _ = this.inFontUnits.pop()
+        };
+        if (this.unhinted.size() > this.points.size()) {
+          _ = this.unhinted.pop()
+        };
       };
-      // TODO: also trim g.InFontUnits and g.Unhinted?
     } else {
       // Load and hint the contours.
       if (ne < 0) {
         // http://developer.apple.com/fonts/TTRefMan/RM06/Chap6glyf.html says that
         // "the values -2, -3, and so forth, are reserved for future use."
-        invariant(ne == -1, "negative number of contours");
+        formatCheck(ne == -1, "negative number of contours");
         !pp1x = fixed26_6(
           this.font.scale(
             this.scale.asInt() * (boundsXMin - uhm.leftSideBearing).asInt(),
           ),
         );
-        !this = this.loadCompound(recursion, uhm, i, glyf, useMyMetrics);
+        !this = this.loadCompound(recursion, glyf, useMyMetrics);
       } else {
         (np0, ne0) = (this.points.size(), this.ends.size());
         program = this.loadSimple(glyf, ne);
@@ -351,6 +375,7 @@ mutable class GlyphBuf{
         if (c.and(flagRepeat) != 0) {
           count = glyf[offset].toInt();
           !offset = offset + 1;
+          formatCheck(i + count <= np1, "glyph flag repeat count too large");
           while (count > 0) {
             this.points.push(Point{flags => c});
             !i = i + 1;
@@ -377,6 +402,8 @@ mutable class GlyphBuf{
         } else {
           x
         };
+        // Co-ordinates are int16 values: wrap like the reference decoder.
+        !x = toInt16(UInt16::truncate(x));
         !p.x = fixed26_6(x);
         this.points.set(j, p);
       };
@@ -398,6 +425,7 @@ mutable class GlyphBuf{
         } else {
           y
         };
+        !y = toInt16(UInt16::truncate(y));
         !p.y = fixed26_6(y);
         this.points.set(j, p);
       };
@@ -407,8 +435,6 @@ mutable class GlyphBuf{
 
   mutable fun loadCompound(
     recursion: Int,
-    _uhm: HMetric,
-    _i: Int,
     glyf: Array<UInt8>,
     useMyMetrics: Bool,
   ): mutable GlyphBuf {
@@ -430,9 +456,9 @@ mutable class GlyphBuf{
         !offset = offset + 6;
         (tdx, tdy)
       };
-      invariant(
+      formatCheck(
         flags.and(flagArgsAreXYValues) != 0,
-        "compound glyph transform vector",
+        "unsupported compound glyph transform vector",
       );
       optTransform = if (flags.and(flagWeHaveAScale) != 0) {
         v03 = toInt16(u16(glyf, offset + 0));
@@ -464,12 +490,12 @@ mutable class GlyphBuf{
         for (j in .Range(lnp0, this.points.size())) {
           p = this.points[j];
           newX = fixed26_6(
-            (p.x.asInt() * transform[0] + 1.shl(13)).ushr(14) +
-              (p.y.asInt() * transform[2] + 1.shl(13)).ushr(14),
+            (p.x.asInt() * transform[0] + 1.shl(13)).shr(14) +
+              (p.y.asInt() * transform[2] + 1.shl(13)).shr(14),
           );
           newY = fixed26_6(
-            (p.x.asInt() * transform[1] + 1.shl(13)).ushr(14) +
-              (p.y.asInt() * transform[3] + 1.shl(13)).ushr(14),
+            (p.x.asInt() * transform[1] + 1.shl(13)).shr(14) +
+              (p.y.asInt() * transform[3] + 1.shl(13)).shr(14),
           );
           (!p.x, !p.y) = (newX, newY);
           this.points.set(j, p);
@@ -498,15 +524,18 @@ mutable class GlyphBuf{
       !offset = offset + 2;
     };
     this.addPhantomsAndScale(np0, this.points.size(), false, instrLen > 0);
+    // Clear the touched flags on the glyph's own points (not on a copy), so
+    // they are reset even when there is no hinting program.
+    for (j in .Range(np0, this.points.size())) {
+      p = this.points.get(j);
+      !p.flags = p.flags.and((flagTouchedX.or(flagTouchedY)).not());
+      this.points.set(j, p);
+    };
     points = this.points.drop(np0);
     ends = this.ends.drop(ne0);
     for (_j in .Range(0, 4)) {
       _ = this.points.pop();
     };
-    !points = points.map(p -> {
-      !p.flags = p.flags.and((flagTouchedX.or(flagTouchedY)).not());
-      p
-    });
     if (instrLen == 0) {
       if (!this.metricsSet) {
         len = points.size();
@@ -526,6 +555,8 @@ mutable class GlyphBuf{
       !ends = ends.map(e -> e - np0)
     };
     // Hinting instructions of a composite glyph completely refer to the
+    // (already transformed) points of its components: the same points are
+    // used as the current, unhinted and in-font-units points.
     !this.hinter = this.hinter.run(
       program,
       Some(points),
@@ -543,12 +574,15 @@ mutable class GlyphBuf{
       this.ends.set(j, ends[j - ne0]);
     };
     if (!this.metricsSet) {
-      len = points.size();
+      // The phantom points may have been moved by the hinting program:
+      // read them from the hinted points.
+      hinted = this.hinter.glyphCurrent;
+      len = hinted.size();
       !this.phantomPoints = (
-        points[len - 4],
-        points[len - 3],
-        points[len - 2],
-        points[len - 1],
+        hinted[len - 4],
+        hinted[len - 3],
+        hinted[len - 2],
+        hinted[len - 1],
       );
     };
     this;

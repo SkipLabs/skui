@@ -1,5 +1,18 @@
 module TrueType;
 
+/**
+ * Thrown when TrueType data is malformed or uses an unsupported feature.
+ */
+class FontFormatError(msg: String) extends Exception {
+  fun getMessage(): String {
+    `TrueType: ${this.msg}`
+  }
+}
+
+fun formatCheck(cond: Bool, msg: String): void {
+  if (!cond) throw FontFormatError(msg)
+}
+
 class NameID() {
   const copyright: UInt16 = UInt16::truncate(0);
   const fontFamily: UInt16 = UInt16::truncate(1);
@@ -89,14 +102,9 @@ fun u16(b: Array<UInt8>, i: Int): UInt16 {
  */
 fun readTable(ttf: Array<UInt8>, offsetLength: Array<UInt8>): Array<UInt8> {
   offset = u32(offsetLength, 0).toInt();
-  invariant(offset >= 0, `offset too large: ${offset}.`);
   length = u32(offsetLength, 4).toInt();
-  invariant(length >= 0, `length too large: ${length}.`);
   end = offset + length;
-  invariant(
-    end >= 0 && end <= ttf.size(),
-    `offset + length too large: ${end}.`,
-  );
+  formatCheck(end <= ttf.size(), `offset + length too large: ${end}.`);
   ttf.slice(offset, end);
 }
 /**
@@ -110,21 +118,22 @@ fun readTable(ttf: Array<UInt8>, offsetLength: Array<UInt8>): Array<UInt8> {
  */
 fun parseSubtables(
   table: Array<UInt8>,
-  name: String,
   offset: Int,
   size: Int,
-  optPredicate: ?Array<UInt8> ~> Bool,
-): (Int, UInt32) {
-  invariant(table.size() >= 4, `${name} too short.`);
+  optPredicate: ?(Array<UInt8>, Int) ~> Bool,
+): ?(Int, UInt32) {
+  if (table.size() < 4) {
+    return None()
+  };
   nSubtables = u16(table, 2).toInt();
-  invariant(table.size() >= size * nSubtables + offset, `${name} too short.`);
+  if (table.size() < size * nSubtables + offset) {
+    return None()
+  };
   bestOffset = offset;
   bestPID = 0;
   ok = false;
   for (_i in .Range(0, nSubtables)) {
-    if (
-      optPredicate.map(predicate -> predicate(table.drop(offset))).default(true)
-    ) {
+    if (optPredicate.map(predicate -> predicate(table, offset)).default(true)) {
       //  We read the 16-bit Platform ID and 16-bit Platform Specific ID as a single uint32.
       // All values are big-endian.
       pidPsid = u32(table, offset).toInt();
@@ -134,7 +143,7 @@ fun parseSubtables(
         pidPsid == Encoding::unicodeBMPOnly ||
         pidPsid == Encoding::unicodeFull
       ) {
-        return (offset, UInt32::truncate(pidPsid.ushr(16)))
+        return Some((offset, UInt32::truncate(pidPsid.ushr(16))))
       };
       if (
         pidPsid == Encoding::microsoftSymbol ||
@@ -149,13 +158,11 @@ fun parseSubtables(
     };
     !offset = offset + size;
   };
-  invariant(ok, `Unsupported encoding: ${name}.`);
-  (bestOffset, UInt32::truncate(bestPID));
+  if (ok) Some((bestOffset, UInt32::truncate(bestPID))) else None()
 }
 
 base class LocaOffsetFormat uses Equality {
   children =
-  | Unknown()
   | Short()
   | Long()
 }
@@ -197,9 +204,14 @@ class Font{
    * Cached values derived from the raw ttf data.
    */
   cmaps: Array<CMap> = Array[],
-  locaOffsetFormat: LocaOffsetFormat = Unknown(),
+  locaOffsetFormat: LocaOffsetFormat = Short(),
   nGlyph: Int = 0,
   nHMetric: Int = 0,
+  /**
+   * The number of long vertical metrics in vmtx (vhea.numOfLongVerMetrics),
+   * or 0 when there is no usable vmtx table.
+   */
+  nVMetric: Int = 0,
   nKern: Int = 0,
   fUnitsPerEm: Int32 = int32(0),
   /**
@@ -221,7 +233,27 @@ class Font{
   maxStorage: UInt16 = uint16(0),
   maxFunctionDefs: UInt16 = uint16(0),
   maxStackElements: UInt16 = uint16(0),
+  /**
+   * A hash of the TTF data and its size, computed once at parse time. Two
+   * fonts parsed from the same data have the same id.
+   */
+  id: (Int, Int) = (0, 0),
 } uses Equality {
+  /**
+   * Compares fonts by id instead of comparing every table, which would cost
+   * O(font size) on each comparison.
+   */
+  fun ==(other: Font): Bool {
+    this.id == other.id &&
+      this.nGlyph == other.nGlyph &&
+      this.fUnitsPerEm == other.fUnitsPerEm &&
+      this.maxStorage == other.maxStorage &&
+      this.maxStackElements == other.maxStackElements &&
+      this.maxTwilightPoints == other.maxTwilightPoints &&
+      this.fpgm.size() == other.fpgm.size() &&
+      this.prep.size() == other.prep.size()
+  }
+
   fun getIndex(c: Char): ?UInt16 {
     len = this.cmaps.size();
     code = c.code();
@@ -238,7 +270,15 @@ class Font{
         return Some(UInt16::truncate(code + cmap.delta));
       } else {
         offset = cmap.offset + 2 * (h - len + (code - cmap.start));
-        return Some(u16(this.cmapIndexes, offset));
+        if (offset < 0 || offset + 2 > this.cmapIndexes.size()) {
+          return Some(uint16(0))
+        };
+        g = u16(this.cmapIndexes, offset).toInt();
+        // The spec adds idDelta to non-zero glyph indices found through
+        // idRangeOffset.
+        return Some(
+          if (g == 0) uint16(0) else UInt16::truncate(g + cmap.delta),
+        );
       }
     };
     None();
@@ -261,34 +301,33 @@ class Font{
    * Returns "" if there was an error, or if that name was not found.
    */
   fun getName(id: UInt16): String {
-    (x, platformID) = parseSubtables(
-      this.name,
-      "name",
-      6,
-      12,
-      Some(b ~> u16(b, 6) == id),
+    // Prefer US English (languageID 0x0409) records, then any language.
+    english = Some((b: Array<UInt8>, offset: Int) ~>
+      u16(b, offset + 6) == id && u16(b, offset + 4).toInt() == 0x0409
     );
-    offset = u16(this.name, 4) + u16(this.name, x + 10);
-    length = u16(this.name, x + 8);
-    // Return the ASCII value of the encoded string.
-    // The string is encoded as UTF-16 on non-Apple platformIDs; Apple is platformID 1.
-    src = this.name.slice(offset, offset + length);
-    dst = if (platformID.toInt() != 1) {
-      // UTF-16.
-      if (src.size().and(1) != 0) {
+    anyLanguage = Some((b: Array<UInt8>, offset: Int) ~>
+      u16(b, offset + 6) == id
+    );
+    (parseSubtables(this.name, 6, 12, english) match {
+    | None() -> parseSubtables(this.name, 6, 12, anyLanguage)
+    | found -> found
+    }) match {
+    | None() -> ""
+    | Some((x, _platformID)) ->
+      offset = u16(this.name, 4).toInt() + u16(this.name, x + 10).toInt();
+      length = u16(this.name, x + 8).toInt();
+      // The string is encoded as UTF-16: parseSubtables only accepts
+      // Unicode and Microsoft platforms. Return its printable ASCII value.
+      if (offset + length > this.name.size() || length.and(1) != 0) {
         return ""
       };
-      len = src.size() / 2;
-      tmp = Array::mfill(len, UInt8::truncate(0));
+      len = length / 2;
+      dst = Array::mfill(len, UInt8::truncate(0));
       for (i in .Range(0, len)) {
-        tmp.set(i, printable(u16(src, 2 * i).toInt()));
+        dst.set(i, printable(u16(this.name, offset + 2 * i).toInt()));
       };
-      tmp.chill();
-    } else {
-      // ASCII.
-      src.map(c ~> printable(c.toInt()));
-    };
-    String::fromUtf8(dst);
+      String::fromUtf8(dst.chill())
+    }
   }
   /**
    * Returns the unscaled horizontal metrics for the glyph with
@@ -296,7 +335,7 @@ class Font{
    */
   fun unscaledHMetric(i: UInt16): HMetric {
     j = i.toInt();
-    if (j < 0 || this.nGlyph <= j) {
+    if (this.nGlyph <= j) {
       return HMetric()
     };
     if (j >= this.nHMetric) {
@@ -330,14 +369,24 @@ class Font{
    */
   fun unscaledVMetric(i: UInt16, yMax: Fixed.Int26_6): VMetric {
     j = i.toInt();
-    if (j < 0 || this.nGlyph <= j) {
+    if (this.nGlyph <= j) {
       return VMetric()
     };
-    if (4 * j + 4 <= this.vmtx.size()) {
-      return VMetric(
-        fixed26_6(u16(this.vmtx, 4 * j).toInt()),
-        fixed26_6(toInt16(u16(this.vmtx, 4 * j + 2))),
-      )
+    if (this.nVMetric > 0) {
+      // As for hmtx, glyphs past the long metrics reuse the last advance
+      // and read their top side bearing from the trailing array.
+      return if (j >= this.nVMetric) {
+        p = 4 * (this.nVMetric - 1);
+        VMetric(
+          fixed26_6(u16(this.vmtx, p).toInt()),
+          fixed26_6(toInt16(u16(this.vmtx, p + 2 * (j - this.nVMetric) + 4))),
+        )
+      } else {
+        VMetric(
+          fixed26_6(u16(this.vmtx, 4 * j).toInt()),
+          fixed26_6(toInt16(u16(this.vmtx, 4 * j + 2))),
+        )
+      }
     };
     // The OS/2 table has grown over time.
     // https://developer.apple.com/fonts/TTRefMan/RM06/Chap6OS2.html
@@ -423,12 +472,18 @@ class Font{
  * For TrueType Collections, the first font in the collection is parsed.
  */
 fun parse(ttf: Array<UInt8>): Font {
-  parseAt(ttf, 0);
+  font = parseAt(ttf, 0, false);
+  // FNV-1a hash of the data, used as a cheap font identity.
+  hash = 0xcbf29ce484222325;
+  for (b in ttf) {
+    !hash = (hash.xor(b.toInt())) * 0x100000001b3;
+  };
+  !font.id = (hash, ttf.size());
+  font
 }
 
-fun parseAt(ttf: Array<UInt8>, offset: Int): Font {
-  invariant(ttf.size() - offset >= 12, "TTF data is too short");
-  originalOffset = offset;
+fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
+  formatCheck(ttf.size() - offset >= 12, "TTF data is too short");
   magic = u32(ttf, offset).toInt();
   !offset = offset + 4;
   magic match {
@@ -437,30 +492,35 @@ fun parseAt(ttf: Array<UInt8>, offset: Int): Font {
     void
   | 0x74746366 ->
     // "ttcf" as a big-endian uint32.
-    invariant(originalOffset == 0, "Recursive TTC");
+    formatCheck(!inCollection, "Recursive TTC");
     ttcVersion = u32(ttf, offset);
     !offset = offset + 4;
-    invariant(
+    formatCheck(
       ttcVersion == 0x00010000 || ttcVersion == 0x00020000,
       "Bad TTC version",
     );
     numFonts = u32(ttf, offset).toInt();
     !offset = offset + 4;
-    invariant(numFonts > 0, "Bad number of TTC fonts");
-    invariant(
-      numFonts >= (ttf.size() - offset) / 4,
+    formatCheck(numFonts > 0, "Bad number of TTC fonts");
+    formatCheck(
+      numFonts <= (ttf.size() - offset) / 4,
       "TTC offset table is too short",
     );
     // TODO: provide an API to select which font in a TrueType collection to return,
     // not just the first one. This may require an API to parse a TTC's name tables,
     // so users of this package can select the font in a TTC by name.
-    return parseAt(ttf, u32(ttf, offset).toInt())
-  | _ -> invariant_violation(`Bad TTF version ${magic}`)
+    fontOffset = u32(ttf, offset).toInt();
+    formatCheck(
+      fontOffset >= offset + 4 * numFonts,
+      `Bad TTC font offset: ${fontOffset}`,
+    );
+    return parseAt(ttf, fontOffset, true)
+  | _ -> throw FontFormatError(`Bad TTF version ${magic}`)
   };
   n = u16(ttf, offset).toInt();
   !offset = offset + 2;
   !offset = offset + 6; // Skip the searchRange, entrySelector and rangeShift.
-  invariant(ttf.size() >= 16 * n + offset, "TTF data is too short");
+  formatCheck(ttf.size() >= 16 * n + offset, "TTF data is too short");
 
   cmap: Array<UInt8> = Array[];
   cvt: Array<UInt8> = Array[];
@@ -476,28 +536,47 @@ fun parseAt(ttf: Array<UInt8>, offset: Int): Font {
   name: Array<UInt8> = Array[];
   os2: Array<UInt8> = Array[];
   prep: Array<UInt8> = Array[];
+  vhea: Array<UInt8> = Array[];
   vmtx: Array<UInt8> = Array[];
   for (i in .Range(0, n)) {
     x = (16 * i) + offset;
-    id = String::fromUtf8(ttf.slice(x, x + 4));
+    // Table tags are compared as big-endian uint32 values.
+    tag = u32(ttf, x).toInt();
     offsetLength = ttf.slice(x + 8, x + 16);
     table = readTable(ttf, offsetLength);
-    id match {
-    | "cmap" -> !cmap = table
-    | "cvt " -> !cvt = table
-    | "fpgm" -> !fpgm = table
-    | "glyf" -> !glyf = table
-    | "hdmx" -> !hdmx = table
-    | "head" -> !head = table
-    | "hhea" -> !hhea = table
-    | "hmtx" -> !hmtx = table
-    | "kern" -> !kern = table
-    | "loca" -> !loca = table
-    | "maxp" -> !maxp = table
-    | "name" -> !name = table
-    | "OS/2" -> !os2 = table
-    | "prep" -> !prep = table
-    | "vmtx" -> !vmtx = table
+    tag match {
+    | 0x636d6170 ->
+      !cmap = table // "cmap"
+    | 0x63767420 ->
+      !cvt = table // "cvt "
+    | 0x6670676d ->
+      !fpgm = table // "fpgm"
+    | 0x676c7966 ->
+      !glyf = table // "glyf"
+    | 0x68646d78 ->
+      !hdmx = table // "hdmx"
+    | 0x68656164 ->
+      !head = table // "head"
+    | 0x68686561 ->
+      !hhea = table // "hhea"
+    | 0x686d7478 ->
+      !hmtx = table // "hmtx"
+    | 0x6b65726e ->
+      !kern = table // "kern"
+    | 0x6c6f6361 ->
+      !loca = table // "loca"
+    | 0x6d617870 ->
+      !maxp = table // "maxp"
+    | 0x6e616d65 ->
+      !name = table // "name"
+    | 0x4f532f32 ->
+      !os2 = table // "OS/2"
+    | 0x70726570 ->
+      !prep = table // "prep"
+    | 0x76686561 ->
+      !vhea = table // "vhea"
+    | 0x766d7478 ->
+      !vmtx = table // "vmtx"
     | _ -> void
     }
   };
@@ -512,6 +591,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int): Font {
   (cmaps, optCmapIndexes) = parseCmap(cmap);
   nKern = parseKern(kern);
   (ascent, descent, nHMetric) = parseHhea(hhea, hmtx, nGlyph);
+  nVMetric = parseVhea(vhea, vmtx, nGlyph);
   Font{
     cmap,
     cvt,
@@ -537,6 +617,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int): Font {
     locaOffsetFormat,
     nGlyph,
     nHMetric,
+    nVMetric,
     nKern,
     fUnitsPerEm,
     /**
@@ -568,8 +649,15 @@ fun parseHead(
   head: Array<UInt8>,
 ): (Int32, Fixed.Rectangle26_6, LocaOffsetFormat) {
   len = head.size();
-  invariant(len == 54, `Bad head length: ${len}`);
-  fUnitsPerEm = Int32::truncate(u16(head, 18).toInt());
+  formatCheck(len == 54, `Bad head length: ${len}`);
+  unitsPerEm = u16(head, 18).toInt();
+  // The spec restricts unitsPerEm to 16..16384. Zero would make scale()
+  // divide by zero.
+  formatCheck(
+    unitsPerEm >= 16 && unitsPerEm <= 16384,
+    `Bad unitsPerEm: ${unitsPerEm}`,
+  );
+  fUnitsPerEm = Int32::truncate(unitsPerEm);
   bounds = Fixed.Rectangle26_6(
     Fixed.Point26_6(
       Fixed.Int26_6(Int32::truncate(toInt16(u16(head, 36)))),
@@ -584,14 +672,14 @@ fun parseHead(
   locaOffsetFormat = i match {
   | 0 -> Short()
   | 1 -> Long()
-  | _ -> invariant_violation(`Bad indexToLocFormat: ${i}`)
+  | _ -> throw FontFormatError(`Bad indexToLocFormat: ${i}`)
   };
   (fUnitsPerEm, bounds, locaOffsetFormat)
 }
 
 fun parseMaxp(maxp: Array<UInt8>): (Int, UInt16, UInt16, UInt16, UInt16) {
   len = maxp.size();
-  invariant(len == 32, `Bad maxp length: ${len}`);
+  formatCheck(len == 32, `Bad maxp length: ${len}`);
   nGlyph = u16(maxp, 4).toInt();
   maxTwilightPoints = u16(maxp, 16);
   maxStorage = u16(maxp, 18);
@@ -600,6 +688,11 @@ fun parseMaxp(maxp: Array<UInt8>): (Int, UInt16, UInt16, UInt16, UInt16) {
   (nGlyph, maxTwilightPoints, maxStorage, maxFunctionDefs, maxStackElements)
 }
 
+/**
+ * Returns the number of kerning pairs of the kern table. Kerning is
+ * optional: an unsupported kern table is ignored (0 pairs) instead of
+ * failing the whole font.
+ */
 fun parseKern(kern: Array<UInt8>): Int {
   // Apple's TrueType documentation (http://developer.apple.com/fonts/TTRefMan/RM06/Chap6kern.html) says:
   // "Previous versions of the 'kern' table defined both the version and nTables fields in the header
@@ -611,16 +704,19 @@ fun parseKern(kern: Array<UInt8>): Int {
   // Since we expect that almost all fonts aim to be Windows-compatible, we only parse the "older" format,
   // just like the C Freetype implementation.
   len = kern.size();
-  if (len == 0) {
+  if (len < 18) {
     return 0;
   };
-  invariant(len >= 18, "kern data too short");
   version = u16(kern, 0);
   offset = 2;
-  invariant(version == 0, `kern version ${version}`);
+  if (version != 0) {
+    return 0;
+  };
   n = u16(kern, offset);
   !offset = offset + 2;
-  invariant(n != 0, "kern nTables: 0");
+  if (n == 0) {
+    return 0;
+  };
   // TODO: support multiple subtables. In practice, almost all .ttf files
   // have only one subtable, if they have a kern table at all. But it's not
   // impossible. Xolonium Regular (https://fontlibrary.org/en/font/xolonium)
@@ -635,12 +731,13 @@ fun parseKern(kern: Array<UInt8>): Int {
   coverage = u16(kern, offset).toInt();
   !offset = offset + 2;
   // We only support horizontal kerning.
-  invariant(coverage == 0x0001, `kern coverage: ${coverage}`);
+  if (coverage != 0x0001) {
+    return 0;
+  };
   nKern = u16(kern, offset).toInt();
-  invariant(
-    (6 * nKern == length - 14),
-    `Bad kern table length ${6 * nKern} vs ${length - 14}`,
-  );
+  if (6 * nKern != length - 14 || len < 18 + 6 * nKern) {
+    return 0;
+  };
   nKern;
 }
 
@@ -650,35 +747,64 @@ fun parseHhea(
   nGlyph: Int,
 ): (Int32, Int32, Int) {
   len = hhea.size();
-  invariant(len == 36, `Bad hhea length: ${len}`);
+  formatCheck(len == 36, `Bad hhea length: ${len}`);
   ascent = Int32::truncate(toInt16(u16(hhea, 4)));
   descent = Int32::truncate(toInt16(u16(hhea, 6)));
   nHMetric = u16(hhea, 34).toInt();
+  formatCheck(
+    nHMetric >= 1 && nHMetric <= nGlyph,
+    `Bad numberOfHMetrics: ${nHMetric}`,
+  );
   hmtxLen = hmtx.size();
-  invariant(
+  formatCheck(
     hmtxLen == 4 * nHMetric + 2 * (nGlyph - nHMetric),
     `Bad hmtx length: ${hmtxLen}`,
   );
   (ascent, descent, nHMetric)
 }
 
+/**
+ * Returns vhea.numOfLongVerMetrics, or 0 when the vertical metrics are
+ * missing or inconsistent. Vertical metrics are optional, so this never
+ * fails the font.
+ */
+fun parseVhea(vhea: Array<UInt8>, vmtx: Array<UInt8>, nGlyph: Int): Int {
+  if (vhea.size() < 36) {
+    return 0
+  };
+  nVMetric = u16(vhea, 34).toInt();
+  if (nVMetric < 1 || nVMetric > nGlyph) {
+    return 0
+  };
+  if (vmtx.size() < 4 * nVMetric + 2 * (nGlyph - nVMetric)) {
+    return 0
+  };
+  nVMetric
+}
+
 fun parseCmap(cmap: Array<UInt8>): (Array<CMap>, ?Array<UInt8>) {
-  (offset, _) = parseSubtables(cmap, "cmap", 4, 8, None());
+  (offset, _) = parseSubtables(cmap, 4, 8, None()) match {
+  | Some(subtable) -> subtable
+  | None() -> throw FontFormatError("Unsupported cmap encoding")
+  };
   !offset = u32(cmap, offset + 4).toInt();
   len = cmap.size();
-  invariant(offset > 0 && offset <= len, "bad cmap offset");
+  formatCheck(offset > 0 && offset + 4 <= len, "Bad cmap offset");
   cmapFormat = u16(cmap, offset).toInt();
   cmapFormat match {
   | 4 -> //cmapFormat4
+    formatCheck(offset + 14 <= len, "cmap format 4 too short");
     language = u16(cmap, offset + 4);
-    invariant(
+    formatCheck(
       language.toInt() == languageIndependent,
       `Unsupported language: ${language.toInt()}`,
     );
     segCountX2 = u16(cmap, offset + 6).toInt();
-    invariant(segCountX2 % 2 == 0, `Bad segCountX2: ${segCountX2}`);
+    formatCheck(segCountX2 % 2 == 0, `Bad segCountX2: ${segCountX2}`);
     segCount = segCountX2 / 2;
     !offset = offset + 14;
+    // endCode, reservedPad, startCode, idDelta and idRangeOffset arrays.
+    formatCheck(offset + 8 * segCount + 2 <= len, "cmap format 4 too short");
     cmaps = Array::mfill(segCount, CMap());
     for (i in .Range(0, segCount)) {
       item = cmaps[i];
@@ -708,18 +834,17 @@ fun parseCmap(cmap: Array<UInt8>): (Array<CMap>, ?Array<UInt8>) {
     cmapIndexes = cmap.drop(offset);
     (cmaps.chill(), Some(cmapIndexes))
   | 12 -> //cmapFormat12
-    invariant(u16(cmap, offset + 2).toInt() == 0, `Bad cmap format`);
-    length = u32(cmap, offset + 4);
+    formatCheck(offset + 16 <= len, "cmap format 12 too short");
+    formatCheck(u16(cmap, offset + 2).toInt() == 0, `Bad cmap format`);
+    length = u32(cmap, offset + 4).toInt();
     language = u32(cmap, offset + 8);
-    invariant(
+    formatCheck(
       language.toInt() == languageIndependent,
       `Unsupported language: ${language.toInt()}`,
     );
     nGroups = u32(cmap, offset + 12).toInt();
-    invariant(
-      length.toInt() == 12 * nGroups.toInt() + 16,
-      "Inconsistent cmap length",
-    );
+    formatCheck(length == 12 * nGroups + 16, "Inconsistent cmap length");
+    formatCheck(offset + length <= len, "cmap format 12 too short");
     !offset = offset + 16;
     cmaps = Array::mfill(nGroups, CMap());
     for (i in .Range(0, nGroups)) {
@@ -731,7 +856,7 @@ fun parseCmap(cmap: Array<UInt8>): (Array<CMap>, ?Array<UInt8>) {
       !offset = offset + 12;
     };
     (cmaps.chill(), None())
-  | _ -> invariant_violation(`Invalid cmap format: ${cmapFormat}`)
+  | _ -> throw FontFormatError(`Unsupported cmap format: ${cmapFormat}`)
   }
 }
 

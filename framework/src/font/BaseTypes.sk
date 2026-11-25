@@ -123,9 +123,7 @@ class GlyphFile(optFace: ?Face, glyph: Glyph) extends SKStore.File {
   fun getKern(optPrevious: ?Char = None()): Float {
     optPrevious
       .flatMap(previous ->
-        this.optFace.map(face ->
-          face.getKern(previous, this.glyph.index).toFloat()
-        )
+        this.optFace.map(face -> face.getKern(previous, this.glyph).toFloat())
       )
       .default(0.0);
   }
@@ -138,12 +136,22 @@ class GlyphFile(optFace: ?Face, glyph: Glyph) extends SKStore.File {
     this.optFace.map(face -> face.metrics.descent.toFloat()).default(0.0);
   }
 
-  fun width(): Float {
-    this.glyph.width();
+  /**
+   * The glyph's advance width: the distance from its origin to the origin of
+   * the next glyph.
+   */
+  fun advance(): Float {
+    this.glyph.advance();
   }
 
-  fun height(): Float {
-    this.optFace.map(face -> face.height()).default(this.glyph.height());
+  /**
+   * The height of a line of text in the glyph's face (ascent + descent).
+   * Without a face, the height of the glyph's image.
+   */
+  fun lineHeight(): Float {
+    this.optFace.map(face -> face.height()).default(
+      this.glyph.imageHeight().toFloat(),
+    );
   }
 
   fun topLeft(): Geometry.Offset {
@@ -154,8 +162,11 @@ class GlyphFile(optFace: ?Face, glyph: Glyph) extends SKStore.File {
     this.topLeft().translate(kern, this.ascent())
   }
 
+  /**
+   * The advance width and the line height.
+   */
   fun size(): Geometry.Size {
-    Geometry.Size(this.width(), this.height())
+    Geometry.Size(this.advance(), this.lineHeight())
   }
 
   fun imageSize(): (Int, Int) {
