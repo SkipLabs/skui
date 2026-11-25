@@ -199,6 +199,11 @@ class Font{
   os2: Array<UInt8> = Array[],
   prep: Array<UInt8> = Array[],
   vmtx: Array<UInt8> = Array[],
+  /**
+   * The parsed 'CFF ' table, for fonts with CFF outlines (.otf) instead
+   * of glyf outlines.
+   */
+  optCff: ?Cff = None(),
   //
   cmapIndexes: Array<UInt8> = Array[],
   /**
@@ -507,8 +512,9 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
   magic = u32(ttf, offset).toInt();
   !offset = offset + 4;
   magic match {
-  | 0x00010000 ->
-    // No-op.
+  | 0x00010000
+  | 0x4f54544f ->
+    // TrueType outlines, or "OTTO" for CFF outlines.
     void
   | 0x74746366 ->
     // "ttcf" as a big-endian uint32.
@@ -559,6 +565,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
   prep: Array<UInt8> = Array[];
   vhea: Array<UInt8> = Array[];
   vmtx: Array<UInt8> = Array[];
+  cff: Array<UInt8> = Array[];
   for (i in .Range(0, n)) {
     x = (16 * i) + offset;
     // Table tags are compared as big-endian uint32 values.
@@ -600,10 +607,13 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
       !vhea = table // "vhea"
     | 0x766d7478 ->
       !vmtx = table // "vmtx"
+    | 0x43464620 ->
+      !cff = table // "CFF "
     | _ -> void
     }
   };
   (fUnitsPerEm, bounds, locaOffsetFormat) = parseHead(head);
+  optCff = parseCff(cff);
   (
     nGlyph,
     maxTwilightPoints,
@@ -611,6 +621,16 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
     maxFunctionDefs,
     maxStackElements,
   ) = parseMaxp(maxp);
+  optCff.each(c ->
+    formatCheck(
+      c.nGlyph() == nGlyph,
+      `CFF glyph count ${c.nGlyph()} does not match maxp ${nGlyph}`,
+    )
+  );
+  formatCheck(
+    optCff.isSome() || !glyf.isEmpty(),
+    "No glyph outlines: missing glyf and CFF tables",
+  );
   (cmaps, optCmapIndexes) = parseCmap(cmap);
   nKern = parseKern(kern);
   gposKernSubtables = parseGposKern(gpos);
@@ -645,6 +665,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
     nVMetric,
     nKern,
     gposKernSubtables,
+    optCff,
     fUnitsPerEm,
     /**
      * In FUnits.
@@ -705,6 +726,12 @@ fun parseHead(
 
 fun parseMaxp(maxp: Array<UInt8>): (Int, UInt16, UInt16, UInt16, UInt16) {
   len = maxp.size();
+  // Version 0.5 (6 bytes) is used by CFF fonts: it only has the number of
+  // glyphs.
+  if (len == 6 && u32(maxp, 0).toInt() == 0x00005000) {
+    zero = uint16(0);
+    return (u16(maxp, 4).toInt(), zero, zero, zero, zero)
+  };
   formatCheck(len == 32, `Bad maxp length: ${len}`);
   nGlyph = u16(maxp, 4).toInt();
   maxTwilightPoints = u16(maxp, 16);

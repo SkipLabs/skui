@@ -226,6 +226,9 @@ fun drawContour(
   if (points.isEmpty()) {
     return void;
   };
+  if (points.any(p -> p.flags.and(flagCubic) != 0)) {
+    return drawCubicContour(points, offset, elements)
+  };
   // The low bit of each point's Flags value is whether the point is on the
   // curve. Truetype fonts only have quadratic Bézier curves, not cubics.
   // Thus, two consecutive off-curve points imply an on-curve point in the
@@ -275,6 +278,45 @@ fun drawContour(
     elements.push(Shape.LineTo(start.toOffset()));
   } else {
     elements.push(Shape.QuadCurveTo(start.toOffset(), q0.toOffset()));
+  };
+  elements.push(Shape.ClosePath());
+}
+
+/**
+ * Draws a closed contour of a CFF outline: it starts with an on-curve
+ * point, and each curve is two flagCubic control points followed by an
+ * on-curve point.
+ */
+fun drawCubicContour(
+  points: Array<Point>,
+  offset: Fixed.Point26_6,
+  elements: mutable Vector<Shape.PathElement>,
+): void {
+  toOffset = (p: Point) ->
+    Fixed.Point26_6(offset.x + p.x, offset.y - p.y).toOffset();
+  start = toOffset(points[0]);
+  elements.push(Shape.MoveTo(start));
+  i = 1;
+  while (i < points.size()) {
+    p = points[i];
+    if (p.flags.and(flagCubic) != 0) {
+      formatCheck(i + 2 < points.size(), "Truncated cubic curve");
+      elements.push(
+        Shape.CubicCurveTo(
+          toOffset(points[i + 2]),
+          toOffset(p),
+          toOffset(points[i + 1]),
+        ),
+      );
+      !i = i + 3
+    } else {
+      elements.push(Shape.LineTo(toOffset(p)));
+      !i = i + 1
+    }
+  };
+  // Close the contour back to its start, if the last point is elsewhere.
+  if (toOffset(points[points.size() - 1]) != start) {
+    elements.push(Shape.LineTo(start))
   };
   elements.push(Shape.ClosePath());
 }

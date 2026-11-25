@@ -12,6 +12,9 @@ const flagPositiveYShortVector: Int = 1.shl(5);
 // The remaining flags are for internal use.
 const flagTouchedX: Int = 1.shl(6);
 const flagTouchedY: Int = 1.shl(7);
+// Marks the off-curve points of CFF outlines, which are the two control
+// points of cubic Bézier curves (TrueType off-curve points are quadratic).
+const flagCubic: Int = 1.shl(8);
 
 // The same flag bits (0x10 and 0x20) are overloaded to have two meanings,
 // dependent on the value of the flag{X,Y}ShortVector bits.
@@ -108,6 +111,10 @@ mutable class GlyphBuf{
     fontHinting: Font.Hinting,
     optState: ?HinterState = None(),
   ): mutable GlyphBuf {
+    font.optCff match {
+    | Some(cff) -> return this.loadCff(font, cff, scale, i)
+    | None() -> void
+    };
     this.points.clear();
     this.unhinted.clear();
     this.inFontUnits.clear();
@@ -204,6 +211,65 @@ mutable class GlyphBuf{
       Fixed.Rectangle26_6::make(minX, minY, maxX, maxY);
     };
     this;
+  }
+
+  /**
+   * Loads glyph i of a CFF font. CFF outlines are cubic: their points are
+   * stored with flagCubic on the control points, which drawContour turns
+   * into cubic curves. CFF fonts have no TrueType hinting program, so the
+   * glyph is never hinted.
+   */
+  private mutable fun loadCff(
+    font: Font,
+    cff: Cff,
+    scale: Fixed.Int26_6,
+    i: Int,
+  ): mutable GlyphBuf {
+    this.points.clear();
+    this.unhinted.clear();
+    this.inFontUnits.clear();
+    this.ends.clear();
+    !this.font = font;
+    !this.hinting = Font.HintingNone();
+    !this.scale = scale;
+    glyph = cffGlyph(cff, i);
+    toScaled = (v: Float) ->
+      fixed26_6(font.scale(scale.asInt() * Math.round(v).toInt()));
+    for (contour in glyph.contours) {
+      for (p in contour) {
+        this.points.push(
+          Point{
+            x => toScaled(p.x),
+            y => toScaled(p.y),
+            flags => if (p.onCurve) flagOnCurve else flagCubic,
+          },
+        )
+      };
+      this.ends.push(this.points.size())
+    };
+    // The advance comes from hmtx, as for glyf fonts; the charstring width
+    // is only used when hmtx has no entry for the glyph.
+    hm = font.unscaledHMetric(uint16(i));
+    unscaledAdvance = if (font.nHMetric > 0) {
+      hm.advanceWidth.asInt()
+    } else {
+      glyph.advanceWidth
+    };
+    !this.advanceWidth = fixed26_6(font.scale(scale.asInt() * unscaledAdvance));
+    !this.bounds = if (this.points.isEmpty()) {
+      Fixed.Rectangle26_6::zero
+    } else {
+      first = this.points.first();
+      (minX, minY, maxX, maxY) = (first.x, first.y, first.x, first.y);
+      this.points.each(p -> {
+        if (p.x < minX) !minX = p.x;
+        if (p.x > maxX) !maxX = p.x;
+        if (p.y < minY) !minY = p.y;
+        if (p.y > maxY) !maxY = p.y
+      });
+      Fixed.Rectangle26_6::make(minX, minY, maxX, maxY)
+    };
+    this
   }
 
   mutable fun subload(
