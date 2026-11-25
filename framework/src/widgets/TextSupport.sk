@@ -33,28 +33,57 @@ class Line(
     | Ui.RatioDrawableSupport(_, ratio) -> ratio
     | _ -> 1.0
     };
-    fontSupport = context.getFontSupport();
     offset = absolute.move(this.offset);
-    this.glyphs.each(glyph -> {
-      size = glyph.glyph.glyph.optPath
-        .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
-        .default(Geometry.Size(0.0, 0.0));
-      dGid = glyph.gid.scale(ratio);
-      fontSupport.getMSDF(context, dGid).each(msdf ->
-        drawables.push(
-          support.msdf(
-            offset.move(glyph.offset),
-            size,
-            msdf.image,
-            msdf.conv,
-            glyph.gid.pxRange,
-            thickness(glyph.gid.fid.size, glyph.gid.fid.isNotBold()),
-            paint,
-          ),
-        )
-      );
-    })
+    this.glyphs.each(glyph ->
+      glyphDrawable(
+        context,
+        support,
+        ratio,
+        glyph.gid,
+        glyph.glyph,
+        offset.move(glyph.offset),
+        thickness(glyph.gid.fid.size, glyph.gid.fid.isNotBold()),
+        paint,
+      ).each(drawables.push)
+    )
   }
+}
+
+/**
+ * The drawable of glyph, whose image top left is at offset, drawn with
+ * the given device pixel ratio.
+ *
+ * The MSDF of the glyph can be generated at another size than the glyph
+ * (see Font.GlyphID.msdfID): it is placed from the glyph origin, on the
+ * baseline, and not from the top left of the glyph image, which is rounded
+ * to an integer pixel at each size.
+ */
+fun glyphDrawable(
+  context: mutable SKStore.Context,
+  support: Ui.DrawableSupport,
+  ratio: Float,
+  gid: Font.GlyphID,
+  glyph: Font.GlyphFile,
+  offset: Geometry.Offset,
+  thickness: Float,
+  paint: Ui.Paint,
+): ?Ui.Drawable {
+  msdfId = gid.msdfID(ratio);
+  context.getFontSupport().getMSDF(context, msdfId).map(msdf -> {
+    (width, height) = glyph.imageSize();
+    topLeft = glyph.topLeft();
+    scale = gid.fid.size * ratio / msdfId.fid.size;
+    support.msdf(
+      offset,
+      Geometry.Size(width.toFloat(), height.toFloat()),
+      msdf.image,
+      // r is the image rectangle in device pixels.
+      r ~> msdf.glyphRect(r.topLeft() - topLeft * ratio, scale),
+      gid.pxRange,
+      thickness,
+      paint,
+    )
+  })
 }
 
 class FacedText(value: String, faceId: Font.FaceID) extends SKStore.Key {
@@ -421,36 +450,25 @@ fun toDrawables(
   top = 0.0;
   left = 0.0;
   optPrevious: ?Char = None();
-  faceId = support match {
-  | Ui.RatioDrawableSupport(_, ratio) ->
-    style.faceId with {size => style.faceId.size * ratio}
-  | _ -> style.faceId
+  ratio = support match {
+  | Ui.RatioDrawableSupport(_, ratio) -> ratio
+  | _ -> 1.0
   };
-
   for (char in text) {
     gid = Font.GlyphID::create(style.faceId, char, pxRange);
-    dGid = Font.GlyphID::create(faceId, char, pxRange);
     glyph = fontSupport.getGlyphForId(context, gid);
     kern = glyph.getKern(optPrevious);
-    width = glyph.advance() + kern;
-    offset = Geometry.Offset(left, top).move(glyph.offset(kern));
-    size = glyph.glyph.optPath
-      .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
-      .default(Geometry.Size(0.0, 0.0));
-    fontSupport.getMSDF(context, dGid).each(msdf ->
-      drawables.push(
-        support.msdf(
-          offset,
-          size,
-          msdf.image,
-          msdf.conv,
-          gid.pxRange,
-          thickness,
-          style.fill,
-        ),
-      )
-    );
-    !left = left + width;
+    glyphDrawable(
+      context,
+      support,
+      ratio,
+      gid,
+      glyph,
+      Geometry.Offset(left, top).move(glyph.offset(kern)),
+      thickness,
+      style.fill,
+    ).each(drawables.push);
+    !left = left + glyph.advance() + kern;
     !optPrevious = Some(char);
   };
   Some(Ui.Drawables(drawables.toArray()))

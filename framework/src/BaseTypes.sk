@@ -800,15 +800,17 @@ class FontIcon(
     | Ui.RatioDrawableSupport(_, ratio) -> ratio
     | _ -> 1.0
     };
-    face = UiIcon.Face::create(this.collection, this.fontSize * ratio);
+    // An MSDF does not depend on the size it is drawn at: icons share one
+    // MSDF, generated at Font.msdfSize and scaled to the icon size.
+    face = UiIcon.Face::create(this.collection, Font.msdfSize);
+    scale = this.fontSize * ratio / Font.msdfSize;
     iconSupport.getMSDF(context, this.icon, face).each(msdf ->
       drawables.push(
         support.msdf(
           offset,
           size,
           msdf.image,
-          msdf.conv,
-          //r ~> msdf.conv(r).scale(1.0 / ratio),
+          r ~> msdf.place(r, scale),
           8,
           0.0,
           paint,

@@ -1,7 +1,5 @@
 module TrueType;
 
-const msdfFontSize: Float = 45.0;
-
 class File(font: Font) extends SKStore.File {
   //
   static fun type(obj: SKStore.File): this {
@@ -168,8 +166,11 @@ fun msdfSupplier(
     (context, _self, gid) ~> {
       glyph = glyphProps(context, gid);
       glyph.glyph.optPath.map(path -> {
+        // The glyph outline is relative to the integer top left of its
+        // image, which depends on the size. Relative to the glyph origin,
+        // the MSDF can be placed exactly at any size.
         info = MTSDF.toMSDF{
-          shape => MTSDF.Shape::fromPath(path),
+          shape => MTSDF.Shape::fromPath(path.translate(glyph.topLeft())),
           pxRange => gid.pxRange,
         };
         Font.Msdf::make(gid.char, info)
