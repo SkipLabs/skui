@@ -1,0 +1,621 @@
+module TrueType;
+
+/**
+ * OpenType font variations (variable fonts) for glyf outlines.
+ *
+ * - fvar: the variation axes (e.g. "wght" from 100 to 900), with their
+ *   default values.
+ * - avar: optional per-axis remapping of normalized coordinates.
+ * - gvar: per-glyph point deltas, interpolated from the normalized axis
+ *   coordinates (tuple variation store), with inferred deltas (IUP) for
+ *   points that have no explicit delta.
+ * - HVAR: advance width deltas (item variation store).
+ *
+ * Variations are applied to unscaled outlines, before hinting. Hinting of
+ * variable fonts uses the unvaried CVT (cvar is not applied).
+ *
+ * See https://learn.microsoft.com/en-us/typography/opentype/spec/otvaroverview
+ */
+
+/**
+ * A variation axis from the fvar table, in user units.
+ */
+class VariationAxis(
+  tag: String,
+  minValue: Float,
+  defaultValue: Float,
+  maxValue: Float,
+) uses Equality
+
+/**
+ * Normalized variation coordinates, one per axis, in [-1, 1] as 2.14 fixed
+ * point stored in an Int (16384 = 1.0).
+ */
+class VariationCoords(values: Array<Int>) uses Equality {
+  fun isDefault(): Bool {
+    this.values.all(v -> v == 0)
+  }
+}
+
+const f2dot14One: Int = 0x4000;
+
+fun f2dot14(data: Array<UInt8>, at: Int): Int {
+  toInt16(u16(data, at))
+}
+
+private fun fixed16dot16(data: Array<UInt8>, at: Int): Float {
+  v = u32(data, at).toInt();
+  signed = if (v >= 0x80000000) v - 0x100000000 else v;
+  signed.toFloat() / 65536.0
+}
+
+/**
+ * Parses the axes of the fvar table; returns no axes for a non-variable
+ * font or an fvar table that cannot be read.
+ */
+fun parseFvar(fvar: Array<UInt8>): Array<VariationAxis> {
+  try {
+    parseFvarAxes(fvar)
+  } catch {
+  | OutOfBounds _ -> Array[]
+  | exn -> throw exn
+  }
+}
+
+private fun parseFvarAxes(fvar: Array<UInt8>): Array<VariationAxis> {
+  if (fvar.size() < 16) {
+    return Array[]
+  };
+  axesOffset = u16(fvar, 4).toInt();
+  axisCount = u16(fvar, 8).toInt();
+  axisSize = u16(fvar, 10).toInt();
+  if (axisSize < 20) {
+    return Array[]
+  };
+  Array::fillBy(axisCount, i -> {
+    record = axesOffset + i * axisSize;
+    VariationAxis(
+      String::fromUtf8(fvar.slice(record, record + 4)),
+      fixed16dot16(fvar, record + 4),
+      fixed16dot16(fvar, record + 8),
+      fixed16dot16(fvar, record + 12),
+    )
+  })
+}
+
+/**
+ * Normalizes user axis values: each axis maps min, default, max to -1, 0,
+ * 1, then avar (if present) remaps the result. Axes not in values use their
+ * default.
+ */
+fun normalizeCoords(
+  axes: Array<VariationAxis>,
+  avar: Array<UInt8>,
+  values: Map<String, Float>,
+): VariationCoords {
+  normalized = axes.map(axis -> {
+    v = Math.clamp(
+      values.maybeGet(axis.tag).default(axis.defaultValue),
+      axis.minValue,
+      axis.maxValue,
+    );
+    n = if (v < axis.defaultValue) {
+      if (axis.defaultValue == axis.minValue) {
+        0.0
+      } else {
+        (v - axis.defaultValue) / (axis.defaultValue - axis.minValue)
+      }
+    } else if (v > axis.defaultValue) {
+      if (axis.maxValue == axis.defaultValue) {
+        0.0
+      } else {
+        (v - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
+      }
+    } else {
+      0.0
+    };
+    Math.round(n * f2dot14One.toFloat()).toInt()
+  });
+  VariationCoords(applyAvar(avar, normalized))
+}
+
+/**
+ * Applies the avar segment maps to normalized coordinates.
+ */
+private fun applyAvar(avar: Array<UInt8>, coords: Array<Int>): Array<Int> {
+  try {
+    applyAvarMaps(avar, coords)
+  } catch {
+  | OutOfBounds _ -> coords
+  | exn -> throw exn
+  }
+}
+
+private fun applyAvarMaps(avar: Array<UInt8>, coords: Array<Int>): Array<Int> {
+  if (avar.size() < 8) {
+    return coords
+  };
+  {
+    axisCount = u16(avar, 6).toInt();
+    if (axisCount != coords.size()) {
+      return coords
+    };
+    offset = 8;
+    result = Array::mcreateFromItems(coords);
+    for (axis in Range(0, axisCount)) {
+      count = u16(avar, offset).toInt();
+      maps = Array::fillBy(count, i ->
+        (f2dot14(avar, offset + 2 + 4 * i), f2dot14(avar, offset + 4 + 4 * i))
+      );
+      !offset = offset + 2 + 4 * count;
+      v = coords[axis];
+      // Piecewise linear interpolation between the map entries.
+      mapped = if (maps.size() < 2) {
+        v
+      } else {
+        out = maps[maps.size() - 1].i1;
+        found = false;
+        for (i in Range(1, maps.size())) {
+          (fromPrev, toPrev) = maps[i - 1];
+          (from, to) = maps[i];
+          if (!found && v <= from) {
+            !out = if (from == fromPrev) {
+              to
+            } else {
+              toPrev + (v - fromPrev) * (to - toPrev) / (from - fromPrev)
+            };
+            !found = true
+          }
+        };
+        if (v < maps[0].i0) maps[0].i1 else out
+      };
+      result.set(axis, mapped)
+    };
+    result.chill()
+  }
+}
+
+/**
+ * The scalar (2.14 fixed point, as a Float in [0, 1]) of a variation region
+ * for the given coordinates: the product of the per-axis tents.
+ */
+fun regionScalar(
+  coords: VariationCoords,
+  peaks: Array<Int>,
+  starts: Array<Int>,
+  ends: Array<Int>,
+): Float {
+  scalar = 1.0;
+  for (i in Range(0, peaks.size())) {
+    peak = peaks[i];
+    v = coords.values.maybeGet(i).default(0);
+    start = starts[i];
+    end = ends[i];
+    // In the order of the specification: an axis with a zero peak, or an
+    // invalid region, does not restrict the region (factor 1); a coordinate
+    // outside the region gives 0; otherwise the tent is interpolated.
+    axisScalar = if (peak == 0 || v == peak) {
+      1.0
+    } else if (start > peak || peak > end || (start < 0 && end > 0)) {
+      1.0
+    } else if (v <= start || v >= end) {
+      0.0
+    } else if (v < peak) {
+      (v - start).toFloat() / (peak - start).toFloat()
+    } else {
+      (end - v).toFloat() / (end - peak).toFloat()
+    };
+    !scalar = scalar * axisScalar
+  };
+  scalar
+}
+
+/**
+ * The default start/end of an intermediate region for a peak: from 0 to
+ * the peak.
+ */
+private fun defaultRegion(peaks: Array<Int>): (Array<Int>, Array<Int>) {
+  (peaks.map(p -> Math.min(p, 0)), peaks.map(p -> Math.max(p, 0)))
+}
+
+// Tuple variation header flags.
+const gvarEmbeddedPeak: Int = 0x8000;
+const gvarIntermediateRegion: Int = 0x4000;
+const gvarPrivatePointNumbers: Int = 0x2000;
+const gvarTupleIndexMask: Int = 0x0fff;
+const gvarSharedPointNumbers: Int = 0x8000;
+const gvarTupleCountMask: Int = 0x0fff;
+
+/**
+ * Reads packed point numbers; None() means all points.
+ */
+private fun gvarPoints(data: Array<UInt8>, at: Int): (?Array<Int>, Int) {
+  p = at;
+  count = data[p].toInt();
+  !p = p + 1;
+  if (count.and(0x80) != 0) {
+    !count = count.and(0x7f).shl(8).or(data[p].toInt());
+    !p = p + 1
+  };
+  if (count == 0) {
+    return (None(), p)
+  };
+  points = mutable Vector<Int>[];
+  last = 0;
+  while (points.size() < count) {
+    control = data[p].toInt();
+    !p = p + 1;
+    words = control.and(0x80) != 0;
+    run = control.and(0x7f) + 1;
+    for (_ in Range(0, run)) {
+      delta = if (words) {
+        d = u16(data, p).toInt();
+        !p = p + 2;
+        d
+      } else {
+        d = data[p].toInt();
+        !p = p + 1;
+        d
+      };
+      !last = last + delta;
+      points.push(last)
+    }
+  };
+  (Some(points.toArray()), p)
+}
+
+/**
+ * Reads count packed deltas.
+ */
+private fun gvarDeltas(
+  data: Array<UInt8>,
+  at: Int,
+  count: Int,
+): (Array<Int>, Int) {
+  p = at;
+  deltas = mutable Vector<Int>[];
+  while (deltas.size() < count) {
+    control = data[p].toInt();
+    !p = p + 1;
+    run = control.and(0x3f) + 1;
+    for (_ in Range(0, run)) {
+      if (control.and(0x80) != 0) {
+        deltas.push(0)
+      } else if (control.and(0x40) != 0) {
+        deltas.push(toInt16(u16(data, p)));
+        !p = p + 2
+      } else {
+        deltas.push(toInt8(data[p]));
+        !p = p + 1
+      }
+    }
+  };
+  (deltas.toArray().slice(0, count), p)
+}
+
+/**
+ * The accumulated (dx, dy) deltas, in font units, of the points of glyph g
+ * (its outline points followed by the 4 phantom points) for the given
+ * coordinates. origX/origY are the default positions of these points, and
+ * ends the contour ends, used to infer deltas for points without one.
+ */
+fun gvarDeltasFor(
+  gvar: Array<UInt8>,
+  g: Int,
+  coords: VariationCoords,
+  origX: Array<Int>,
+  origY: Array<Int>,
+  ends: Array<Int>,
+): (Array<Float>, Array<Float>) {
+  try {
+    gvarGlyphDeltas(gvar, g, coords, origX, origY, ends)
+  } catch {
+  | OutOfBounds _ -> throw FontFormatError("gvar: corrupt data")
+  | exn -> throw exn
+  }
+}
+
+private fun gvarGlyphDeltas(
+  gvar: Array<UInt8>,
+  g: Int,
+  coords: VariationCoords,
+  origX: Array<Int>,
+  origY: Array<Int>,
+  ends: Array<Int>,
+): (Array<Float>, Array<Float>) {
+  nPoints = origX.size();
+  dx = Array::mfill(nPoints, 0.0);
+  dy = Array::mfill(nPoints, 0.0);
+  if (gvar.size() < 20 || coords.isDefault()) {
+    return (dx.chill(), dy.chill())
+  };
+  {
+    axisCount = u16(gvar, 4).toInt();
+    sharedTupleCount = u16(gvar, 6).toInt();
+    sharedTuplesOffset = u32(gvar, 8).toInt();
+    glyphCount = u16(gvar, 12).toInt();
+    flags = u16(gvar, 14).toInt();
+    dataArrayOffset = u32(gvar, 16).toInt();
+    if (g >= glyphCount || axisCount != coords.values.size()) {
+      return (dx.chill(), dy.chill())
+    };
+    (start, end) = if (flags.and(1) != 0) {
+      (u32(gvar, 20 + 4 * g).toInt(), u32(gvar, 24 + 4 * g).toInt())
+    } else {
+      (2 * u16(gvar, 20 + 2 * g).toInt(), 2 * u16(gvar, 22 + 2 * g).toInt())
+    };
+    if (start >= end) {
+      return (dx.chill(), dy.chill())
+    };
+    glyphData = dataArrayOffset + start;
+    tupleCountField = u16(gvar, glyphData).toInt();
+    tupleCount = tupleCountField.and(gvarTupleCountMask);
+    serialized = glyphData + u16(gvar, glyphData + 2).toInt();
+    header = glyphData + 4;
+    sharedPoints: ?Array<Int> = None();
+    if (tupleCountField.and(gvarSharedPointNumbers) != 0) {
+      (!sharedPoints, !serialized) = gvarPoints(gvar, serialized)
+    };
+    for (_ in Range(0, tupleCount)) {
+      dataSize = u16(gvar, header).toInt();
+      tupleIndex = u16(gvar, header + 2).toInt();
+      !header = header + 4;
+      peaks = if (tupleIndex.and(gvarEmbeddedPeak) != 0) {
+        tuple = Array::fillBy(axisCount, i -> f2dot14(gvar, header + 2 * i));
+        !header = header + 2 * axisCount;
+        tuple
+      } else {
+        shared =
+          sharedTuplesOffset +
+          2 * axisCount * tupleIndex.and(gvarTupleIndexMask);
+        formatCheck(
+          tupleIndex.and(gvarTupleIndexMask) < sharedTupleCount,
+          "gvar: bad shared tuple index",
+        );
+        Array::fillBy(axisCount, i -> f2dot14(gvar, shared + 2 * i))
+      };
+      (starts, ends2) = if (tupleIndex.and(gvarIntermediateRegion) != 0) {
+        s = Array::fillBy(axisCount, i -> f2dot14(gvar, header + 2 * i));
+        e = Array::fillBy(axisCount, i ->
+          f2dot14(gvar, header + 2 * (axisCount + i))
+        );
+        !header = header + 4 * axisCount;
+        (s, e)
+      } else {
+        defaultRegion(peaks)
+      };
+      scalar = regionScalar(coords, peaks, starts, ends2);
+      tupleData = serialized;
+      !serialized = serialized + dataSize;
+      if (scalar != 0.0) {
+        (optPoints, deltaStart) = if (
+          tupleIndex.and(gvarPrivatePointNumbers) != 0
+        ) {
+          gvarPoints(gvar, tupleData)
+        } else {
+          (sharedPoints, tupleData)
+        };
+        optPoints match {
+        | None() ->
+          (xs, next) = gvarDeltas(gvar, deltaStart, nPoints);
+          (ys, _) = gvarDeltas(gvar, next, nPoints);
+          for (i in Range(0, nPoints)) {
+            dx.set(i, dx[i] + scalar * xs[i].toFloat());
+            dy.set(i, dy[i] + scalar * ys[i].toFloat())
+          }
+        | Some(points) ->
+          (xs, next) = gvarDeltas(gvar, deltaStart, points.size());
+          (ys, _) = gvarDeltas(gvar, next, points.size());
+          (tx, ty) = inferDeltas(points, xs, ys, origX, origY, ends);
+          for (i in Range(0, nPoints)) {
+            dx.set(i, dx[i] + scalar * tx[i]);
+            dy.set(i, dy[i] + scalar * ty[i])
+          }
+        }
+      }
+    };
+    (dx.chill(), dy.chill())
+  }
+}
+
+/**
+ * Expands deltas given for some points to all points: points with an
+ * explicit delta use it, the others are interpolated (IUP) from the nearest
+ * referenced points of their contour; phantom points without a delta get 0.
+ */
+private fun inferDeltas(
+  points: Array<Int>,
+  xs: Array<Int>,
+  ys: Array<Int>,
+  origX: Array<Int>,
+  origY: Array<Int>,
+  ends: Array<Int>,
+): (Array<Float>, Array<Float>) {
+  n = origX.size();
+  tx = Array::mfill(n, 0.0);
+  ty = Array::mfill(n, 0.0);
+  has = Array::mfill(n, false);
+  points.eachWithIndex((k, p) -> {
+    if (p < n) {
+      tx.set(p, tx[p] + xs[k].toFloat());
+      ty.set(p, ty[p] + ys[k].toFloat());
+      has.set(p, true)
+    }
+  });
+  start = 0;
+  for (end in ends) {
+    iupContour(start, end, has, tx, origX);
+    iupContour(start, end, has, ty, origY);
+    !start = end
+  };
+  (tx.chill(), ty.chill())
+}
+
+/**
+ * Infers the deltas of the points in [start, end) that have none, along
+ * one coordinate.
+ */
+private fun iupContour(
+  start: Int,
+  end: Int,
+  has: readonly Array<Bool>,
+  deltas: mutable Array<Float>,
+  orig: Array<Int>,
+): void {
+  refs = Range(start, end).filter(i -> has[i]).collect(Array);
+  if (refs.isEmpty() || refs.size() == end - start) {
+    return void
+  };
+  if (refs.size() == 1) {
+    // A single reference point shifts the whole contour.
+    d = deltas[refs[0]];
+    for (i in Range(start, end)) {
+      if (!has[i]) {
+        deltas.set(i, d)
+      }
+    };
+    return void
+  };
+  for (k in Range(0, refs.size())) {
+    r1 = refs[k];
+    r2 = refs[(k + 1) % refs.size()];
+    i = if (r1 + 1 == end) start else r1 + 1;
+    while (i != r2) {
+      deltas.set(
+        i,
+        interpolate(orig[i], orig[r1], orig[r2], deltas[r1], deltas[r2]),
+      );
+      !i = if (i + 1 == end) start else i + 1
+    }
+  }
+}
+
+private fun interpolate(v: Int, v1: Int, v2: Int, d1: Float, d2: Float): Float {
+  (lo, hi, dlo, dhi) = if (v1 <= v2) (v1, v2, d1, d2) else (v2, v1, d2, d1);
+  if (v <= lo) {
+    dlo
+  } else if (v >= hi) {
+    dhi
+  } else {
+    dlo + (v - lo).toFloat() * (dhi - dlo) / (hi - lo).toFloat()
+  }
+}
+
+/**
+ * The advance width delta of glyph g from the HVAR table, in font units.
+ */
+fun hvarAdvanceDelta(
+  hvar: Array<UInt8>,
+  g: Int,
+  coords: VariationCoords,
+): Float {
+  if (hvar.size() < 20 || coords.isDefault()) {
+    0.0
+  } else {
+    try {
+      hvarDelta(hvar, g, coords)
+    } catch {
+    | OutOfBounds _ -> 0.0
+    | exn -> throw exn
+    }
+  }
+}
+
+private fun hvarDelta(
+  hvar: Array<UInt8>,
+  g: Int,
+  coords: VariationCoords,
+): Float {
+  {
+    storeOffset = u32(hvar, 4).toInt();
+    mapOffset = u32(hvar, 8).toInt();
+    (outer, inner) = if (mapOffset == 0) {
+      (0, g)
+    } else {
+      deltaSetIndex(hvar, mapOffset, g)
+    };
+    itemVariationDelta(hvar, storeOffset, outer, inner, coords)
+  }
+}
+
+/**
+ * Maps a glyph to an (outer, inner) delta set index through a
+ * DeltaSetIndexMap; glyphs past the end use the last entry.
+ */
+private fun deltaSetIndex(data: Array<UInt8>, at: Int, g: Int): (Int, Int) {
+  format = data[at].toInt();
+  entryFormat = data[at + 1].toInt();
+  (count, entries) = if (format == 0) {
+    (u16(data, at + 2).toInt(), at + 4)
+  } else {
+    (u32(data, at + 2).toInt(), at + 6)
+  };
+  entrySize = entryFormat.and(0x30).shr(4) + 1;
+  innerBits = entryFormat.and(0x0f) + 1;
+  i = Math.min(g, count - 1);
+  v = 0;
+  for (b in Range(0, entrySize)) {
+    !v = v.shl(8).or(data[entries + i * entrySize + b].toInt())
+  };
+  (v.shr(innerBits), v.and(1.shl(innerBits) - 1))
+}
+
+/**
+ * The delta of item (outer, inner) of an item variation store.
+ */
+fun itemVariationDelta(
+  data: Array<UInt8>,
+  store: Int,
+  outer: Int,
+  inner: Int,
+  coords: VariationCoords,
+): Float {
+  regionList = store + u32(data, store + 2).toInt();
+  dataCount = u16(data, store + 6).toInt();
+  if (outer >= dataCount) {
+    return 0.0
+  };
+  itemData = store + u32(data, store + 8 + 4 * outer).toInt();
+  itemCount = u16(data, itemData).toInt();
+  wordDeltaCount = u16(data, itemData + 2).toInt();
+  regionIndexCount = u16(data, itemData + 4).toInt();
+  if (inner >= itemCount) {
+    return 0.0
+  };
+  longWords = wordDeltaCount.and(0x8000) != 0;
+  wordCount = wordDeltaCount.and(0x7fff);
+  (wordSize, smallSize) = if (longWords) (4, 2) else (2, 1);
+  rowSize = wordCount * wordSize + (regionIndexCount - wordCount) * smallSize;
+  row = itemData + 6 + 2 * regionIndexCount + inner * rowSize;
+  axisCount = u16(data, regionList).toInt();
+  regionCount = u16(data, regionList + 2).toInt();
+  delta = 0.0;
+  p = row;
+  for (k in Range(0, regionIndexCount)) {
+    d = if (k < wordCount) {
+      v = if (longWords) {
+        x = u32(data, p).toInt();
+        if (x >= 0x80000000) x - 0x100000000 else x
+      } else {
+        toInt16(u16(data, p))
+      };
+      !p = p + wordSize;
+      v
+    } else {
+      v = if (longWords) toInt16(u16(data, p)) else toInt8(data[p]);
+      !p = p + smallSize;
+      v
+    };
+    regionIndex = u16(data, itemData + 6 + 2 * k).toInt();
+    if (regionIndex < regionCount && d != 0) {
+      region = regionList + 4 + regionIndex * axisCount * 6;
+      starts = Array::fillBy(axisCount, a -> f2dot14(data, region + 6 * a));
+      peaks = Array::fillBy(axisCount, a -> f2dot14(data, region + 6 * a + 2));
+      ends = Array::fillBy(axisCount, a -> f2dot14(data, region + 6 * a + 4));
+      !delta = delta + regionScalar(coords, peaks, starts, ends) * d.toFloat()
+    }
+  };
+  delta
+}
+
+module end;

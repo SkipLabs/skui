@@ -204,6 +204,21 @@ class Font{
    * of glyf outlines.
    */
   optCff: ?Cff = None(),
+  /**
+   * Variation tables, for variable fonts.
+   */
+  avar: Array<UInt8> = Array[],
+  gvar: Array<UInt8> = Array[],
+  hvar: Array<UInt8> = Array[],
+  /**
+   * The variation axes (fvar), empty for a non-variable font.
+   */
+  axes: Array<VariationAxis> = Array[],
+  /**
+   * The normalized coordinates of the instance of a variable font, see
+   * withVariation. The default instance has all coordinates at 0.
+   */
+  coords: VariationCoords = VariationCoords(Array[]),
   //
   cmapIndexes: Array<UInt8> = Array[],
   /**
@@ -261,7 +276,30 @@ class Font{
       this.maxStackElements == other.maxStackElements &&
       this.maxTwilightPoints == other.maxTwilightPoints &&
       this.fpgm.size() == other.fpgm.size() &&
-      this.prep.size() == other.prep.size()
+      this.prep.size() == other.prep.size() &&
+      this.coords == other.coords
+  }
+
+  /**
+   * Returns the instance of this variable font at the given axis values,
+   * in user units (e.g. "wght" -> 700.0). Axes not listed keep their
+   * default value; values are clamped to the axis range. For a non-variable
+   * font, returns the font unchanged.
+   */
+  fun withVariation(values: Map<String, Float>): Font {
+    if (this.axes.isEmpty()) {
+      return this
+    };
+    font = this;
+    !font.coords = normalizeCoords(this.axes, this.avar, values);
+    font
+  }
+
+  /**
+   * Whether this is a variable font instance away from the default.
+   */
+  fun isVaried(): Bool {
+    !this.coords.isDefault()
   }
 
   fun getIndex(c: Char): ?UInt16 {
@@ -365,6 +403,10 @@ class Font{
    */
   fun getHMetric(scale: Fixed.Int26_6, i: UInt16): HMetric {
     h = this.unscaledHMetric(i);
+    if (this.isVaried()) {
+      delta = hvarAdvanceDelta(this.hvar, i.toInt(), this.coords);
+      !h.advanceWidth = h.advanceWidth + fixed26_6(Math.round(delta).toInt())
+    };
     !h.advanceWidth = fixed26_6(
       this.scale(scale.value.toInt() * h.advanceWidth.value.toInt()),
     );
@@ -566,6 +608,10 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
   vhea: Array<UInt8> = Array[];
   vmtx: Array<UInt8> = Array[];
   cff: Array<UInt8> = Array[];
+  fvar: Array<UInt8> = Array[];
+  avar: Array<UInt8> = Array[];
+  gvar: Array<UInt8> = Array[];
+  hvar: Array<UInt8> = Array[];
   for (i in .Range(0, n)) {
     x = (16 * i) + offset;
     // Table tags are compared as big-endian uint32 values.
@@ -609,11 +655,20 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
       !vmtx = table // "vmtx"
     | 0x43464620 ->
       !cff = table // "CFF "
+    | 0x66766172 ->
+      !fvar = table // "fvar"
+    | 0x61766172 ->
+      !avar = table // "avar"
+    | 0x67766172 ->
+      !gvar = table // "gvar"
+    | 0x48564152 ->
+      !hvar = table // "HVAR"
     | _ -> void
     }
   };
   (fUnitsPerEm, bounds, locaOffsetFormat) = parseHead(head);
   optCff = parseCff(cff);
+  axes = parseFvar(fvar);
   (
     nGlyph,
     maxTwilightPoints,
@@ -666,6 +721,11 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
     nKern,
     gposKernSubtables,
     optCff,
+    avar,
+    gvar,
+    hvar,
+    axes => axes,
+    coords => VariationCoords(axes.map(_ -> 0)),
     fUnitsPerEm,
     /**
      * In FUnits.

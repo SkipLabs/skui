@@ -14,6 +14,7 @@ class Face{
   optHinterState: ?HinterState = None(),
 } extends Font.Face {
   static fun make(font: Font, options: Font.Options): Face {
+    !font = font.withVariation(options.variation);
     scale = fixed26_6(
       (0.5 + (options.getSize() * options.getDpi() * 64.0 / 72.0)).toInt(),
     );
