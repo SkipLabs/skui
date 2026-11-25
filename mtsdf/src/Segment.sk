@@ -586,7 +586,7 @@ class CubicSegment{
         epDir.dotProduct(epDir);
     };
     // Iterative minimum distance search
-    for (i in Range(0, cubicSearchStarts)) {
+    for (i in Range(0, cubicSearchStarts + 1)) {
       t = i.toFloat() / cubicSearchStarts.toFloat();
       qe = qa + ab.mult(3.0 * t) + br.mult(3.0 * t * t) + asv.mult(t * t * t);
       for (_step in Range(0, cubicSearchSteps)) {

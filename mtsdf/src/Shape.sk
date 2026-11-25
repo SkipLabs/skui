@@ -144,7 +144,7 @@ class Shape(contours: Array<Contour>, inverseYAxis: Bool) uses Equality {
     (!l, !b, !r, !t) = this.bound(l, b, r, t);
     if (border > 0.0) {
       !l = l - border;
-      !b = l - border;
+      !b = b - border;
       !r = r + border;
       !t = t + border;
       if (miterLimit > 0.0) {
@@ -226,7 +226,7 @@ class Shape(contours: Array<Contour>, inverseYAxis: Bool) uses Equality {
           }
         };
         // Inspect scanline and deduce orientations of intersected contours
-        for (j in Range(1, intersections.size())) {
+        for (j in Range(0, intersections.size())) {
           pIn = intersections[j];
           if (pIn.direction != 0) {
             cIdx = pIn.optContour.fromSome();

@@ -104,17 +104,18 @@ mutable class ShapeDistanceChecker(
     projection: Projection,
     invRange: Float,
     minImproveRatio: Float,
-    mode: Mode,
     overlapping: Bool,
   ): mutable ShapeDistanceChecker {
+    // The exact distance is always a single pseudo-distance, whatever the
+    // number of channels of the distance field.
     mutable ShapeDistanceChecker(
       sdf,
       invRange,
       minImproveRatio,
       ShapeDistanceFinder::make(
         shape,
-        if (overlapping) OverlappingSelectors::make(shape, mode) else {
-          SimpleSelectors::make(shape, mode)
+        if (overlapping) OverlappingSelectors::make(shape, Pseudo()) else {
+          SimpleSelectors::make(shape, Pseudo())
         },
       ),
       projection.unscaleVector(Vector2(1.0, 1.0)),
