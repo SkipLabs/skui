@@ -69,8 +69,18 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKStore.Key {
     GlyphID(fid, char, pxRange);
   }
 
-  fun scale(s: Float): GlyphID {
-    !this.fid.size = this.fid.size * s;
+  /**
+   * The id of the MSDF used to draw this glyph at the given device pixel
+   * ratio. An MSDF does not depend on the size it is drawn at, so unhinted
+   * glyphs share one MSDF generated at msdfSize. Hinting adapts the outline
+   * to a size, so hinted glyphs have one MSDF per device size.
+   */
+  fun msdfID(ratio: Float): GlyphID {
+    !this.fid.size = if (this.fid.hinting == HintingNone()) {
+      msdfSize
+    } else {
+      this.fid.size * ratio
+    };
     this
   }
 
@@ -97,9 +107,19 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKStore.Key {
   }
 }
 
+/**
+ * The font size the MSDFs of unhinted glyphs are generated at.
+ */
+const msdfSize: Float = 45.0;
+
 class Msdf(
   image: Ui.Image,
   conv: Geometry.Rect ~> Geometry.Rect,
+  /**
+   * Returns the rectangle of the image for a shape whose origin is the top
+   * left of the given rectangle, drawn at the given scale.
+   */
+  place: (Geometry.Rect, Float) ~> Geometry.Rect,
 ) extends SKStore.File {
   //
   static fun make(
@@ -107,7 +127,18 @@ class Msdf(
     info: (Ui.Image, (Geometry.Rect, Float) ~> Geometry.Rect),
     scale: Float = 1.0,
   ): this {
-    static(info.i0, r ~> info.i1(r, scale))
+    static(info.i0, r ~> info.i1(r, scale), info.i1)
+  }
+
+  /**
+   * The rectangle of the image of a glyph MSDF whose origin (pen position
+   * on the baseline) is at origin, drawn at the given scale.
+   */
+  fun glyphRect(origin: Geometry.Offset, scale: Float): Geometry.Rect {
+    this.place(
+      Geometry.Rect::fromOffsetSize(origin, Geometry.Size(0.0, 0.0)),
+      scale,
+    )
   }
 }
 

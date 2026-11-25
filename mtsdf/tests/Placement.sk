@@ -1,0 +1,80 @@
+module SKUIMTSDFTest;
+
+// The framework draws text with MSDFs generated at a single size and scaled
+// to the drawn size. The MSDF outline is relative to the glyph origin (pen
+// position on the baseline), so that the glyph is placed exactly at any
+// size. Relative to the integer top left of the glyph image, as the glyph
+// path is, the baseline of each glyph would move by a different fraction of
+// a pixel.
+
+fun liberationGlyph(size: Float, c: Char): Font.Glyph {
+  TrueType.Face::make(
+    TrueType.parse(SKIP_SKUIFontTestsRes.liberationBin()),
+    Font.Options{size, dpi => 72.0},
+  )
+    .getGlyph(c)
+    .fromSome()
+}
+
+// The top left of the outline of c at size, relative to the glyph origin.
+fun outlineTopLeft(glyph: Font.Glyph, origin: Bool): MTSDF.Vector2 {
+  path = glyph.optPath.fromSome();
+  !path = if (origin) path.translate(glyph.topLeft()) else path;
+  (l, t, _, _) = MTSDF.Shape::fromPath(path).getBounds();
+  MTSDF.Vector2(l, t)
+}
+
+// The top left of the outline of c drawn at size, with its origin at
+// (0, 0), from the MSDF generated at msdfSize.
+fun drawnTopLeft(msdfSize: Float, size: Float, c: Char): MTSDF.Vector2 {
+  glyph = liberationGlyph(msdfSize, c);
+  shape = MTSDF.Shape::fromPath(
+    glyph.optPath.fromSome().translate(glyph.topLeft()),
+  );
+  (_, place) = MTSDF.toMSDF{shape, pxRange => 8};
+  (translate, _, _, _) = MTSDF.check(shape.normalize(), 8);
+  scale = size / msdfSize;
+  rect = place(Geometry.Rect(0.0, 0.0, 0.0, 0.0), scale);
+  // The image pixel of a shape point p is p + translate.
+  outline = outlineTopLeft(glyph, true);
+  MTSDF.Vector2(
+    rect.left + (outline.x + translate.x) * scale,
+    rect.top + (outline.y + translate.y) * scale,
+  )
+}
+
+// The top of the outline of c drawn at size from the MSDF generated at
+// msdfSize with an outline relative to the integer top left of its image,
+// with the image placed at the integer top left of the glyph at size.
+fun imageAnchoredTop(msdfSize: Float, size: Float, c: Char): Float {
+  scale = size / msdfSize;
+  liberationGlyph(size, c).topLeft().dy +
+    outlineTopLeft(liberationGlyph(msdfSize, c), false).y * scale
+}
+
+@test
+fun msdfGlyphPlacement(): void {
+  maxImageAnchoredError = 0.0;
+  for (size in Array[11.0, 13.0, 14.0, 17.0, 60.0]) {
+    for (c in "aeoxnsuHgy".chars()) {
+      // The outline rendered by the font at size, without rounding.
+      expected = outlineTopLeft(liberationGlyph(size, c), true);
+      // Fixed point outlines are rounded to 1/64 pixel at each size.
+      expectLikes(
+        drawnTopLeft(45.0, size, c),
+        expected,
+        Some(`${c} at ${size}`),
+        0.02,
+      );
+      !maxImageAnchoredError = Math.max(
+        maxImageAnchoredError,
+        Math.abs(imageAnchoredTop(45.0, size, c) - expected.y),
+      );
+    }
+  };
+  // Anchored at the integer top left of the image, glyphs are off by up to
+  // half a pixel.
+  expectEquals(maxImageAnchoredError > 0.25, true, Some("image anchored"));
+}
+
+module end;
