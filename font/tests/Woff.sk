@@ -1,0 +1,126 @@
+module SKUIFontTest;
+
+// Returns (tag, content) for each table of SFNT data, in directory order.
+fun sfntTables(ttf: Array<UInt8>): Array<(Int, Array<UInt8>)> {
+  n = TrueType.u16(ttf, 4).toInt();
+  Array::fillBy(n, i -> {
+    record = 12 + 16 * i;
+    offset = TrueType.u32(ttf, record + 8).toInt();
+    length = TrueType.u32(ttf, record + 12).toInt();
+    (TrueType.u32(ttf, record).toInt(), ttf.slice(offset, offset + length))
+  })
+}
+
+@test
+fun woffToSfnt(): void {
+  // The WOFF test file was built from liberation.bin: converting it back
+  // must give the same tables, with the same content. The tables may be
+  // laid out in another order than in the original file.
+  ttf = SKIP_SKUIFontTestsRes.liberationBin();
+  woff = SKIP_SKUIFontTestsRes.liberationWoffBin();
+  expectEqualsAt(TrueType.isWoff(woff), true, "isWoff");
+  expectEqualsAt(TrueType.isWoff(ttf), false, "isWoff ttf");
+  sfnt = TrueType.woffToSfnt(woff);
+  expectEqualsAt(TrueType.u32(sfnt, 0), TrueType.u32(ttf, 0), "flavor");
+  expected = sfntTables(ttf);
+  actual = sfntTables(sfnt);
+  expectEqualsAt(actual.size(), expected.size(), "numTables");
+  expected.eachWithIndex((i, table) -> {
+    (tag, content) = table;
+    (actualTag, actualContent) = actual[i];
+    expectEqualsAt(actualTag, tag, `tag ${i}`);
+    expectEqualsAt(actualContent == content, true, `table ${i}`)
+  })
+}
+
+@testr
+fun woffParse(r: String ~> TrueType.Font): void {
+  font = r("liberationWoff");
+  expectEqualsAt(font.fUnitsPerEm.toInt(), 2048, "upem");
+  expectEqualsAt(font.getIndex('A').map(i -> i.toInt()), Some(36), "A");
+  expectEqualsAt(unscaledKern(font, 'A', 'V'), -152, "AV");
+  g = mutable TrueType.GlyphBuf{};
+  !g = g.load(font, font.fupe(), 36, Font.HintingNone());
+  expectEqualsAt(g.points.isEmpty(), false, "glyph A");
+}
+
+@test
+fun inflateStoredAndFixed(): void {
+  // zlib streams produced by a reference zlib encoder.
+  // "hello hello hello" with fixed Huffman codes.
+  fixed = uint8(
+    Array[
+      0x78,
+      0xda,
+      0xcb,
+      0x48,
+      0xcd,
+      0xc9,
+      0xc9,
+      0x57,
+      0xc8,
+      0x40,
+      0x90,
+      0x00,
+      0x3a,
+      0x2e,
+      0x06,
+      0x7d,
+    ],
+  );
+  expectEqualsAt(
+    String::fromUtf8(TrueType.zlibDecompress(fixed, 17)),
+    "hello hello hello",
+    "fixed",
+  );
+  // "abc" as a stored (uncompressed) block.
+  stored = uint8(
+    Array[
+      0x78,
+      0x01,
+      0x01,
+      0x03,
+      0x00,
+      0xfc,
+      0xff,
+      0x61,
+      0x62,
+      0x63,
+      0x02,
+      0x4d,
+      0x01,
+      0x27,
+    ],
+  );
+  expectEqualsAt(
+    String::fromUtf8(TrueType.zlibDecompress(stored, 3)),
+    "abc",
+    "stored",
+  );
+}
+
+@test
+fun woffMalformed(): void {
+  expectFormatError("WOFF2", () ->
+    _ = TrueType.woffToSfnt(
+      uint8(Array[0x77, 0x4f, 0x46, 0x32].concat(Array::fill(40, 0))),
+    )
+  );
+  expectFormatError("short WOFF", () ->
+    _ = TrueType.parse(uint8(Array[0x77, 0x4f, 0x46, 0x46, 0, 0]))
+  );
+  // A corrupted compressed table.
+  woff = Array::mcreateFromItems(SKIP_SKUIFontTestsRes.liberationWoffBin());
+  // Damage the data of the first table entry.
+  firstTable = TrueType.u32(woff.chill(), 44 + 4).toInt();
+  for (k in Range(2, 32)) {
+    woff.set(firstTable + k, .uint8(0xff))
+  };
+  expectFormatError("corrupt table", () -> _ = TrueType.parse(woff.chill()));
+  // Not zlib data at all.
+  expectFormatError("zlib header", () ->
+    _ = TrueType.zlibDecompress(uint8(Array[0, 0, 0, 0]), 4)
+  );
+}
+
+module end;

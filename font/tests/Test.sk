@@ -87,6 +87,7 @@ untracked fun main(): void {
     | "xdvso" -> p(SKIP_SKUIFontTestsRes.xdvsoBin)
     | "xtnr" -> p(SKIP_SKUIFontTestsRes.xtnrBin)
     | "liberation" -> p(SKIP_SKUIFontTestsRes.liberationBin)
+    | "liberationWoff" -> p(SKIP_SKUIFontTestsRes.liberationWoffBin)
     | _ -> invariant_violation(`Unknown resource named ${name}`)
     };
   };

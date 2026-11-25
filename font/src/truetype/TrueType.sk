@@ -486,11 +486,12 @@ class Font{
 }
 
 /**
- * Parse returns a new Font for the given TTF or TTC data.
+ * Parse returns a new Font for the given TTF, TTC or WOFF data.
  *
  * For TrueType Collections, the first font in the collection is parsed.
  */
-fun parse(ttf: Array<UInt8>): Font {
+fun parse(data: Array<UInt8>): Font {
+  ttf = if (isWoff(data)) woffToSfnt(data) else data;
   font = parseAt(ttf, 0, false);
   // FNV-1a hash of the data, used as a cheap font identity.
   hash = 0xcbf29ce484222325;
