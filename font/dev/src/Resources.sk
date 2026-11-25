@@ -21,4 +21,8 @@ native fun xdvsoBin(): Array<UInt8>;
 @cpp_extern("SKIP_resources_tests_xtnr_bin")
 native fun xtnrBin(): Array<UInt8>;
 
+// Liberation Sans Regular (SIL OFL 1.1), from the fonts-liberation package.
+@cpp_extern("SKIP_resources_tests_liberation_bin")
+native fun liberationBin(): Array<UInt8>;
+
 module end;
