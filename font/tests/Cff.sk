@@ -1,0 +1,537 @@
+module SKUIFontTest;
+
+// A minimal CFF-flavored OpenType font (384 bytes) built for these tests,
+// with units per em 1000, nominalWidthX 500 and defaultWidthX 600:
+// - glyph 1 'A': a square (hstem hint, rmoveto, hlineto, vlineto), with an
+//   explicit charstring width of 500 + 200;
+// - glyph 2 'B': a local subroutine (rlineto), a global subroutine
+//   (rrcurveto), hvcurveto, hhcurveto and vvcurveto, with the default width.
+// Expected outlines were decoded independently from the font data.
+fun testCffFont(): Array<UInt8> {
+  uint8(
+    Array[
+      0x4f,
+      0x54,
+      0x54,
+      0x4f,
+      0x00,
+      0x06,
+      0x00,
+      0x40,
+      0x00,
+      0x02,
+      0x00,
+      0x20,
+      0x43,
+      0x46,
+      0x46,
+      0x20,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x6c,
+      0x00,
+      0x00,
+      0x00,
+      0x71,
+      0x63,
+      0x6d,
+      0x61,
+      0x70,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0xe0,
+      0x00,
+      0x00,
+      0x00,
+      0x2c,
+      0x68,
+      0x65,
+      0x61,
+      0x64,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x0c,
+      0x00,
+      0x00,
+      0x00,
+      0x36,
+      0x68,
+      0x68,
+      0x65,
+      0x61,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x44,
+      0x00,
+      0x00,
+      0x00,
+      0x24,
+      0x68,
+      0x6d,
+      0x74,
+      0x78,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x68,
+      0x00,
+      0x00,
+      0x00,
+      0x0c,
+      0x6d,
+      0x61,
+      0x78,
+      0x70,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x74,
+      0x00,
+      0x00,
+      0x00,
+      0x06,
+      0x01,
+      0x00,
+      0x04,
+      0x01,
+      0x00,
+      0x01,
+      0x01,
+      0x01,
+      0x05,
+      0x54,
+      0x65,
+      0x73,
+      0x74,
+      0x00,
+      0x01,
+      0x01,
+      0x01,
+      0x0e,
+      0x1d,
+      0x00,
+      0x00,
+      0x00,
+      0x2e,
+      0x11,
+      0x93,
+      0x1d,
+      0x00,
+      0x00,
+      0x00,
+      0x60,
+      0x12,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x01,
+      0x01,
+      0x09,
+      0xbd,
+      0x8b,
+      0xbd,
+      0xbd,
+      0x8b,
+      0xbd,
+      0x08,
+      0x0b,
+      0x00,
+      0x03,
+      0x01,
+      0x01,
+      0x02,
+      0x14,
+      0x2c,
+      0x0e,
+      0xf7,
+      0x5c,
+      0x8b,
+      0xbd,
+      0x01,
+      0xef,
+      0x8b,
+      0x15,
+      0xf8,
+      0x24,
+      0x06,
+      0xf8,
+      0x88,
+      0x07,
+      0xfc,
+      0x24,
+      0x06,
+      0x0e,
+      0xef,
+      0xef,
+      0x15,
+      0x20,
+      0x0a,
+      0x20,
+      0x1d,
+      0xa9,
+      0x95,
+      0x9f,
+      0xb3,
+      0x1f,
+      0x90,
+      0x95,
+      0x9f,
+      0xa9,
+      0xb3,
+      0x1b,
+      0x77,
+      0x6d,
+      0x81,
+      0x63,
+      0x1a,
+      0x0e,
+      0xf8,
+      0xec,
+      0x14,
+      0xf8,
+      0x88,
+      0x15,
+      0x93,
+      0x13,
+      0x00,
+      0x01,
+      0x01,
+      0x01,
+      0x05,
+      0x8b,
+      0x27,
+      0x05,
+      0x0b,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x00,
+      0x03,
+      0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+      0x0c,
+      0x00,
+      0x04,
+      0x00,
+      0x20,
+      0x00,
+      0x00,
+      0x00,
+      0x04,
+      0x00,
+      0x04,
+      0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+      0x42,
+      0xff,
+      0xff,
+      0x00,
+      0x00,
+      0x00,
+      0x41,
+      0xff,
+      0xff,
+      0xff,
+      0xc0,
+      0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x5f,
+      0x0f,
+      0x3c,
+      0xf5,
+      0x00,
+      0x00,
+      0x03,
+      0xe8,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0xff,
+      0x38,
+      0x03,
+      0xe8,
+      0x03,
+      0x20,
+      0x00,
+      0x00,
+      0x00,
+      0x08,
+      0x00,
+      0x02,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x03,
+      0x20,
+      0xff,
+      0x38,
+      0x00,
+      0x00,
+      0x03,
+      0xe8,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x03,
+      0x01,
+      0xf4,
+      0x00,
+      0x00,
+      0x02,
+      0xbc,
+      0x00,
+      0x64,
+      0x02,
+      0x58,
+      0x00,
+      0x64,
+      0x00,
+      0x00,
+      0x50,
+      0x00,
+      0x00,
+      0x03,
+      0x00,
+      0x00,
+    ],
+  )
+}
+
+@test
+fun cffParse(): void {
+  font = TrueType.parse(testCffFont());
+  expectEqualsAt(font.optCff.isSome(), true, "CFF");
+  expectEqualsAt(font.nGlyph, 3, "nGlyph");
+  expectEqualsAt(font.fUnitsPerEm.toInt(), 1000, "upem");
+  expectEqualsAt(font.getIndex('A').map(i -> i.toInt()), Some(1), "A");
+  expectEqualsAt(font.getIndex('B').map(i -> i.toInt()), Some(2), "B");
+}
+
+fun cffOutline(g: Int): Array<(Int, Int, Bool)> {
+  font = TrueType.parse(testCffFont());
+  glyph = TrueType.cffGlyph(font.optCff.fromSome(), g);
+  glyph.contours
+    .map(contour -> contour.map(p -> (p.x.toInt(), p.y.toInt(), p.onCurve)))
+    .flatten()
+}
+
+@test
+fun cffGlyphLines(): void {
+  font = TrueType.parse(testCffFont());
+  glyph = TrueType.cffGlyph(font.optCff.fromSome(), 1);
+  expectEqualsAt(glyph.contours.size(), 1, "contours");
+  expectEqualsAt(
+    cffOutline(1),
+    Array[(100, 0, true), (500, 0, true), (500, 500, true), (100, 500, true)],
+    "A",
+  );
+  // nominalWidthX + 200.
+  expectEqualsAt(glyph.advanceWidth, 700, "width");
+}
+
+@test
+fun cffGlyphCurves(): void {
+  font = TrueType.parse(testCffFont());
+  glyph = TrueType.cffGlyph(font.optCff.fromSome(), 2);
+  expectEqualsAt(
+    cffOutline(2),
+    Array[
+      (100, 100, true),
+      // Local subroutine: rlineto.
+      (100, 0, true),
+      // Global subroutine: rrcurveto.
+      (150, 0, false),
+      (200, 50, false),
+      (200, 100, true),
+      // hvcurveto.
+      (230, 100, false),
+      (240, 120, false),
+      (240, 160, true),
+      // hhcurveto with a first dy.
+      (250, 165, false),
+      (270, 195, false),
+      (310, 195, true),
+      // vvcurveto with a first dx.
+      (310, 175, false),
+      (280, 165, false),
+      (280, 125, true),
+    ],
+    "B",
+  );
+  // No width in the charstring: defaultWidthX.
+  expectEqualsAt(glyph.advanceWidth, 600, "width");
+}
+
+@test
+fun cffGlyphBuf(): void {
+  // Loading through GlyphBuf scales the outline and takes the advance from
+  // hmtx; hinting is never applied to CFF outlines.
+  font = TrueType.parse(testCffFont());
+  for (hinting in Array[Font.HintingNone(), Font.HintingFull()]) {
+    g = mutable TrueType.GlyphBuf{};
+    !g = g.load(font, font.fupe(), 1, hinting);
+    expectEqualsAt(
+      g.points.map(p -> (p.x.asInt(), p.y.asInt())).collect(Array),
+      Array[(100, 0), (500, 0), (500, 500), (100, 500)],
+      `points ${hinting}`,
+    );
+    expectEqualsAt(g.ends.collect(Array), Array[4], `ends ${hinting}`);
+    expectEqualsAt(g.advanceWidth.asInt(), 700, `advance ${hinting}`);
+  }
+}
+
+@test
+fun cffDraw(): void {
+  // Drawing a CFF glyph gives cubic curves.
+  font = TrueType.parse(testCffFont());
+  face = TrueType.Face::make(
+    font,
+    Font.Options{size => 1000.0 * 72.0 / 96.0, dpi => 96.0},
+  );
+  glyph = face.getGlyph('B').fromSome();
+  elements = glyph.optPath.fromSome().elements;
+  cubics = elements.filter(e ->
+    e match {
+    | Shape.CubicCurveTo _ -> true
+    | _ -> false
+    }
+  );
+  expectEqualsAt(cubics.size(), 4, "cubic curves");
+  expectEqualsAt(
+    elements.any(e ->
+      e match {
+      | Shape.QuadCurveTo _ -> true
+      | _ -> false
+      }
+    ),
+    false,
+    "no quadratic curves",
+  );
+}
+
+@test
+fun cffMalformed(): void {
+  // A charstring calling a missing subroutine.
+  data = Array::mcreateFromItems(testCffFont());
+  cffStart = tableOffset(testCffFont(), "CFF ");
+  // Turn the global subroutine call of 'B' into a call to subroutine 1.
+  font = TrueType.parse(testCffFont());
+  cff = font.optCff.fromSome();
+  b = cff.charStrings.starts[2];
+  found = false;
+  for (k in Range(b, cff.charStrings.ends[2] - 1)) {
+    // -107 is encoded as 32; it is followed by callgsubr (29).
+    if (!found && cff.data[k].toInt() == 32 && cff.data[k + 1].toInt() == 29) {
+      data.set(cffStart + k, .uint8(33));
+      !found = true
+    }
+  };
+  expectEqualsAt(found, true, "callgsubr found");
+  broken = TrueType.parse(data.chill());
+  expectFormatError("bad subroutine", () ->
+    _ = TrueType.cffGlyph(broken.optCff.fromSome(), 2)
+  );
+  // Truncated CFF data.
+  expectFormatError("truncated", () ->
+    _ = TrueType.parseCff(uint8(Array[1, 0, 4, 1, 0, 1, 1]))
+  );
+}
+
+module end;

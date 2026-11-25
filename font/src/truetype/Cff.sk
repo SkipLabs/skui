@@ -1,0 +1,743 @@
+module TrueType;
+
+/**
+ * Glyph outlines from the OpenType 'CFF ' table (Compact Font Format 1,
+ * Type 2 charstrings), the outline format of most .otf fonts.
+ *
+ * Only what is needed to draw glyphs is read: the charstrings, the global
+ * and local subroutines (including CID-keyed fonts, with one set of local
+ * subroutines per font dict), and the Private DICT width values. Hints are
+ * parsed and ignored. Outlines are cubic Bézier curves, in font units.
+ *
+ * References: Adobe Technical Notes #5176 (CFF) and #5177 (Type 2
+ * charstrings).
+ */
+
+// Operators of the Top DICT and Private DICT.
+const cffOpCharStrings: Int = 17;
+const cffOpPrivate: Int = 18;
+const cffOpSubrs: Int = 19;
+const cffOpDefaultWidthX: Int = 20;
+const cffOpNominalWidthX: Int = 21;
+const cffOpCharstringType: Int = 1206; // 12 6
+const cffOpFDArray: Int = 1236; // 12 36
+const cffOpFDSelect: Int = 1237; // 12 37
+
+// Limits from the Type 2 charstring specification.
+const cffMaxStack: Int = 48;
+const cffMaxSubrDepth: Int = 10;
+
+/**
+ * An INDEX: the offsets of its items in the CFF data, end exclusive.
+ */
+class CffIndex(starts: Array<Int>, ends: Array<Int>, end: Int) {
+  fun size(): Int {
+    this.starts.size()
+  }
+}
+
+/**
+ * The subroutines and widths used by the charstrings of one font dict.
+ */
+class CffPrivate(subrs: CffIndex, defaultWidthX: Int, nominalWidthX: Int) {}
+
+class Cff(
+  data: Array<UInt8>,
+  charStrings: CffIndex,
+  globalSubrs: CffIndex,
+  // One Private DICT for a name-keyed font, one per font dict for a
+  // CID-keyed font.
+  privates: Array<CffPrivate>,
+  // For CID-keyed fonts, the font dict index of each glyph.
+  fdSelect: Array<Int>,
+) {
+  fun nGlyph(): Int {
+    this.charStrings.size()
+  }
+
+  fun privateFor(glyph: Int): CffPrivate {
+    if (this.fdSelect.isEmpty()) {
+      this.privates[0]
+    } else {
+      this.privates[this.fdSelect[glyph]]
+    }
+  }
+}
+
+/**
+ * Parses the CFF table, or returns None() if it is empty.
+ */
+fun parseCff(data: Array<UInt8>): ?Cff {
+  if (data.isEmpty()) {
+    return None()
+  };
+  try {
+    Some(parseCffTable(data))
+  } catch {
+  | OutOfBounds _ -> throw FontFormatError("CFF: corrupt data")
+  | exn -> throw exn
+  }
+}
+
+private fun parseCffTable(data: Array<UInt8>): Cff {
+  formatCheck(data.size() >= 4, "CFF: table too short");
+  formatCheck(data[0].toInt() == 1, `CFF: unsupported version ${data[0]}`);
+  headerSize = data[2].toInt();
+  nameIndex = cffIndex(data, headerSize);
+  topDictIndex = cffIndex(data, nameIndex.end);
+  stringIndex = cffIndex(data, topDictIndex.end);
+  globalSubrs = cffIndex(data, stringIndex.end);
+  formatCheck(topDictIndex.size() >= 1, "CFF: no Top DICT");
+  top = cffDict(data, topDictIndex.starts[0], topDictIndex.ends[0]);
+  charstringType = cffOperand(top, cffOpCharstringType, 0, 2);
+  formatCheck(
+    charstringType == 2,
+    `CFF: unsupported charstring type ${charstringType}`,
+  );
+  formatCheck(top.containsKey(cffOpCharStrings), "CFF: no CharStrings");
+  charStrings = cffIndex(data, cffOperand(top, cffOpCharStrings, 0, 0));
+  if (top.containsKey(cffOpFDArray)) {
+    // CID-keyed font: one Private DICT per font dict.
+    fdArray = cffIndex(data, cffOperand(top, cffOpFDArray, 0, 0));
+    privates = Array::fillBy(fdArray.size(), i -> {
+      fd = cffDict(data, fdArray.starts[i], fdArray.ends[i]);
+      cffPrivate(data, fd)
+    });
+    formatCheck(top.containsKey(cffOpFDSelect), "CFF: no FDSelect");
+    fdSelect = cffFdSelect(
+      data,
+      cffOperand(top, cffOpFDSelect, 0, 0),
+      charStrings.size(),
+    );
+    formatCheck(
+      fdSelect.all(fd -> fd >= 0 && fd < privates.size()),
+      "CFF: bad FDSelect",
+    );
+    Cff(data, charStrings, globalSubrs, privates, fdSelect)
+  } else {
+    Cff(data, charStrings, globalSubrs, Array[cffPrivate(data, top)], Array[])
+  }
+}
+
+/**
+ * Reads the Private DICT referenced by a Top DICT or font dict.
+ */
+private fun cffPrivate(
+  data: Array<UInt8>,
+  dict: Map<Int, Array<Float>>,
+): CffPrivate {
+  if (!dict.containsKey(cffOpPrivate)) {
+    return CffPrivate(CffIndex(Array[], Array[], 0), 0, 0)
+  };
+  size = cffOperand(dict, cffOpPrivate, 0, 0);
+  offset = cffOperand(dict, cffOpPrivate, 1, 0);
+  priv = cffDict(data, offset, offset + size);
+  subrs = if (priv.containsKey(cffOpSubrs)) {
+    // The Subrs offset is relative to the Private DICT.
+    cffIndex(data, offset + cffOperand(priv, cffOpSubrs, 0, 0))
+  } else {
+    CffIndex(Array[], Array[], 0)
+  };
+  CffPrivate(
+    subrs,
+    cffOperand(priv, cffOpDefaultWidthX, 0, 0),
+    cffOperand(priv, cffOpNominalWidthX, 0, 0),
+  )
+}
+
+private fun cffOperand(
+  dict: Map<Int, Array<Float>>,
+  op: Int,
+  i: Int,
+  default: Int,
+): Int {
+  dict.maybeGet(op) match {
+  | Some(operands) if (i < operands.size()) -> operands[i].toInt()
+  | _ -> default
+  }
+}
+
+private fun cffOffset(data: Array<UInt8>, at: Int, offSize: Int): Int {
+  v = 0;
+  for (i in Range(0, offSize)) {
+    !v = v.shl(8).or(data[at + i].toInt())
+  };
+  v
+}
+
+/**
+ * Reads an INDEX at offset at.
+ */
+fun cffIndex(data: Array<UInt8>, at: Int): CffIndex {
+  count = u16(data, at).toInt();
+  if (count == 0) {
+    return CffIndex(Array[], Array[], at + 2)
+  };
+  offSize = data[at + 2].toInt();
+  formatCheck(offSize >= 1 && offSize <= 4, "CFF: bad INDEX offSize");
+  // Offsets are 1-based, relative to the byte before the object data.
+  base = at + 3 + (count + 1) * offSize - 1;
+  offsets = Array::fillBy(count + 1, i ->
+    base + cffOffset(data, at + 3 + i * offSize, offSize)
+  );
+  formatCheck(
+    offsets.size() > 0 && offsets[count] <= data.size(),
+    "CFF: INDEX out of range",
+  );
+  for (i in Range(0, count)) {
+    formatCheck(offsets[i] <= offsets[i + 1], "CFF: bad INDEX offsets")
+  };
+  CffIndex(offsets.slice(0, count), offsets.slice(1, count + 1), offsets[count])
+}
+
+/**
+ * Reads a DICT: a map from operator to operands. Two-byte operators 12 x
+ * are stored as 1200 + x.
+ */
+fun cffDict(data: Array<UInt8>, start: Int, end: Int): Map<Int, Array<Float>> {
+  dict = mutable Map<Int, Array<Float>>[];
+  operands = mutable Vector<Float>[];
+  p = start;
+  while (p < end) {
+    b0 = data[p].toInt();
+    if (b0 <= 21) {
+      op = if (b0 == 12) {
+        !p = p + 1;
+        1200 + data[p].toInt()
+      } else {
+        b0
+      };
+      !p = p + 1;
+      dict.set(op, operands.toArray());
+      operands.clear()
+    } else if (b0 == 28) {
+      operands.push(toInt16(u16(data, p + 1)).toFloat());
+      !p = p + 3
+    } else if (b0 == 29) {
+      operands.push(cffInt32(data, p + 1).toFloat());
+      !p = p + 5
+    } else if (b0 == 30) {
+      (value, next) = cffReal(data, p + 1);
+      operands.push(value);
+      !p = next
+    } else if (b0 >= 32 && b0 <= 246) {
+      operands.push((b0 - 139).toFloat());
+      !p = p + 1
+    } else if (b0 >= 247 && b0 <= 250) {
+      operands.push(((b0 - 247) * 256 + data[p + 1].toInt() + 108).toFloat());
+      !p = p + 2
+    } else if (b0 >= 251 && b0 <= 254) {
+      operands.push((-(b0 - 251) * 256 - data[p + 1].toInt() - 108).toFloat());
+      !p = p + 2
+    } else {
+      throw FontFormatError(`CFF: bad DICT byte ${b0}`)
+    }
+  };
+  dict.chill()
+}
+
+private fun cffInt32(data: Array<UInt8>, at: Int): Int {
+  v = u32(data, at).toInt();
+  if (v >= 0x80000000) v - 0x100000000 else v
+}
+
+/**
+ * Reads a DICT real number (packed BCD nibbles); returns the value and the
+ * offset after it.
+ */
+private fun cffReal(data: Array<UInt8>, at: Int): (Float, Int) {
+  chars = mutable Vector<Char>[];
+  p = at;
+  done = false;
+  while (!done) {
+    b = data[p].toInt();
+    !p = p + 1;
+    for (nibble in Array[b.shr(4), b.and(0x0f)]) {
+      if (!done) {
+        nibble match {
+        | 0xa -> chars.push('.')
+        | 0xb -> chars.push('E')
+        | 0xc ->
+          chars.push('E');
+          chars.push('-')
+        | 0xe -> chars.push('-')
+        | 0xf -> !done = true
+        | 0xd -> void
+        | n -> chars.push(Char::fromCode('0'.code() + n))
+        }
+      }
+    }
+  };
+  text = String::fromChars(chars.toArray());
+  (text.toFloatOption().default(0.0), p)
+}
+
+/**
+ * Reads FDSelect: the font dict index of each glyph.
+ */
+private fun cffFdSelect(data: Array<UInt8>, at: Int, nGlyph: Int): Array<Int> {
+  format = data[at].toInt();
+  if (format == 0) {
+    Array::fillBy(nGlyph, g -> data[at + 1 + g].toInt())
+  } else if (format == 3) {
+    nRanges = u16(data, at + 1).toInt();
+    result = Array::mfill(nGlyph, 0);
+    for (i in Range(0, nRanges)) {
+      record = at + 3 + 3 * i;
+      first = u16(data, record).toInt();
+      fd = data[record + 2].toInt();
+      next = u16(data, record + 3).toInt();
+      formatCheck(first <= next && next <= nGlyph, "CFF: bad FDSelect range");
+      for (g in Range(first, next)) {
+        result.set(g, fd)
+      }
+    };
+    result.chill()
+  } else {
+    throw FontFormatError(`CFF: unsupported FDSelect format ${format}`)
+  }
+}
+
+/**
+ * A point of a CFF outline in font units. onCurve is false for the
+ * control points of cubic curves, which always come in pairs.
+ */
+value class CffPoint(x: Float, y: Float, onCurve: Bool)
+
+/**
+ * The outline of a CFF glyph: its contours, and its advance width in font
+ * units (from the charstring, or the Private DICT defaultWidthX).
+ */
+class CffGlyph(contours: Array<Array<CffPoint>>, advanceWidth: Int)
+
+private mutable class CffInterpreter(
+  cff: Cff,
+  priv: CffPrivate,
+  stack: mutable Vector<Float> = mutable Vector[],
+  contours: mutable Vector<Array<CffPoint>> = mutable Vector[],
+  current: mutable Vector<CffPoint> = mutable Vector[],
+  mutable x: Float = 0.0,
+  mutable y: Float = 0.0,
+  mutable nStems: Int = 0,
+  mutable optWidth: ?Float = None(),
+  mutable ended: Bool = false,
+) {
+  mutable fun push(v: Float): void {
+    formatCheck(this.stack.size() < cffMaxStack, "CFF: stack overflow");
+    this.stack.push(v)
+  }
+
+  mutable fun arg(i: Int): Float {
+    formatCheck(i < this.stack.size(), "CFF: stack underflow");
+    this.stack[i]
+  }
+
+  // The first stack-clearing operator may have the advance width as an
+  // extra first argument, when the stack has more arguments than expected.
+  mutable fun takeWidth(hasExtra: Bool): void {
+    if (this.optWidth.isNone()) {
+      this.!optWidth = Some(
+        if (hasExtra) {
+          w = this.stack[0];
+          rest = this.stack.toArray().drop(1);
+          this.stack.clear();
+          rest.each(this.stack.push);
+          w + this.priv.nominalWidthX.toFloat()
+        } else {
+          this.priv.defaultWidthX.toFloat()
+        },
+      )
+    }
+  }
+
+  mutable fun closeContour(): void {
+    if (!this.current.isEmpty()) {
+      this.contours.push(this.current.toArray());
+      this.current.clear()
+    }
+  }
+
+  mutable fun moveTo(dx: Float, dy: Float): void {
+    this.closeContour();
+    this.!x = this.x + dx;
+    this.!y = this.y + dy;
+    this.current.push(CffPoint(this.x, this.y, true))
+  }
+
+  mutable fun lineTo(dx: Float, dy: Float): void {
+    this.!x = this.x + dx;
+    this.!y = this.y + dy;
+    this.current.push(CffPoint(this.x, this.y, true))
+  }
+
+  mutable fun curveTo(
+    dx1: Float,
+    dy1: Float,
+    dx2: Float,
+    dy2: Float,
+    dx3: Float,
+    dy3: Float,
+  ): void {
+    x1 = this.x + dx1;
+    y1 = this.y + dy1;
+    x2 = x1 + dx2;
+    y2 = y1 + dy2;
+    this.!x = x2 + dx3;
+    this.!y = y2 + dy3;
+    this.current.push(CffPoint(x1, y1, false));
+    this.current.push(CffPoint(x2, y2, false));
+    this.current.push(CffPoint(this.x, this.y, true))
+  }
+
+  mutable fun run(start: Int, end: Int, depth: Int): void {
+    formatCheck(depth <= cffMaxSubrDepth, "CFF: subroutines nested too deep");
+    data = this.cff.data;
+    p = start;
+    while (p < end && !this.ended) {
+      b0 = data[p].toInt();
+      if (b0 == 28) {
+        this.push(toInt16(u16(data, p + 1)).toFloat());
+        !p = p + 3
+      } else if (b0 >= 32 && b0 <= 246) {
+        this.push((b0 - 139).toFloat());
+        !p = p + 1
+      } else if (b0 >= 247 && b0 <= 250) {
+        this.push(((b0 - 247) * 256 + data[p + 1].toInt() + 108).toFloat());
+        !p = p + 2
+      } else if (b0 >= 251 && b0 <= 254) {
+        this.push((-(b0 - 251) * 256 - data[p + 1].toInt() - 108).toFloat());
+        !p = p + 2
+      } else if (b0 == 255) {
+        // 16.16 fixed point.
+        this.push(cffInt32(data, p + 1).toFloat() / 65536.0);
+        !p = p + 5
+      } else {
+        !p = this.operator(b0, p + 1, depth)
+      }
+    }
+  }
+
+  // Runs the operator b0 whose arguments follow at p; returns the offset
+  // of the next instruction.
+  mutable fun operator(b0: Int, p: Int, depth: Int): Int {
+    n = this.stack.size();
+    b0 match {
+    | 1
+    | 3
+    | 18
+    | 23 ->
+      // hstem, vstem, hstemhm, vstemhm.
+      this.takeWidth(n % 2 == 1);
+      this.!nStems = this.nStems + this.stack.size() / 2;
+      this.stack.clear()
+    | 19
+    | 20 ->
+      // hintmask, cntrmask: an implicit vstem may precede them.
+      this.takeWidth(n % 2 == 1);
+      this.!nStems = this.nStems + this.stack.size() / 2;
+      this.stack.clear();
+      return p + (this.nStems + 7) / 8
+    | 21 ->
+      // rmoveto.
+      this.takeWidth(n > 2);
+      this.moveTo(this.arg(0), this.arg(1));
+      this.stack.clear()
+    | 22 ->
+      // hmoveto.
+      this.takeWidth(n > 1);
+      this.moveTo(this.arg(0), 0.0);
+      this.stack.clear()
+    | 4 ->
+      // vmoveto.
+      this.takeWidth(n > 1);
+      this.moveTo(0.0, this.arg(0));
+      this.stack.clear()
+    | 5 ->
+      // rlineto.
+      i = 0;
+      while (i + 1 < n) {
+        this.lineTo(this.arg(i), this.arg(i + 1));
+        !i = i + 2
+      };
+      this.stack.clear()
+    | 6
+    | 7 ->
+      // hlineto, vlineto: alternating horizontal and vertical lines.
+      horizontal = b0 == 6;
+      for (i in Range(0, n)) {
+        if (horizontal) {
+          this.lineTo(this.arg(i), 0.0)
+        } else {
+          this.lineTo(0.0, this.arg(i))
+        };
+        !horizontal = !horizontal
+      };
+      this.stack.clear()
+    | 8 ->
+      // rrcurveto.
+      i = 0;
+      while (i + 5 < n) {
+        this.curveTo(
+          this.arg(i),
+          this.arg(i + 1),
+          this.arg(i + 2),
+          this.arg(i + 3),
+          this.arg(i + 4),
+          this.arg(i + 5),
+        );
+        !i = i + 6
+      };
+      this.stack.clear()
+    | 24 ->
+      // rcurveline: curves, then a line.
+      i = 0;
+      while (i + 5 < n - 2) {
+        this.curveTo(
+          this.arg(i),
+          this.arg(i + 1),
+          this.arg(i + 2),
+          this.arg(i + 3),
+          this.arg(i + 4),
+          this.arg(i + 5),
+        );
+        !i = i + 6
+      };
+      this.lineTo(this.arg(i), this.arg(i + 1));
+      this.stack.clear()
+    | 25 ->
+      // rlinecurve: lines, then a curve.
+      i = 0;
+      while (i < n - 6) {
+        this.lineTo(this.arg(i), this.arg(i + 1));
+        !i = i + 2
+      };
+      this.curveTo(
+        this.arg(i),
+        this.arg(i + 1),
+        this.arg(i + 2),
+        this.arg(i + 3),
+        this.arg(i + 4),
+        this.arg(i + 5),
+      );
+      this.stack.clear()
+    | 26 ->
+      // vvcurveto.
+      i = 0;
+      dx1 = 0.0;
+      if (n % 2 == 1) {
+        !dx1 = this.arg(0);
+        !i = 1
+      };
+      while (i + 3 < n) {
+        this.curveTo(
+          dx1,
+          this.arg(i),
+          this.arg(i + 1),
+          this.arg(i + 2),
+          0.0,
+          this.arg(i + 3),
+        );
+        !dx1 = 0.0;
+        !i = i + 4
+      };
+      this.stack.clear()
+    | 27 ->
+      // hhcurveto.
+      i = 0;
+      dy1 = 0.0;
+      if (n % 2 == 1) {
+        !dy1 = this.arg(0);
+        !i = 1
+      };
+      while (i + 3 < n) {
+        this.curveTo(
+          this.arg(i),
+          dy1,
+          this.arg(i + 1),
+          this.arg(i + 2),
+          this.arg(i + 3),
+          0.0,
+        );
+        !dy1 = 0.0;
+        !i = i + 4
+      };
+      this.stack.clear()
+    | 30
+    | 31 ->
+      // vhcurveto, hvcurveto: alternating start tangents. The last curve
+      // may have an extra final delta.
+      horizontal = b0 == 31;
+      i = 0;
+      while (i + 3 < n) {
+        last = n - i == 5;
+        extra = if (last) this.arg(i + 4) else 0.0;
+        if (horizontal) {
+          this.curveTo(
+            this.arg(i),
+            0.0,
+            this.arg(i + 1),
+            this.arg(i + 2),
+            extra,
+            this.arg(i + 3),
+          )
+        } else {
+          this.curveTo(
+            0.0,
+            this.arg(i),
+            this.arg(i + 1),
+            this.arg(i + 2),
+            this.arg(i + 3),
+            extra,
+          )
+        };
+        !i = i + (if (last) 5 else 4);
+        !horizontal = !horizontal
+      };
+      this.stack.clear()
+    | 10
+    | 29 ->
+      // callsubr, callgsubr.
+      subrs = if (b0 == 10) this.priv.subrs else this.cff.globalSubrs;
+      formatCheck(n >= 1, "CFF: stack underflow");
+      index = this.stack.pop().toInt() + cffBias(subrs.size());
+      formatCheck(index >= 0 && index < subrs.size(), "CFF: bad subroutine");
+      this.run(subrs.starts[index], subrs.ends[index], depth + 1)
+    | 11 ->
+      // return: the caller's loop ends at the end of the subroutine.
+      return this.cff.data.size()
+    | 14 ->
+      // endchar. The seac form (4 extra arguments) is not supported.
+      this.takeWidth(n == 1 || n == 5);
+      this.closeContour();
+      this.stack.clear();
+      this.!ended = true
+    | 12 ->
+      // Two-byte operators: flex variants and arithmetic, ignored except
+      // for the flex curves.
+      b1 = this.cff.data[p].toInt();
+      this.flex(b1);
+      return p + 1
+    | _ -> throw FontFormatError(`CFF: unsupported operator ${b0}`)
+    };
+    p
+  }
+
+  // Flex operators (12 35, 12 34, 12 36, 12 37) are drawn as their two
+  // curves; the flex depth threshold is ignored.
+  mutable fun flex(b1: Int): void {
+    b1 match {
+    | 35 ->
+      // flex: two rrcurveto, then the depth.
+      this.curveTo(
+        this.arg(0),
+        this.arg(1),
+        this.arg(2),
+        this.arg(3),
+        this.arg(4),
+        this.arg(5),
+      );
+      this.curveTo(
+        this.arg(6),
+        this.arg(7),
+        this.arg(8),
+        this.arg(9),
+        this.arg(10),
+        this.arg(11),
+      )
+    | 34 ->
+      // hflex: dx1 dx2 dy2 dx3 dx4 dx5 dx6; the second curve goes back to
+      // the starting y.
+      this.curveTo(
+        this.arg(0),
+        0.0,
+        this.arg(1),
+        this.arg(2),
+        this.arg(3),
+        0.0,
+      );
+      this.curveTo(
+        this.arg(4),
+        0.0,
+        this.arg(5),
+        -this.arg(2),
+        this.arg(6),
+        0.0,
+      )
+    | 36 ->
+      // hflex1: dx1 dy1 dx2 dy2 dx3 dx4 dx5 dy5 dx6; the last dy goes back
+      // to the starting y.
+      this.curveTo(
+        this.arg(0),
+        this.arg(1),
+        this.arg(2),
+        this.arg(3),
+        this.arg(4),
+        0.0,
+      );
+      this.curveTo(
+        this.arg(5),
+        0.0,
+        this.arg(6),
+        this.arg(7),
+        this.arg(8),
+        -(this.arg(1) + this.arg(3) + this.arg(7)),
+      )
+    | 37 ->
+      // flex1: dx1 dy1 ... dx5 dy5 d6. d6 is the last delta along the axis
+      // of the larger total displacement; the other one goes back to the
+      // starting point.
+      dx = this.arg(0) + this.arg(2) + this.arg(4) + this.arg(6) + this.arg(8);
+      dy = this.arg(1) + this.arg(3) + this.arg(5) + this.arg(7) + this.arg(9);
+      this.curveTo(
+        this.arg(0),
+        this.arg(1),
+        this.arg(2),
+        this.arg(3),
+        this.arg(4),
+        this.arg(5),
+      );
+      (lastX, lastY) = if (Math.abs(dx) > Math.abs(dy)) {
+        (this.arg(10), -dy)
+      } else {
+        (-dx, this.arg(10))
+      };
+      this.curveTo(
+        this.arg(6),
+        this.arg(7),
+        this.arg(8),
+        this.arg(9),
+        lastX,
+        lastY,
+      )
+    | _ -> void
+    };
+    this.stack.clear()
+  }
+}
+
+/**
+ * The subroutine number bias for a subroutine INDEX of the given size.
+ */
+fun cffBias(count: Int): Int {
+  if (count < 1240) 107 else if (count < 33900) 1131 else 32768
+}
+
+/**
+ * Decodes the outline of glyph g.
+ */
+fun cffGlyph(cff: Cff, g: Int): CffGlyph {
+  formatCheck(g >= 0 && g < cff.nGlyph(), `Bad glyph index: ${g}`);
+  priv = cff.privateFor(g);
+  interpreter = mutable CffInterpreter(cff, priv);
+  try {
+    interpreter.run(cff.charStrings.starts[g], cff.charStrings.ends[g], 0)
+  } catch {
+  | OutOfBounds _ -> throw FontFormatError("CFF: corrupt charstring")
+  | exn -> throw exn
+  };
+  interpreter.closeContour();
+  width = interpreter.optWidth.default(priv.defaultWidthX.toFloat());
+  CffGlyph(interpreter.contours.toArray(), width.toInt())
+}
+
+module end;
