@@ -222,7 +222,6 @@ mutable class ErrorCorrection(
   mutable fun findShapeErrors(
     sdf: readonly BitmapRef<Float>,
     shape: Shape,
-    mode: Mode,
     overlapping: Bool,
   ): void {
     // Compute the expected deltas between values of horizontally, vertically, and diagonally adjacent texels.
@@ -243,7 +242,6 @@ mutable class ErrorCorrection(
       this.projection,
       this.invRange,
       this.minImproveRatio,
-      mode,
       overlapping,
     );
     rightToLeft = false;
@@ -254,9 +252,13 @@ mutable class ErrorCorrection(
         stencil = this.stencil.elem(x, row, 0);
         if (stencil.and(errorFlag) != errorFlag) {
           c = idx -> sdf.elem(x, row, idx);
-          vec = Vector2(x.toFloat() + 0.5, y.toFloat() + 0.5);
-          shapeDistanceChecker.!shapeCoord = this.projection.unproject(vec);
-          shapeDistanceChecker.!sdfCoord = vec;
+          shapeDistanceChecker.!shapeCoord = this.projection.unproject(
+            Vector2(x.toFloat() + 0.5, y.toFloat() + 0.5),
+          );
+          shapeDistanceChecker.!sdfCoord = Vector2(
+            x.toFloat() + 0.5,
+            row.toFloat() + 0.5,
+          );
           shapeDistanceChecker.!msd = c;
           shapeDistanceChecker.!protectedFlag =
             stencil.and(protectedFlag) == protectedFlag;
@@ -266,7 +268,7 @@ mutable class ErrorCorrection(
             MTSDF.computeError(
               sdf,
               x,
-              y,
+              row,
               cm,
               c,
               v,
@@ -274,7 +276,7 @@ mutable class ErrorCorrection(
               p -> shapeDistanceChecker.classifier(p, vSpan),
               p -> shapeDistanceChecker.classifier(p, dSpan),
             );
-          this.stencil.updateOne(x, y, v -> computeError(v));
+          this.stencil.updateOne(x, row, v -> computeError(v));
         }
       }
     };
@@ -332,7 +334,7 @@ fun computeError(
     .default(false);
   hasArtifact2 = optB
     .map(b ->
-      hasLinearArtifact(vArtifactSupplier(Vector2(0.0, 1.0)), cm, get, b)
+      hasLinearArtifact(vArtifactSupplier(Vector2(0.0, -1.0)), cm, get, b)
     )
     .default(false);
   hasArtifact3 = optR
@@ -462,7 +464,6 @@ fun msdfErrorCorrection(
   projection: Projection,
   range: Float,
   config: Configuration,
-  mode: Mode,
 ): void {
   if (config.errorCorrection.errorMode == Disabled()) return void;
   buffer = BitmapRef::make(1, sdf.width, sdf.height, UInt8::truncate(0));
@@ -496,11 +497,7 @@ fun msdfErrorCorrection(
     config.errorCorrection.distanceMode == AlwaysCheck() ||
     config.errorCorrection.distanceMode == DistanceAtEdge()
   ) {
-    if (config.overlapSupport) {
-      ec.findShapeErrors(sdf, shape, mode, true);
-    } else {
-      ec.findShapeErrors(sdf, shape, mode, false);
-    }
+    ec.findShapeErrors(sdf, shape, config.overlapSupport)
   };
   ec.apply(sdf);
 }

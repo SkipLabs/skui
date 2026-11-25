@@ -211,7 +211,7 @@ fun compute{
       mode,
       generatorConfig.overlapSupport,
     );
-    msdfErrorCorrection(sdf, shape, projection, range, generatorConfig, mode)
+    msdfErrorCorrection(sdf, shape, projection, range, generatorConfig)
   };
   (l, b, r, t) = bounds;
   if (orientation == Guess()) {
@@ -240,7 +240,7 @@ fun compute{
     | Multi()
     | MultiAndTrue() ->
       multiDistanceSignCorrection(sdf, shape, projection, fillRule);
-      msdfErrorCorrection(sdf, shape, projection, range, postConfig, mode)
+      msdfErrorCorrection(sdf, shape, projection, range, postConfig)
     };
   };
   sdf.toImage(true)

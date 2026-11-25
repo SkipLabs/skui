@@ -29,10 +29,9 @@ class Contour(edges: Array<EdgeSegment>) uses Equality {
       prevDir = this.edges.last().direction(1.0).normalize(true);
       this.edges.each(edge -> {
         dir = Vector2(0.0, 0.0) - edge.direction(0.0).normalize(true);
-        dot = prevDir.crossProduct(dir);
-        if (polarity.toFloat() * dot >= 0.0) {
+        if (polarity.toFloat() * prevDir.crossProduct(dir) >= 0.0) {
           miterLength = miterLimit;
-          q = 0.5 * (1.0 - dot);
+          q = 0.5 * (1.0 - prevDir.dotProduct(dir));
           if (q > 0.0) !miterLength = Math.min(1.0 / Math.sqrt(q), miterLimit);
           miter =
             edge.point(0.0) +

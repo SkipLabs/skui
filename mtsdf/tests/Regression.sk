@@ -1,0 +1,112 @@
+module SKUIMTSDFTest;
+
+fun triangleShape(): MTSDF.Shape {
+  // Reversed to have the inside of the triangle positive.
+  MTSDF.Shape(Array[triangle(16.0).reverse()], false)
+}
+
+@test
+fun boundsWithBorder(): void {
+  shape = triangleShape();
+  expectLikes(
+    Tuple4Checker(shape.getBounds(1.0)),
+    Tuple4Checker((-1.0, -1.0, 17.0, 17.0)),
+    Some("border"),
+  );
+  // Mitered corners: the bottom corners extend left and right by
+  // 1 / sin(atan(2)) - 1 and the top corner by sqrt(5) - 1 above the border.
+  expectLikes(
+    Tuple4Checker(shape.getBounds(1.0, 10.0, 1)),
+    Tuple4Checker((-1.6180339887, -1.0, 17.6180339887, 18.2360679775)),
+    Some("miter"),
+  );
+}
+
+@test
+fun orientContours(): void {
+  // Two nested triangles with the same orientation, as an even-odd shape
+  // would have them: orienting them for the non-zero rule must reverse one.
+  shape = MTSDF.Shape(
+    Array[triangle(16.0), triangle(8.0, 4.0, 2.0)],
+    false,
+  ).orientContours();
+  windings = shape.contours.map(c -> c.winding());
+  expectEquals(windings[0] == -windings[1], true, Some(`windings ${windings}`));
+}
+
+fun computeTriangle(
+  yFlip: Bool,
+  config: MTSDF.Configuration = MTSDF.Configuration{},
+): Ui.Image {
+  MTSDF.compute{
+    shape => triangleShape(),
+    width => 24,
+    height => 24,
+    autoFrame => true,
+    yFlip,
+    scanlinePass => false,
+    generatorConfig => config,
+  }
+}
+
+@test
+fun computeWithShapeDistanceCheck(): void {
+  // The default configuration checks the exact shape distance at edges.
+  image = computeTriangle(false);
+  expectEquals(image.data.size(), 24 * 24, Some("size"));
+  // The center of the triangle is inside, a corner of the image outside.
+  inside = image.data[12 * 24 + 12];
+  outside = image.data[0];
+  expectEquals(
+    (median(inside) > 128, median(outside) > 128),
+    (true, false),
+    Some("inside/outside"),
+  );
+}
+
+@test
+fun computeYFlip(): void {
+  // Flipping the Y axis only mirrors the image vertically.
+  for (config in Array[
+    MTSDF.Configuration{},
+    MTSDF.Configuration{}.doNotCheckDistance(),
+  ]) {
+    image = computeTriangle(false, config);
+    flipped = computeTriangle(true, config);
+    mirrored = Array::fillBy(image.data.size(), i ->
+      flipped.data[(23 - i / 24) * 24 + i % 24]
+    );
+    expectEquals(
+      mirrored
+        .mapWithIndex((i, p) -> (i, median(p), median(image.data[i])))
+        .filter(v -> Math.abs(v.i1 - v.i2) > 1),
+      Array[],
+      Some("mirror"),
+    );
+  }
+}
+
+class Tuple4Checker(v: (Float, Float, Float, Float)) uses Equivalent, Show {
+  fun like(other: Tuple4Checker, precision: Float = 0.000001): Bool {
+    (a0, a1, a2, a3) = this.v;
+    (b0, b1, b2, b3) = other.v;
+    Math.like(a0, b0, precision) &&
+      Math.like(a1, b1, precision) &&
+      Math.like(a2, b2, precision) &&
+      Math.like(a3, b3, precision)
+  }
+
+  fun toString(): String {
+    (a0, a1, a2, a3) = this.v;
+    `(${a0}, ${a1}, ${a2}, ${a3})`
+  }
+}
+
+fun median(p: Ui.Pix): Int {
+  r = p.red.toInt();
+  g = p.green.toInt();
+  b = p.blue.toInt();
+  Math.max(Math.min(r, g), Math.min(Math.max(r, g), b))
+}
+
+module end;
