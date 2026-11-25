@@ -1,0 +1,72 @@
+module SKUIMTSDFTest;
+
+// MSDF generation benchmark. Not run by `skargo test`: to use it,
+// temporarily annotate msdfBenchmark with @test and run
+// `skargo test -r msdfBenchmark`. It fails on purpose to print the times.
+//
+// Generates test glyphs as toMSDF does (the path used by the framework) and
+// reports the time spent in each phase, in milliseconds.
+fun msdfBenchmark(): void {
+  shapes = Array[
+    SKUIMTSDFTest65.shape,
+    SKUIMTSDFTest66.shape,
+    SKUIMTSDFTest67.shape,
+    SKUIMTSDFTest97.shape,
+    SKUIMTSDFTest38.shape,
+    SKUIMTSDFTest64.shape,
+    SKUIMTSDFTest233.shape,
+  ];
+  times = Array::mfill(5, 0);
+  for (_ in Range(0, 10)) {
+    for (s in shapes) {
+      t0 = Time.time_ms();
+      shape = MTSDF.edgeColoringSimple(s.normalize(), 3.0, 0);
+      (translate, _, width, height) = MTSDF.check(shape, 16);
+      projection = MTSDF.Projection(MTSDF.Vector2(1.0, 1.0), translate);
+      range = MTSDF.Px(16.0).range(projection.scale);
+      sdf = MTSDF.BitmapRef::make(3, width, height, 0.0);
+      t1 = Time.time_ms();
+      MTSDF.generateDistanceField(
+        sdf,
+        shape,
+        projection,
+        range,
+        MTSDF.Multi(),
+        true,
+      );
+      t2 = Time.time_ms();
+      MTSDF.multiDistanceSignCorrection(
+        sdf,
+        shape,
+        projection,
+        MTSDF.NoneZero(),
+      );
+      t3 = Time.time_ms();
+      ec = MTSDF.ErrorCorrection::make(
+        MTSDF.BitmapRef::make(1, width, height, UInt8::truncate(0)),
+        projection,
+        range,
+      );
+      ec.protectCorners(shape);
+      ec.protectEdges(sdf);
+      ec.findErrors(sdf);
+      ec.apply(sdf);
+      t4 = Time.time_ms();
+      _ = sdf.toImage(false);
+      t5 = Time.time_ms();
+      for (i in Range(0, 5)) {
+        times.set(
+          i,
+          times[i] + Array[t1 - t0, t2 - t1, t3 - t2, t4 - t3, t5 - t4][i],
+        )
+      }
+    }
+  };
+  invariant_violation(
+    `prepare=${times[0]} generate=${times[1]} sign=${times[2]} errors=${times[
+      3,
+    ]} image=${times[4]}`,
+  );
+}
+
+module end;

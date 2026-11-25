@@ -1,6 +1,6 @@
 module MTSDF;
 
-class Vector2(x: Float, y: Float) uses Orderable, Show, Equivalent {
+value class Vector2(x: Float, y: Float) uses Orderable, Show, Equivalent {
   //
   fun compare(other: Vector2): Order {
     comp = this.x.compare(other.x);

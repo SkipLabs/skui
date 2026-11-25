@@ -273,13 +273,10 @@ mutable base class MultiDistanceSelectorBase(
     edge: EdgeSegment,
     nextEdge: EdgeSegment,
   ): EdgeCache {
-    risEdgeRelevant = this.r.isEdgeRelevant(cache, this.p);
-    gisEdgeRelevant = this.g.isEdgeRelevant(cache, this.p);
-    bisEdgeRelevant = this.b.isEdgeRelevant(cache, this.p);
     if (
-      (edge.hasRed() && risEdgeRelevant) ||
-      (edge.hasGreen() && gisEdgeRelevant) ||
-      (edge.hasBlue() && bisEdgeRelevant)
+      (edge.hasRed() && this.r.isEdgeRelevant(cache, this.p)) ||
+      (edge.hasGreen() && this.g.isEdgeRelevant(cache, this.p)) ||
+      (edge.hasBlue() && this.b.isEdgeRelevant(cache, this.p))
     ) {
       (param, distance) = edge.signedDistance(this.p);
       if (edge.hasRed()) {
@@ -434,6 +431,11 @@ mutable class OverlappingSelectors private (
   }
 
   readonly fun distance(): Distance {
+    distances = this.selectors.map(s -> s.distance());
+    // With a single contour, the contour distance is the shape distance.
+    if (distances.size() == 1) {
+      return distances[0]
+    };
     shapeEdgeSelector = buildSelector(this.mode);
     innerEdgeSelector = buildSelector(this.mode);
     outerEdgeSelector = buildSelector(this.mode);
@@ -441,12 +443,12 @@ mutable class OverlappingSelectors private (
     innerEdgeSelector.reset(this.p);
     outerEdgeSelector.reset(this.p);
     this.selectors.eachWithIndex((i, selector) -> {
-      distance = selector.distance();
+      resolved = distances[i].resolve();
       shapeEdgeSelector.merge(selector);
-      if (this.windings[i] > 0 && distance.resolve() >= 0.0) {
+      if (this.windings[i] > 0 && resolved >= 0.0) {
         innerEdgeSelector.merge(selector);
       };
-      if (this.windings[i] < 0 && distance.resolve() <= 0.0) {
+      if (this.windings[i] < 0 && resolved <= 0.0) {
         outerEdgeSelector.merge(selector);
       };
     });
@@ -458,7 +460,6 @@ mutable class OverlappingSelectors private (
     outerScalarDistance = outerDistance.resolve();
     distance = buildDistance(this.mode);
     winding = 0;
-    distances = this.selectors.map(s -> s.distance());
     if (
       innerScalarDistance >= 0.0 &&
       Math.abs(innerScalarDistance) <= Math.abs(outerScalarDistance)
