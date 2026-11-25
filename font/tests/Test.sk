@@ -72,8 +72,8 @@ fun mute<T>(_t: T): void {
 
 class File(font: TrueType.Font) extends SKStore.File
 
-fun main(): void {
-  pos = SKStore.newObstack();
+untracked fun main(): void {
+  pos = SKStore.newSkuiObstack();
   p = (fn: () ~> Array<UInt8>) ~> {
     TrueType.parse(fn())
   };
@@ -107,7 +107,7 @@ fun main(): void {
     };
     tests[testSuite].push(SKTest.Test{name => testName, func => #function})
   };
-  fTests = SKStore.destroyObstackWithValue(
+  fTests = SKStore.destroySkuiObstackWithValue(
     pos,
     List.Cons(unsafe_chill_trust_me(tests), List.Nil()),
   ).getHead();

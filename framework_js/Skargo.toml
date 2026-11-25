@@ -4,4 +4,4 @@ version = "0.1.0"
 
 [dependencies]
 skui_fwk = { "path" = "../framework" }
-cli = { path = "../skip/cli" }
+cli = { path = "../skip/skiplang/cli" }

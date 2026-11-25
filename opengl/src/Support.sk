@@ -45,22 +45,22 @@ fun performFrame(
   ratio: UInt32,
   frames: UInt32,
 ): void {
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   current = SKStore.gUnsafeContextsGet();
   drawFrame(current.main, cid, width, height, ratio, frames);
   SKStore.gUnsafeFree(current);
-  SKStore.destroyObstack(pos);
+  SKStore.destroySkuiObstack(pos);
 }
 
 @export("SKIP_SKUIGL_setWindowContext")
 fun setWindowContext(window: UInt32, cid: UInt32): void {
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   win = window.toInt();
   key = if (win == 0) Ui.MainKey() else SKStore.IID(win);
   SKStore.Context::withoutGc(context ~>
     ctxHandle.write(context, key, SKStore.IntFile(cid.toInt()))
   );
-  SKStore.destroyObstack(pos);
+  SKStore.destroySkuiObstack(pos);
 }
 
 class DrawableSupport(

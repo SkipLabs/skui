@@ -44,7 +44,7 @@ ENG_PANDOC_FILES=$(addprefix $(ENG_DOCUMENTS_DIR)/,$(ENG_DOCUMENTS))
 init:
 	@if [ "$(SKIP)" = "" ]; then\
         $(error SKIP must be defined.);\
-  fi
+	fi
 	ln -s $(realpath $(SKIP)) skip
 
 # Install Playwright dependencies

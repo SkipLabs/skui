@@ -4,7 +4,7 @@ version = "0.1.0"
 
 [dependencies]
 skui_opengl = { "path" = "../opengl" }
-cli = { path = "../skip/cli" }
+cli = { path = "../skip/skiplang/cli" }
 
 [build-dependencies]
 skui_build = { path = "../builder" }

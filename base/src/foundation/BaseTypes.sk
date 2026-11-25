@@ -151,21 +151,3 @@ trait Equivalent {
 fun isLike<T: Equivalent>(a: T, b: T, precision: Float): Bool {
   a.like(b, precision)
 }
-
-@cpp_extern("SKIP_SKUI_checkObstack")
-native fun skuiCheckObstack(): ?SKStore.Obstack;
-
-@cpp_extern("SKIP_SKUI_cleanObstack")
-native fun skuiCleanObstack(optObstack: ?SKStore.Obstack): void;
-
-@wams_export("SKIP_checkObstack")
-@cpp_export("SKIP_checkObstack")
-fun checkObstack(): ?SKStore.Obstack {
-  skuiCheckObstack()
-}
-
-@wasm_export("SKIP_cleanObstack")
-@cpp_export("SKIP_checkObstack")
-fun cleanObstack(optObstack: ?SKStore.Obstack): void {
-  skuiCleanObstack(optObstack)
-}

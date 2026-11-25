@@ -17,7 +17,7 @@ fun manageMouseEvent(
   _altKey: Bool,
   _metaKey: Bool,
 ): void {
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   fn = context ~> {
     // button 0: Main button pressed, usually the left button or the un-initialized state
     // button 1: Auxiliary button pressed, usually the wheel button or the middle button (if present)
@@ -53,7 +53,7 @@ fun manageMouseEvent(
     context.updateIfRoot();
   };
   SKStore.Context::withoutGc(fn);
-  SKStore.destroyObstack(pos);
+  SKStore.destroySkuiObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_manageWheelEvent")
@@ -67,7 +67,7 @@ fun manageWheelEvent(
   _altKey: Bool,
   _metaKey: Bool,
 ): void {
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   fn = context ~> {
     FWKMouse.execute(
       context,
@@ -80,7 +80,7 @@ fun manageWheelEvent(
     context.updateIfRoot();
   };
   SKStore.Context::withoutGc(fn);
-  SKStore.destroyObstack(pos);
+  SKStore.destroySkuiObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_manageResize")
@@ -90,7 +90,7 @@ fun manageResize(
   height: UInt32,
   ratio: UInt32,
 ): void {
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   SKStore.Context::withoutGc(context ~> {
     context.getGlobal("FWK.Window.Size").map(FWK.Sizer::type).each(sizer ->
       sizer.value(
@@ -103,7 +103,7 @@ fun manageResize(
     );
     context.updateIfRoot();
   });
-  SKStore.destroyObstack(pos);
+  SKStore.destroySkuiObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_clearKeyboardEvent")
@@ -168,7 +168,7 @@ fun manageKeyboardEvent(
 
 @wasm_export("SKIP_SKUIJS_windowInitialized")
 fun windowInitialized(wId: UInt32): void {
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   SKStore.Context::withoutGc(context ~> {
     context.setGlobal(
       "SKUIMessage.Sender",
@@ -180,7 +180,7 @@ fun windowInitialized(wId: UInt32): void {
     context.checkPendingMessages();
     context.updateIfRoot();
   });
-  SKStore.destroyObstack(pos);
+  SKStore.destroySkuiObstack(pos);
 }
 
 @wasm_export("SKIP_SKUIJS_performPaste")

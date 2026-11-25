@@ -1,4 +1,7 @@
 {
   "extends": "@skiplabs/tsconfig",
+  "compilerOptions": {
+    "rootDir": "${configDir}",
+  },
   "exclude": ["node_modules", "dist"]
 }

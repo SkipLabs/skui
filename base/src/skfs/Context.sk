@@ -1,5 +1,38 @@
 module SKStore;
 
+@always_inline
+fun newSkuiObstack(): Obstack {
+  newObstack();
+}
+
+@always_inline
+fun destroySkuiObstack(obs: Obstack): void {
+  destroyObstack(obs);
+}
+
+@always_inline
+fun destroySkuiObstackWithValue<T>(obstack: Obstack, value: T): T {
+  destroyObstackWithValue(obstack, value);
+}
+
+@cpp_extern("SKIP_SKUI_checkObstack")
+native fun skuiCheckObstack(): ?SKStore.Obstack;
+
+@cpp_extern("SKIP_SKUI_cleanObstack")
+native fun skuiCleanObstack(optObstack: ?SKStore.Obstack): void;
+
+@wams_export("SKIP_checkObstack")
+@cpp_export("SKIP_checkObstack")
+fun checkObstack(): ?Obstack {
+  skuiCheckObstack()
+}
+
+@wasm_export("SKIP_cleanObstack")
+@cpp_export("SKIP_checkObstack")
+fun cleanObstack(optObstack: ?Obstack): void {
+  skuiCleanObstack(optObstack)
+}
+
 class Updater(fn: mutable Context ~> void) extends File
 
 class Random(value: .Random) extends File {

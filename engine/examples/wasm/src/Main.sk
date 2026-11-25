@@ -16,7 +16,7 @@ class Renderer(name: String, optDescription: ?String) uses Show {
 @export("skuieng_examples")
 fun examples(): void {
   // TODO: manage exceptions
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   renderers = jsExamples()
     .map(jsa ->
       jsa.value.map(jsv -> {
@@ -29,7 +29,7 @@ fun examples(): void {
     unsafe_chill_trust_me(renderers),
     Environ.args().drop(1).collect(Vector),
   );
-  SKStore.destroyObstack(pos);
+  SKStore.destroySkuiObstack(pos);
 }
 
 fun perform(examples: Vector<Renderer>, args: Vector<String>): void {
