@@ -63,10 +63,6 @@ native fun run(
   framePerSecond: Int,
 ): void;
 
-fun destroyObstackKeep<T>(pos: SKStore.Obstack, value: T): T {
-  SKStore.destroyObstackWithValue(pos, List.Cons(value, List.Nil())).getHead();
-}
-
 @cpp_export("SKIP_SkuiX11gl_performFrame")
 fun performFrame(
   env: Env,
@@ -77,7 +73,7 @@ fun performFrame(
   ratio: UInt32,
   count: UInt32,
 ): Context {
-  pos = SKStore.newObstack();
+  pos = SKStore.newSkuiObstack();
   ctx = GL.Ctx(UInt32::truncate(cid));
   ctx.bindMainFrameBuffer();
   ctx.enableBlend();
@@ -99,7 +95,7 @@ fun performFrame(
     a.draw(shift, window, height, fRatio, count.toInt())
   );
   ctx.flush();
-  destroyObstackKeep(pos, context);
+  SKStore.destroySkuiObstackWithValue(pos, context);
 }
 
 module end;

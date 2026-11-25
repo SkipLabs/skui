@@ -125,7 +125,7 @@ class Parameters{
   > = None(),
 } extends Ui.Parameters {}
 
-private value class RunMetrics(
+value class RunMetrics(
   mainAxisExtent: Float,
   crossAxisExtent: Float,
   childCount: Int,

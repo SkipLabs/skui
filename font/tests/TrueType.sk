@@ -130,7 +130,7 @@ base class TrueType(r: String ~> TrueType.Font, idx: Int = 0) {
   }
 
   protected fun runCase(idx: Int, case: FontCase): void {
-    pos = SKStore.newObstack();
+    pos = SKStore.newSkuiObstack();
     font = this.r(case.name);
     case.got(font) match {
     | failure @ SKStore.LoadFailed _ ->
@@ -138,10 +138,10 @@ base class TrueType(r: String ~> TrueType.Font, idx: Int = 0) {
     | gotFile ->
       try {
         expectEqAt(gotFile, case.expected, idx);
-        SKStore.destroyObstack(pos);
+        SKStore.destroySkuiObstack(pos);
       } catch {
       | e ->
-        throw SKStore.destroyObstackWithValue(
+        throw SKStore.destroySkuiObstackWithValue(
           pos,
           List.Cons(e, List.Nil()),
         ).getHead()

@@ -19,8 +19,4 @@ class DummyBaseName() extends Key {
   }
 }
 
-fun destroyObstackKeep<T>(pos: Obstack, value: T): T {
-  destroyObstackWithValue(pos, List.Cons(value, List.Nil())).getHead()
-}
-
 module end;

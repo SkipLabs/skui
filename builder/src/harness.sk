@@ -3,6 +3,25 @@
  * @brief Build system harness for managing compilation and linking processes.
  */
 
+module SKStore;
+
+@always_inline
+fun newTestObstack(): Obstack {
+  newObstack();
+}
+
+@always_inline
+fun destroyTestObstack(obs: Obstack): void {
+  destroyObstack(obs);
+}
+
+@always_inline
+fun destroyTestObstackWithValue<T>(obstack: Obstack, value: T): T {
+  destroyObstackWithValue(obstack, value);
+}
+
+module end;
+
 module SkuiBuild;
 
 /** @brief Buffer length used for file operations. */
@@ -617,7 +636,7 @@ fun copyBinary(
   };
   buf = Array::mfill(kBUFFER_LEN, UInt8::truncate(0)).mbytes();
   res = loop {
-    obstack = SKStore.newObstack();
+    obstack = SKStore.newTestObstack();
     res = srcFile.read(buf) match {
     | Failure(err) -> Some(Failure(err))
     | Success(nbytes) ->
@@ -633,7 +652,7 @@ fun copyBinary(
         }
       }
     };
-    SKStore.destroyObstackWithValue(obstack, List[res]).getHead() match {
+    SKStore.destroyTestObstackWithValue(obstack, List[res]).getHead() match {
     | Some(f @ Failure _) -> break f
     | Some(s @ Success _) -> break s
     | _ -> void

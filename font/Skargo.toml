@@ -4,7 +4,7 @@ version = "0.1.0"
 test-harness = "SKUIFontTest.main"
 
 [dev-dependencies]
-sktest = { path = "../skip/sktest" }
+sktest = { path = "../skip/skiplang/sktest" }
 skui_font_tests = { path = "./dev" }
 
 [dependencies]

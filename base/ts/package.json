@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    "./base.js": "./dist/skui_base.js",
-    "./types.js": "./dist/skui_types.js"
+    "./base.js": "./dist/src/skui_base.js",
+    "./types.js": "./dist/src/skui_types.js"
   },
   "scripts": {
     "prebuild": "node ../../prebuild.mjs skiplang-std skipwasm-std",
