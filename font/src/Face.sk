@@ -79,6 +79,11 @@ class Options{
    * It must be a power of 2, and be between 1 and 64 inclusive.
    */
   subPixelsY: Int = 4,
+  /**
+   * For variable fonts, the axis values of the instance to use, in user
+   * units (e.g. "wght" -> 700.0). Ignored by non-variable fonts.
+   */
+  variation: Map<String, Float> = Map[],
 } {
   /**
    * The font size in points, with a non-positive size meaning 12 points.

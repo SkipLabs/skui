@@ -366,6 +366,9 @@ mutable class GlyphBuf{
       } else {
         (np0, ne0) = (this.points.size(), this.ends.size());
         program = this.loadSimple(glyf, ne);
+        if (this.font.isVaried()) {
+          !this = this.applyGvar(i, np0, ne0)
+        };
         this.addPhantomsAndScale(np0, np0, true, true);
         !pp1x = this.points[this.points.size() - 4].x;
         if (this.hinting != Font.HintingNone()) {
@@ -652,6 +655,46 @@ mutable class GlyphBuf{
       );
     };
     this;
+  }
+
+  /**
+   * Applies the gvar deltas of glyph i, for the font's variation
+   * coordinates, to its unscaled outline points (from np0) and phantom
+   * points. Only simple glyphs are varied.
+   */
+  private mutable fun applyGvar(i: Int, np0: Int, ne0: Int): mutable GlyphBuf {
+    (pp0, pp1, pp2, pp3) = this.phantomPoints;
+    outline = this.points.slice(np0, this.points.size()).toArray();
+    all = outline.concat(Array[pp0, pp1, pp2, pp3]);
+    // Contour ends relative to the glyph; each phantom point is its own
+    // contour.
+    nOutline = outline.size();
+    ends = this.ends.slice(ne0, this.ends.size())
+      .toArray()
+      .concat(Array[nOutline + 1, nOutline + 2, nOutline + 3, nOutline + 4]);
+    (dx, dy) = gvarDeltasFor(
+      this.font.gvar,
+      i,
+      this.font.coords,
+      all.map(p -> p.x.asInt()),
+      all.map(p -> p.y.asInt()),
+      ends,
+    );
+    moved = all.mapWithIndex((k, p) -> {
+      !p.x = p.x + fixed26_6(Math.round(dx[k]).toInt());
+      !p.y = p.y + fixed26_6(Math.round(dy[k]).toInt());
+      p
+    });
+    for (k in Range(0, nOutline)) {
+      this.points.set(np0 + k, moved[k])
+    };
+    !this.phantomPoints = (
+      moved[nOutline],
+      moved[nOutline + 1],
+      moved[nOutline + 2],
+      moved[nOutline + 3],
+    );
+    this
   }
 
   mutable fun addPhantomsAndScale(
