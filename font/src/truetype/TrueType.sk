@@ -187,6 +187,7 @@ class Font{
   cvt: Array<UInt8> = Array[],
   fpgm: Array<UInt8> = Array[],
   glyf: Array<UInt8> = Array[],
+  gpos: Array<UInt8> = Array[],
   hdmx: Array<UInt8> = Array[],
   head: Array<UInt8> = Array[],
   hhea: Array<UInt8> = Array[],
@@ -213,6 +214,10 @@ class Font{
    */
   nVMetric: Int = 0,
   nKern: Int = 0,
+  /**
+   * Offsets in gpos of the pair adjustment subtables of the 'kern' feature.
+   */
+  gposKernSubtables: Array<Int> = Array[],
   fUnitsPerEm: Int32 = int32(0),
   /**
    * In FUnits.
@@ -417,8 +422,22 @@ class Font{
   /**
    * Kern returns the horizontal adjustment for the given glyph pair. A positive
    * kern means to move the glyphs further apart.
+   *
+   * The GPOS 'kern' feature is used when the font has one, as modern fonts
+   * often have no kern table; otherwise the kern table is used.
    */
   fun getKern(scale: Fixed.Int26_6, i0: UInt16, i1: UInt16): Fixed.Int26_6 {
+    if (!this.gposKernSubtables.isEmpty()) {
+      return gposKern(
+        this.gpos,
+        this.gposKernSubtables,
+        i0.toInt(),
+        i1.toInt(),
+      ) match {
+      | Some(v) -> fixed26_6(this.scale(scale.value.toInt() * v))
+      | None() -> Fixed.Int26_6::zero
+      }
+    };
     if (this.nKern == 0) {
       return Fixed.Int26_6::zero
     };
@@ -526,6 +545,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
   cvt: Array<UInt8> = Array[];
   fpgm: Array<UInt8> = Array[];
   glyf: Array<UInt8> = Array[];
+  gpos: Array<UInt8> = Array[];
   hdmx: Array<UInt8> = Array[];
   head: Array<UInt8> = Array[];
   hhea: Array<UInt8> = Array[];
@@ -553,6 +573,8 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
       !fpgm = table // "fpgm"
     | 0x676c7966 ->
       !glyf = table // "glyf"
+    | 0x47504f53 ->
+      !gpos = table // "GPOS"
     | 0x68646d78 ->
       !hdmx = table // "hdmx"
     | 0x68656164 ->
@@ -590,6 +612,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
   ) = parseMaxp(maxp);
   (cmaps, optCmapIndexes) = parseCmap(cmap);
   nKern = parseKern(kern);
+  gposKernSubtables = parseGposKern(gpos);
   (ascent, descent, nHMetric) = parseHhea(hhea, hmtx, nGlyph);
   nVMetric = parseVhea(vhea, vmtx, nGlyph);
   Font{
@@ -597,6 +620,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
     cvt,
     fpgm,
     glyf,
+    gpos,
     hdmx,
     head,
     hhea,
@@ -619,6 +643,7 @@ fun parseAt(ttf: Array<UInt8>, offset: Int, inCollection: Bool): Font {
     nHMetric,
     nVMetric,
     nKern,
+    gposKernSubtables,
     fUnitsPerEm,
     /**
      * In FUnits.

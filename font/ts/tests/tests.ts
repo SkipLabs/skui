@@ -26,6 +26,7 @@ interface ToWasm {
   SKIP_resources_tests_xdsff_bin: () => ptr<IArray<Byte>>;
   SKIP_resources_tests_xdvso_bin: () => ptr<IArray<Byte>>;
   SKIP_resources_tests_xtnr_bin: () => ptr<IArray<Byte>>;
+  SKIP_resources_tests_liberation_bin: () => ptr<IArray<Byte>>;
 }
 
 type Resources = {
@@ -36,6 +37,7 @@ type Resources = {
   SKIP_resources_tests_xdsff_bin: Uint8Array;
   SKIP_resources_tests_xdvso_bin: Uint8Array;
   SKIP_resources_tests_xtnr_bin: Uint8Array;
+  SKIP_resources_tests_liberation_bin: Uint8Array;
 };
 
 const wasmurl = new URL("./test.wasm", import.meta.url);
@@ -86,6 +88,12 @@ class LinksImpl implements Links {
   SKIP_resources_tests_xtnr_bin() {
     return this.utils.exportBytes(this.resources.SKIP_resources_tests_xtnr_bin);
   }
+
+  SKIP_resources_tests_liberation_bin() {
+    return this.utils.exportBytes(
+      this.resources.SKIP_resources_tests_liberation_bin,
+    );
+  }
 }
 
 class Manager implements ToWasmManager {
@@ -108,6 +116,8 @@ class Manager implements ToWasmManager {
       links.SKIP_resources_tests_xdvso_bin.bind(links);
     toWasm.SKIP_resources_tests_xtnr_bin =
       links.SKIP_resources_tests_xtnr_bin.bind(links);
+    toWasm.SKIP_resources_tests_liberation_bin =
+      links.SKIP_resources_tests_liberation_bin.bind(links);
     return links;
   };
 }
@@ -133,6 +143,8 @@ export class Loader {
     const SKIP_resources_tests_xdsff_bin = await this.fetch("./xdsff.bin");
     const SKIP_resources_tests_xdvso_bin = await this.fetch("./xdvso.bin");
     const SKIP_resources_tests_xtnr_bin = await this.fetch("./xtnr.bin");
+    const SKIP_resources_tests_liberation_bin =
+      await this.fetch("./liberation.bin");
 
     modules = [
       runtimeInit,
@@ -150,6 +162,7 @@ export class Loader {
             SKIP_resources_tests_xdsff_bin,
             SKIP_resources_tests_xdvso_bin,
             SKIP_resources_tests_xtnr_bin,
+            SKIP_resources_tests_liberation_bin,
           }),
         ),
     ];

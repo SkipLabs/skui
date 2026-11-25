@@ -1,0 +1,292 @@
+module TrueType;
+
+/**
+ * Pair adjustment kerning from the OpenType GPOS table.
+ *
+ * Only the horizontal advance adjustment of the first glyph of a pair is
+ * used, from the pair adjustment (type 2) lookups of the 'kern' feature,
+ * including those wrapped in extension (type 9) lookups. Other GPOS
+ * features (marks, cursive attachment, contextual positioning) are ignored.
+ *
+ * See https://learn.microsoft.com/en-us/typography/opentype/spec/gpos
+ */
+
+const gposLookupPairAdjustment: Int = 2;
+const gposLookupExtension: Int = 9;
+const gposValueXAdvance: Int = 0x0004;
+
+/**
+ * The offsets, in the GPOS table, of the pair adjustment subtables of the
+ * 'kern' feature, in lookup order.
+ */
+fun parseGposKern(gpos: Array<UInt8>): Array<Int> {
+  try {
+    gposKernSubtables(gpos)
+  } catch {
+  | OutOfBounds _ -> Array[]
+  | exn -> throw exn
+  }
+}
+
+private fun gposKernSubtables(gpos: Array<UInt8>): Array<Int> {
+  if (gpos.size() < 10 || u16(gpos, 0).toInt() != 1) {
+    return Array[]
+  };
+  featureList = u16(gpos, 6).toInt();
+  lookupList = u16(gpos, 8).toInt();
+  // Collect the lookups of every 'kern' feature, whatever the script.
+  lookups = mutable Set<Int>[];
+  nFeatures = u16(gpos, featureList).toInt();
+  for (i in Range(0, nFeatures)) {
+    record = featureList + 2 + 6 * i;
+    // "kern" as a big-endian uint32.
+    if (u32(gpos, record).toInt() == 0x6b65726e) {
+      feature = featureList + u16(gpos, record + 4).toInt();
+      count = u16(gpos, feature + 2).toInt();
+      for (j in Range(0, count)) {
+        lookups.insert(u16(gpos, feature + 4 + 2 * j).toInt())
+      }
+    }
+  };
+  nLookups = u16(gpos, lookupList).toInt();
+  subtables = mutable Vector<Int>[];
+  for (lookupIndex in lookups.collect(Array).sorted()) {
+    if (lookupIndex >= nLookups) {
+      continue
+    };
+    lookup = lookupList + u16(gpos, lookupList + 2 + 2 * lookupIndex).toInt();
+    lookupType = u16(gpos, lookup).toInt();
+    nSubtables = u16(gpos, lookup + 4).toInt();
+    for (j in Range(0, nSubtables)) {
+      subtable = lookup + u16(gpos, lookup + 6 + 2 * j).toInt();
+      (subtableType, offset) = if (lookupType == gposLookupExtension) {
+        (
+          u16(gpos, subtable + 2).toInt(),
+          subtable + u32(gpos, subtable + 4).toInt(),
+        )
+      } else {
+        (lookupType, subtable)
+      };
+      if (subtableType == gposLookupPairAdjustment) {
+        format = u16(gpos, offset).toInt();
+        if (format == 1 || format == 2) {
+          subtables.push(offset)
+        }
+      }
+    }
+  };
+  subtables.toArray()
+}
+
+/**
+ * Returns the unscaled GPOS kerning between glyphs g1 and g2, in FUnits,
+ * or None() if no 'kern' lookup covers the pair. The first subtable that
+ * covers the pair wins, as in a pair adjustment lookup.
+ */
+fun gposKern(
+  gpos: Array<UInt8>,
+  subtables: Array<Int>,
+  g1: Int,
+  g2: Int,
+): ?Int {
+  try {
+    gposFindKern(gpos, subtables, g1, g2)
+  } catch {
+  | OutOfBounds _ -> None()
+  | exn -> throw exn
+  }
+}
+
+private fun gposFindKern(
+  gpos: Array<UInt8>,
+  subtables: Array<Int>,
+  g1: Int,
+  g2: Int,
+): ?Int {
+  for (subtable in subtables) {
+    coverageIndex = gposCoverageIndex(
+      gpos,
+      subtable + u16(gpos, subtable + 2).toInt(),
+      g1,
+    );
+    if (coverageIndex >= 0) {
+      optValue = gposPairValue(gpos, subtable, coverageIndex, g1, g2);
+      if (optValue.isSome()) {
+        return optValue
+      }
+    }
+  };
+  None()
+}
+
+/**
+ * Returns the x advance of the first glyph for the pair (g1, g2) in a pair
+ * adjustment subtable, or None() if the subtable has no value for g2.
+ */
+private fun gposPairValue(
+  gpos: Array<UInt8>,
+  subtable: Int,
+  coverageIndex: Int,
+  g1: Int,
+  g2: Int,
+): ?Int {
+  format = u16(gpos, subtable).toInt();
+  valueFormat1 = u16(gpos, subtable + 4).toInt();
+  valueFormat2 = u16(gpos, subtable + 6).toInt();
+  recordSize =
+    gposValueRecordSize(valueFormat1) + gposValueRecordSize(valueFormat2);
+  if (format == 1) {
+    // Pair sets: for each first glyph, the second glyphs sorted by index.
+    nPairSets = u16(gpos, subtable + 8).toInt();
+    if (coverageIndex >= nPairSets) {
+      return None()
+    };
+    pairSet = subtable + u16(gpos, subtable + 10 + 2 * coverageIndex).toInt();
+    nPairs = u16(gpos, pairSet).toInt();
+    stride = 2 + recordSize;
+    lo = 0;
+    hi = nPairs;
+    while (lo < hi) {
+      mid = (lo + hi) / 2;
+      record = pairSet + 2 + mid * stride;
+      second = u16(gpos, record).toInt();
+      if (second < g2) {
+        !lo = mid + 1
+      } else if (second > g2) {
+        !hi = mid
+      } else {
+        return Some(gposXAdvance(gpos, record + 2, valueFormat1))
+      }
+    };
+    None()
+  } else {
+    // Class pairs: a matrix of value records indexed by glyph classes.
+    class1 = gposClass(gpos, subtable + u16(gpos, subtable + 8).toInt(), g1);
+    class2 = gposClass(gpos, subtable + u16(gpos, subtable + 10).toInt(), g2);
+    nClass1 = u16(gpos, subtable + 12).toInt();
+    nClass2 = u16(gpos, subtable + 14).toInt();
+    if (class1 >= nClass1 || class2 >= nClass2) {
+      return None()
+    };
+    record = subtable + 16 + (class1 * nClass2 + class2) * recordSize;
+    Some(gposXAdvance(gpos, record, valueFormat1))
+  }
+}
+
+/**
+ * The size in bytes of a value record: one int16 per bit set in the low
+ * byte of the value format.
+ */
+private fun gposValueRecordSize(valueFormat: Int): Int {
+  size = 0;
+  for (bit in Range(0, 8)) {
+    if (valueFormat.and(1.shl(bit)) != 0) {
+      !size = size + 2
+    }
+  };
+  size
+}
+
+/**
+ * The XAdvance field of a value record, which follows XPlacement and
+ * YPlacement when they are present.
+ */
+private fun gposXAdvance(
+  gpos: Array<UInt8>,
+  record: Int,
+  valueFormat: Int,
+): Int {
+  if (valueFormat.and(gposValueXAdvance) == 0) {
+    return 0
+  };
+  offset = record;
+  if (valueFormat.and(0x0001) != 0) {
+    !offset = offset + 2
+  };
+  if (valueFormat.and(0x0002) != 0) {
+    !offset = offset + 2
+  };
+  toInt16(u16(gpos, offset))
+}
+
+/**
+ * The coverage index of glyph g in a coverage table, or -1.
+ */
+private fun gposCoverageIndex(gpos: Array<UInt8>, coverage: Int, g: Int): Int {
+  format = u16(gpos, coverage).toInt();
+  count = u16(gpos, coverage + 2).toInt();
+  lo = 0;
+  hi = count;
+  if (format == 1) {
+    // Sorted glyph array.
+    while (lo < hi) {
+      mid = (lo + hi) / 2;
+      glyph = u16(gpos, coverage + 4 + 2 * mid).toInt();
+      if (glyph < g) {
+        !lo = mid + 1
+      } else if (glyph > g) {
+        !hi = mid
+      } else {
+        return mid
+      }
+    };
+    -1
+  } else if (format == 2) {
+    // Sorted glyph ranges: start, end, start coverage index.
+    while (lo < hi) {
+      mid = (lo + hi) / 2;
+      range = coverage + 4 + 6 * mid;
+      start = u16(gpos, range).toInt();
+      end = u16(gpos, range + 2).toInt();
+      if (end < g) {
+        !lo = mid + 1
+      } else if (start > g) {
+        !hi = mid
+      } else {
+        return u16(gpos, range + 4).toInt() + g - start
+      }
+    };
+    -1
+  } else {
+    -1
+  }
+}
+
+/**
+ * The class of glyph g in a class definition table; glyphs that are not
+ * listed are in class 0.
+ */
+private fun gposClass(gpos: Array<UInt8>, classDef: Int, g: Int): Int {
+  format = u16(gpos, classDef).toInt();
+  if (format == 1) {
+    startGlyph = u16(gpos, classDef + 2).toInt();
+    count = u16(gpos, classDef + 4).toInt();
+    if (g >= startGlyph && g < startGlyph + count) {
+      u16(gpos, classDef + 6 + 2 * (g - startGlyph)).toInt()
+    } else {
+      0
+    }
+  } else if (format == 2) {
+    count = u16(gpos, classDef + 2).toInt();
+    lo = 0;
+    hi = count;
+    while (lo < hi) {
+      mid = (lo + hi) / 2;
+      range = classDef + 4 + 6 * mid;
+      start = u16(gpos, range).toInt();
+      end = u16(gpos, range + 2).toInt();
+      if (end < g) {
+        !lo = mid + 1
+      } else if (start > g) {
+        !hi = mid
+      } else {
+        return u16(gpos, range + 4).toInt()
+      }
+    };
+    0
+  } else {
+    0
+  }
+}
+
+module end;

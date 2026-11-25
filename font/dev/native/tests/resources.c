@@ -22,6 +22,9 @@ extern unsigned int resources_tests_xdvso_bin_len;
 extern unsigned char resources_tests_xtnr_bin[];
 extern unsigned int resources_tests_xtnr_bin_len;
 
+extern unsigned char resources_tests_liberation_bin[];
+extern unsigned int resources_tests_liberation_bin_len;
+
 char *SKIP_createByteArray(int32_t);
 
 char *createBuffer(unsigned char *source, int len) {
@@ -60,4 +63,9 @@ char *SKIP_resources_tests_xdvso_bin() {
 
 char *SKIP_resources_tests_xtnr_bin() {
   return createBuffer(resources_tests_xtnr_bin, resources_tests_xtnr_bin_len);
+}
+
+char *SKIP_resources_tests_liberation_bin() {
+  return createBuffer(resources_tests_liberation_bin,
+                      resources_tests_liberation_bin_len);
 }
