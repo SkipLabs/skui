@@ -1,6 +1,6 @@
 module MTSDF;
 
-class Projection(
+value class Projection(
   scale: Vector2,
   translate: Vector2,
 ) uses Orderable, Equivalent {

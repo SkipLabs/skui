@@ -174,26 +174,31 @@ mutable class ShapeDistanceFinder private (
 
   mutable fun distance(origin: Vector2): Distance {
     this.selectors.reset(origin);
+    withCache = !this.caches.isEmpty();
     count = 0;
-    this.shape.contours.eachWithIndex((idx, contour) -> {
-      if (!contour.edges.isEmpty()) {
+    contours = this.shape.contours;
+    for (idx in Range(0, contours.size())) {
+      edges = contours[idx].edges;
+      size = edges.size();
+      if (size > 0) {
         selector = this.selectors.getSelector(idx);
-        prevEdge = contour.edges
-          .maybeGet(contour.edges.size() - 2)
-          .default(contour.edges.first());
-        curEdge = contour.edges.last();
-        contour.edges.each(nextEdge -> {
-          curCache = this.caches.maybeGet(count).default(EdgeCache());
-          cache = selector.addEdge(curCache, prevEdge, curEdge, nextEdge);
-          if (count < this.caches.size()) {
-            this.caches.set(count, cache);
+        prevEdge = if (size >= 2) edges[size - 2] else edges[0];
+        curEdge = edges[size - 1];
+        for (nextEdge in edges) {
+          if (withCache) {
+            this.caches.set(
+              count,
+              selector.addEdge(this.caches[count], prevEdge, curEdge, nextEdge),
+            )
+          } else {
+            _ = selector.addEdge(EdgeCache(), prevEdge, curEdge, nextEdge)
           };
           !prevEdge = curEdge;
           !curEdge = nextEdge;
           !count = count + 1;
-        });
-      };
-    });
+        }
+      }
+    };
     this.selectors.distance()
   }
 }
@@ -352,37 +357,31 @@ fun hasDiagonalArtifactInner(
       xm = interpolatedMedian(a, l, q, solution);
       // Determine if xm deviates too much from medians of a, d.
       rangeFlags = classifier.rangeTest(0.0, 1.0, solution, am, dm, xm);
-      // Additionally, check xm against the interpolated medians at the local extremes tEx0, tEx1.
-      tEnd = Array::mfill(2, 0.0);
-      em = Array::mfill(2, 0.0);
-      // tEx0
+      // Additionally, check xm against the local extremes tEx0, tEx1 of the
+      // channels. As in msdfgen, the range is bounded by the extreme on the
+      // side of the solution, and the medians stay those of a and d.
       if (tEx0 > 0.0 && tEx0 < 1.0) {
-        tEnd.set(0, 0.0);
-        tEnd.set(1, 1.0);
-        em.set(0, am);
-        em.set(1, dm);
-        tEnd.set(if (tEx0 > solution) 1 else 0, tEx0);
-        em.set(
-          if (tEx0 > solution) 1 else 0,
-          interpolatedMedian(a, l, q, tEx0),
-        );
         !rangeFlags = rangeFlags.or(
-          classifier.rangeTest(tEnd[0], tEnd[1], solution, am, dm, xm),
+          classifier.rangeTest(
+            if (tEx0 > solution) 0.0 else tEx0,
+            if (tEx0 > solution) tEx0 else 1.0,
+            solution,
+            am,
+            dm,
+            xm,
+          ),
         );
       };
-      // tEx1
       if (tEx1 > 0.0 && tEx1 < 1.0) {
-        tEnd.set(0, 0.0);
-        tEnd.set(1, 1.0);
-        em.set(0, am);
-        em.set(1, dm);
-        tEnd.set(if (tEx1 > solution) 1 else 0, tEx1);
-        em.set(
-          if (tEx1 > solution) 1 else 0,
-          interpolatedMedian(a, l, q, tEx1),
-        );
         !rangeFlags = rangeFlags.or(
-          classifier.rangeTest(tEnd[0], tEnd[1], solution, am, dm, xm),
+          classifier.rangeTest(
+            if (tEx1 > solution) 0.0 else tEx1,
+            if (tEx1 > solution) tEx1 else 1.0,
+            solution,
+            am,
+            dm,
+            xm,
+          ),
         );
       };
       if (classifier.evaluate(solution, xm, rangeFlags)) break true;

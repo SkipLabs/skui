@@ -8,7 +8,7 @@ base class Mode uses Equality {
   | MultiAndTrue()
 }
 
-class EdgeColor(value: Int) uses Equality {
+value class EdgeColor(value: Int) uses Equality {
   const black: Int = 0;
   const red: Int = 1;
   const green: Int = 2;
@@ -116,7 +116,10 @@ class SingleDistance(value: Float) extends Distance {
   }
 }
 
-class SignedDistance(distance: Float, dot: Float) uses Orderable, Equivalent {
+value class SignedDistance(
+  distance: Float,
+  dot: Float,
+) uses Orderable, Equivalent {
   //
   static fun new(): SignedDistance {
     static(-Float::inf, 1.0)
@@ -170,9 +173,7 @@ mutable class BitmapRef<T> private (
   }
 
   readonly fun elem(x: Int, y: Int, i: Int): T {
-    invariant(i >= 0 && i < this.colors, "Invalid element index");
-    offset = this.offset(x, y);
-    this.data.get(offset + i);
+    this.data[this.colors * (this.width * y + x) + i]
   }
 
   readonly fun get(x: Int, y: Int): Array<T> {

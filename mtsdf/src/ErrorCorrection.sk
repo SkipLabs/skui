@@ -199,22 +199,26 @@ mutable class ErrorCorrection(
       for (x in Range(0, sdf.width)) {
         get = idx -> sdf.elem(x, y, idx);
         cm = fmedian(get(0), get(1), get(2));
-        protectedFlag =
+        isProtected =
           this.stencil.elem(x, y, 0).and(protectedFlag) == protectedFlag;
+        // The base classifiers have no state: one per direction is enough.
+        hClassifier = mutable BasicArtifactClassifier(hSpan, isProtected);
+        vClassifier = mutable BasicArtifactClassifier(vSpan, isProtected);
+        dClassifier = mutable BasicArtifactClassifier(dSpan, isProtected);
         // Mark current texel c with the error flag if an artifact occurs when it's interpolated with any of its 8 neighbors.
-        computeError: UInt8 -> UInt8 = v ->
-          MTSDF.computeError(
+        this.stencil.updateOne(x, y, v ->
+          computeError(
             sdf,
             x,
             y,
             cm,
             get,
             v,
-            _p -> mutable BasicArtifactClassifier(hSpan, protectedFlag),
-            _p -> mutable BasicArtifactClassifier(vSpan, protectedFlag),
-            _p -> mutable BasicArtifactClassifier(dSpan, protectedFlag),
-          );
-        this.stencil.updateOne(x, y, v -> computeError(v));
+            _p -> hClassifier,
+            _p -> vClassifier,
+            _p -> dClassifier,
+          )
+        );
       }
     }
   }
@@ -264,8 +268,8 @@ mutable class ErrorCorrection(
             stencil.and(protectedFlag) == protectedFlag;
           cm = fmedian(c(0), c(1), c(2));
           // Mark current texel c with the error flag if an artifact occurs when it's interpolated with any of its 8 neighbors.
-          computeError: UInt8 -> UInt8 = v ->
-            MTSDF.computeError(
+          this.stencil.updateOne(x, row, v ->
+            computeError(
               sdf,
               x,
               row,
@@ -275,8 +279,8 @@ mutable class ErrorCorrection(
               p -> shapeDistanceChecker.classifier(p, hSpan),
               p -> shapeDistanceChecker.classifier(p, vSpan),
               p -> shapeDistanceChecker.classifier(p, dSpan),
-            );
-          this.stencil.updateOne(x, row, v -> computeError(v));
+            )
+          );
         }
       }
     };
@@ -307,111 +311,37 @@ fun computeError(
   vArtifactSupplier: Vector2 -> mutable ArtifactClassifier,
   dArtifactSupplier: Vector2 -> mutable ArtifactClassifier,
 ): UInt8 {
-  optL = if (x > 0) {
-    Some(idx -> sdf.elem(x - 1, y, idx))
-  } else {
-    None()
-  };
-  optB = if (y > 0) {
-    Some(idx -> sdf.elem(x, y - 1, idx))
-  } else {
-    None()
-  };
-  optR = if (x < sdf.width - 1) {
-    Some(idx -> sdf.elem(x + 1, y, idx))
-  } else {
-    None()
-  };
-  optT = if (y < sdf.height - 1) {
-    Some(idx -> sdf.elem(x, y + 1, idx))
-  } else {
-    None()
-  };
-  hasArtifact1 = optL
-    .map(l ->
-      hasLinearArtifact(hArtifactSupplier(Vector2(-1.0, 0.0)), cm, get, l)
-    )
-    .default(false);
-  hasArtifact2 = optB
-    .map(b ->
-      hasLinearArtifact(vArtifactSupplier(Vector2(0.0, -1.0)), cm, get, b)
-    )
-    .default(false);
-  hasArtifact3 = optR
-    .map(r ->
-      hasLinearArtifact(hArtifactSupplier(Vector2(1.0, 0.0)), cm, get, r)
-    )
-    .default(false);
-  hasArtifact4 = optT
-    .map(t ->
-      hasLinearArtifact(vArtifactSupplier(Vector2(0.0, 1.0)), cm, get, t)
-    )
-    .default(false);
-  hasArtifact5 = optL
-    .flatMap(l ->
-      optB.map(b ->
-        hasDiagonalArtifact(
-          dArtifactSupplier(Vector2(-1.0, -1.0)),
-          cm,
-          get,
-          l,
-          b,
-          idx -> sdf.elem(x - 1, y - 1, idx),
-        )
-      )
-    )
-    .default(false);
-  hasArtifact6 = optR
-    .flatMap(r ->
-      optB.map(b ->
-        hasDiagonalArtifact(
-          dArtifactSupplier(Vector2(1.0, -1.0)),
-          cm,
-          get,
-          r,
-          b,
-          idx -> sdf.elem(x + 1, y - 1, idx),
-        )
-      )
-    )
-    .default(false);
-  hasArtifact7 = optL
-    .flatMap(l ->
-      optT.map(t ->
-        hasDiagonalArtifact(
-          dArtifactSupplier(Vector2(-1.0, 1.0)),
-          cm,
-          get,
-          l,
-          t,
-          idx -> sdf.elem(x - 1, y + 1, idx),
-        )
-      )
-    )
-    .default(false);
-  hasArtifact8 = optR
-    .flatMap(r ->
-      optT.map(t ->
-        hasDiagonalArtifact(
-          dArtifactSupplier(Vector2(1.0, 1.0)),
-          cm,
-          get,
-          r,
-          t,
-          idx -> sdf.elem(x + 1, y + 1, idx),
-        )
-      )
-    )
-    .default(false);
+  hasL = x > 0;
+  hasB = y > 0;
+  hasR = x < sdf.width - 1;
+  hasT = y < sdf.height - 1;
+  texel = (dx, dy) -> idx -> sdf.elem(x + dx, y + dy, idx);
+  linear = (supplier, dx, dy) ->
+    hasLinearArtifact(
+      supplier(Vector2(dx.toFloat(), dy.toFloat())),
+      cm,
+      get,
+      texel(dx, dy),
+    );
+  diagonal = (dx, dy) ->
+    hasDiagonalArtifact(
+      dArtifactSupplier(Vector2(dx.toFloat(), dy.toFloat())),
+      cm,
+      get,
+      texel(dx, 0),
+      texel(0, dy),
+      texel(dx, dy),
+    );
+  // Stops at the first artifact found.
   if (
-    hasArtifact1 ||
-    hasArtifact2 ||
-    hasArtifact3 ||
-    hasArtifact4 ||
-    hasArtifact5 ||
-    hasArtifact6 ||
-    hasArtifact7 ||
-    hasArtifact8
+    (hasL && linear(hArtifactSupplier, -1, 0)) ||
+    (hasB && linear(vArtifactSupplier, 0, -1)) ||
+    (hasR && linear(hArtifactSupplier, 1, 0)) ||
+    (hasT && linear(vArtifactSupplier, 0, 1)) ||
+    (hasL && hasB && diagonal(-1, -1)) ||
+    (hasR && hasB && diagonal(1, -1)) ||
+    (hasL && hasT && diagonal(-1, 1)) ||
+    (hasR && hasT && diagonal(1, 1))
   ) {
     UInt8::truncate(v.or(errorFlag))
   } else {
