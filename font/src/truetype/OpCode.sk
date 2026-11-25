@@ -1,12 +1,14 @@
 module TrueType;
 
-const ui8_0: UInt8 = uint8(0);
-const ui8_1: UInt8 = uint8(1);
-const ui8_2: UInt8 = uint8(2);
-const ui8_3: UInt8 = uint8(3);
-const ui8_5: UInt8 = uint8(5);
+private const ui8_0: UInt8 = uint8(0);
+private const ui8_1: UInt8 = uint8(1);
+private const ui8_2: UInt8 = uint8(2);
+private const ui8_3: UInt8 = uint8(3);
+private const ui8_5: UInt8 = uint8(5);
 
-// popCount is the number of stack elements that each opcode pops.
+// popCount is the minimum number of stack elements each opcode needs before
+// it runs. Opcodes driven by the loop variable (SHP, IP, ALIGNRP, FLIPPT,
+// SHPIX, ...) check their actual pop count themselves.
 const popCount: Array<UInt8> = Array[
   ui8_0,
   ui8_0,

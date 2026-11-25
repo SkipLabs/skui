@@ -25,7 +25,7 @@ class LineWrapper(
     for (i in range.toRange()) {
       char = chars[i];
       kern = fontSupport.getKern(context, char, faceId, optChar);
-      width = fontSupport.getWidth(context, char, faceId);
+      width = fontSupport.getAdvance(context, char, faceId);
       !optChar = Some(char);
       g = WGroup{before, kern, width, range => .Range(i, i + 1)};
       !before = before + width + kern;
@@ -50,7 +50,7 @@ class LineWrapper(
     for (index in range.toRange()) {
       char = chars[index];
       kern = fontSupport.getKern(context, char, faceId, optChar);
-      width = fontSupport.getWidth(context, char, faceId);
+      width = fontSupport.getAdvance(context, char, faceId);
       !optChar = Some(char);
       if (isSeparator(char)) {
         optGroup match {

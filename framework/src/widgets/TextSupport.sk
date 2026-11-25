@@ -136,7 +136,7 @@ class TextSupport(
         widths = key.value.chars().map(char -> {
           gid = Font.GlyphID::create(key.faceId, char);
           glyph = fontSupport.getGlyphForId(context, gid);
-          gw = glyph.getKern(optPrevious) + glyph.width();
+          gw = glyph.getKern(optPrevious) + glyph.advance();
           !width = width + gw;
           !optPrevious = Some(char);
           gw
@@ -194,7 +194,7 @@ class TextSupport(
     glyph = context
       .getFontSupport()
       .glyphProps(context, Font.GlyphID::create(faceId, ' '));
-    Ui.FontSize(glyph.width(), glyph.ascent(), glyph.descent());
+    Ui.FontSize(glyph.advance(), glyph.ascent(), glyph.descent());
   }
 
   fun getGlyphs(
@@ -432,7 +432,7 @@ fun toDrawables(
     dGid = Font.GlyphID::create(faceId, char, pxRange);
     glyph = fontSupport.getGlyphForId(context, gid);
     kern = glyph.getKern(optPrevious);
-    width = glyph.width() + kern;
+    width = glyph.advance() + kern;
     offset = Geometry.Offset(left, top).move(glyph.offset(kern));
     size = glyph.glyph.optPath
       .map(path -> MTSDF.size(MTSDF.Shape::fromPath(path).getBounds()))
@@ -469,7 +469,7 @@ fun buildGlyphs(
     gid = Font.GlyphID::create(style.faceId, char);
     glyph = fontSupport.getGlyphForId(context, gid);
     kern = glyph.getKern(optPrevious);
-    width = glyph.width() + kern;
+    width = glyph.advance() + kern;
     offset = Geometry.Offset(left, top).move(glyph.offset(kern));
     !left = left + width;
     !optPrevious = Some(char);

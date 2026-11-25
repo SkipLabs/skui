@@ -1,13 +1,10 @@
 module TrueType;
 
-const twilightZone: Int = 0;
 const glyphZone: Int = 1;
-const numZone: Int = 2;
 
 const current: Int = 0;
 const unhinted: Int = 1;
 const inFontUnits: Int = 2;
-const numPointType: Int = 3;
 
 class HintingException(msg: String) extends Exception {
   fun getMessage(): String {
@@ -15,7 +12,7 @@ class HintingException(msg: String) extends Exception {
   }
 }
 
-fun invariant(cond: Bool, msg: String = "assert"): void {
+private fun hintCheck(cond: Bool, msg: String = "assert"): void {
   if (!cond) throw HintingException(msg)
 }
 
@@ -80,6 +77,26 @@ class GraphicsState{
 }
 
 /**
+ * HinterState is an immutable copy of a Hinter after its font program
+ * (fpgm) and CVT program (prep) have run. Copying it into a new Hinter is
+ * much cheaper than running those programs again for every glyph.
+ */
+class HinterState{
+  stackSize: Int,
+  store: Array<Int32>,
+  functions: Map<Int32, Array<UInt8>>,
+  font: Font,
+  scale: Fixed.Int26_6,
+  gs: GraphicsState,
+  defaultGS: GraphicsState,
+  twilightCurrent: Array<Point>,
+  twilightUnhinted: Array<Point>,
+  twilightInFontUnits: Array<Point>,
+  scaledCVTInitialized: Bool,
+  scaledCVT: Vector<Fixed.Int26_6>,
+}
+
+/**
  * Hinter implements bytecode hinting.
  * A hinter can be re-used to hint a series of glyphs from a Font.
  */
@@ -111,8 +128,45 @@ mutable class Hinter{
   mutable scaledCVTInitialized: Bool = false,
   scaledCVT: mutable Vector<Fixed.Int26_6> = mutable Vector[],
   debug: Bool = false,
-  index: Int = 0,
 } {
+  /**
+   * Returns a Hinter in the given state. The mutable parts are copied, so
+   * hinting a glyph never changes the state.
+   */
+  static fun fromState(state: HinterState): mutable Hinter {
+    mutable Hinter{
+      stack => Array<Int32>::mfill(state.stackSize, int32(0)),
+      store => Array::mcreateFromItems(state.store),
+      functions => state.functions.clone(),
+      font => state.font,
+      scale => state.scale,
+      gs => state.gs,
+      defaultGS => state.defaultGS,
+      twilightCurrent => Array::mcreateFromItems(state.twilightCurrent),
+      twilightUnhinted => Array::mcreateFromItems(state.twilightUnhinted),
+      twilightInFontUnits => Array::mcreateFromItems(state.twilightInFontUnits),
+      scaledCVTInitialized => state.scaledCVTInitialized,
+      scaledCVT => state.scaledCVT.clone(),
+    }
+  }
+
+  readonly fun snapshot(): HinterState {
+    HinterState{
+      stackSize => this.stack.size(),
+      store => this.store.chill(),
+      functions => this.functions.chill(),
+      font => this.font,
+      scale => this.scale,
+      gs => this.gs,
+      defaultGS => this.defaultGS,
+      twilightCurrent => this.twilightCurrent.chill(),
+      twilightUnhinted => this.twilightUnhinted.chill(),
+      twilightInFontUnits => this.twilightInFontUnits.chill(),
+      scaledCVTInitialized => this.scaledCVTInitialized,
+      scaledCVT => this.scaledCVT.chill(),
+    }
+  }
+
   mutable fun init(font: Font, scale: Fixed.Int26_6): mutable Hinter {
     !this.twilightCurrent = resetTwilightPoints(font, this.twilightCurrent);
     !this.twilightUnhinted = resetTwilightPoints(font, this.twilightUnhinted);
@@ -166,7 +220,7 @@ mutable class Hinter{
     optInFontUnits: ?(Vector<Point>) = None(),
     optEnds: ?(Vector<Int>) = None(),
   ): mutable Hinter {
-    invariant(program.size() <= 50000, "too many instructions");
+    hintCheck(program.size() <= 50000, "too many instructions");
     !this.gs = this.defaultGS;
     !this.glyphCurrent = Array::mcreateFromItems(optCurrent.default(Vector[]));
     !this.glyphUnhinted = Array::mcreateFromItems(
@@ -183,9 +237,9 @@ mutable class Hinter{
     callStackTop = 0;
     while (pc >= 0 && pc < program.size()) {
       !steps = steps + 1;
-      invariant(steps < 100000, "too many steps");
+      hintCheck(steps < 100000, "too many steps");
       opcode = program[pc];
-      invariant(top >= popCount[opcode.toInt()].toInt(), "stack underflow");
+      hintCheck(top >= popCount[opcode.toInt()].toInt(), "stack underflow");
       iOpcode = opcode.toInt();
       if (iOpcode == opSVTCA0) {
         !this.gs.pv = (int16(0), int16(0x4000));
@@ -212,18 +266,20 @@ mutable class Hinter{
         iOpcode == opSFVTL1
       ) {
         !top = top - 2;
-        pPoints = this.getPoints(0, current);
-        p1 = pPoints.get(this.stack.get(top).toInt());
-        p2 = pPoints.get(this.stack.get(top + 1).toInt());
-        dx = int16(p1.x.value.toInt() - p2.x.value.toInt());
-        dy = int16(p1.y.value.toInt() - p2.y.value.toInt());
+        // As in the spec and C Freetype (and SDPVTL below): the point on top
+        // of the stack is in the zone pointed at by zp2, the one below it in
+        // the zone pointed at by zp1.
+        p1 = this.checkedPoint(1, current, this.stack.get(top).toInt());
+        p2 = this.checkedPoint(2, current, this.stack.get(top + 1).toInt());
+        dx = p1.x.asInt() - p2.x.asInt();
+        dy = p1.y.asInt() - p2.y.asInt();
         if (dx == 0 && dy == 0) {
-          !dx = int16(0x4000);
+          !dx = 0x4000;
         } else if (iOpcode.and(1) != 0) {
           // Counter-clockwise rotation.
-          (!dx, !dy) = (int16(-dy.toInt()), dx);
+          (!dx, !dy) = (-dy, dx);
         };
-        v = normalize(dx, dy);
+        v = normalizeInt(dx, dy);
         if (iOpcode < opSFVTL0) {
           !this.gs.pv = v;
           !this.gs.dv = v;
@@ -244,7 +300,7 @@ mutable class Hinter{
           int16(this.stack.get(top + 1).toInt()),
         );
       } else if (iOpcode == opGPV || iOpcode == opGFV) {
-        invariant(top + 1 < this.stack.size(), "stack overflow");
+        hintCheck(top + 1 < this.stack.size(), "stack overflow");
         (x, y) = if (iOpcode == opGPV) this.gs.pv else this.gs.fv;
         this.stack.set(top, int32(x.toInt()));
         this.stack.set(top + 1, int32(y.toInt()));
@@ -253,13 +309,13 @@ mutable class Hinter{
         !this.gs.fv = this.gs.pv;
       } else if (iOpcode == opISECT) {
         !top = top - 5;
-        toUpdate = this.getPoints(2, current);
         index = this.stack[top].toInt();
+        toUpdate = this.checkedPoints(2, current, index);
         p = toUpdate.get(index);
-        a0 = this.getPoints(1, current).get(this.stack[top + 1].toInt());
-        a1 = this.getPoints(1, current).get(this.stack[top + 2].toInt());
-        b0 = this.getPoints(0, current).get(this.stack[top + 3].toInt());
-        b1 = this.getPoints(0, current).get(this.stack[top + 4].toInt());
+        a0 = this.checkedPoint(1, current, this.stack[top + 1].toInt());
+        a1 = this.checkedPoint(1, current, this.stack[top + 2].toInt());
+        b0 = this.checkedPoint(0, current, this.stack[top + 3].toInt());
+        b1 = this.checkedPoint(0, current, this.stack[top + 4].toInt());
         dbx = b1.x - b0.x;
         dby = b1.y - b0.y;
         dax = a1.x - a0.x;
@@ -334,7 +390,7 @@ mutable class Hinter{
         // glyph in the DejaVuSansMono.ttf that comes with Ubuntu 14.04,
         // issue SLOOP with a zero on top of the stack. Just like the C
         // Freetype code, we allow the zero.
-        invariant(this.stack[top] >= 0, "invalid data");
+        hintCheck(this.stack[top] >= 0, "invalid data");
         !this.gs.loopCount = this.stack[top];
       } else if (iOpcode == opRTG) {
         !this.gs.roundPeriod = fixed26_6(1.shl(6));
@@ -368,7 +424,7 @@ mutable class Hinter{
           this.font.scale(this.scale.asInt() * this.stack[top].toInt()),
         );
       } else if (iOpcode == opDUP) {
-        invariant(top < this.stack.size(), "stack overflow");
+        hintCheck(top < this.stack.size(), "stack overflow");
         this.stack.set(top, this.stack[top - 1]);
         !top = top + 1;
       } else if (iOpcode == opPOP) {
@@ -381,12 +437,12 @@ mutable class Hinter{
         this.stack.set(top - 1, v2);
         this.stack.set(top - 2, v1);
       } else if (iOpcode == opDEPTH) {
-        invariant(top < this.stack.size(), "stack overflow");
+        hintCheck(top < this.stack.size(), "stack overflow");
         this.stack.set(top, int32(top));
         !top = top + 1;
       } else if (iOpcode == opCINDEX || iOpcode == opMINDEX) {
         x = this.stack[top - 1].toInt();
-        invariant(x > 0 && x < top, "invalid data");
+        hintCheck(x > 0 && x < top, "invalid data");
         this.stack.set(top - 1, this.stack[top - 1 - x]);
         if (opcode == opMINDEX) {
           toCopy = this.stack.slice(top - x, top);
@@ -397,47 +453,47 @@ mutable class Hinter{
         };
       } else if (iOpcode == opALIGNPTS) {
         !top = top - 2;
-        pPoints = this.getPoints(1, current);
-        qPoints = this.getPoints(0, current);
         ip = this.stack[top].toInt();
         iq = this.stack[top + 1].toInt();
+        pPoints = this.checkedPoints(1, current, ip);
+        qPoints = this.checkedPoints(0, current, iq);
         p = pPoints.get(ip);
         q = qPoints.get(iq);
         d = dotProduct(q.x - p.x, q.y - p.y, this.gs.pv).idiv(2);
         pPoints.set(ip, this.move(p, d, true));
-        qPoints.set(ip, this.move(p, fixed26_6(0) - d, true));
+        qPoints.set(iq, this.move(q, fixed26_6(0) - d, true));
       } else if (iOpcode == opUTP) {
         !top = top - 1;
-        pPoints = this.getPoints(1, current);
         ip = this.stack[top].toInt();
+        pPoints = this.checkedPoints(0, current, ip);
         p = pPoints.get(ip);
         !p.flags = p.flags.and(flagTouchedX.or(flagTouchedY).not());
         pPoints.set(ip, p);
       } else if (iOpcode == opLOOPCALL || iOpcode == opCALL) {
-        invariant(callStackTop < callStack.size(), "call stack overflow");
+        hintCheck(callStackTop < callStack.size(), "call stack overflow");
         !top = top - 1;
-        f = this.functions.get(this.stack[top]);
+        f = this.function(this.stack[top]);
         stackEntry = CallStackEntry(program, pc, int32(1));
         if (iOpcode == opLOOPCALL) {
           !top = top - 1;
-          if (this.stack[top].toInt() == 0) {
-            break void;
-          };
           !stackEntry.loopCount = this.stack[top];
         };
-        callStack.set(callStackTop, stackEntry);
-        !callStackTop = callStackTop + 1;
-        !program = f;
-        !pc = 0;
-        continue;
+        // As in C Freetype, a LOOPCALL count <= 0 is a no-op.
+        if (stackEntry.loopCount > 0) {
+          callStack.set(callStackTop, stackEntry);
+          !callStackTop = callStackTop + 1;
+          !program = f;
+          !pc = 0;
+          continue;
+        }
       } else if (iOpcode == opFDEF) {
         // Save all bytecode up until the next ENDF.
         startPC = pc + 1;
         loop {
           !pc = pc + 1;
-          invariant(pc < program.size(), "unbalanced FDEF");
+          hintCheck(pc < program.size(), "unbalanced FDEF");
           subCode = program[pc].toInt();
-          invariant(subCode != opFDEF, "nested FDEF");
+          hintCheck(subCode != opFDEF, "nested FDEF");
           if (subCode == opENDF) {
             !top = top - 1;
             this.functions.set(this.stack[top], program.slice(startPC, pc + 1));
@@ -447,7 +503,7 @@ mutable class Hinter{
           }
         };
       } else if (iOpcode == opENDF) {
-        invariant(callStackTop != 0, "call stack underflow");
+        hintCheck(callStackTop != 0, "call stack underflow");
         !callStackTop = callStackTop - 1;
         stackEntry = callStack[callStackTop];
         !stackEntry.loopCount = int32(stackEntry.loopCount - 1);
@@ -462,7 +518,7 @@ mutable class Hinter{
       } else if (iOpcode == opMDAP0 || iOpcode == opMDAP1) {
         !top = top - 1;
         i = this.stack[top];
-        toUpdate = this.getPoints(0, current);
+        toUpdate = this.checkedPoints(0, current, i.toInt());
         p = toUpdate.get(i.toInt());
         distance = fixed26_6(0);
         if (iOpcode == opMDAP1) {
@@ -523,13 +579,13 @@ mutable class Hinter{
           !prevEnd = end;
         });
       } else if (iOpcode == opSHP0 || iOpcode == opSHP1) {
-        invariant(top >= this.gs.loopCount, " stack underflow");
+        hintCheck(top >= this.gs.loopCount, "stack underflow");
         (_, _, d) = this.displacement(iOpcode.and(1) == 0);
         loopCount = this.gs.loopCount.toInt();
-        toMove = this.getPoints(2, current);
         while (loopCount > 0) {
           !top = top - 1;
           i = this.stack[top].toInt();
+          toMove = this.checkedPoints(2, current, i);
           toMove.set(i, this.move(toMove.get(i), d, true));
           !loopCount = loopCount - 1;
         };
@@ -538,14 +594,10 @@ mutable class Hinter{
         !top = top - 1;
         (zonePointer, i, d) = this.displacement(iOpcode.and(1) == 0);
         (zp0, zp1, zp2) = this.gs.zp;
-        invariant(zp2 != 0, " unimplemented SHC instruction");
-        contour = this.stack[top];
-        j0 = if (contour.toInt() > 0) {
-          this.ends[contour.toInt() - 1]
-        } else {
-          0
-        };
-        j1 = this.ends[contour.toInt()];
+        hintCheck(zp2 != 0, "unimplemented SHC instruction");
+        contour = this.stack[top].toInt();
+        j1 = this.contourEnd(contour);
+        j0 = if (contour > 0) this.contourEnd(contour - 1) else 0;
         czp = zonePointer match {
         | 0 -> zp0
         | 1 -> zp1
@@ -553,6 +605,7 @@ mutable class Hinter{
         };
         move = czp != zp2;
         toMove = this.getPoints(2, current);
+        hintCheck(j0 <= j1 && j1 <= toMove.size(), "invalid contour range");
         for (j in .Range(j0, j1)) {
           if (move || j != i) {
             toMove.set(j, this.move(toMove.get(j), d, true));
@@ -580,19 +633,20 @@ mutable class Hinter{
           }
         }
       } else if (iOpcode == opSHPIX) {
+        hintCheck(top >= this.gs.loopCount.toInt() + 1, "stack underflow");
         !top = top - 1;
         d = fixed26_6(this.stack[top.toInt()].toInt());
         loopCount = this.gs.loopCount.toInt();
-        toMove = this.getPoints(2, current);
         while (loopCount > 0) {
           !top = top - 1;
           i = this.stack[top].toInt();
+          toMove = this.checkedPoints(2, current, i);
           toMove.set(i, this.move(toMove.get(i), d, true));
           !loopCount = loopCount - 1;
         };
         !this.gs.loopCount = int32(1);
       } else if (iOpcode == opIP) {
-        invariant(top >= this.gs.loopCount.toInt(), " opIP stack underflow");
+        hintCheck(top >= this.gs.loopCount.toInt(), "stack underflow");
         pointType = inFontUnits;
         (zp0, zp1, zp2) = this.gs.zp;
         twilight = zp0 == 0 || zp1 == 0 || zp2 == 0;
@@ -600,11 +654,11 @@ mutable class Hinter{
           !pointType = unhinted
         };
         (_, rp1, rp2) = this.gs.rp;
-        p = this.getPoints(1, pointType).get(rp2.toInt());
-        oldP = this.getPoints(0, pointType).get(rp1.toInt());
+        p = this.checkedPoint(1, pointType, rp2.toInt());
+        oldP = this.checkedPoint(0, pointType, rp1.toInt());
         oldRange = dotProduct(p.x - oldP.x, p.y - oldP.y, this.gs.dv);
-        !p = this.getPoints(1, current).get(rp2.toInt());
-        curP = this.getPoints(0, current).get(rp1.toInt());
+        !p = this.checkedPoint(1, current, rp2.toInt());
+        curP = this.checkedPoint(0, current, rp1.toInt());
         curRange = dotProduct(p.x - curP.x, p.y - curP.y, this.gs.pv);
         loopCount = this.gs.loopCount.toInt();
         oldPoints = this.getPoints(2, pointType);
@@ -612,6 +666,10 @@ mutable class Hinter{
         while (loopCount > 0) {
           !top = top - 1;
           i = this.stack[top].toInt();
+          hintCheck(
+            i >= 0 && i < oldPoints.size() && i < curPoints.size(),
+            `point index out of range: ${i}`,
+          );
           !p = oldPoints.get(i);
           oldDist = dotProduct(p.x - oldP.x, p.y - oldP.y, this.gs.dv);
           !p = curPoints.get(i);
@@ -637,8 +695,8 @@ mutable class Hinter{
         distance = fixed26_6(this.stack[top + 1].toInt());
         // TODO: special case h.gs.zp[1] == 0 in C Freetype.
         (rp0, rp1, rp2) = this.gs.rp;
-        ref = this.getPoints(0, current).get(rp0.toInt());
-        toMove = this.getPoints(1, current);
+        ref = this.checkedPoint(0, current, rp0.toInt());
+        toMove = this.checkedPoints(1, current, i);
         p = toMove.get(i);
         curDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.pv);
         // Set-RP0 bit.
@@ -651,13 +709,14 @@ mutable class Hinter{
         // Move the point.
         toMove.set(i, this.move(p, distance - curDist, true));
       } else if (iOpcode == opALIGNRP) {
+        hintCheck(top >= this.gs.loopCount.toInt(), "stack underflow");
         (rp0, _, _) = this.gs.rp;
-        ref = this.getPoints(0, current).get(rp0.toInt());
+        ref = this.checkedPoint(0, current, rp0.toInt());
         loopCount = this.gs.loopCount.toInt();
-        toMove = this.getPoints(1, current);
         while (loopCount > 0) {
           !top = top - 1;
           i = this.stack[top].toInt();
+          toMove = this.checkedPoints(1, current, i);
           p = toMove.get(i);
           distance =
             fixed26_6(0) - dotProduct(p.x - ref.x, p.y - ref.y, this.gs.pv);
@@ -676,17 +735,17 @@ mutable class Hinter{
         ref = this.stack[top + 1].toInt();
         distance = this.getScaledCVT(ref);
         (zp0, _, _) = this.gs.zp;
+        toMove = this.checkedPoints(0, current, i);
         if (zp0 == 0) {
           (fv0, fv1) = this.gs.fv;
-          pPoints = this.getPoints(0, unhinted);
+          pPoints = this.checkedPoints(0, unhinted, i);
           p = pPoints.get(i);
           !p.x = fixed26_6((distance.asInt() * fv0.toInt()).shr(14));
           !p.y = fixed26_6((distance.asInt() * fv1.toInt()).shr(14));
 
           pPoints.set(i, p);
-          this.getPoints(0, current).set(i, p);
+          toMove.set(i, p);
         };
-        toMove = this.getPoints(0, current);
         p = toMove.get(i);
         oldDist = dotProduct(p.x, p.y, this.gs.pv);
         if (opcode == opMIAP1) {
@@ -709,10 +768,10 @@ mutable class Hinter{
         continue;
       } else if (iOpcode == opWS) {
         !top = top - 2;
-        i = this.stack[top].toInt();
+        i = this.storeIndex(this.stack[top].toInt());
         this.store.set(i, this.stack[top + 1]);
       } else if (iOpcode == opRS) {
-        i = this.stack[top - 1].toInt();
+        i = this.storeIndex(this.stack[top - 1].toInt());
         this.stack.set(top - 1, this.store[i]);
       } else if (iOpcode == opWCVTP) {
         !top = top - 2;
@@ -727,13 +786,13 @@ mutable class Hinter{
       } else if (iOpcode == opGC0 || iOpcode == opGC1) {
         i = this.stack[top - 1].toInt();
         if (iOpcode == opGC0) {
-          p = this.getPoints(2, current).get(i);
+          p = this.checkedPoint(2, current, i);
           this.stack.set(
             top - 1,
             int32(dotProduct(p.x, p.y, this.gs.pv).asInt()),
           );
         } else {
-          p = this.getPoints(2, unhinted).get(i);
+          p = this.checkedPoint(2, unhinted, i);
           // Using dv as per C Freetype.
           this.stack.set(
             top - 1,
@@ -743,7 +802,7 @@ mutable class Hinter{
       } else if (iOpcode == opSCFS) {
         !top = top - 2;
         i = this.stack[top].toInt();
-        toMove = this.getPoints(2, current);
+        toMove = this.checkedPoints(2, current, i);
         p = toMove.get(i);
         c = dotProduct(p.x, p.y, this.gs.pv);
         !p = this.move(
@@ -754,7 +813,7 @@ mutable class Hinter{
         toMove.set(i, p);
         (_, _, zp2) = this.gs.zp;
         if (zp2 == 0) {
-          this.getPoints(2, unhinted).set(i, p);
+          this.checkedPoints(2, unhinted, i).set(i, p);
         };
       } else if (iOpcode == opMD0 || iOpcode == opMD1) {
         !top = top - 1;
@@ -766,10 +825,8 @@ mutable class Hinter{
         } else {
           (inFontUnits, this.gs.dv, true)
         };
-        pPoints = this.getPoints(0, pt);
-        qPoints = this.getPoints(1, pt);
-        p = pPoints.get(this.stack[top - 1].toInt());
-        q = qPoints.get(this.stack[top].toInt());
+        p = this.checkedPoint(0, pt, this.stack[top - 1].toInt());
+        q = this.checkedPoint(1, pt, this.stack[top].toInt());
         d = dotProduct(p.x - q.x, p.y - q.y, v).asInt();
         if (scale) {
           !d = d * this.scale.asInt() / this.font.fUnitsPerEm;
@@ -892,6 +949,11 @@ mutable class Hinter{
         !this.gs.deltaBase = this.stack[top];
       } else if (iOpcode == opSDS) {
         !top = top - 1;
+        // As in C Freetype, the delta shift is limited to 0..6.
+        hintCheck(
+          this.stack[top] >= 0 && this.stack[top] <= 6,
+          "invalid delta shift",
+        );
         !this.gs.deltaShift = this.stack[top];
       } else if (iOpcode == opADD) {
         !top = top - 1;
@@ -902,7 +964,7 @@ mutable class Hinter{
       } else if (iOpcode == opDIV) {
         !top = top - 1;
         st = this.stack[top].toInt();
-        invariant(st != 0, "division by zero");
+        hintCheck(st != 0, "division by zero");
         this.stack.set(
           top - 1,
           int32(
@@ -1030,10 +1092,15 @@ mutable class Hinter{
         // These ops are "anachronistic" and no longer used.
         !top = top - 1;
       } else if (iOpcode == opFLIPPT) {
+        hintCheck(top >= this.gs.loopCount.toInt(), "stack underflow");
         loopCount = this.gs.loopCount.toInt();
         while (loopCount > 0) {
           !top = top - 1;
           i = this.stack[top].toInt();
+          hintCheck(
+            i >= 0 && i < this.glyphCurrent.size(),
+            `point index out of range: ${i}`,
+          );
           p = this.glyphCurrent.get(i);
           !p.flags = p.flags.xor(flagOnCurve);
           this.glyphCurrent.set(i, p);
@@ -1044,6 +1111,10 @@ mutable class Hinter{
         !top = top - 2;
         i = this.stack[top].toInt();
         j = this.stack[top + 1].toInt();
+        hintCheck(
+          i >= 0 && i <= j && j < this.glyphCurrent.size(),
+          `invalid point range: ${i}..${j}`,
+        );
         for (index in .Range(i, j + 1)) {
           p = this.glyphCurrent.get(index);
           !p.flags = if (iOpcode == opFLIPRGON) {
@@ -1051,7 +1122,7 @@ mutable class Hinter{
           } else {
             p.flags.and(flagOnCurve.not());
           };
-          this.glyphCurrent.set(i, p);
+          this.glyphCurrent.set(index, p);
         }
       } else if (iOpcode == opSCANCTRL) {
         //  We do not support dropout control, as we always rasterize grayscale glyphs.
@@ -1064,8 +1135,8 @@ mutable class Hinter{
           } else {
             current
           };
-          p = this.getPoints(1, pt).get(this.stack[top].toInt());
-          q = this.getPoints(2, pt).get(this.stack[top + 1].toInt());
+          p = this.checkedPoint(1, pt, this.stack[top].toInt());
+          q = this.checkedPoint(2, pt, this.stack[top + 1].toInt());
           dx = (p.x - q.x).asInt();
           dy = (p.y - q.y).asInt();
           if (dx == 0 && dy == 0) {
@@ -1075,9 +1146,9 @@ mutable class Hinter{
             (!dx, !dy) = (-dy, dx);
           };
           if (i == 0) {
-            !this.gs.dv = normalize(int16(dx), int16(dy))
+            !this.gs.dv = normalizeInt(dx, dy)
           } else {
-            !this.gs.pv = normalize(int16(dx), int16(dy))
+            !this.gs.pv = normalizeInt(dx, dy)
           }
         }
       } else if (iOpcode == opGETINFO) {
@@ -1092,7 +1163,7 @@ mutable class Hinter{
         this.stack.set(top - 1, int32(res));
       } else if (iOpcode == opIDEF) {
         // IDEF is for ancient versions of the bytecode interpreter, and is no longer used.
-        invariant_violation("unsupported IDEF instruction");
+        throw HintingException("unsupported IDEF instruction");
       } else if (iOpcode == opROLL) {
         st1 = this.stack[top - 1];
         st2 = this.stack[top - 2];
@@ -1125,10 +1196,7 @@ mutable class Hinter{
         // uses INSTCTRL when grid-fitting a rotated or stretched glyph.
         !top = top - 2;
       } else {
-        invariant(
-          iOpcode >= opPUSHB000,
-          `TrueType: hinting: unrecognized instruction ${iOpcode}`,
-        );
+        hintCheck(iOpcode >= opPUSHB000, `unrecognized instruction ${iOpcode}`);
         if (iOpcode < opMDRP00000) {
           // PUSHxxxx opcode.
           (!pc, !top) = this.push(
@@ -1149,16 +1217,16 @@ mutable class Hinter{
           i = this.stack[top].toInt();
           (rp0, rp1, rp2) = this.gs.rp;
           (zp0, zp1, _) = this.gs.zp;
-          toUpdate = this.getPoints(1, current);
-          ref = this.getPoints(0, current).get(rp0.toInt());
+          toUpdate = this.checkedPoints(1, current, i);
+          ref = this.checkedPoint(0, current, rp0.toInt());
           p = toUpdate.get(i);
           oldDist = if (zp0 == 0 || zp1 == 0) {
-            p0 = this.getPoints(1, unhinted).get(i);
-            p1 = this.getPoints(0, unhinted).get(rp0.toInt());
+            p0 = this.checkedPoint(1, unhinted, i);
+            p1 = this.checkedPoint(0, unhinted, rp0.toInt());
             dotProduct(p0.x - p1.x, p0.y - p1.y, this.gs.dv);
           } else {
-            p0 = this.getPoints(1, inFontUnits).get(i);
-            p1 = this.getPoints(0, inFontUnits).get(rp0.toInt());
+            p0 = this.checkedPoint(1, inFontUnits, i);
+            p1 = this.checkedPoint(0, inFontUnits, rp0.toInt());
             tmp = dotProduct(p0.x - p1.x, p0.y - p1.y, this.gs.dv);
             fixed26_6(this.font.scale(this.scale.asInt() * tmp.asInt()))
           };
@@ -1209,21 +1277,21 @@ mutable class Hinter{
             (cvtDist - this.gs.singleWidth).abs() < this.gs.singleWidthCutIn
           ) {
             !cvtDist = if (cvtDist.asInt() >= 0) {
-              cvtDist + this.gs.singleWidth
+              this.gs.singleWidth
             } else {
-              cvtDist - this.gs.singleWidth
+              fixed26_6(0) - this.gs.singleWidth
             }
           };
           (rp0, rp1, rp2) = this.gs.rp;
           (zp0, zp1, _) = this.gs.zp;
           // TODO: implement once we have a .ttf file that triggers
           // this, so that we can step through C's freetype.
-          invariant(zp1 != 0, "unimplemented twilight point adjustment");
-          ref = this.getPoints(0, unhinted).get(rp0.toInt());
-          p = this.getPoints(1, unhinted).get(i);
+          hintCheck(zp1 != 0, "unimplemented twilight point adjustment");
+          ref = this.checkedPoint(0, unhinted, rp0.toInt());
+          p = this.checkedPoint(1, unhinted, i);
           oldDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.dv);
-          !ref = this.getPoints(0, current).get(rp0.toInt());
-          !p = this.getPoints(1, current).get(i);
+          !ref = this.checkedPoint(0, current, rp0.toInt());
+          !p = this.checkedPoint(1, current, i);
           curDist = dotProduct(p.x - ref.x, p.y - ref.y, this.gs.pv);
           if (this.gs.autoFlip && oldDist.asInt().xor(cvtDist.asInt()) < 0) {
             !cvtDist = fixed26_6(0) - cvtDist;
@@ -1282,7 +1350,7 @@ mutable class Hinter{
     };
     !top = top - 1;
     n = this.stack[top].toInt();
-    invariant(top >= 2 * n, "stack underflow");
+    hintCheck(top >= 2 * n, "stack underflow");
     while (n > 0) {
       !top = top - 2;
       b = this.stack[top].toInt();
@@ -1302,9 +1370,10 @@ mutable class Hinter{
         !b = b * 64 / 1.shl(toUInt32(this.gs.deltaShift));
         a = this.stack[top + 1].toInt();
         if (opcode >= opDELTAC1) {
+          !a = this.cvtIndex(a);
           this.scaledCVT.set(a, this.scaledCVT.get(a) + fixed26_6(b));
         } else {
-          points = this.getPoints(0, current);
+          points = this.checkedPoints(0, current, a);
           p = points.get(a);
           points.set(a, this.move(p, fixed26_6(b), true));
         }
@@ -1328,12 +1397,12 @@ mutable class Hinter{
     };
     if (opcode == 0) {
       !pc = pc + 1;
-      invariant(pc < program.size(), " insufficient data");
+      hintCheck(pc < program.size(), "insufficient data");
       !opcode = program[pc].toInt();
     };
     !pc = pc + 1;
-    invariant(top + opcode <= this.stack.size(), " stack overflow");
-    invariant(pc + (width * opcode) <= program.size(), " insufficient data");
+    hintCheck(top + opcode <= this.stack.size(), "stack overflow");
+    hintCheck(pc + (width * opcode) <= program.size(), "insufficient data");
     while (opcode > 0) {
       v1 = program[pc];
       this.stack.set(
@@ -1381,6 +1450,8 @@ mutable class Hinter{
     } else {
       len
     };
+    // Reset every entry so values written by a previous run do not survive.
+    this.scaledCVT.clear();
     this.scaledCVT.resize(n, fixed26_6(0));
     for (i in .Range(0, len)) {
       v1 = this.font.cvt[2 * i];
@@ -1421,8 +1492,8 @@ mutable class Hinter{
     } else {
       (0, rp1.toInt());
     };
-    p = this.getPoints(zonePointer, current).get(i);
-    q = this.getPoints(zonePointer, unhinted).get(i);
+    p = this.checkedPoint(zonePointer, current, i);
+    q = this.checkedPoint(zonePointer, unhinted, i);
     d = dotProduct(p.x - q.x, p.y - q.y, this.gs.pv);
     (zonePointer, i, d)
   }
@@ -1541,7 +1612,7 @@ mutable class Hinter{
     depth = 0;
     loop {
       !pc = pc + 1;
-      invariant(pc < program.size(), "unbalanced IF or ELSE");
+      hintCheck(pc < program.size(), "unbalanced IF or ELSE");
       code = program[pc].toInt();
       if (code == opIF) {
         !depth = depth + 1;
@@ -1560,6 +1631,54 @@ mutable class Hinter{
     };
     !pc = pc + 1;
     pc;
+  }
+
+  /**
+   * Returns the points of zone pointer zp after checking that i is a valid
+   * point index in that zone.
+   */
+  mutable fun checkedPoints(zp: Int, pt: Int, i: Int): mutable Array<Point> {
+    points = this.getPoints(zp, pt);
+    hintCheck(i >= 0 && i < points.size(), `point index out of range: ${i}`);
+    points
+  }
+
+  mutable fun checkedPoint(zp: Int, pt: Int, i: Int): Point {
+    this.checkedPoints(zp, pt, i).get(i)
+  }
+
+  private readonly fun storeIndex(i: Int): Int {
+    hintCheck(
+      i >= 0 && i < this.store.size(),
+      `store index out of range: ${i}`,
+    );
+    i
+  }
+
+  private mutable fun cvtIndex(i: Int): Int {
+    if (!this.scaledCVTInitialized) {
+      this.initializeScaledCVT();
+    };
+    hintCheck(
+      i >= 0 && i < this.scaledCVT.size(),
+      `CVT index out of range: ${i}`,
+    );
+    i
+  }
+
+  private readonly fun contourEnd(contour: Int): Int {
+    hintCheck(
+      contour >= 0 && contour < this.ends.size(),
+      `contour index out of range: ${contour}`,
+    );
+    this.ends[contour]
+  }
+
+  private readonly fun function(id: Int32): Array<UInt8> {
+    this.functions.maybeGet(id) match {
+    | Some(f) -> f
+    | None() -> throw HintingException(`undefined function: ${id}`)
+    }
   }
 
   mutable fun getPoints(zp: Int, pt: Int): mutable Array<Point> {
@@ -1623,6 +1742,11 @@ mutable class Hinter{
       return p;
     };
     fvDotPv = (fvx * pvx + fvy * pvy).shr(14);
+    // As in C Freetype, avoid a division by (almost) zero when the freedom
+    // and projection vectors are (nearly) orthogonal.
+    if (Math.abs(fvDotPv) < 0x400) {
+      !fvDotPv = 0x4000;
+    };
     if (this.debug) {
       debug(
         ("Before move 3", p.toTuple(), distance.asInt(), fvx, fvy, fvDotPv),
@@ -1707,11 +1831,11 @@ fun skipInstructionPayload(
   code = program[pc].toInt();
   if (code == opNPUSHB) {
     !pc = pc + 1;
-    invariant(pc < program.size(), `TrueType: hinting: ${message}`);
+    hintCheck(pc < program.size(), message);
     pc + program[pc].toInt();
   } else if (code == opNPUSHW) {
     !pc = pc + 1;
-    invariant(pc < program.size(), `TrueType: hinting: ${message}`);
+    hintCheck(pc < program.size(), message);
     pc + (2 * program[pc].toInt());
   } else if (
     code == opPUSHB000 ||
@@ -1759,8 +1883,9 @@ fun resetTwilightPoints(
   }
 }
 /**
- * dotProduct returns the dot product of [x, y] and q. It is almost the same as
- *	return Fixed.Int26_6((px*qx + py*qy + 1<<13) >> 14)
+ * dotProduct returns the dot product of [x, y] and the 2.14 vector q, as a
+ * 26.6 value: (x*q0 + y*q1 + 1<<13) >> 14. Int is 64-bit, so the products
+ * cannot overflow.
  */
 fun dotProduct(
   x: Fixed.Int26_6,
@@ -1789,8 +1914,20 @@ fun mulDiv(x: Int, y: Int, z: Int): Int {
 }
 
 fun normalize(x: Int16, y: Int16): (Int16, Int16) {
-  fx = x.toInt().toFloat();
-  fy = y.toInt().toFloat();
+  normalizeInt(x.toInt(), y.toInt())
+}
+
+/**
+ * Returns the 2.14 unit vector with the direction of (x, y). Unlike
+ * normalize, x and y are not truncated to 16 bits first, so large 26.6
+ * distances keep their direction.
+ */
+fun normalizeInt(x: Int, y: Int): (Int16, Int16) {
+  if (x == 0 && y == 0) {
+    throw HintingException("cannot normalize a zero vector");
+  };
+  fx = x.toFloat();
+  fy = y.toFloat();
   hypot = Math.sqrt((fx * fx) + (fy * fy));
   l = 0x4000.toFloat() / hypot;
   !fx = fx * l;
@@ -1806,10 +1943,6 @@ fun normalize(x: Int16, y: Int16): (Int16, Int16) {
     fy - 0.5
   };
   (int16(fx.toInt()), int16(fy.toInt()))
-}
-
-fun toPrintable(array: Array<Point>): Array<(Int, Int, Int)> {
-  array.map(p -> p.toTuple())
 }
 
 module end;

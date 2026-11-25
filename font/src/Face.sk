@@ -80,11 +80,42 @@ class Options{
    */
   subPixelsY: Int = 4,
 } {
+  /**
+   * The font size in points, with a non-positive size meaning 12 points.
+   */
+  fun getSize(): Float {
+    if (this.size > 0.0) this.size else 12.0
+  }
+
+  /**
+   * The resolution in DPI, with a non-positive value meaning 96 DPI.
+   */
+  fun getDpi(): Float {
+    if (this.dpi > 0.0) this.dpi else 96.0
+  }
+
   fun computeSubPixelsX(): (Fixed.Int26_6, Fixed.Int26_6) {
-    (fixed26_6(32 / this.subPixelsX), fixed26_6(-64 / this.subPixelsX))
+    subPixelBiasAndMask(this.subPixelsX)
   }
   fun computeSubPixelsY(): (Fixed.Int26_6, Fixed.Int26_6) {
-    (fixed26_6(32 / this.subPixelsY), fixed26_6(-64 / this.subPixelsY))
+    subPixelBiasAndMask(this.subPixelsY)
+  }
+}
+
+/**
+ * Returns the sub-pixel quantization bias and mask for n sub-pixels.
+ * n must be a power of 2 between 1 and 64 inclusive;
+ * any other value falls back to 4.
+ */
+private fun subPixelBiasAndMask(n: Int): (Fixed.Int26_6, Fixed.Int26_6) {
+  valid = n >= 1 && n <= 64 && n.and(n - 1) == 0;
+  if (!valid) {
+    !n = 4
+  };
+  if (n == 1) {
+    (fixed26_6(0), fixed26_6(-64))
+  } else {
+    (fixed26_6(32 / n), fixed26_6(-64 / n))
   }
 }
 
@@ -140,11 +171,11 @@ class Glyph{
     this.dr.width()
   }
 
-  fun height(): Float {
-    (this.dr.max.y - this.dr.min.y).toFloat()
-  }
-
-  fun width(): Float {
+  /**
+   * The glyph's advance width: the distance from its origin to the origin of
+   * the next glyph. It is not the width of its image (see imageWidth).
+   */
+  fun advance(): Float {
     this.bounds.advance.toFloat();
   }
 
@@ -177,10 +208,11 @@ base class Face{metrics: Metrics} {
    */
   fun getGlyphBounds(c: Char): ?Bounds;
   /**
-   * Kern returns the horizontal adjustment for the kerning pair (r0, r1). A
-   * positive kern means to move the glyphs further apart.
+   * Returns the horizontal adjustment between the character previous and the
+   * glyph next that follows it. A positive kern means to move the glyphs
+   * further apart.
    */
-  fun getKern(c0: Char, i1: Int): Fixed.Int26_6;
+  fun getKern(previous: Char, next: Glyph): Fixed.Int26_6;
 
   /**
    * GlyphAdvance returns the advance width of r's glyph.

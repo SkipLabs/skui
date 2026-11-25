@@ -59,8 +59,13 @@ fun faceSupplier(
       predef.maybeGet(typeface.collection) match {
       | Some(p) ->
         buffer = Base64.decode(p.base64);
-        font = TrueType.parse(buffer);
-        SKStore.Loaded(typeFace(font))
+        try {
+          SKStore.Loaded(typeFace(TrueType.parse(buffer)))
+        } catch {
+        | err @ TrueType.FontFormatError _ ->
+          SKStore.LoadFailed(Some(!err.getMessage()))
+        | exn -> throw exn
+        }
       | None() ->
         SKStore.LoadFailed(Some(!"Only prefefined icons are managed."))
       }

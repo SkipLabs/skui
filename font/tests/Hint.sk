@@ -23,10 +23,87 @@ fun int32(array: Array<Int>): Array<Int32> {
   array.map(e -> .int32(e))
 }
 
+fun points(values: Array<(Int, Int, Int)>): Vector<TrueType.Point> {
+  Vector::createFromItems(
+    values.map(v ->
+      TrueType.Point{x => fixed26_6(v.i0), y => fixed26_6(v.i1), flags => v.i2}
+    ),
+  )
+}
+
+fun runOnPoints(
+  h: mutable TrueType.Hinter,
+  program: Array<Int>,
+  pts: Vector<TrueType.Point>,
+): mutable TrueType.Hinter {
+  h.run(uint8(program), Some(pts), Some(pts), Some(pts), None())
+}
+
+@test
+fun bytecodeValidation(): void {
+  check = (name: String, program: Array<Int>) -> {
+    h = mutable TrueType.Hinter{};
+    !h = h.init(
+      TrueType.Font{maxStorage => uint16(32), maxStackElements => uint16(100)},
+      fixed26_6(768),
+    );
+    try {
+      _ = runOnPoints(h, program, points(Array[(0, 0, 1), (64, 0, 1)]));
+      throw SKTest.ExpectationError(
+        `expected HintingException [${name}]`,
+        "HintingException",
+        "no exception",
+      )
+    } catch {
+    | TrueType.HintingException _ -> void
+    | exn -> throw exn
+    }
+  };
+  // Point index out of range.
+  check("point index", Array[TrueType.opPUSHB000, 9, TrueType.opMDAP0]);
+  // Store index out of range.
+  check("store index", Array[TrueType.opPUSHB000, 99, TrueType.opRS]);
+  // Calling an undefined function.
+  check("undefined function", Array[TrueType.opPUSHB000, 5, TrueType.opCALL]);
+  // ALIGNRP with a loop count larger than the stack.
+  check(
+    "ALIGNRP underflow",
+    Array[TrueType.opPUSHB000, 5, TrueType.opSLOOP, TrueType.opALIGNRP],
+  );
+  // FLIPPT with a loop count larger than the stack.
+  check(
+    "FLIPPT underflow",
+    Array[TrueType.opPUSHB000, 5, TrueType.opSLOOP, TrueType.opFLIPPT],
+  );
+  // SHPIX with a loop count larger than the stack.
+  check(
+    "SHPIX underflow",
+    Array[TrueType.opPUSHB001, 0, 5, TrueType.opSLOOP, TrueType.opSHPIX],
+  );
+  // FLIPRGON with an inverted range.
+  check(
+    "FLIPRGON range",
+    Array[TrueType.opPUSHB001, 1, 0, TrueType.opFLIPRGON],
+  );
+  // Normalizing a zero vector.
+  check("zero vector", Array[TrueType.opPUSHB001, 0, 0, TrueType.opSPVFS]);
+  // Delta shift out of range.
+  check("delta shift", Array[TrueType.opPUSHB000, 7, TrueType.opSDS]);
+}
+
+@test
+fun moveOrthogonal(): void {
+  // When fv is orthogonal to pv, move must not divide by zero.
+  h = mutable TrueType.Hinter{};
+  !h.gs.pv = (int16(0x2d41), int16(0x2d41));
+  !h.gs.fv = (int16(0x2d41), int16(-0x2d41));
+  _ = h.move(TrueType.Point{}, fixed26_6(64), true)
+}
+
 class Bytecode() {
   //
   fun run(): void {
-    for (i in Range(0, 24)) {
+    for (i in Range(0, 32)) {
       try {
         this.test(i)
       } catch {
@@ -657,6 +734,164 @@ class Bytecode() {
         int32(Array[99, 99, 99, 99, 20, 20]),
         number,
       )
+    | 24 ->
+      // LOOPCALL with a zero count is a no-op and execution continues.
+      !h = h.run(
+        uint8(
+          Array[
+            TrueType.opPUSHB000, // [0]
+            0,
+            TrueType.opFDEF, // Function #0
+            TrueType.opPUSHB000,
+            99,
+            TrueType.opENDF,
+            TrueType.opPUSHB001, // [0, 0]
+            0,
+            0,
+            TrueType.opLOOPCALL, // []
+            TrueType.opPUSHB000, // [7]
+            7,
+          ],
+        ),
+      );
+      expectEqualsAt(h.stack.slice(0, 1), int32(Array[7]), number)
+    | 25 ->
+      // LOOPCALL with a negative count is a no-op and execution continues.
+      !h = h.run(
+        uint8(
+          Array[
+            TrueType.opPUSHB000, // [0]
+            0,
+            TrueType.opFDEF, // Function #0
+            TrueType.opPUSHB000,
+            99,
+            TrueType.opENDF,
+            TrueType.opPUSHW000, // [-1]
+            0xff,
+            0xff,
+            TrueType.opPUSHB000, // [-1, 0]
+            0,
+            TrueType.opLOOPCALL, // []
+            TrueType.opPUSHB000, // [7]
+            7,
+          ],
+        ),
+      );
+      expectEqualsAt(h.stack.slice(0, 1), int32(Array[7]), number)
+    | 26 ->
+      // ALIGNPTS moves both points to their middle.
+      !h = runOnPoints(
+        h,
+        Array[TrueType.opPUSHB001, 0, 1, TrueType.opALIGNPTS],
+        points(Array[(0, 0, 1), (128, 0, 1)]),
+      );
+      expectEqualsAt(
+        (h.glyphCurrent[0].x.asInt(), h.glyphCurrent[1].x.asInt()),
+        (64, 64),
+        number,
+      )
+    | 27 ->
+      // FLIPRGON sets the on-curve flag on the whole range.
+      !h = runOnPoints(
+        h,
+        Array[TrueType.opPUSHB001, 0, 2, TrueType.opFLIPRGON],
+        points(Array[(0, 0, 0), (64, 0, 0), (128, 0, 0)]),
+      );
+      expectEqualsAt(
+        (
+          h.glyphCurrent[0].flags,
+          h.glyphCurrent[1].flags,
+          h.glyphCurrent[2].flags,
+        ),
+        (1, 1, 1),
+        number,
+      )
+    | 28 ->
+      // UTP uses zp0: untouch a glyph point while zp1 is the twilight zone.
+      touched = TrueType.flagTouchedX.or(TrueType.flagTouchedY).or(1);
+      !h = runOnPoints(
+        h,
+        Array[
+          TrueType.opPUSHB000, // [0]
+          0,
+          TrueType.opSZP1, // zp1 = twilight
+          TrueType.opPUSHB000, // [0]
+          0,
+          TrueType.opUTP,
+        ],
+        points(Array[(0, 0, touched)]),
+      );
+      expectEqualsAt(h.glyphCurrent[0].flags, 1, number)
+    | 29 ->
+      // MIRP single width cut-in replaces the CVT distance.
+      mh = mutable TrueType.Hinter{};
+      !mh = mh.init(
+        TrueType.Font{
+          maxStorage => uint16(32),
+          maxStackElements => uint16(100),
+          fUnitsPerEm => .int32(768),
+        },
+        fixed26_6(768),
+      );
+      !mh = runOnPoints(
+        mh,
+        Array[
+          TrueType.opPUSHB000, // [64]
+          64,
+          TrueType.opSSWCI, // singleWidthCutIn = 64
+          TrueType.opPUSHB000, // [10]
+          10,
+          TrueType.opSSW, // singleWidth = 10
+          TrueType.opPUSHB001, // [0, 20]
+          0,
+          20,
+          TrueType.opWCVTP, // cvt[0] = 20
+          TrueType.opPUSHB001, // [1, 0]
+          1,
+          0,
+          TrueType.opMIRP00000,
+        ],
+        points(Array[(0, 0, 1), (0, 0, 1)]),
+      );
+      expectEqualsAt(mh.glyphCurrent[1].x.asInt(), 10, number)
+    | 30 ->
+      // SPVTL keeps the direction of distances larger than 16 bits.
+      !h = runOnPoints(
+        h,
+        Array[
+          TrueType.opPUSHB001, // [1, 0]
+          1,
+          0,
+          TrueType.opSPVTL0, // pv from point 0 to point 1
+          TrueType.opGPV, // [0x4000, 0]
+        ],
+        points(Array[(0, 0, 1), (40000, 0, 1)]),
+      );
+      expectEqualsAt(h.stack.slice(0, 2), int32(Array[0x4000, 0]), number)
+    | 31 ->
+      // SPVTL reads the top point from zp2 and the one below from zp1. With
+      // zp0 = zp1 = twilight (all points at the origin) and zp2 = glyph, the
+      // vector is twilight[1] - glyph[0] = (0, 0) - (0, -64): pv = (0, 1).
+      // Reading both from zp0 gives a zero vector, i.e. pv = (1, 0); swapping
+      // the zones gives glyph[1] - twilight[0] = (64, 0), i.e. pv = (1, 0).
+      !h = runOnPoints(
+        h,
+        Array[
+          TrueType.opPUSHB000, // [0]
+          0,
+          TrueType.opSZP0, // zp0 = twilight
+          TrueType.opPUSHB000, // [0]
+          0,
+          TrueType.opSZP1, // zp1 = twilight
+          TrueType.opPUSHB001, // [1, 0]
+          1,
+          0,
+          TrueType.opSPVTL0, // twilight[1] - glyph[0]
+          TrueType.opGPV, // [0, 0x4000]
+        ],
+        points(Array[(0, -64, 1), (64, 0, 1)]),
+      );
+      expectEqualsAt(h.stack.slice(0, 2), int32(Array[0, 0x4000]), number)
     | _ -> invariant_violation(`Invalid test number ${number}`)
     }
   }

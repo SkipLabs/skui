@@ -24,7 +24,7 @@ class Reducer(
     for (i in range.toRange()) {
       char = chars[i];
       kern = fontSupport.getKern(context, char, faceId, optChar);
-      w = fontSupport.getWidth(context, char, faceId);
+      w = fontSupport.getAdvance(context, char, faceId);
       !optChar = Some(char);
       g = Group{before, kern, range => .Range(i, i + 1)};
       !before = before + w + kern;
@@ -34,7 +34,7 @@ class Reducer(
       Group{before, kern => 0.0, range => .Range(range.end, range.end)},
     );
     w = optEllipsis
-      .map(ellipsis -> fontSupport.getWidth(context, ellipsis, faceId))
+      .map(ellipsis -> fontSupport.getAdvance(context, ellipsis, faceId))
       .default(0.0);
     Reducer(chars, groups.toArray(), w, optEllipsis, optRange);
   }
@@ -57,7 +57,7 @@ class Reducer(
     for (index in range.toRange()) {
       char = chars[index];
       kern = fontSupport.getKern(context, char, faceId, optChar);
-      w = fontSupport.getWidth(context, char, faceId);
+      w = fontSupport.getAdvance(context, char, faceId);
       !optChar = Some(char);
       if (isSeparator(char)) {
         optGroup match {
@@ -86,7 +86,7 @@ class Reducer(
       Group{before, kern => 0.0, range => .Range(chars.size(), chars.size())},
     );
     w = optEllipsis
-      .map(ellipsis -> fontSupport.getWidth(context, ellipsis, faceId))
+      .map(ellipsis -> fontSupport.getAdvance(context, ellipsis, faceId))
       .default(0.0);
     Reducer(chars, groups.toArray(), w, optEllipsis, optRange);
   }

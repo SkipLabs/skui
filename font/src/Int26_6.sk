@@ -21,13 +21,22 @@ value class Int26_6(value: Int32) uses Show, Orderable {
    * fromInt returns the integer value value as an Int26_6.
    *
    * For example, passing the integer value 2 yields Int26_6(128).
+   * The integer part must be in -33554432..33554431.
    */
   static fun fromInt(value: Int): Int26_6 {
+    invariant(
+      value >= -0x2000000 && value <= 0x1ffffff,
+      `Int26_6 overflow: ${value}`,
+    );
     fixed26_6(value.shl(6))
   }
 
+  /**
+   * Returns the nearest Int26_6 to value. Ties are rounded away from zero.
+   */
   static fun fromFloat(value: Float): Int26_6 {
-    fixed26_6((value * 1.shl(6).toFloat()).toInt());
+    scaled = value * 1.shl(6).toFloat();
+    fixed26_6((if (scaled >= 0.0) scaled + 0.5 else scaled - 0.5).toInt());
   }
 
   /**
@@ -95,7 +104,8 @@ value class Int26_6(value: Int32) uses Show, Orderable {
   }
 
   /**
-   * Returns this / other in 26.6 fixed-point arithmetic.
+   * Returns this / other in 26.6 fixed-point arithmetic, truncated toward
+   * zero. Throws DivisionByZeroException when other is zero.
    */
   fun /(other: Int26_6): Int26_6 {
     fixed26_6((this.value.toInt() * 64) / other.value.toInt())
@@ -277,13 +287,17 @@ value class Rectangle26_6(min: Point26_6, max: Point26_6) uses Orderable {
   }
 
   /**
-   * In returns whether other is in this.
+   * In returns whether other is in this. An empty rectangle is in every
+   * rectangle.
    */
   fun contains(other: Rectangle26_6): Bool {
     if (other.isEmpty()) {
       true
     } else {
-      this.containsPoint(other.min) && this.containsPoint(other.max)
+      this.min.x <= other.min.x &&
+        other.max.x <= this.max.x &&
+        this.min.y <= other.min.y &&
+        other.max.y <= this.max.y
     }
   }
 

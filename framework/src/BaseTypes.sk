@@ -623,13 +623,16 @@ class FontSupport(
     glyph.getKern(optPrevious);
   }
 
-  fun getWidth(
+  /**
+   * The advance width of char's glyph, without kerning.
+   */
+  fun getAdvance(
     context: mutable SKStore.Context,
     char: Char,
     faceId: Font.FaceID,
   ): Float {
     glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
-    glyph.width();
+    glyph.advance();
   }
 
   fun getSize(
@@ -639,8 +642,8 @@ class FontSupport(
     optPrevious: ?Char = None(),
   ): Geometry.Size {
     glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
-    width = glyph.width();
-    height = glyph.height();
+    width = glyph.advance();
+    height = glyph.lineHeight();
     !width = width + glyph.getKern(optPrevious);
     Geometry.Size(width, height);
   }
@@ -657,8 +660,8 @@ class FontSupport(
     for (i in range.toRange()) {
       char = chars[i];
       glyph = this.glyphProps(context, Font.GlyphID::create(faceId, char));
-      !height = Math.max(height, glyph.height());
-      !width = width + glyph.width() + glyph.getKern(optPrevious);
+      !height = Math.max(height, glyph.lineHeight());
+      !width = width + glyph.advance() + glyph.getKern(optPrevious);
     };
     Geometry.Size(width, height);
   }
@@ -669,8 +672,8 @@ class FontSupport(
     faceId: Font.FaceID,
   ): Geometry.Size {
     glyph = this.glyphProps(context, Font.GlyphID::create(faceId, ' '));
-    gWidth = Math.ceil(glyph.width());
-    Geometry.Size(gWidth * count.toFloat(), glyph.height());
+    gWidth = Math.ceil(glyph.advance());
+    Geometry.Size(gWidth * count.toFloat(), glyph.lineHeight());
   }
 
   fun getMonospaceWidth(
@@ -678,7 +681,7 @@ class FontSupport(
     faceId: Font.FaceID,
   ): Float {
     glyph = this.glyphProps(context, Font.GlyphID::create(faceId, ' '));
-    Math.ceil(glyph.width());
+    Math.ceil(glyph.advance());
   }
 
   fun getMSDF(context: mutable SKStore.Context, gId: Font.GlyphID): ?Font.Msdf {

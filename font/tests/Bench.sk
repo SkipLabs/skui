@@ -1,0 +1,38 @@
+module SKUIFontTest;
+
+// Hinting benchmark. Not run by `skargo test`: to use it, temporarily
+// annotate hintingBenchmark with @testr and run `skargo test -r`.
+//
+// Loads every ASCII glyph 3 times (as getGlyphAdvance, getGlyphBounds and
+// getGlyph do) at 3 sizes, with full hinting. "before" runs the font and
+// CVT programs for every load; "after" reuses the Face's hinter state.
+fun benchFont(font: TrueType.Font, withState: Bool): Int {
+  t0 = Time.time_ms();
+  for (size in Array[12.0, 16.0, 24.0]) {
+    face = TrueType.Face::make(
+      font,
+      Font.Options{size, dpi => 96.0, hinting => Font.HintingFull()},
+    );
+    state = if (withState) face.optHinterState else None();
+    for (code in Range(32, 127)) {
+      font.getIndex(Char::fromCode(code)).each(index -> {
+        for (_k in Range(0, 3)) {
+          g = mutable TrueType.GlyphBuf{};
+          _ = g.load(font, face.scale, index.toInt(), face.hinting, state)
+        }
+      })
+    }
+  };
+  Time.time_ms() - t0
+}
+
+fun hintingBenchmark(r: String ~> TrueType.Font): void {
+  for (name in Array["luxisr", "xab"]) {
+    font = r(name);
+    before = benchFont(font, false);
+    after = benchFont(font, true);
+    print_string(`${name}: before=${before}ms after=${after}ms`);
+  }
+}
+
+module end;

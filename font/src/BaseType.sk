@@ -25,8 +25,11 @@ class Weight private (index: Int) uses Hashable, Orderable, Show {
     this.index.compare(other.index)
   }
 
+  /**
+   * Whether the weight is semibold (600) or heavier, as in CSS.
+   */
   fun isBold(): Bool {
-    this.index > 3
+    this.index >= 5
   }
 
   static fun fromIndex(index: Int): Weight {
@@ -55,10 +58,6 @@ class Weight private (index: Int) uses Hashable, Orderable, Show {
 
   fun toWeight(): Int {
     (this.index + 1) * 100
-  }
-
-  fun incr(): Int {
-    this.index - 3;
   }
 
   fun previous(): ?Weight {
@@ -250,6 +249,14 @@ class TypefaceInfo(
     }
   }
 
+  /**
+   * Selects the source closest to weight, following the CSS font matching
+   * algorithm (https://www.w3.org/TR/css-fonts-4/#font-style-matching):
+   * - for 400, try 500 first, then lighter weights, then heavier ones;
+   * - for 500, try 400 first, then lighter weights, then heavier ones;
+   * - below 400, try lighter weights first, then heavier ones;
+   * - above 500, try heavier weights first, then lighter ones.
+   */
   private fun selectWeight(
     sources: Array<FaceSource>,
     weight: Weight,
@@ -258,33 +265,26 @@ class TypefaceInfo(
       return None();
     };
     sorted = sources.sortedFor(fs ~> fs.typeface.weight);
-    optPrevious: ?FaceSource = None();
-    optNext: ?FaceSource = None();
-    for (fs in sorted) {
-      if (fs.typeface.weight == weight) {
-        return Some(fs);
-      } else if (fs.typeface.weight < weight) {
-        !optPrevious = Some(fs);
-      } else {
-        !optNext = Some(fs);
-        break void;
-      }
+    if (sorted.any(fs -> fs.typeface.weight == weight)) {
+      return sorted.find(fs -> fs.typeface.weight == weight)
     };
-    optPrevious match {
-    | Some(previous) ->
-      optNext match {
-      | Some(next) ->
-        if (
-          weight.index - previous.typeface.weight.index <
-          next.typeface.weight.index - weight.index
-        ) {
-          optPrevious
-        } else {
-          optNext
-        }
-      | _ -> optPrevious
+    lighter = sorted.filter(fs -> fs.typeface.weight < weight);
+    heavier = sorted.filter(fs -> fs.typeface.weight > weight);
+    // The closest lighter weight is the last one, the closest heavier one
+    // is the first one.
+    optLighter = lighter.maybeGet(lighter.size() - 1);
+    optHeavier = heavier.maybeGet(0);
+    if (weight == Weight::w400 || weight == Weight::w500) {
+      other = if (weight == Weight::w400) Weight::w500 else Weight::w400;
+      sorted.find(fs -> fs.typeface.weight == other) match {
+      | Some(fs) -> Some(fs)
+      | None() if (optLighter.isSome()) -> optLighter
+      | None() -> optHeavier
       }
-    | _ -> optNext
+    } else if (weight < Weight::w400) {
+      if (optLighter.isSome()) optLighter else optHeavier
+    } else {
+      if (optHeavier.isSome()) optHeavier else optLighter
     }
   }
 }
