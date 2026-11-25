@@ -20,10 +20,6 @@ value class Vector2(x: Float, y: Float) uses Orderable, Show, Equivalent {
     Math.sqrt(this.x * this.x + this.y * this.y)
   }
 
-  fun direction(): Float {
-    Math.atan2(this.x, this.y)
-  }
-
   fun normalize(allowZero: Bool = false): this {
     len = this.length();
     if (Math.like(len, 0.0)) {
@@ -109,11 +105,6 @@ value class Vector2(x: Float, y: Float) uses Orderable, Show, Equivalent {
 
   fun inv(): Vector2 {
     Vector2(1.0 / this.x, 1.0 / this.y)
-  }
-
-  fun middle(): Vector2 {
-    s = (this.x + this.y) / 2.0;
-    Vector2(s, s);
   }
 
   fun toOffset(): Geometry.Offset {

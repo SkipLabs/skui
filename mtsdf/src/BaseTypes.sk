@@ -65,7 +65,7 @@ value class EdgeColor(value: Int) uses Equality {
 
 base class FillRule {
   children =
-  | NoneZero()
+  | NonZero()
   | EvenOdd()
   | Positive()
   | Negative()
@@ -227,7 +227,7 @@ value class Intersection(
 
 const cubicSearchStarts: Int = 4;
 const cubicSearchSteps: Int = 4;
-const egdeLengthPrecision: Int = 4;
+const edgeLengthPrecision: Int = 4;
 
 // Threshold of the dot product of adjacent edge directions to be considered convergent.
 const cornerDotEpsilon: Float = 0.000001;

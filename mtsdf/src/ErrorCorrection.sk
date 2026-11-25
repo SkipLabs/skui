@@ -7,8 +7,8 @@ mutable class ErrorCorrection(
   stencil: mutable BitmapRef<UInt8>,
   projection: Projection,
   invRange: Float,
-  mutable minDeviationRatio: Float,
-  mutable minImproveRatio: Float,
+  minDeviationRatio: Float,
+  minImproveRatio: Float,
 ) {
   static fun make(
     stencil: mutable BitmapRef<UInt8>,
@@ -408,7 +408,7 @@ fun msdfErrorCorrection(
   | Disabled()
   | Indiscriminate() ->
     void
-  | EdgePriotity() ->
+  | EdgePriority() ->
     ec.protectCorners(shape);
     ec.protectEdges(sdf)
   | EdgeOnly() -> ec.protectAll()

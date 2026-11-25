@@ -30,7 +30,7 @@ class FontCase{
   height: Int = 64,
   rangeMode: MTSDF.RangeMode = MTSDF.Px(8.0),
   orientation: MTSDF.Orientation = MTSDF.Keep(),
-  fillRule: MTSDF.FillRule = MTSDF.NoneZero(),
+  fillRule: MTSDF.FillRule = MTSDF.NonZero(),
   scanlinePass: Bool = true,
   angleThreshold: Float = MTSDF.defaultAngleThreshold.toFloat(),
   coloringSeed: Int = 0,

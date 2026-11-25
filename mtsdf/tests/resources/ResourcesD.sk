@@ -223,7 +223,7 @@ const colorized: MTSDF.Shape = MTSDF.Shape(
 const outputDistanceShift: Float = 0.0;
 const rangePx: Int = 8;
 const orientation: MTSDF.Orientation = MTSDF.Keep();
-const fillRule: MTSDF.FillRule = MTSDF.NoneZero();
+const fillRule: MTSDF.FillRule = MTSDF.NonZero();
 const scanlinePass: Bool = true;
 
 /// RESULTS
