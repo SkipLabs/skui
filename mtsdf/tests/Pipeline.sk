@@ -1,0 +1,131 @@
+module SKUIMTSDFTest;
+
+// Tests of the msdfgen functions that the framework does not use yet, on
+// the 16 x 16 triangle of triangleShape (inside positive).
+
+@test
+fun autoFrameTriangle(): void {
+  // A 24 x 24 frame with a range of 2 px keeps 22 px for the shape: the
+  // scale is 22 / 16 and the shape is moved by half the range, 1 px.
+  (translate, scale, dims, width) = MTSDF.autoFrame(
+    triangleShape(),
+    MTSDF.Px(2.0),
+    24,
+  );
+  expectLikes(scale, MTSDF.Vector2(1.375, 1.375), Some("scale"));
+  expectLikes(
+    translate,
+    MTSDF.Vector2(1.0 / 1.375, 1.0 / 1.375),
+    Some("translate"),
+  );
+  expectLikes(dims, MTSDF.Vector2(16.0, 16.0), Some("dims"));
+  expectEquals(width, 24, Some("width"));
+  (projection, _, _) = MTSDF.forHeight(triangleShape(), 2.0, 24, Some(24));
+  expectLikes(
+    projection,
+    MTSDF.Projection(
+      MTSDF.Vector2(1.375, 1.375),
+      MTSDF.Vector2(1.0 / 1.375, 1.0 / 1.375),
+    ),
+    Some("forHeight"),
+  );
+}
+
+fun computeMode(mode: MTSDF.Mode): Ui.Image {
+  MTSDF.compute{
+    shape => triangleShape(),
+    mode,
+    width => 24,
+    height => 24,
+    autoFrame => true,
+  }
+}
+
+@test
+fun computeModes(): void {
+  center = 12 * 24 + 12;
+  // Single-channel modes write the distance in the red channel.
+  for (mode in Array[MTSDF.Single(), MTSDF.Pseudo()]) {
+    image = computeMode(mode);
+    expectEquals(
+      (image.data[center].red.toInt() > 128, image.data[0].red.toInt() > 128),
+      (true, false),
+      Some("single"),
+    );
+  };
+  multi = computeMode(MTSDF.Multi());
+  expectEquals(
+    (median(multi.data[center]) > 128, median(multi.data[0]) > 128),
+    (true, false),
+    Some("multi"),
+  );
+  // MultiAndTrue also has the true distance in the alpha channel.
+  mtsdf = computeMode(MTSDF.MultiAndTrue());
+  expectEquals(
+    (
+      median(mtsdf.data[center]) > 128,
+      mtsdf.data[center].alpha.toInt() > 128,
+      mtsdf.data[0].alpha.toInt() > 128,
+    ),
+    (true, true, false),
+    Some("multiAndTrue"),
+  );
+}
+
+fun triangleProjection(): MTSDF.Projection {
+  (translate, scale, _, _) = MTSDF.autoFrame(
+    triangleShape(),
+    MTSDF.Px(2.0),
+    24,
+    Some(24),
+  );
+  MTSDF.Projection(scale, translate)
+}
+
+@test
+fun rasterizeTriangle(): void {
+  bitmap = MTSDF.BitmapRef::make(1, 24, 24, 0.5);
+  MTSDF.rasterize(
+    bitmap,
+    triangleShape(),
+    triangleProjection(),
+    MTSDF.NonZero(),
+  );
+  expectEquals(
+    (bitmap.elem(12, 12, 0), bitmap.elem(0, 0, 0), bitmap.elem(23, 23, 0)),
+    (1.0, 0.0, 0.0),
+    Some("rasterize"),
+  );
+  // A distance field with the wrong sign everywhere is fixed inside only.
+  sdf = MTSDF.BitmapRef::make(1, 24, 24, 0.25);
+  MTSDF.distanceSignCorrection(
+    sdf,
+    triangleShape(),
+    triangleProjection(),
+    MTSDF.NonZero(),
+  );
+  expectEquals(
+    (sdf.elem(12, 12, 0), sdf.elem(0, 0, 0)),
+    (0.75, 0.25),
+    Some("distanceSignCorrection"),
+  );
+}
+
+@test
+fun scanlineOverlap(): void {
+  // At y = 8, the triangle covers x from 4 to 12.
+  scanline = triangleShape().scanline(8.0).chill();
+  empty = MTSDF.Scanline::make(Array[]).chill();
+  expectLikes(
+    MTSDF.overlap(scanline, scanline, 0.0, 16.0, MTSDF.NonZero()),
+    16.0,
+    Some("same"),
+  );
+  expectLikes(
+    MTSDF.overlap(scanline, empty, 0.0, 16.0, MTSDF.NonZero()),
+    8.0,
+    Some("empty"),
+  );
+}
+
+module end;

@@ -662,8 +662,8 @@ fun isCorner(aDir: Vector2, bDir: Vector2, crossThreshold: Float): Bool {
 fun estimateEdgeLength(edge: EdgeSegment): Float {
   len = 0.0;
   prev = edge.point(0.0);
-  for (i in Range(0, egdeLengthPrecision)) {
-    cur = edge.point((i + 1).toFloat() / egdeLengthPrecision.toFloat());
+  for (i in Range(0, edgeLengthPrecision)) {
+    cur = edge.point((i + 1).toFloat() / edgeLengthPrecision.toFloat());
     !len = len + (cur - prev).length();
     !prev = cur;
   };

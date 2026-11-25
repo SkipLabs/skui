@@ -72,7 +72,7 @@ class Scan(
   shape: MTSDF.Shape,
   index: Int,
   expected: Array<Bool>,
-  fillRule: MTSDF.FillRule = MTSDF.NoneZero(),
+  fillRule: MTSDF.FillRule = MTSDF.NonZero(),
 ) extends Case {
   fun exec(_idx: Int): void {
     scanline = this.shape.scanline(this.index.toFloat() + 0.5);

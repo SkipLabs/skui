@@ -39,7 +39,7 @@ fun msdfBenchmark(): void {
         sdf,
         shape,
         projection,
-        MTSDF.NoneZero(),
+        MTSDF.NonZero(),
       );
       t3 = Time.time_ms();
       ec = MTSDF.ErrorCorrection::make(

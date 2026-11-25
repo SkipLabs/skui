@@ -68,7 +68,7 @@ fun compareIntersections(a: Intersection, b: Intersection): Order {
 
 fun interpretFillRule(intersections: Int, fillRule: FillRule): Bool {
   fillRule match {
-  | NoneZero() -> intersections != 0
+  | NonZero() -> intersections != 0
   | EvenOdd() -> intersections.and(1) != 0
   | Positive() -> intersections > 0
   | Negative() -> intersections < 0

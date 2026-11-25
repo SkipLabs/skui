@@ -52,7 +52,6 @@ fun multiDistanceSignCorrection(
   };
   hasAmbiguity = false;
   matchMap = Vector<?Bool>::mcreate(w * h);
-  tmp = 0;
   for (y in Range(0, h)) {
     row = if (shape.inverseYAxis) sdf.height - y - 1 else y;
     scanline = shape.scanline(projection.unprojectY(y.toFloat() + 0.5));
@@ -84,7 +83,6 @@ fun multiDistanceSignCorrection(
           3,
         );
       };
-      !tmp = tmp + sdf.colors;
     }
   };
   // This step is necessary to avoid artifacts when whole shape is inverted

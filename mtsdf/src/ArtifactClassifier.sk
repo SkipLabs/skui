@@ -6,7 +6,7 @@ const classifierFlagArtifact: Int = 0x02;
 base mutable class ArtifactClassifier(span: Float, protectedFlag: Bool) {
   //
   overridable mutable fun evaluate(_t: Float, _m: Float, flags: Int): Bool {
-    flags.and(2) != 0
+    flags.and(classifierFlagArtifact) != 0
   }
 
   readonly fun rangeTest(
@@ -128,26 +128,6 @@ mutable class ShapeDistanceChecker(
   ): mutable ArtifactClassifier {
     mutable ShapeDistanceClassifier(this, direction, span, this.protectedFlag)
   }
-}
-
-/// Determines if the interpolated median xm is an artifact.
-fun isArtifact(
-  isProtected: Bool,
-  axSpan: Float,
-  bxSpan: Float,
-  am: Float,
-  bm: Float,
-  xm: Float,
-): Bool {
-  // For protected texels, only report an artifact if it would cause fill inversion (change between positive and negative distance).
-  (!isProtected ||
-    (am > 0.5 && bm > 0.5 && xm <= 0.5) ||
-    (am < 0.5 && bm < 0.5 && xm >= 0.5)) &&
-    // This is an artifact if the interpolated median is outside the range of possible values based on its distance from a, b.
-    !(xm >= am - axSpan &&
-      xm <= am + axSpan &&
-      xm >= bm - bxSpan &&
-      xm <= bm + bxSpan);
 }
 
 mutable class ShapeDistanceFinder private (

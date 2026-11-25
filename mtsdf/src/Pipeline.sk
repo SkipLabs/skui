@@ -15,15 +15,20 @@ base class ErrorMode uses Equality {
   /// Corrects all discontinuities of the distance field regardless if edges are adversely affected.
   | Indiscriminate()
   /// Corrects artifacts at edges and other discontinuous distances only if it does not affect edges or corners.
-  | EdgePriotity()
-  /// Configuration of whether to use an algorithm that computes the exact shape distance at the positions of suspected artifacts. This algorithm can be much slower.
+  | EdgePriority()
+  /// Only corrects artifacts at edges.
   | EdgeOnly()
 }
 
+/// Whether to compute the exact shape distance at the positions of suspected
+/// artifacts. This is much slower but avoids false corrections.
 base class DistanceMode uses Equality {
   children =
+  /// Never checks the exact distance.
   | DoNotCheck()
+  /// Checks the exact distance only at edges.
   | DistanceAtEdge()
+  /// Checks the exact distance at all suspected artifacts.
   | AlwaysCheck()
 }
 
@@ -55,7 +60,7 @@ const defaultMinImproveRatio: Float = 1.11111111111111111;
 
 class ErrorConfiguration{
   /// Mode of operation.
-  errorMode: ErrorMode = EdgePriotity(),
+  errorMode: ErrorMode = EdgePriority(),
   /// Configuration of whether to use an algorithm that computes the exact shape distance at the positions of suspected artifacts.
   /// This algorithm can be much slower.
   distanceMode: DistanceMode = DistanceAtEdge(),
@@ -83,12 +88,10 @@ class Configuration{
   }
 }
 
-const tolerance: Float = 0.0003;
-
 fun toMSDF{
   shape: Shape,
   pxRange: Int = MTSDF.pxRange,
-  fillRule: FillRule = NoneZero(),
+  fillRule: FillRule = NonZero(),
   angleThreshold: Float = defaultAngleThreshold.toFloat(),
   coloringSeed: Int = 0,
   edgeColoring: (Shape, Float, Int) ~> Shape = edgeColoringSimple,
@@ -108,18 +111,13 @@ fun toMSDF{
     true, //overlapSupport
   );
   MTSDF.multiDistanceSignCorrection(sdf, shape, projection, fillRule);
-  buffer = MTSDF.BitmapRef::make(1, sdf.width, sdf.height, UInt8::truncate(0));
-  ec = mutable MTSDF.ErrorCorrection(
-    buffer,
+  msdfErrorCorrection(
+    sdf,
+    shape,
     projection,
-    1.0 / range,
-    defaultMinDeviationRatio,
-    defaultMinImproveRatio,
+    range,
+    Configuration{}.doNotCheckDistance(),
   );
-  ec.protectCorners(shape);
-  ec.protectEdges(sdf);
-  ec.findErrors(sdf);
-  ec.apply(sdf);
   image = sdf.toImage(false);
   sdfISize = Vector2(width.toFloat(), height.toFloat());
   (
@@ -139,19 +137,17 @@ fun compute{
   shape: Shape,
   mode: Mode = Multi(),
   preprocess: Preprocess = NoPreprocess(),
-  fillRule: FillRule = NoneZero(),
+  fillRule: FillRule = NonZero(),
   width: Int = 64,
   height: Int = 64,
   autoFrame: Bool = false,
   rangeMode: RangeMode = Px(2.0),
   angleThreshold: Int = defaultAngleThreshold,
   yFlip: Bool = false,
-  estimateError: Bool = false,
   skipColoring: Bool = false,
   orientation: Orientation = Keep(),
   coloringSeed: Int = 0,
   edgeColoring: (Shape, Float, Int) ~> Shape = edgeColoringSimple,
-  explicitErrorCorrectionMode: Bool = false,
   generatorConfig: Configuration = Configuration{},
   scanlinePass: Bool = true,
 }: Ui.Image {
@@ -244,43 +240,6 @@ fun compute{
     };
   };
   sdf.toImage(true)
-}
-
-class MDC(
-  minDistance: SignedDistance = SignedDistance::new(),
-  optNearEdge: ?EdgeSegment = None(),
-  nearParam: Float = 0.0,
-) {
-  //
-  fun check(p: Vector2): MDC {
-    minDistance = this.minDistance;
-    this.optNearEdge.each(edge ->
-      !minDistance = edge.distanceToPseudoDistance(
-        minDistance,
-        p,
-        this.nearParam,
-      )
-    );
-    !this.minDistance = minDistance;
-    this;
-  }
-}
-
-fun sdf(
-  sdf: mutable BitmapRef<Float>,
-  shape: Shape,
-  projection: Projection,
-  range: Float,
-  configuration: Configuration,
-): void {
-  generateDistanceField(
-    sdf,
-    shape,
-    projection,
-    range,
-    Single(),
-    configuration.overlapSupport,
-  )
 }
 
 fun generateDistanceField(

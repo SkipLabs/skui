@@ -185,11 +185,11 @@ const shape: MTSDF.Shape = MTSDF.Shape(
 const outputDistanceShift: Float = 0.0;
 const rangePx: Int = 8;
 const orientation: MTSDF.Orientation = MTSDF.Keep();
-const fillRule: MTSDF.FillRule = MTSDF.NoneZero();
+const fillRule: MTSDF.FillRule = MTSDF.NonZero();
 const scanlinePass: Bool = true;
 const legacyMode: Bool = false;
 const overlapSupport: Bool = true;
-const errorMode: MTSDF.ErrorMode = MTSDF.EdgePriotity();
+const errorMode: MTSDF.ErrorMode = MTSDF.EdgePriority();
 
 //----- TO CHECK
 
