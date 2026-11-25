@@ -1,0 +1,116 @@
+module TrueType;
+
+/**
+ * Color glyphs from the COLR (version 0) and CPAL tables, as used by
+ * vector color emoji fonts.
+ *
+ * A COLR v0 color glyph is a stack of layers, drawn bottom to top; each
+ * layer is an ordinary glyph outline filled with a solid color from the
+ * CPAL palette, or with the text color. COLR v1 (gradients, transforms,
+ * compositing) is not supported: its glyphs fall back to the plain outline.
+ *
+ * See https://learn.microsoft.com/en-us/typography/opentype/spec/colr
+ */
+
+/**
+ * The palette index meaning "use the current text color".
+ */
+const colrForeground: Int = 0xffff;
+
+/**
+ * One layer of a color glyph: the outline of glyph, filled with color, or
+ * with the text color when color is None().
+ */
+class ColorLayer(glyph: Int, color: ?.Color) uses Equality
+
+/**
+ * Returns the layers of the color glyph g, bottom to top, using palette 0,
+ * or None() if g is not a color glyph (or the font has no usable COLR v0
+ * data).
+ */
+fun colrLayers(
+  colr: Array<UInt8>,
+  cpal: Array<UInt8>,
+  g: Int,
+): ?Array<ColorLayer> {
+  try {
+    colrFindLayers(colr, cpal, g)
+  } catch {
+  | OutOfBounds _ -> None()
+  | exn -> throw exn
+  }
+}
+
+private fun colrFindLayers(
+  colr: Array<UInt8>,
+  cpal: Array<UInt8>,
+  g: Int,
+): ?Array<ColorLayer> {
+  if (colr.size() < 14) {
+    return None()
+  };
+  // COLR v1 tables start with a valid v0 header: v0 glyphs still work.
+  numBaseGlyphRecords = u16(colr, 2).toInt();
+  baseGlyphRecords = u32(colr, 4).toInt();
+  layerRecords = u32(colr, 8).toInt();
+  numLayerRecords = u16(colr, 12).toInt();
+  // Base glyph records are sorted by glyph id: binary search.
+  lo = 0;
+  hi = numBaseGlyphRecords;
+  while (lo < hi) {
+    mid = (lo + hi) / 2;
+    record = baseGlyphRecords + 6 * mid;
+    glyph = u16(colr, record).toInt();
+    if (glyph < g) {
+      !lo = mid + 1
+    } else if (glyph > g) {
+      !hi = mid
+    } else {
+      first = u16(colr, record + 2).toInt();
+      count = u16(colr, record + 4).toInt();
+      if (count == 0 || first + count > numLayerRecords) {
+        return None()
+      };
+      return Some(
+        Array::fillBy(count, i -> {
+          layer = layerRecords + 4 * (first + i);
+          ColorLayer(
+            u16(colr, layer).toInt(),
+            cpalColor(cpal, u16(colr, layer + 2).toInt()),
+          )
+        }),
+      )
+    }
+  };
+  None()
+}
+
+/**
+ * The color of entry index of CPAL palette 0, or None() for the foreground
+ * color (or an index that is not in the palette).
+ */
+fun cpalColor(cpal: Array<UInt8>, index: Int): ?.Color {
+  if (index == colrForeground || cpal.size() < 12) {
+    return None()
+  };
+  numPaletteEntries = u16(cpal, 2).toInt();
+  numColorRecords = u16(cpal, 6).toInt();
+  colorRecords = u32(cpal, 8).toInt();
+  // The first color record index of palette 0.
+  firstColor = u16(cpal, 12).toInt();
+  if (index >= numPaletteEntries || firstColor + index >= numColorRecords) {
+    return None()
+  };
+  // Color records are BGRA.
+  record = colorRecords + 4 * (firstColor + index);
+  Some(
+    .Color::rgbaInt(
+      cpal[record + 2].toInt(),
+      cpal[record + 1].toInt(),
+      cpal[record].toInt(),
+      cpal[record + 3].toInt(),
+    ),
+  )
+}
+
+module end;
