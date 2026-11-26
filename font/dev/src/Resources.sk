@@ -29,4 +29,9 @@ native fun liberationBin(): Array<UInt8>;
 @cpp_extern("SKIP_resources_tests_liberation_woff_bin")
 native fun liberationWoffBin(): Array<UInt8>;
 
+// A minimal TrueType font with COLR v0 and CPAL tables, built for the tests
+// (see font/tests/Colr.sk).
+@cpp_extern("SKIP_resources_tests_colr_bin")
+native fun colrBin(): Array<UInt8>;
+
 module end;

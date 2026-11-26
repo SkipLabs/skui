@@ -21,6 +21,7 @@ fun resources(_env: SkuiBuild.Env): Array<String> {
     "resources/tests/xtnr.bin",
     "resources/tests/liberation.bin",
     "resources/tests/liberation.woff.bin",
+    "resources/tests/colr.bin",
   ]
 }
 
