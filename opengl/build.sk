@@ -12,7 +12,7 @@ fun include_dirs(env: SkuiBuild.Env): Array<String> {
 
 @skui_build__links
 fun links(env: SkuiBuild.Env): Array<String> {
-  if (!env.isWasm32()) Array["-lGLEW", "-lGL", "-lGLU", "-lglut"] else Array[]
+  if (!env.isWasm32()) Array["-lGLEW", "-lGL", "-lGLU", "-lglut", "-lEGL"] else Array[]
 }
 
 module end;

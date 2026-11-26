@@ -123,6 +123,7 @@ test-native:
 	skargo test --manifest-path=font/Skargo.toml
 	skargo test --manifest-path=mtsdf/Skargo.toml
 	skargo test --manifest-path=opengl/glsl/Skargo.toml
+	skargo test --manifest-path=opengl/Skargo.toml
 
 # Run WASM tests for common components
 .PHONY: run-wasm-common-tests

@@ -448,9 +448,11 @@ uint32_t SKIP_GL_createFramebuffer(uint32_t) {
 }
 
 void SKIP_GL_bindMainFrameBuffer(uint32_t) {
-  if (frameBuffer != 0) {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    frameBuffer = 0;
+  // The window, or the offscreen target when rendering without a window.
+  GLuint main = GL_mainFramebuffer();
+  if (frameBuffer != main) {
+    glBindFramebuffer(GL_FRAMEBUFFER, main);
+    frameBuffer = main;
   }
 }
 

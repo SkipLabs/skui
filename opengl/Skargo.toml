@@ -6,5 +6,9 @@ version = "0.1.0"
 skui_mtsdf = { "path" = "../mtsdf" }
 skui_glsl = { "path" = "glsl" }
 
+[dev-dependencies]
+sktest = { path = "../skip/skiplang/sktest" }
+skui_font_tests = { path = "../font/dev" }
+
 [build-dependencies]
 skui_build = { path = "../builder" }

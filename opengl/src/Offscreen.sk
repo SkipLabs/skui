@@ -1,0 +1,127 @@
+module GLOffscreen;
+
+// Renders GL drawables to images without a window system, for native tests:
+// OpenGL runs on an EGL surfaceless context (Mesa llvmpipe when there is no
+// GPU), drawing to an offscreen framebuffer.
+
+@cpp_extern("SKIP_GLOffscreen_begin")
+private native fun begin(width: UInt32, height: UInt32): Bool;
+
+@cpp_extern("SKIP_GLOffscreen_read")
+private native fun read(data: mutable Array<UInt8>): void;
+
+/**
+ * Renders the drawables to an image of width x height logical pixels,
+ * drawn with the device pixel ratio as the window drawing does: the image
+ * is width * ratio x height * ratio device pixels, on a white background.
+ *
+ * Returns None() when no OpenGL implementation is available.
+ */
+fun render(
+  drawables: Array<GLDrawable>,
+  width: Int,
+  height: Int,
+  ratio: Float = 1.0,
+): ?Ui.Image {
+  dWidth = (width.toFloat() * ratio).toInt();
+  dHeight = (height.toFloat() * ratio).toInt();
+  if (!begin(UInt32::truncate(dWidth), UInt32::truncate(dHeight))) {
+    return None()
+  };
+  ctx = GL.Ctx(UInt32::truncate(0));
+  ctx.bindMainFrameBuffer();
+  ctx.enableBlend();
+  ctx.straitAlphaBlending();
+  ctx.viewport(
+    Int32::truncate(0),
+    Int32::truncate(0),
+    UInt32::truncate(dWidth),
+    UInt32::truncate(dHeight),
+  );
+  ctx.clearColor(1.0, 1.0, 1.0, 1.0);
+  ctx.clear();
+  handles = toHandles(ctx, drawables);
+  shift = Ui.Shift(0, 0);
+  window = Geometry.Rectangle(
+    Geometry.Point(0, 0),
+    Geometry.Point(width, height),
+  );
+  handles.each(handle -> handle.draw(shift, window, height, ratio, 0));
+  ctx.flush();
+  data = Array::mfill(dWidth * dHeight * 4, UInt8::truncate(0));
+  read(data);
+  Some(
+    Ui.Image::make(dWidth, dHeight, (x, y) -> {
+      i = (y * dWidth + x) * 4;
+      Ui.Pix(data[i], data[i + 1], data[i + 2], data[i + 3])
+    }),
+  )
+}
+
+/**
+ * Creates the GL programs, buffers and arrays the drawables use, and their
+ * draw handles.
+ */
+fun toHandles(ctx: GL.Ctx, drawables: Array<GLDrawable>): Array<Ui.Handle> {
+  initializer = mutable GLProgram.Initializer();
+  usages = drawables.map(d -> (d.prepare(initializer), d));
+  programs = initializer.programs.map((_, v) -> v(ctx));
+  buffers = initializer.buffers.map((_, v) -> v(ctx));
+  arrays = initializer.arrays.map((_, v) -> v(ctx));
+  supplier = GLProgram.Supplier(programs.maybeGet);
+  handles = mutable Vector<Ui.Handle>[];
+  usages.each(usage ->
+    SKUIGL.DrawableSupport::toHandles(
+      ctx,
+      usage,
+      buffers.maybeGet,
+      arrId ->
+        arrays.maybeGet(arrId).flatMap(array ->
+          buffers.maybeGet(array.buffer.value).map(buffer ->
+            GLProgram.ArrayInfo(array, buffer)
+          )
+        ),
+      supplier,
+      handles,
+    )
+  );
+  handles.toArray()
+}
+
+/**
+ * The image in the binary PPM format (RGB, alpha dropped), readable by most
+ * image viewers.
+ */
+fun toPPM(image: Ui.Image): Array<UInt8> {
+  header = `P6\n${image.width} ${image.height}\n255\n`.bytes();
+  bytes = Array::mfill(header.size() + image.data.size() * 3, UInt8::zero);
+  for (i in Range(0, header.size())) {
+    bytes.set(i, header.get(i))
+  };
+  image.data.eachWithIndex((i, pix) -> {
+    o = header.size() + i * 3;
+    bytes.set(o, pix.red);
+    bytes.set(o + 1, pix.green);
+    bytes.set(o + 2, pix.blue);
+  });
+  bytes.chill()
+}
+
+/**
+ * Writes the image to path in the PPM format.
+ */
+fun writePPM(image: Ui.Image, path: String): void {
+  file = IO.File::open(
+    path,
+    IO.OpenOptions{
+      write => true,
+      create => true,
+      truncate => true,
+      mode => 0o644,
+    },
+  );
+  _ = file.write_all(toPPM(image).bytes());
+  file.close()
+}
+
+module end;
