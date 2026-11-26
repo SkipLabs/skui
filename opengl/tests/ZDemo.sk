@@ -1,0 +1,188 @@
+module alias T = SKTest;
+
+module SKUIGLTest;
+
+// Demonstration images of text effects and color glyphs. Not run by default:
+// to use it, temporarily annotate effectsDemo with @test and run
+//   SKUI_GL_IMAGES=<dir> skargo test effectsDemo
+// It writes demo_*.ppm images to <dir>.
+
+fun demoLine(
+  font: TrueType.Font,
+  text: String,
+  size: Float,
+  baseline: Float,
+  color: .Color,
+  effects: Ui.TextEffects,
+): Array<GLDrawable> {
+  extent = effects.extent();
+  reach = extent * msdfSize / size;
+  pxRange = Math.max(8, ((2 * Math.ceil(reach + 2.0).toInt() + 7) / 8) * 8);
+  textDrawables(font, text, size, 12.0, baseline, effects, color, pxRange)
+}
+
+fun background(width: Int, height: Int, color: .Color): GLDrawable {
+  GLDrawable.rectangle(
+    Geometry.Offset(0.0, 0.0),
+    Geometry.Size(width.toFloat(), height.toFloat()),
+    color,
+  )
+}
+
+// An icon drawn as a color glyph: one MSDF per layer, each in its color.
+fun iconDrawables(
+  layers: Array<(Shape.Path, .Color)>,
+  left: Float,
+  top: Float,
+  scale: Float,
+): Array<GLDrawable> {
+  layers.map(layer -> {
+    (path, color) = layer;
+    (image, place) = MTSDF.toMSDF{
+      shape => MTSDF.Shape::fromPath(path),
+      pxRange => 8,
+      trueDistance => true,
+    };
+    origin = Geometry.Offset(left, top);
+    drawable: GLDrawable = GLDrawable.Msdf::create(
+      ctx ~> SKUI.pictureToTexturable(image).map(t -> t.asTexture(ctx)),
+      r ~> {
+        ratio = r.width() / (100.0 * scale);
+        place(
+          Geometry.Rect::fromOffsetSize(r.topLeft(), Geometry.Size(0.0, 0.0)),
+          scale * ratio,
+        )
+      },
+      8,
+      color,
+      0.0,
+      origin,
+      Geometry.Size(100.0 * scale, 100.0 * scale),
+    );
+    drawable
+  })
+}
+
+// A smiley in a 100 x 100 box, as the layers of a color glyph: face, eyes,
+// mouth and a highlight, bottom to top.
+fun smileyLayers(): Array<(Shape.Path, .Color)> {
+  mouth = Shape.Path{
+    elements => Array[
+      Shape.MoveTo(Geometry.Offset(28.0, 58.0)),
+      Shape.CubicCurveTo(
+        Geometry.Offset(72.0, 58.0),
+        Geometry.Offset(38.0, 84.0),
+        Geometry.Offset(62.0, 84.0),
+      ),
+      Shape.CubicCurveTo(
+        Geometry.Offset(28.0, 58.0),
+        Geometry.Offset(64.0, 74.0),
+        Geometry.Offset(36.0, 74.0),
+      ),
+      Shape.ClosePath(),
+    ],
+  };
+  eyes = Shape.Path{
+    elements => Arrays.merge(
+      Shape.Path::circleElements(Geometry.Offset(36.0, 40.0), 7.0),
+      Shape.Path::circleElements(Geometry.Offset(64.0, 40.0), 7.0),
+    ),
+  };
+  Array[
+    (
+      Shape.Path::circle(Geometry.Offset(50.0, 50.0), 46.0),
+      Color::rgbaInt(250, 200, 40),
+    ),
+    (
+      Shape.Path::circle(Geometry.Offset(38.0, 30.0), 12.0),
+      Color::rgbaInt(255, 240, 170, 200),
+    ),
+    (eyes, Color::rgbaInt(70, 45, 20)),
+    (mouth, Color::rgbaInt(150, 40, 30)),
+  ]
+}
+
+fun effectsDemo(): void {
+  font = liberation();
+  width = 460;
+  height = 300;
+  shadow = Ui.TextEffects{
+    optShadow => Some(
+      Ui.TextShadow(
+        Color::rgbaInt(0, 0, 0, 90),
+        Geometry.Offset(2.0, 2.0),
+        2.0,
+      ),
+    ),
+  };
+  outline = Ui.TextEffects{
+    optOutline => Some(Ui.TextOutline(Color::rgbaInt(20, 30, 60), 1.5)),
+  };
+  title = Ui.TextEffects{
+    optOutline => Some(Ui.TextOutline(Color::rgbaInt(40, 20, 0), 2.0)),
+    optShadow => Some(
+      Ui.TextShadow(
+        Color::rgbaInt(0, 0, 0, 120),
+        Geometry.Offset(3.0, 3.0),
+        3.0,
+      ),
+    ),
+  };
+  for (ratio in Array[1.0, 2.0]) {
+    drawables = mutable Vector<GLDrawable>[
+      background(width, height, Color::rgbaInt(235, 238, 242)),
+    ];
+    // A soft drop shadow, as on a card title.
+    demoLine(
+      font,
+      "Soft drop shadow",
+      24.0,
+      40.0,
+      Color::rgbaInt(40, 40, 50),
+      shadow,
+    ).each(drawables.push);
+    // White text with a dark outline, readable on any background.
+    drawables.push(
+      GLDrawable.rectangle(
+        Geometry.Offset(0.0, 60.0),
+        Geometry.Size(width.toFloat(), 50.0),
+        Color::rgbaInt(90, 150, 220),
+      ),
+    );
+    demoLine(
+      font,
+      "Outlined on color",
+      28.0,
+      96.0,
+      Colors.white(),
+      outline,
+    ).each(drawables.push);
+    // A game-like title with both effects.
+    demoLine(font, "Game Title", 36.0, 160.0, Colors.gold(), title).each(
+      drawables.push,
+    );
+    // Plain text, for comparison.
+    demoLine(
+      font,
+      "Plain text, no effect",
+      24.0,
+      205.0,
+      Color::rgbaInt(40, 40, 50),
+      Ui.TextEffects::none,
+    ).each(drawables.push);
+    // A color glyph (COLR): an emoji-like icon at two sizes.
+    iconDrawables(smileyLayers(), 12.0, 225.0, 0.6).each(drawables.push);
+    iconDrawables(smileyLayers(), 90.0, 225.0, 0.3).each(drawables.push);
+    iconDrawables(smileyLayers(), 130.0, 225.0, 0.2).each(drawables.push);
+    _ = render(
+      `demo_effects_x${ratio.toInt()}`,
+      drawables.toArray(),
+      width,
+      height,
+      ratio,
+    );
+  };
+  T.expectEq(true, true, "demo");
+}
+
+module end;
