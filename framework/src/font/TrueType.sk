@@ -165,16 +165,23 @@ fun msdfSupplier(
     msdfPath,
     (context, _self, gid) ~> {
       glyph = glyphProps(context, gid);
-      glyph.glyph.optPath.map(path -> {
-        // The glyph outline is relative to the integer top left of its
-        // image, which depends on the size. Relative to the glyph origin,
-        // the MSDF can be placed exactly at any size.
-        info = MTSDF.toMSDF{
+      // The glyph outline is relative to the integer top left of its image,
+      // which depends on the size. Relative to the glyph origin, the MSDF
+      // can be placed exactly at any size. The alpha channel holds the true
+      // distance, used by the outline and shadow effects.
+      toMSDF = path ->
+        MTSDF.toMSDF{
           shape => MTSDF.Shape::fromPath(path.translate(glyph.topLeft())),
           pxRange => gid.pxRange,
+          trueDistance => true,
         };
-        Font.Msdf::make(gid.char, info)
-      })
+      layers = glyph.glyph.colorLayers.map(layer -> {
+        (image, place) = toMSDF(layer.path);
+        Font.MsdfLayer(image, place, layer.color)
+      });
+      glyph.glyph.optPath.map(path ->
+        Font.Msdf::make(gid.char, toMSDF(path), 1.0, layers)
+      )
     },
     false,
   );

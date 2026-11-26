@@ -15,6 +15,7 @@ class Glyph(
   offset: Geometry.Offset,
   glyph: Font.GlyphFile,
   color: .Color,
+  effects: Ui.TextEffects = Ui.TextEffects::none,
 )
 
 class Line(
@@ -31,7 +32,7 @@ class Line(
   ): void {
     offset = absolute.move(this.offset);
     this.glyphs.each(glyph ->
-      glyphDrawable(
+      glyphDrawables(
         context,
         support,
         glyph.gid,
@@ -39,13 +40,15 @@ class Line(
         offset.move(glyph.offset),
         thickness(glyph.gid.fid.size, glyph.gid.fid.isNotBold()),
         paint,
+        glyph.effects,
       ).each(drawables.push)
     )
   }
 }
 
 /**
- * The drawable of glyph, whose image top left is at offset.
+ * The drawables of glyph, whose image top left is at offset: one for a plain
+ * glyph, one per layer for a color glyph.
  *
  * The MSDF of the glyph can be generated at another size than the glyph
  * (see Font.GlyphID.msdfID): it is placed from the glyph origin, on the
@@ -53,7 +56,7 @@ class Line(
  * to an integer pixel at each size. The device pixel ratio is only applied
  * at draw time.
  */
-fun glyphDrawable(
+fun glyphDrawables(
   context: mutable SKStore.Context,
   support: Ui.DrawableSupport,
   gid: Font.GlyphID,
@@ -61,21 +64,48 @@ fun glyphDrawable(
   offset: Geometry.Offset,
   thickness: Float,
   paint: Ui.Paint,
-): ?Ui.Drawable {
-  msdfId = gid.msdfID();
-  context.getFontSupport().getMSDF(context, msdfId).map(msdf -> {
+  effects: Ui.TextEffects,
+): Array<Ui.Drawable> {
+  msdfId = gid.msdfID(effects);
+  context.getFontSupport().getMSDF(context, msdfId) match {
+  | None() -> Array[]
+  | Some(msdf) ->
     (width, height) = glyph.imageSize();
     imageSize = Geometry.Size(width.toFloat(), height.toFloat());
-    support.msdf(
-      offset,
-      imageSize,
-      msdf.image,
-      msdf.glyphConv(msdfId.fid.size, gid.fid.size, imageSize, glyph.topLeft()),
-      gid.pxRange,
-      thickness,
-      paint,
-    )
-  })
+    draw = (image, place, layerPaint, layerEffects) ->
+      support.msdf(
+        offset,
+        imageSize,
+        image,
+        Font.Msdf::placeGlyph(
+          place,
+          msdfId.fid.size,
+          gid.fid.size,
+          imageSize,
+          glyph.topLeft(),
+        ),
+        msdfId.pxRange,
+        thickness,
+        layerPaint,
+        layerEffects,
+      );
+    if (msdf.layers.isEmpty()) {
+      Array[draw(msdf.image, msdf.place, paint, effects)]
+    } else {
+      // The effects are drawn once, below the bottom layer.
+      msdf.layers.mapWithIndex((i, layer) ->
+        draw(
+          layer.image,
+          layer.place,
+          layer.color match {
+          | Some(color) -> color
+          | None() -> paint
+          },
+          if (i == 0) effects else Ui.TextEffects::none,
+        )
+      )
+    }
+  }
 }
 
 class FacedText(value: String, faceId: Font.FaceID) extends SKStore.Key {
@@ -446,7 +476,7 @@ fun toDrawables(
     gid = Font.GlyphID::create(style.faceId, char, pxRange);
     glyph = fontSupport.getGlyphForId(context, gid);
     kern = glyph.getKern(optPrevious);
-    glyphDrawable(
+    glyphDrawables(
       context,
       support,
       gid,
@@ -454,6 +484,7 @@ fun toDrawables(
       Geometry.Offset(left, top).move(glyph.offset(kern)),
       thickness,
       style.fill,
+      style.effects,
     ).each(drawables.push);
     !left = left + glyph.advance() + kern;
     !optPrevious = Some(char);
@@ -478,7 +509,7 @@ fun buildGlyphs(
     offset = Geometry.Offset(left, top).move(glyph.offset(kern));
     !left = left + width;
     !optPrevious = Some(char);
-    Glyph(gid, offset, glyph, style.fill as .Color _)
+    Glyph(gid, offset, glyph, style.fill as .Color _, style.effects)
   });
 }
 
