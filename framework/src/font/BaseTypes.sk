@@ -75,10 +75,15 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKStore.Key {
    * msdfSize. Hinting adapts the outline to a size, so hinted glyphs use an
    * MSDF generated at their own size.
    */
-  fun msdfID(): GlyphID {
-    if (this.fid.hinting == HintingNone()) {
-      !this.fid.size = msdfSize
-    };
+  fun msdfID(effects: Ui.TextEffects = Ui.TextEffects::none): GlyphID {
+    size = if (this.fid.hinting == HintingNone()) msdfSize else this.fid.size;
+    // Effects are drawn from distances up to their extent: at the MSDF
+    // size, extent * size / fid.size texture pixels beyond the outline.
+    // pxRange is rounded up to a multiple of 8 to share MSDFs.
+    reach = effects.extent() * size / this.fid.size;
+    needed = 2 * Math.ceil(reach + 2.0).toInt();
+    !this.pxRange = Math.max(this.pxRange, ((needed + 7) / 8) * 8);
+    !this.fid.size = size;
     this
   }
 
@@ -110,6 +115,16 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKStore.Key {
  */
 const msdfSize: Float = 45.0;
 
+/**
+ * The MSDF of one color layer of a color glyph (COLR), in the layer color or,
+ * without a color, in the text color.
+ */
+class MsdfLayer(
+  image: Ui.Image,
+  place: (Geometry.Rect, Float) ~> Geometry.Rect,
+  color: ?.Color,
+)
+
 class Msdf(
   image: Ui.Image,
   conv: Geometry.Rect ~> Geometry.Rect,
@@ -118,14 +133,17 @@ class Msdf(
    * left of the given rectangle, drawn at the given scale.
    */
   place: (Geometry.Rect, Float) ~> Geometry.Rect,
+  // For a color glyph, its layers bottom to top, drawn instead of image.
+  layers: Array<MsdfLayer> = Array[],
 ) extends SKStore.File {
   //
   static fun make(
     _char: Char,
     info: (Ui.Image, (Geometry.Rect, Float) ~> Geometry.Rect),
     scale: Float = 1.0,
+    layers: Array<MsdfLayer> = Array[],
   ): this {
-    static(info.i0, r ~> info.i1(r, scale), info.i1)
+    static(info.i0, r ~> info.i1(r, scale), info.i1, layers)
   }
 
   /**
@@ -154,6 +172,20 @@ class Msdf(
     imageSize: Geometry.Size,
     topLeft: Geometry.Offset,
   ): Geometry.Rect ~> Geometry.Rect {
+    static::placeGlyph(this.place, msdfSize, size, imageSize, topLeft)
+  }
+
+  /**
+   * The placement function of a glyph MSDF, or of one of its layers, whose
+   * shape is relative to the glyph origin (see glyphConv).
+   */
+  static fun placeGlyph(
+    place: (Geometry.Rect, Float) ~> Geometry.Rect,
+    msdfSize: Float,
+    size: Float,
+    imageSize: Geometry.Size,
+    topLeft: Geometry.Offset,
+  ): Geometry.Rect ~> Geometry.Rect {
     r ~> {
       ratio = if (imageSize.width > 0.0) {
         r.width() / imageSize.width
@@ -162,7 +194,13 @@ class Msdf(
       } else {
         1.0
       };
-      this.glyphRect(r.topLeft() - topLeft * ratio, size * ratio / msdfSize)
+      place(
+        Geometry.Rect::fromOffsetSize(
+          r.topLeft() - topLeft * ratio,
+          Geometry.Size(0.0, 0.0),
+        ),
+        size * ratio / msdfSize,
+      )
     }
   }
 }

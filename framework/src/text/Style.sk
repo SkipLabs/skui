@@ -3,6 +3,8 @@ module Text;
 class Display(
   faceId: Font.FaceID,
   fill: Ui.Paint = Colors.black(),
+  // The outline and shadow drawn with the glyphs.
+  effects: Ui.TextEffects = Ui.TextEffects::none,
 ) extends SKStore.File uses Orderable {
   //
   static fun type(obj: SKStore.File): this {
@@ -13,9 +15,13 @@ class Display(
   }
 }
 
-base class StyleBase{faceId: Font.FaceID, fill: Ui.Paint = Colors.black()} {
+base class StyleBase{
+  faceId: Font.FaceID,
+  fill: Ui.Paint = Colors.black(),
+  effects: Ui.TextEffects = Ui.TextEffects::none,
+} {
   fun toDisplay(): Display {
-    Display(this.faceId, this.fill);
+    Display(this.faceId, this.fill, this.effects);
   }
 }
 
