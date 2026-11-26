@@ -70,16 +70,14 @@ class GlyphID(fid: FaceID, char: Char, pxRange: Int = 8) extends SKStore.Key {
   }
 
   /**
-   * The id of the MSDF used to draw this glyph at the given device pixel
-   * ratio. An MSDF does not depend on the size it is drawn at, so unhinted
-   * glyphs share one MSDF generated at msdfSize. Hinting adapts the outline
-   * to a size, so hinted glyphs have one MSDF per device size.
+   * The id of the MSDF used to draw this glyph. An MSDF does not depend on
+   * the size it is drawn at, so unhinted glyphs share one MSDF generated at
+   * msdfSize. Hinting adapts the outline to a size, so hinted glyphs use an
+   * MSDF generated at their own size.
    */
-  fun msdfID(ratio: Float): GlyphID {
-    !this.fid.size = if (this.fid.hinting == HintingNone()) {
-      msdfSize
-    } else {
-      this.fid.size * ratio
+  fun msdfID(): GlyphID {
+    if (this.fid.hinting == HintingNone()) {
+      !this.fid.size = msdfSize
     };
     this
   }
@@ -139,6 +137,33 @@ class Msdf(
       Geometry.Rect::fromOffsetSize(origin, Geometry.Size(0.0, 0.0)),
       scale,
     )
+  }
+
+  /**
+   * The function placing the image of a glyph MSDF generated at msdfSize,
+   * drawn at size. The image of the glyph at size is size.width wide and
+   * its top left is topLeft relative to the glyph origin.
+   *
+   * It is called at draw time with the glyph image rectangle in device
+   * pixels: the scale between logical and device pixels is deduced from it,
+   * so that the MSDF does not depend on the device pixel ratio.
+   */
+  fun glyphConv(
+    msdfSize: Float,
+    size: Float,
+    imageSize: Geometry.Size,
+    topLeft: Geometry.Offset,
+  ): Geometry.Rect ~> Geometry.Rect {
+    r ~> {
+      ratio = if (imageSize.width > 0.0) {
+        r.width() / imageSize.width
+      } else if (imageSize.height > 0.0) {
+        r.height() / imageSize.height
+      } else {
+        1.0
+      };
+      this.glyphRect(r.topLeft() - topLeft * ratio, size * ratio / msdfSize)
+    }
   }
 }
 

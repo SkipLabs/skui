@@ -2,39 +2,22 @@ module SKUI;
 
 fun initSizeManager(
   context: mutable SKStore.Context,
-): (
-  SKStore.EHandle<SKStore.IID, UiEvent.Size>,
-  SKStore.EHandle<SKStore.IID, SKStore.FloatFile>,
-) {
+): SKStore.EHandle<SKStore.IID, UiEvent.Size> {
   windowHdl = context.makeDir(
     SKStore.IID::keyType,
     UiEvent.Size::type,
     SKStore.DirName::create("/ui/window/"),
   );
-  ratioHdl = context.makeDir(
-    SKStore.IID::keyType,
-    SKStore.FloatFile::type,
-    SKStore.DirName::create("/ui/window/ratio/"),
-  );
   iWindowHdl = SKStore.toIHandle(windowHdl);
-  iRatioHdl = SKStore.toIHandle(ratioHdl);
+  // The device pixel ratio is only used to draw: the platform gives it to
+  // each frame, so it is not stored.
   context.setGlobal(
     "FWK.Window.Size",
-    FWK.Sizer((ctx, wId, w, h, r) ~> {
-      iWindowHdl.write(ctx, SKStore.IID(wId), UiEvent.Size(w, h));
-      iRatioHdl.write(ctx, SKStore.IID(wId), SKStore.FloatFile(r));
-    }),
-  );
-  context.setGlobal(
-    "FWK.Ratio",
-    FWK.Ratio((ctx, wId) ~>
-      iRatioHdl
-        .maybeGetValue(ctx, SKStore.IID(wId))
-        .map(v -> v.value)
-        .default(1.0)
+    FWK.Sizer((ctx, wId, w, h, _r) ~>
+      iWindowHdl.write(ctx, SKStore.IID(wId), UiEvent.Size(w, h))
     ),
   );
-  (windowHdl, ratioHdl);
+  windowHdl
 }
 
 fun init(
@@ -54,13 +37,13 @@ fun init(
   context.initTextSupport(support);
   root = UiRoot.HStorage::create(context, SKStore.DirName::create("/ui/root/"));
   context.setGlobal("FWK.Root", root);
-  (windowHdl, _ratioHdl) = initSizeManager(context);
+  windowHdl = initSizeManager(context);
   SystemProperties.init(context);
   Ui.init(context);
   inits.each(i -> i(context));
   getter = builder(context, root);
 
-  FWKPipeline.initPipeline(context, getter, windowHdl, root, support, wId);
+  FWKPipeline.initPipeline(context, getter, windowHdl, root, support);
   context.setGlobal(
     "SKStore.Updater",
     SKStore.Updater(_ctx ~> FWK.update(uint32(wId))),

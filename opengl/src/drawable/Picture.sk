@@ -127,9 +127,12 @@ class Shape(
       shape => MTSDF.Shape::fromPath(this.path),
       pxRange => this.pxRange,
     };
+    width = this.bounds.width();
     Msdf::create(
       ctx ~> this.conv(picture, true).map(t -> t.asTexture(ctx)),
-      r ~> conv(r, 1.0),
+      // r is the rectangle in device pixels: its ratio to the bounds is the
+      // device pixel ratio.
+      r ~> conv(r, if (width > 0.0) r.width() / width else 1.0),
       this.pxRange,
       this.paint as .Color _,
       0.0,

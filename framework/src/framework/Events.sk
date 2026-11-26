@@ -136,14 +136,4 @@ class Sizer(
   }
 }
 
-class Ratio(fn: (mutable SKStore.Context, Int) ~> Float) extends SKStore.File {
-  //
-  static fun type(obj: SKStore.File): this {
-    obj match {
-    | x @ Ratio _ -> x
-    | _ -> SKStore.cast_violation("FWK.Ratio", obj)
-    }
-  }
-}
-
 module end;

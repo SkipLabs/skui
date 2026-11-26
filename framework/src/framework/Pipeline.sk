@@ -172,7 +172,6 @@ fun initPipeline(
   windowHdl: SKStore.EHandle<SKStore.IID, UiEvent.Size>,
   root: UiRoot.Storage,
   support: Ui.DrawableSupport,
-  wId: Int,
 ): void {
   // Collect mouse / keys states to manage Dropdrow / Tooltips
   mouseState = prepareMouse(context);
@@ -328,19 +327,10 @@ fun initPipeline(
     (context, writer, key, it) ~>
       key match {
       | id @ Ui.Path _ ->
-        ratio = context
-          .getGlobal("FWK.Ratio")
-          .map(FWK.Ratio::type)
-          .map(r -> r.fn(context, wId))
-          .default(1.0);
         relative = Geometry.Offset::type(nodeSumsHdl.get(context, RPath(id)));
         writer.set(
           id,
-          NodeSum::type(it.first).computeNodeInfo(
-            context,
-            Ui.RatioDrawableSupport(support, ratio),
-            relative,
-          ),
+          NodeSum::type(it.first).computeNodeInfo(context, support, relative),
         )
       | _ -> void
       }
@@ -420,14 +410,9 @@ fun initPipeline(
       nodeOffsets = Ui.NodeOffsets::type(
         nodeSumsHdl.get(context, KOffsets(kLayer.path)),
       );
-      ratio = context
-        .getGlobal("FWK.Ratio")
-        .map(FWK.Ratio::type)
-        .map(r -> r.fn(context, wId))
-        .default(1.0);
       drawables = layer.computeLayer(
         context,
-        Ui.RatioDrawableSupport(support, ratio),
+        support,
         nodeOffsets.viewport,
         kLayer.layer,
       );

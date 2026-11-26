@@ -59,6 +59,12 @@ private:
   void close();
   float computeDpi();
   float getDpiFromResource();
+  float computeRatio();
+  uint32_t ratioPercent();
+  uint32_t toLogical(uint32_t value);
+
+  // The device pixel ratio of the window.
+  float ratio = 1.0;
 
   WindowConfig config;
   GLXFBConfig *gLXFBConfig;
