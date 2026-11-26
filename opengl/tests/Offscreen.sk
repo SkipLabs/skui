@@ -638,4 +638,178 @@ fun msdfTextOutlineAndShadow(): void {
   )
 }
 
+// Color glyphs (COLR): each layer is drawn with its own MSDF, bottom to
+// top, placed like the glyph it belongs to.
+
+// The drawables of the color glyph of c drawn at size with its origin at
+// (left, baseline): one per layer, in the layer color or textColor.
+fun colorGlyphDrawables(
+  font: TrueType.Font,
+  c: Char,
+  size: Float,
+  left: Float,
+  baseline: Float,
+  textColor: .Color,
+): Array<GLDrawable> {
+  glyph = glyphAt(font, size, c);
+  reference = glyphAt(font, msdfSize, c);
+  topLeft = glyph.topLeft();
+  imageSize = Geometry.Size(
+    glyph.imageWidth().toFloat(),
+    glyph.imageHeight().toFloat(),
+  );
+  offset = Geometry.Offset(left, baseline) + topLeft;
+  reference.colorLayers.map(layer -> {
+    (image, place) = MTSDF.toMSDF{
+      shape => MTSDF.Shape::fromPath(layer.path.translate(reference.topLeft())),
+      pxRange => 8,
+      trueDistance => true,
+    };
+    msdf = GLDrawable.Msdf::create(
+      ctx ~> SKUI.pictureToTexturable(image).map(t -> t.asTexture(ctx)),
+      r ~> {
+        ratio = r.width() / imageSize.width;
+        place(
+          Geometry.Rect::fromOffsetSize(
+            r.topLeft() - topLeft * ratio,
+            Geometry.Size(0.0, 0.0),
+          ),
+          size * ratio / msdfSize,
+        )
+      },
+      8,
+      layer.color.default(textColor),
+      0.0,
+      offset,
+      imageSize,
+    );
+    drawable: GLDrawable = msdf;
+    drawable
+  })
+}
+
+// The exact rendering of the color glyph: the coverage of each layer by its
+// outline, composited bottom to top over white.
+fun referenceColorGlyph(
+  font: TrueType.Font,
+  c: Char,
+  size: Float,
+  left: Float,
+  baseline: Float,
+  textColor: .Color,
+  dWidth: Int,
+  dHeight: Int,
+  ratio: Float,
+): Ui.Image {
+  glyph = glyphAt(font, size, c);
+  origin = Geometry.Offset(left, baseline) + glyph.topLeft();
+  samples = 8;
+  n = (samples * samples).toFloat();
+  pixels = Array::mfill(dWidth * dHeight * 3, 1.0);
+  for (layer in glyph.colorLayers) {
+    color = layer.color.default(textColor);
+    shape = MTSDF.Shape::fromPath(
+      layer.path.transform(p ~> (origin + p) * ratio),
+    );
+    coverage = Array::mfill(dWidth * dHeight, 0);
+    for (sy in Range(0, dHeight * samples)) {
+      scanline = shape.scanline((sy.toFloat() + 0.5) / samples.toFloat());
+      for (sx in Range(0, dWidth * samples)) {
+        if (
+          scanline.filled(
+            (sx.toFloat() + 0.5) / samples.toFloat(),
+            MTSDF.NonZero(),
+          )
+        ) {
+          i = (sy / samples) * dWidth + sx / samples;
+          coverage.set(i, coverage[i] + 1)
+        }
+      }
+    };
+    for (i in Range(0, dWidth * dHeight)) {
+      a = color.alpha * coverage[i].toFloat() / n;
+      Array[color.red, color.green, color.blue].eachWithIndex((k, v) ->
+        pixels.set(i * 3 + k, v * a + pixels[i * 3 + k] * (1.0 - a))
+      )
+    }
+  };
+  toByte = v -> UInt8::truncate((v * 255.0 + 0.5).toInt());
+  Ui.Image::make(dWidth, dHeight, (x, y) -> {
+    i = (y * dWidth + x) * 3;
+    Ui.Pix(
+      toByte(pixels[i]),
+      toByte(pixels[i + 1]),
+      toByte(pixels[i + 2]),
+      UInt8::truncate(255),
+    )
+  })
+}
+
+@test
+fun colorGlyph(): void {
+  font = TrueType.parse(SKIP_SKUIFontTestsRes.colrBin());
+  textColor = Colors.green();
+  for (size in Array[24.0, 48.0]) {
+    for (ratio in Array[1.0, 2.0]) {
+      width = (size * 1.0).toInt();
+      height = (size * 1.2).toInt();
+      baseline = Math.round(size);
+      drawables = colorGlyphDrawables(
+        font,
+        'A',
+        size,
+        2.0,
+        baseline,
+        textColor,
+      );
+      T.expectEq(drawables.size(), 2, "layers");
+      msdf = render(
+        `colr_${size.toInt()}_x${ratio.toInt()}_msdf`,
+        drawables,
+        width,
+        height,
+        ratio,
+      );
+      reference = referenceColorGlyph(
+        font,
+        'A',
+        size,
+        2.0,
+        baseline,
+        textColor,
+        msdf.width,
+        msdf.height,
+        ratio,
+      );
+      Environ.varOpt("SKUI_GL_IMAGES").each(dir ->
+        GLOffscreen.writePPM(
+          colorComparison(msdf, reference),
+          `${dir}/colr_${size.toInt()}_x${ratio.toInt()}_compare.ppm`,
+        )
+      );
+      // The bottom layer is the square (0, 0)-(600, 600) and the top one
+      // (200, 200)-(400, 400), in units of 1/1000 em above the baseline at
+      // x = 2: the center of the glyph is in the text color, the middle of
+      // its left side is the half transparent red over white.
+      toDevice = (u, v) ->
+        (
+          ((2.0 + u * size / 1000.0) * ratio).toInt(),
+          ((baseline - v * size / 1000.0) * ratio).toInt(),
+        );
+      (cx, cy) = toDevice(300.0, 300.0);
+      expectPixel(msdf, cx, cy, (0, 128, 0), `top layer ${size}`);
+      (bx, by) = toDevice(100.0, 300.0);
+      expectPixel(msdf, bx, by, (255, 127, 127), `bottom layer ${size}`);
+      (ox, oy) = toDevice(700.0, 300.0);
+      expectPixel(msdf, ox, oy, (255, 255, 255), `outside ${size}`);
+      mean = colorDifference(msdf, reference);
+      T.expectEq(
+        mean < 4.0,
+        true,
+        `mean difference ${mean} at ${size} x${ratio}`,
+      );
+    }
+  }
+}
+
 module end;
