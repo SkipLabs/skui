@@ -422,6 +422,7 @@ class DrawableSupport(
     pxRange: Int,
     thickness: Float,
     paint: Ui.Paint,
+    effects: Ui.TextEffects = Ui.TextEffects::none,
   ): Ui.Drawable {
     paint match {
     | color @ .Color _ ->
@@ -433,6 +434,7 @@ class DrawableSupport(
         thickness,
         offset,
         size,
+        effects,
       )
     | _ -> invariant_violation("Not implemented; only Color Fill managed")
     }

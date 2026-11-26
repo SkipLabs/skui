@@ -42,6 +42,12 @@ const uniforms = [
   "u_bColor",
   "u_size",
   "u_pxRange",
+  "u_uvBox",
+  "u_outlineColor",
+  "u_outlineWidth",
+  "u_shadowColor",
+  "u_shadowOffset",
+  "u_shadowBlur",
 ];
 
 const attributes = ["a_position"];

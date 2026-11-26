@@ -42,6 +42,7 @@ class Msdf(
   pxRange: Int,
   color: .Color,
   thickness: Float,
+  effects: Ui.TextEffects,
 ) extends GLRectangleDrawable {
   //
   static fun create(
@@ -52,6 +53,7 @@ class Msdf(
     thickness: Float,
     offset: Geometry.Offset,
     size: Geometry.Size,
+    effects: Ui.TextEffects = Ui.TextEffects::none,
   ): this {
     static(
       texture,
@@ -59,6 +61,7 @@ class Msdf(
       pxRange,
       color,
       thickness,
+      effects,
       Geometry.Rect::fromOffsetSize(offset, size),
     )
   }
@@ -77,15 +80,49 @@ class Msdf(
       this.texture(gl).map(texture ->
         Ui.LambdaHandle((shift, window, _height, ratio, _frame) ~> {
           array.init(0);
-          rect = this.conv(this.bounds.shift(shift.toOffset()).scale(ratio));
+          // The rectangle of the MSDF image, in device pixels.
+          image = this.conv(this.bounds.shift(shift.toOffset()).scale(ratio));
+          effects = this.effects;
+          // The quad covers the image and the effects around it.
+          margin = Math.ceil(effects.extent() * ratio);
+          quad = Geometry.Rect(
+            image.left - margin,
+            image.top - margin,
+            image.right + margin,
+            image.bottom + margin,
+          );
+          toUv = (x, y) ->
+            Geometry.Offset(
+              (x - image.left) / image.width(),
+              (y - image.top) / image.height(),
+            );
+          uvTopLeft = toUv(quad.left, quad.top);
+          uvBottomRight = toUv(quad.right, quad.bottom);
           drawer.run(
             GLProgram.MsdfParameters(
               texture,
               this.pxRange,
               this.color,
               this.thickness * ratio,
+              Geometry.Rect(
+                uvTopLeft.dx,
+                uvTopLeft.dy,
+                uvBottomRight.dx,
+                uvBottomRight.dy,
+              ),
+              effects.optOutline.map(o -> (o.color, o.width * ratio)),
+              effects.optShadow.map(s ->
+                (
+                  s.color,
+                  Geometry.Offset(
+                    s.offset.dx * ratio / image.width(),
+                    s.offset.dy * ratio / image.height(),
+                  ),
+                  s.blur * ratio,
+                )
+              ),
             ),
-            GLProgram.BoundsParameters(rect, array.array),
+            GLProgram.BoundsParameters(quad, array.array),
             window.size() * ratio,
           )
         })

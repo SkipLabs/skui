@@ -88,29 +88,69 @@ const msdfFramentShader: String = source(
     "uniform vec4 u_color;",
     "uniform float u_pxRange;",
     "uniform float u_thickness;",
+    // The texture coordinates of the corners of the drawn quad: the quad is
+    // larger than the glyph image when effects extend beyond it.
+    "uniform vec4 u_uvBox;",
+    // Outline: color, and width in device pixels (0 for none).
+    "uniform vec4 u_outlineColor;",
+    "uniform float u_outlineWidth;",
+    // Shadow: color (alpha 0 for none), offset in texture coordinates, and
+    // blur width in device pixels.
+    "uniform vec4 u_shadowColor;",
+    "uniform vec2 u_shadowOffset;",
+    "uniform float u_shadowBlur;",
     "",
     "in vec2 v_position;",
     "",
     "out vec4 glColor;",
     "",
-    "float screenPxRange() {",
-    "  ivec2 size = textureSize(u_texture, 0);",
-    "  vec2 unitRange = vec2(u_pxRange)/ vec2(float(size.x), float(size.y));",
-    "  vec2 screenTexSize = vec2(1.0) / fwidth(v_position);",
-    "  return max(0.5*dot(unitRange, screenTexSize), 1.0);",
-    "}",
-    "",
     "float median(float r, float g, float b) {",
     "  return max(min(r, g), min(max(r, g), b));",
     "}",
     "",
+    // Device pixels per unit of signed distance.
+    "float screenPxRange(vec2 uv) {",
+    "  ivec2 size = textureSize(u_texture, 0);",
+    "  vec2 unitRange = vec2(u_pxRange) / vec2(float(size.x), float(size.y));",
+    "  vec2 screenTexSize = vec2(1.0) / fwidth(uv);",
+    "  return max(0.5 * dot(unitRange, screenTexSize), 1.0);",
+    "}",
+    "",
+    // Outside the texture, the distance is the largest one it holds.
+    "vec4 sampleSdf(vec2 uv) {",
+    "  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) {",
+    "    return vec4(0.0);",
+    "  }",
+    "  return texture(u_texture, uv);",
+    "}",
+    "",
+    // Premultiplied over.
+    "vec4 over(vec4 top, vec4 bottom) {",
+    "  return top + bottom * (1.0 - top.a);",
+    "}",
+    "",
     "void main() {",
-    "  vec3 msd = texture(u_texture, v_position).rgb + clamp(u_thickness, -0.5, 0.5);",
-    "  float sd = clamp(median(msd.r, msd.g, msd.b), 0.0, 255.0);",
-    "  float screenPxDistance = screenPxRange()*(sd - 0.5);",
-    "  float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);",
-    "  glColor = u_color;",
-    "  glColor.a *= opacity;",
+    "  vec2 uv = u_uvBox.xy + v_position * u_uvBox.zw;",
+    "  float range = screenPxRange(uv);",
+    "  vec4 sdf = sampleSdf(uv);",
+    "  vec3 msd = sdf.rgb + clamp(u_thickness, -0.5, 0.5);",
+    "  float fillDistance = range * (median(msd.r, msd.g, msd.b) - 0.5);",
+    "  float fill = clamp(fillDistance + 0.5, 0.0, 1.0);",
+    "  vec4 color = vec4(u_color.rgb, 1.0) * u_color.a * fill;",
+    "  if (u_outlineWidth > 0.0) {",
+    "    float trueDistance = range * (sdf.a - 0.5);",
+    "    float outline = clamp(trueDistance + u_outlineWidth + 0.5, 0.0, 1.0);",
+    "    vec4 outlineColor = vec4(u_outlineColor.rgb, 1.0) * u_outlineColor.a;",
+    "    color = over(color, outlineColor * outline);",
+    "  }",
+    "  if (u_shadowColor.a > 0.0) {",
+    "    float shadowDistance = range * (sampleSdf(uv - u_shadowOffset).a - 0.5);",
+    "    float blur = max(u_shadowBlur, 1.0);",
+    "    float shadow = clamp(shadowDistance / blur + 0.5, 0.0, 1.0);",
+    "    vec4 shadowColor = vec4(u_shadowColor.rgb, 1.0) * u_shadowColor.a;",
+    "    color = over(color, shadowColor * shadow);",
+    "  }",
+    "  glColor = color.a > 0.0 ? vec4(color.rgb / color.a, color.a) : vec4(0.0);",
     "}",
   ],
 );
@@ -138,11 +178,17 @@ class TextureParameters(texture: GL.Texture) extends Parameters {
   }
 }
 
+// uvBox is the texture coordinates of the drawn quad corners (left, top,
+// width, height); the outline width and shadow blur are in device pixels and
+// the shadow offset in texture coordinates.
 class MsdfParameters(
   texture: GL.Texture,
   pxRange: Int,
   color: .Color,
   thickness: Float,
+  uvBox: Geometry.Rect = Geometry.Rect(0.0, 0.0, 1.0, 1.0),
+  optOutline: ?(.Color, Float) = None(),
+  optShadow: ?(.Color, Geometry.Offset, Float) = None(),
 ) extends Parameters {
   //
   static fun fromParams(obj: Parameters): this {
@@ -238,19 +284,41 @@ class MsdfFragment() extends FragmentShaderBuilder {
     colorUniform = program.getIdxUniformLocation(uColor);
     pxRangeUniform = program.getIdxUniformLocation(uPxRange);
     thicknessUniform = program.getIdxUniformLocation(uThickness);
+    uvBoxUniform = program.getIdxUniformLocation(uUvBox);
+    outlineColorUniform = program.getIdxUniformLocation(uOutlineColor);
+    outlineWidthUniform = program.getIdxUniformLocation(uOutlineWidth);
+    shadowColorUniform = program.getIdxUniformLocation(uShadowColor);
+    shadowOffsetUniform = program.getIdxUniformLocation(uShadowOffset);
+    shadowBlurUniform = program.getIdxUniformLocation(uShadowBlur);
     LambdaFragmentShader((parameters, _) ~> {
       gl = program.context();
       ps = MsdfParameters::fromParams(parameters);
       activateTexture(gl, 0, ps.texture, textureUniform);
-      gl.uniform4f(
-        colorUniform,
-        ps.color.red,
-        ps.color.green,
-        ps.color.blue,
-        ps.color.alpha,
-      );
+      setColor = (uniform: GL.UniformLocation, color: .Color) ->
+        gl.uniform4f(uniform, color.red, color.green, color.blue, color.alpha);
+      setColor(colorUniform, ps.color);
       gl.uniform1f(pxRangeUniform, ps.pxRange.toFloat());
       gl.uniform1f(thicknessUniform, ps.thickness.toFloat());
+      gl.uniform4f(
+        uvBoxUniform,
+        ps.uvBox.left,
+        ps.uvBox.top,
+        ps.uvBox.width(),
+        ps.uvBox.height(),
+      );
+      ps.optOutline match {
+      | Some((color, width)) ->
+        setColor(outlineColorUniform, color);
+        gl.uniform1f(outlineWidthUniform, width)
+      | None() -> gl.uniform1f(outlineWidthUniform, 0.0)
+      };
+      ps.optShadow match {
+      | Some((color, offset, blur)) ->
+        setColor(shadowColorUniform, color);
+        gl.uniform2f(shadowOffsetUniform, offset.dx, offset.dy);
+        gl.uniform1f(shadowBlurUniform, blur)
+      | None() -> gl.uniform4f(shadowColorUniform, 0.0, 0.0, 0.0, 0.0)
+      };
     });
   }
 }

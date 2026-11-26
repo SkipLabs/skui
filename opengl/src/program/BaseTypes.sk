@@ -277,6 +277,12 @@ const uSize2: UInt32 = UInt32::truncate(21);
 const uBColor: UInt32 = UInt32::truncate(22);
 const uSize: UInt32 = UInt32::truncate(23);
 const uPxRange: UInt32 = UInt32::truncate(24);
+const uUvBox: UInt32 = UInt32::truncate(25);
+const uOutlineColor: UInt32 = UInt32::truncate(26);
+const uOutlineWidth: UInt32 = UInt32::truncate(27);
+const uShadowColor: UInt32 = UInt32::truncate(28);
+const uShadowOffset: UInt32 = UInt32::truncate(29);
+const uShadowBlur: UInt32 = UInt32::truncate(30);
 
 const aPosition: UInt32 = UInt32::truncate(0);
 
