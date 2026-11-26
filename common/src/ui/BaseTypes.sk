@@ -355,6 +355,48 @@ class Border(color: .Color = Colors.transparent(), thickness: Float = 0.0) {
   }
 }
 
+/**
+ * An outline around the shape of a text glyph: width is in logical pixels,
+ * outside the glyph outline.
+ */
+class TextOutline(color: .Color, width: Float) uses Hashable, Orderable
+
+/**
+ * A shadow below a text glyph, moved by offset (logical pixels). blur is the
+ * width of its soft edge, in logical pixels; 0.0 gives a sharp shadow.
+ */
+class TextShadow(
+  color: .Color,
+  offset: Geometry.Offset,
+  blur: Float = 0.0,
+) uses Hashable, Orderable
+
+/**
+ * Effects drawn with a text glyph, below it: the shadow, then the outline.
+ */
+class TextEffects{
+  optOutline: ?TextOutline = None(),
+  optShadow: ?TextShadow = None(),
+} uses Hashable, Orderable {
+  const none: TextEffects = TextEffects{};
+
+  fun isNone(): Bool {
+    this.optOutline.isNone() && this.optShadow.isNone()
+  }
+
+  /**
+   * How far the effects extend beyond the glyph outline, in logical pixels.
+   * The MSDF of the glyph must hold distances up to this extent.
+   */
+  fun extent(): Float {
+    outline = this.optOutline.map(o -> o.width).default(0.0);
+    shadow = this.optShadow.map(s ->
+      Math.max(Math.abs(s.offset.dx), Math.abs(s.offset.dy)) + s.blur
+    ).default(0.0);
+    Math.max(outline, shadow)
+  }
+}
+
 base class DrawableSupport {
   //
   fun init(
@@ -370,6 +412,7 @@ base class DrawableSupport {
     pxRange: Int,
     thickness: Float,
     paint: Ui.Paint,
+    effects: TextEffects = TextEffects::none,
   ): Ui.Drawable;
 
   fun ellipse(
@@ -638,6 +681,7 @@ class DummyDrawableSupport() extends DrawableSupport {
     _pxRange: Int,
     _thickness: Float,
     _paint: Ui.Paint,
+    _effects: TextEffects = TextEffects::none,
   ): Ui.Drawable {
     dummy()
   }

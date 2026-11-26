@@ -95,19 +95,24 @@ fun toMSDF{
   angleThreshold: Float = defaultAngleThreshold.toFloat(),
   coloringSeed: Int = 0,
   edgeColoring: (Shape, Float, Int) ~> Shape = edgeColoringSimple,
+  // With true, the alpha channel holds the true signed distance (MTSDF),
+  // which gives round corners to outlines and shadows; otherwise it is
+  // opaque.
+  trueDistance: Bool = false,
 }: (Ui.Image, (Geometry.Rect, Float) ~> Geometry.Rect) {
   !shape = shape.normalize();
   !shape = edgeColoring(shape, angleThreshold, coloringSeed);
   (translate, _, width, height) = check(shape, pxRange);
   projection = Projection(Vector2(1.0, 1.0), translate);
   range = Px(pxRange.toFloat()).range(projection.scale);
-  sdf = MTSDF.BitmapRef::make(3, width, height, 0.0);
+  mode = if (trueDistance) MTSDF.MultiAndTrue() else MTSDF.Multi();
+  sdf = MTSDF.BitmapRef::make(if (trueDistance) 4 else 3, width, height, 0.0);
   MTSDF.generateDistanceField(
     sdf,
     shape,
     projection,
     range,
-    MTSDF.Multi(),
+    mode,
     true, //overlapSupport
   );
   MTSDF.multiDistanceSignCorrection(sdf, shape, projection, fillRule);
