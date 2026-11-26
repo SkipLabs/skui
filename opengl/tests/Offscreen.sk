@@ -1,0 +1,258 @@
+module alias T = SKTest;
+
+module SKUIGLTest;
+
+// Rendering tests of GL drawables without a window system (see
+// GLOffscreen). To look at the rendered images, set SKUI_GL_IMAGES to a
+// directory: each test writes its images there as PPM files.
+
+fun render(
+  name: String,
+  drawables: Array<GLDrawable>,
+  width: Int,
+  height: Int,
+  ratio: Float = 1.0,
+): Ui.Image {
+  GLOffscreen.render(drawables, width, height, ratio) match {
+  | Some(image) ->
+    Environ.varOpt("SKUI_GL_IMAGES").each(dir ->
+      GLOffscreen.writePPM(image, `${dir}/${name}.ppm`)
+    );
+    image
+  | None() -> throw T.ExpectationError("OpenGL", "available", "unavailable")
+  }
+}
+
+fun pixel(image: Ui.Image, x: Int, y: Int): (Int, Int, Int) {
+  p = image.data[y * image.width + x];
+  (p.red.toInt(), p.green.toInt(), p.blue.toInt())
+}
+
+fun expectPixel(
+  image: Ui.Image,
+  x: Int,
+  y: Int,
+  expected: (Int, Int, Int),
+  msg: String,
+): void {
+  actual = pixel(image, x, y);
+  (r, g, b) = actual;
+  (er, eg, eb) = expected;
+  if (Math.abs(r - er) > 2 || Math.abs(g - eg) > 2 || Math.abs(b - eb) > 2) {
+    throw T.ExpectationError(
+      `${msg} at (${x}, ${y})`,
+      `${expected}`,
+      `${actual}`,
+    )
+  }
+}
+
+const white: (Int, Int, Int) = (255, 255, 255);
+const red: (Int, Int, Int) = (255, 0, 0);
+
+@test
+fun solidRectangle(): void {
+  image = render(
+    "rectangle",
+    Array[
+      GLDrawable.rectangle(
+        Geometry.Offset(10.0, 5.0),
+        Geometry.Size(20.0, 10.0),
+        Colors.red(),
+      ),
+    ],
+    40,
+    20,
+  );
+  T.expectEq(image.width, 40, "width");
+  T.expectEq(image.height, 20, "height");
+  // Inside, on the inner edges, and just outside the rectangle.
+  expectPixel(image, 20, 10, red, "center");
+  expectPixel(image, 10, 5, red, "top left");
+  expectPixel(image, 29, 14, red, "bottom right");
+  expectPixel(image, 9, 10, white, "left");
+  expectPixel(image, 30, 10, white, "right");
+  expectPixel(image, 20, 4, white, "above");
+  expectPixel(image, 20, 15, white, "below");
+}
+
+@test
+fun pixelRatio(): void {
+  // At a pixel ratio of 2, the same logical rectangle covers twice as many
+  // device pixels in each direction.
+  image = render(
+    "rectangle_ratio2",
+    Array[
+      GLDrawable.rectangle(
+        Geometry.Offset(10.0, 5.0),
+        Geometry.Size(20.0, 10.0),
+        Colors.red(),
+      ),
+    ],
+    40,
+    20,
+    2.0,
+  );
+  T.expectEq(image.width, 80, "width");
+  T.expectEq(image.height, 40, "height");
+  expectPixel(image, 20, 10, red, "top left");
+  expectPixel(image, 59, 29, red, "bottom right");
+  expectPixel(image, 19, 20, white, "left");
+  expectPixel(image, 60, 20, white, "right");
+  expectPixel(image, 40, 9, white, "above");
+  expectPixel(image, 40, 30, white, "below");
+}
+
+@test
+fun roundedRectangle(): void {
+  image = render(
+    "rounded",
+    Array[
+      GLDrawable.RoundedRectangle(
+        Colors.red(),
+        10.0,
+        1.0,
+        None(),
+        Geometry.Rect::fromOffsetSize(
+          Geometry.Offset(0.0, 0.0),
+          Geometry.Size(40.0, 40.0),
+        ),
+      ),
+    ],
+    40,
+    40,
+  );
+  // The corners are cut, the middle of the edges is filled.
+  expectPixel(image, 0, 0, white, "corner");
+  expectPixel(image, 39, 39, white, "opposite corner");
+  expectPixel(image, 20, 1, red, "top edge");
+  expectPixel(image, 1, 20, red, "left edge");
+  expectPixel(image, 20, 20, red, "center");
+}
+
+// Text, drawn as the framework does it: glyph MSDFs generated once at
+// msdfSize, placed from the glyph origin at the drawn size, and scaled to
+// device pixels at draw time.
+
+const msdfSize: Float = 45.0;
+
+fun liberation(): TrueType.Font {
+  TrueType.parse(SKIP_SKUIFontTestsRes.liberationBin())
+}
+
+fun glyphAt(font: TrueType.Font, size: Float, c: Char): Font.Glyph {
+  TrueType.Face::make(font, Font.Options{size, dpi => 72.0})
+    .getGlyph(c)
+    .fromSome()
+}
+
+// The drawables of text at size, with its baseline at y = baseline.
+fun textDrawables(
+  font: TrueType.Font,
+  text: String,
+  size: Float,
+  left: Float,
+  baseline: Float,
+): Array<GLDrawable> {
+  pen = left;
+  drawables = mutable Vector<GLDrawable>[];
+  for (c in text.chars()) {
+    glyph = glyphAt(font, size, c);
+    reference = glyphAt(font, msdfSize, c);
+    glyph.optPath.each(_ -> {
+      (image, place) = MTSDF.toMSDF{
+        shape => MTSDF.Shape::fromPath(
+          reference.optPath.fromSome().translate(reference.topLeft()),
+        ),
+        pxRange => 8,
+      };
+      topLeft = glyph.topLeft();
+      imageSize = Geometry.Size(
+        glyph.imageWidth().toFloat(),
+        glyph.imageHeight().toFloat(),
+      );
+      offset = Geometry.Offset(pen, baseline) + topLeft;
+      drawables.push(
+        GLDrawable.Msdf::create(
+          ctx ~> SKUI.pictureToTexturable(image).map(t -> t.asTexture(ctx)),
+          r ~> {
+            ratio = r.width() / imageSize.width;
+            place(
+              Geometry.Rect::fromOffsetSize(
+                r.topLeft() - topLeft * ratio,
+                Geometry.Size(0.0, 0.0),
+              ),
+              size * ratio / msdfSize,
+            )
+          },
+          8,
+          Colors.black(),
+          0.0,
+          offset,
+          imageSize,
+        ),
+      )
+    });
+    !pen = pen + glyph.advance();
+  };
+  drawables.toArray()
+}
+
+// The rows of the image that have dark pixels in columns [x0, x1).
+fun inkRows(image: Ui.Image, x0: Int, x1: Int): (Int, Int) {
+  top = image.height;
+  bottom = -1;
+  for (y in Range(0, image.height)) {
+    for (x in Range(x0, x1)) {
+      (r, _, _) = pixel(image, x, y);
+      if (r < 128) {
+        !top = Math.min(top, y);
+        !bottom = Math.max(bottom, y)
+      }
+    }
+  };
+  (top, bottom)
+}
+
+@test
+fun msdfText(): void {
+  font = liberation();
+  size = 13.0;
+  text = "aeoxnsu";
+  image = render("text13", textDrawables(font, text, size, 2.0, 14.0), 64, 20);
+  // Every lowercase letter sits on the baseline, at y = 14: the last row
+  // of ink of each glyph is the row just above it.
+  pen = 2.0;
+  for (c in text.chars()) {
+    advance = glyphAt(font, size, c).advance();
+    (_, bottom) = inkRows(
+      image,
+      Math.ceil(pen).toInt(),
+      Math.floor(pen + advance).toInt(),
+    );
+    T.expectEq(bottom, 13, `baseline of ${c}`);
+    !pen = pen + advance
+  }
+}
+
+@test
+fun msdfTextPixelRatio(): void {
+  font = liberation();
+  drawables = textDrawables(font, "x", 13.0, 2.0, 14.0);
+  image1 = render("x13", drawables, 16, 20);
+  image2 = render("x13_ratio2", drawables, 16, 20, 2.0);
+  // At a pixel ratio of 2, the glyph covers twice as many device pixels:
+  // it is not drawn at its logical size in the larger image.
+  (top1, bottom1) = inkRows(image1, 0, 16);
+  (top2, bottom2) = inkRows(image2, 0, 32);
+  height1 = bottom1 - top1 + 1;
+  height2 = bottom2 - top2 + 1;
+  T.expectEq(
+    Math.abs(height2 - 2 * height1) <= 1,
+    true,
+    `${height1} ${height2}`,
+  );
+  T.expectEq(bottom2, 27, "baseline");
+}
+
+module end;
