@@ -796,21 +796,22 @@ class FontIcon(
     drawables: mutable Vector<Ui.Drawable>,
   ): void {
     iconSupport = context.getIconSupport();
-    ratio = support match {
-    | Ui.RatioDrawableSupport(_, ratio) -> ratio
-    | _ -> 1.0
-    };
     // An MSDF does not depend on the size it is drawn at: icons share one
-    // MSDF, generated at Font.msdfSize and scaled to the icon size.
+    // MSDF, generated at Font.msdfSize and scaled to the icon size. The
+    // device pixel ratio is deduced at draw time from the device rectangle
+    // of the icon.
     face = UiIcon.Face::create(this.collection, Font.msdfSize);
-    scale = this.fontSize * ratio / Font.msdfSize;
+    scale = this.fontSize / Font.msdfSize;
     iconSupport.getMSDF(context, this.icon, face).each(msdf ->
       drawables.push(
         support.msdf(
           offset,
           size,
           msdf.image,
-          r ~> msdf.place(r, scale),
+          r ~> {
+            ratio = if (size.width > 0.0) r.width() / size.width else 1.0;
+            msdf.place(r, scale * ratio)
+          },
           8,
           0.0,
           paint,

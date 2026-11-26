@@ -74,11 +74,18 @@ fun performFrame(
   count: UInt32,
 ): Context {
   pos = SKStore.newSkuiObstack();
+  fRatio = ratio.toFloat() / 100.0;
   ctx = GL.Ctx(UInt32::truncate(cid));
   ctx.bindMainFrameBuffer();
   ctx.enableBlend();
   ctx.straitAlphaBlending();
-  ctx.viewport(int32(0), int32(0), uint32(width), uint32(height));
+  // width and height are in logical pixels.
+  ctx.viewport(
+    int32(0),
+    int32(0),
+    uint32((width.toFloat() * fRatio).toInt()),
+    uint32((height.toFloat() * fRatio).toInt()),
+  );
   ctx.clearColor(1.0, 1.0, 1.0, 1.0);
   ctx.clear();
   context = optContext match {
@@ -90,7 +97,6 @@ fun performFrame(
     Geometry.Point(0, 0),
     Geometry.Point(width, height),
   );
-  fRatio = ratio.toFloat() / 100.0;
   context.handles.each(a ->
     a.draw(shift, window, height, fRatio, count.toInt())
   );

@@ -85,6 +85,7 @@ Atom GLWindowManager::createContext(Window window) {
     // throw VersionException(std::string("Invalid GLEW version"));
   }
   GL_init();
+  this->ratio = this->computeRatio();
   return this->messages.fWmDeleteMessage;
 }
 
@@ -115,9 +116,28 @@ void GLWindowManager::checkClipboard(XSelectionEvent *) {
 
 void GLWindowManager::resize(uint32_t width, uint32_t height) {
   if (this->eventManager != nullptr) {
-    // in X11 the pixel ratio is 1.0
-    this->eventManager->resize(this->config.wId, width, height, 100);
+    // The framework works in logical pixels: the window size in device
+    // pixels is divided by the pixel ratio.
+    this->eventManager->resize(this->config.wId, this->toLogical(width),
+                               this->toLogical(height), this->ratioPercent());
   }
+}
+
+/**
+ * The device pixel ratio, from the Xft.dpi resource set by desktop
+ * environments for HiDPI screens (96 dpi is a ratio of 1).
+ */
+float GLWindowManager::computeRatio() {
+  float ratio = this->getDpiFromResource() / 96.0;
+  return ratio > 0.0 ? ratio : 1.0;
+}
+
+uint32_t GLWindowManager::ratioPercent() {
+  return (uint32_t)round(this->ratio * 100.0);
+}
+
+uint32_t GLWindowManager::toLogical(uint32_t value) {
+  return (uint32_t)floor(value / this->ratio);
 }
 
 float GLWindowManager::computeDpi() {
@@ -179,8 +199,9 @@ void GLWindowManager::performFrame(uint32_t count) {
     XGetWindowAttributes(this->display, this->window, &gwa);
     glXMakeCurrent(this->display, this->window, this->context);
     this->eventManager->performFrame(
-        this->userEnviroment, this->config.wId, this->userContext, gwa.width,
-        gwa.height, 100, count, [this](void *userContext) {
+        this->userEnviroment, this->config.wId, this->userContext,
+        this->toLogical(gwa.width), this->toLogical(gwa.height),
+        this->ratioPercent(), count, [this](void *userContext) {
           this->userContext = userContext;
           this->animationFrame.framePerformed();
           glXSwapBuffers(this->display, this->window);
@@ -197,7 +218,9 @@ void GLWindowManager::requestClose() {
 void GLWindowManager::manageMouseLocation(uint32_t x, uint32_t y, uint32_t sx,
                                           uint32_t sy) {
   if (this->eventManager != nullptr) {
-    this->eventManager->manageMouseLocation(this->config.wId, x, y, sx, sy);
+    this->eventManager->manageMouseLocation(
+        this->config.wId, this->toLogical(x), this->toLogical(y),
+        this->toLogical(sx), this->toLogical(sy));
   }
 }
 
